@@ -1,7 +1,8 @@
 from django.apps import AppConfig
+from django.utils.translation import gettext_lazy
 
 
 class HomeworkConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "homework"
-    verbose_name = "Домашние задания"
+    verbose_name = gettext_lazy("Домашние задания")

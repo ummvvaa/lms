@@ -15,6 +15,7 @@ from typing import Any
 
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext, gettext_lazy
 
 from core.audit import ValueRejected, apply_changes, coerce
 from core.domains import Source, domain_of_field
@@ -56,25 +57,27 @@ class Question:
         }
 
 
-COUNTRIES = (
-    ("Казахстан", "Казахстан"),
-    ("Канада", "Канада"),
-    ("США", "США"),
-    ("Великобритания", "Великобритания"),
-    ("Нидерланды", "Нидерланды"),
-    ("Германия", "Германия"),
-    ("Другая", "Другая страна"),
-    ("Пока не решил", "Пока не решил"),
+#: значение пишется в профиль как данные и сравнивается с ним — не переводится;
+#: переводится только подпись
+COUNTRIES = (  # i18n-skip: значения — данные профиля, подписи переведены
+    ("Казахстан", gettext_lazy("Казахстан")),
+    ("Канада", gettext_lazy("Канада")),
+    ("США", gettext_lazy("США")),
+    ("Великобритания", gettext_lazy("Великобритания")),
+    ("Нидерланды", gettext_lazy("Нидерланды")),
+    ("Германия", gettext_lazy("Германия")),
+    ("Другая", gettext_lazy("Другая страна")),
+    ("Пока не решил", gettext_lazy("Пока не решил")),
 )
 
-MAJORS = (
+MAJORS = (  # i18n-skip: значения — данные профиля, подписи переведены
     ("Computer Science", "Computer Science"),
-    ("Engineering", "Инженерия"),
-    ("Economics", "Экономика и финансы"),
-    ("Business", "Бизнес и менеджмент"),
-    ("Mathematics", "Математика"),
-    ("Другое", "Другое"),
-    ("Пока не решил", "Пока не решил"),
+    ("Engineering", gettext_lazy("Инженерия")),
+    ("Economics", gettext_lazy("Экономика и финансы")),
+    ("Business", gettext_lazy("Бизнес и менеджмент")),
+    ("Mathematics", gettext_lazy("Математика")),
+    ("Другое", gettext_lazy("Другое")),
+    ("Пока не решил", gettext_lazy("Пока не решил")),
 )
 
 #: Вопросы из задания. Порядок — порядок шагов. Вопрос про стоимость
@@ -82,48 +85,48 @@ MAJORS = (
 QUESTIONS: tuple[Question, ...] = (
     Question(
         "target_country",
-        "В какую страну хотите поступать?",
-        "Это можно поменять в любой момент.",
+        gettext_lazy("В какую страну хотите поступать?"),
+        gettext_lazy("Это можно поменять в любой момент."),
         "choice",
         target="students.AdmissionProfile.target_country",
         options=COUNTRIES,
     ),
     Question(
         "target_major",
-        "Какое направление вам ближе?",
-        "Если ещё выбираете — так и скажите, это нормально.",
+        gettext_lazy("Какое направление вам ближе?"),
+        gettext_lazy("Если ещё выбираете — так и скажите, это нормально."),
         "choice",
         target="students.AdmissionProfile.target_major",
         options=MAJORS,
     ),
     Question(
         "english_score",
-        "Какой у вас сейчас IELTS или TOEFL?",
-        "Если ещё не сдавали — оставьте пустым.",
+        gettext_lazy("Какой у вас сейчас IELTS или TOEFL?"),
+        gettext_lazy("Если ещё не сдавали — оставьте пустым."),
         "decimal",
         target="students.ExamProfile.ielts_current",
         placeholder="6.5",
     ),
     Question(
         "standardized_score",
-        "Какой у вас сейчас SAT или ACT?",
-        "Если ещё не сдавали — оставьте пустым.",
+        gettext_lazy("Какой у вас сейчас SAT или ACT?"),
+        gettext_lazy("Если ещё не сдавали — оставьте пустым."),
         "number",
         target="students.ExamProfile.sat_current",
         placeholder="1250",
     ),
     Question(
         "gpa",
-        "Какой у вас примерный GPA?",
-        "Достаточно приблизительно, точное значение сверит школа.",
+        gettext_lazy("Какой у вас примерный GPA?"),
+        gettext_lazy("Достаточно приблизительно, точное значение сверит школа."),
         "decimal",
         target="students.ExamProfile.gpa",
         placeholder="3.6",
     ),
     Question(
         "has_university_list",
-        "У вас уже есть список вузов?",
-        "Если есть — соберём его вместе с директором по поступлению.",
+        gettext_lazy("У вас уже есть список вузов?"),
+        gettext_lazy("Если есть — соберём его вместе с директором по поступлению."),
         "bool",
     ),
 )
@@ -172,7 +175,7 @@ def answer(student: Student, *, code: str, value: Any, actor=None) -> dict:
     """
     question = BY_CODE.get(code)
     if question is None:
-        raise ValueError(f"Нет вопроса «{code}»")
+        raise ValueError(gettext("Нет вопроса «{code}»").format(code=code))
 
     session = get_session(student)
     if session.status == OnboardingStatus.SKIPPED:
@@ -281,9 +284,9 @@ def review(answer_id: int, *, decision: str, actor, value: str | None = None) ->
     """
     row = OnboardingAnswer.objects.select_related("session__student").filter(pk=answer_id).first()
     if row is None:
-        raise ValueError("Ответа нет")
+        raise ValueError(gettext("Ответа нет"))
     if not may_review(getattr(actor, "role", ""), row.domain_code):
-        raise PermissionError("Ответ подтверждает директор своего домена")
+        raise PermissionError(gettext("Ответ подтверждает директор своего домена"))
 
     student = row.session.student
     if row.target:

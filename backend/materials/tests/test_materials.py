@@ -472,7 +472,7 @@ def test_report_goes_to_the_curator(api, arman, material, olympian):
     api.force_authenticate(arman)
     queue = api.get("/api/materials/queue/").json()
     assert len(queue["reports"]) == 1
-    assert "1 жалоба не разобрано" in queue["summary"]
+    assert "1 жалоба не разобрана" in queue["summary"]
 
     resolved = api.post(
         f"/api/material-reports/{created.json()['id']}/resolve/", {"resolution": "Убрал материал"}, format="json"

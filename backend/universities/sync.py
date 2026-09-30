@@ -121,7 +121,8 @@ def is_allowed(url: str) -> bool:
 def fetch(url: str, *, timeout: int | None = None) -> str:
     """Скачать страницу. Не из белого списка — не ходим вовсе."""
     if not is_allowed(url):
-        raise NotWhitelisted(f"{host_of(url)} не в белом списке — сверка не выполняется")
+        # причина уходит в итог ночной задачи Celery, людям не показывается
+        raise NotWhitelisted(f"{host_of(url)} не в белом списке — сверка не выполняется")  # i18n-skip: итог задачи
 
     import requests
 
@@ -193,13 +194,15 @@ def check_round(admission_round, *, url: str | None = None) -> dict:
     """Сверить один раунд с официальным сайтом.
 
     Возвращает найденный факт и признак расхождения. Ничего не меняет:
-    решение — за директором по поступлению.
+    решение — за директором по поступлению. Причина отказа (`reason`)
+    уходит в итог ночной задачи Celery и людям не показывается — поэтому
+    не переводится.
     """
     target = url or admission_round.source_url or admission_round.program.university.website
     if not target:
-        return {"ok": False, "reason": "У раунда нет источника, сверять нечего"}
+        return {"ok": False, "reason": "У раунда нет источника, сверять нечего"}  # i18n-skip: итог задачи
     if not is_allowed(target):
-        return {"ok": False, "reason": f"{host_of(target)} не в белом списке"}
+        return {"ok": False, "reason": f"{host_of(target)} не в белом списке"}  # i18n-skip: итог задачи
 
     try:
         text = strip_html(fetch(target))
@@ -209,7 +212,7 @@ def check_round(admission_round, *, url: str | None = None) -> dict:
 
     facts = [f for f in extract_facts(text, target) if f.round_type == admission_round.round_type]
     if not facts:
-        return {"ok": True, "found": False, "reason": "Дедлайн на странице не найден"}
+        return {"ok": True, "found": False, "reason": "Дедлайн на странице не найден"}  # i18n-skip: итог задачи
 
     fact = facts[0]
     admission_round.checked_at = timezone.now()

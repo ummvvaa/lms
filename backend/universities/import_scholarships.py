@@ -17,6 +17,8 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from django.db import transaction
+from django.utils.functional import lazy
+from django.utils.translation import gettext as _
 
 from core.labels import field_title
 from universities.models import CatalogSource, FundingType, ProgramLevel, Scholarship, University
@@ -41,19 +43,23 @@ SCHOLARSHIP_FIELDS = (
     "description",
 )
 
+#: Подпись считается при чтении, а не при загрузке модуля: словарь уходит
+#: на экран сопоставления, и подписи в нём — на языке того, кто загружает
+_title = lazy(field_title, str)
+
 TARGET_FIELDS: dict[str, str] = {
-    **{name: field_title("universities.Scholarship", name) for name in SCHOLARSHIP_FIELDS},
-    "university": field_title("universities.University", "name"),
+    **{name: _title("universities.Scholarship", name) for name in SCHOLARSHIP_FIELDS},
+    "university": _title("universities.University", "name"),
 }
 
 DECIMAL_FIELDS = {"amount_min", "amount_max"}
 BOOL_FIELDS = {"for_international", "for_merit", "for_need"}
 DATE_FIELDS = {"deadline"}
-TRUE_WORDS = {"1", "true", "yes", "да", "y", "+", "есть", "нужно"}
+TRUE_WORDS = {"1", "true", "yes", "да", "y", "+", "есть", "нужно"}  # i18n-skip: значения ячейки для распознавания
 
 #: Как в файле называют тип финансирования. Слова, а не коды: выгрузку
 #: собирает человек, и «полное» он напишет по-русски.
-FUNDING_WORDS = {
+FUNDING_WORDS = {  # i18n-skip: слова из файла для распознавания
     "full": FundingType.FULL,
     "полное": FundingType.FULL,
     "полностью": FundingType.FULL,
@@ -64,7 +70,7 @@ FUNDING_WORDS = {
     "только обучение": FundingType.TUITION,
 }
 
-LEVEL_WORDS = {
+LEVEL_WORDS = {  # i18n-skip: слова из файла для распознавания
     "bachelor": ProgramLevel.BACHELOR,
     "бакалавриат": ProgramLevel.BACHELOR,
     "master": ProgramLevel.MASTER,
@@ -108,23 +114,35 @@ def _coerce(name: str, raw: str) -> Any:
         try:
             return Decimal(cleaned)
         except InvalidOperation as exc:
-            raise ValueError(f"«{title}»: ожидалась сумма, получено «{raw}»") from exc
+            raise ValueError(
+                _("«{field}»: ожидалась сумма, получено «{value}»").format(field=title, value=raw)
+            ) from exc
     if name in DATE_FIELDS:
         for fmt in DATE_FORMATS:
             try:
                 return dt.datetime.strptime(raw, fmt).date()
             except ValueError:
                 continue
-        raise ValueError(f"«{title}»: непонятная дата «{raw}», ждём 2026-05-01 или 01.05.2026")
+        raise ValueError(
+            _("«{field}»: непонятная дата «{value}», ждём 2026-05-01 или 01.05.2026").format(field=title, value=raw)
+        )
     if name == "funding_type":
         value = FUNDING_WORDS.get(raw.lower())
         if value is None:
-            raise ValueError(f"«{title}»: неизвестный тип «{raw}» — полное, частичное или только обучение")
+            raise ValueError(
+                _("«{field}»: неизвестный тип «{value}» — полное, частичное или только обучение").format(
+                    field=title, value=raw
+                )
+            )
         return value
     if name == "level":
         value = LEVEL_WORDS.get(raw.lower())
         if value is None:
-            raise ValueError(f"«{title}»: неизвестный уровень «{raw}» — бакалавриат, магистратура или foundation")
+            raise ValueError(
+                _("«{field}»: неизвестный уровень «{value}» — бакалавриат, магистратура или foundation").format(
+                    field=title, value=raw
+                )
+            )
         return value
     return raw
 
@@ -138,7 +156,7 @@ def import_scholarships(
     index = {name: i for i, name in enumerate(header)}
     reverse = {target: column for column, target in mapping.items() if target}
     if "name" not in reverse:
-        report.errors.append("Не сопоставлена обязательная колонка: название стипендии")
+        report.errors.append(_("Не сопоставлена обязательная колонка: название стипендии"))
         return report
 
     for number, row in enumerate(rows, start=2):
@@ -152,7 +170,7 @@ def import_scholarships(
 
         name = cell("name").strip()
         if not name:
-            report.errors.append(f"строка {number}: пустое название стипендии")
+            report.errors.append(_("строка {number}: пустое название стипендии").format(number=number))
             continue
 
         try:
@@ -162,7 +180,7 @@ def import_scholarships(
                 if target != "name" and target in reverse
             }
         except ValueError as exc:
-            report.errors.append(f"строка {number}: {exc}")
+            report.errors.append(_("строка {number}: {error}").format(number=number, error=exc))
             continue
 
         university = None
@@ -171,8 +189,10 @@ def import_scholarships(
             university = University.objects.filter(name__iexact=university_name).first()
             if university is None:
                 report.errors.append(
-                    f"строка {number}: вуза «{university_name}» нет в справочнике — "
-                    "заведите его или оставьте колонку пустой"
+                    _(
+                        "строка {number}: вуза «{university}» нет в справочнике — "
+                        "заведите его или оставьте колонку пустой"
+                    ).format(number=number, university=university_name)
                 )
                 continue
 
@@ -192,7 +212,7 @@ def import_scholarships(
                 **clean,
             )
             report.created += 1
-            state = "заведётся"
+            state = _("заведётся")
         else:
             changed = [key for key, value in clean.items() if getattr(existing, key) != value]
             for key, value in clean.items():
@@ -202,10 +222,11 @@ def import_scholarships(
                 existing.data_source = CatalogSource.IMPORT
                 existing.save()
                 report.updated += 1
-                state = "обновится: " + ", ".join(TARGET_FIELDS.get(key, key) for key in changed)
+                fields = ", ".join(str(TARGET_FIELDS.get(key, key)) for key in changed)
+                state = _("обновится: {fields}").format(fields=fields)
             else:
                 report.unchanged += 1
-                state = "уже есть"
+                state = _("уже есть")
 
         report.rows.append({"row": number, "name": name, "state": state})
 

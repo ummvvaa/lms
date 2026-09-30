@@ -10,6 +10,7 @@ from __future__ import annotations
 from django.apps import apps
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from core.audit import ValueRejected, apply_changes, coerce, to_text
 from core.domains import Source
@@ -90,18 +91,20 @@ def revert_batch(batch: ImportBatch, *, actor=None) -> dict:
             continue
         instance = _instance_for(entry)
         if instance is None:
-            skipped.append({"entry": entry.pk, "field_title": _title(entry), "reason": "Запись уже удалена"})
+            skipped.append({"entry": entry.pk, "field_title": _title(entry), "reason": _("Запись уже удалена")})
             continue
 
         current = to_text(getattr(instance, entry.field_name, None))
         if current != entry.new_value:
-            shown = current or "пусто"
+            shown = current or _("пусто")
             skipped.append(
                 {
                     "entry": entry.pk,
                     "field_title": _title(entry),
                     "student": entry.student_id,
-                    "reason": f"После загрузки поле правили руками: сейчас там «{shown}». Оставили как есть",
+                    "reason": _("После загрузки поле правили руками: сейчас там «{value}». Оставили как есть").format(
+                        value=shown
+                    ),
                 }
             )
             continue
@@ -120,11 +123,12 @@ def revert_batch(batch: ImportBatch, *, actor=None) -> dict:
     batch.reverted_by = actor
     batch.save(update_fields=["status", "reverted_at", "reverted_by"])
 
-    detail = f"Возвращено прежних значений: {reverted}"
+    parts = [_("Возвращено прежних значений: {count}").format(count=reverted)]
     if removed:
-        detail += f". Убрано в архив записей, заведённых этой загрузкой: {removed}"
+        parts.append(_("Убрано в архив записей, заведённых этой загрузкой: {count}").format(count=removed))
     if skipped:
-        detail += f". Не тронуто, потому что правили руками после загрузки: {len(skipped)}"
+        parts.append(_("Не тронуто, потому что правили руками после загрузки: {count}").format(count=len(skipped)))
+    detail = ". ".join(parts)
     return {
         "reverted": reverted,
         "removed": removed,

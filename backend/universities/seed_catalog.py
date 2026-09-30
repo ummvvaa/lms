@@ -15,6 +15,7 @@ from __future__ import annotations
 from datetime import date
 
 from django.db import transaction
+from django.utils.translation import gettext as _
 
 from universities.models import (
     AdmissionRequirement,
@@ -27,7 +28,7 @@ from universities.models import (
 
 #: Дедлайны заданы днём и месяцем: год подставляется ближайший будущий,
 #: иначе стартовый справочник с первого дня выглядел бы просроченным.
-SEED: tuple[dict, ...] = (
+SEED: tuple[dict, ...] = (  # i18n-skip: данные посева — пишутся в справочник и показываются как данные
     {
         "name": "University of Toronto",
         "country": "Канада",
@@ -472,7 +473,7 @@ def create_seed(*, today: date | None = None) -> dict:
                 university=university, name=program_item["name"], level="bachelor", **seed_flags()
             )
             created["programs"] += 1
-            AdmissionRequirement.objects.create(
+            AdmissionRequirement.objects.create(  # i18n-skip: примечание посева — данные записи справочника
                 program=program,
                 required_subjects=program_item.get("subjects", ""),
                 portfolio_required=program_item.get("portfolio", False),
@@ -521,14 +522,17 @@ class SeedInUse(Exception):
         self.blockers = blockers or []
         if self.blockers:
             super().__init__(
-                "Заготовку держат записи с историей: "
-                + "; ".join(self.blockers)
-                + ". Их удаление справочником не отменяется — сначала перенесите их на настоящие программы."
+                _(
+                    "Заготовку держат записи с историей: {blockers}. Их удаление справочником "
+                    "не отменяется — сначала перенесите их на настоящие программы."
+                ).format(blockers="; ".join(self.blockers))
             )
         else:
             super().__init__(
-                f"Программы стартового справочника стоят в списках учеников: {held}. "
-                "Уберите их из списков или подтвердите удаление вместе со связями."
+                _(
+                    "Программы стартового справочника стоят в списках учеников: {count}. "
+                    "Уберите их из списков или подтвердите удаление вместе со связями."
+                ).format(count=held)
             )
 
 

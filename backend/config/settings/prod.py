@@ -13,23 +13,25 @@ ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS")
 # ключ и пустой список хостов — это не «предупреждение при проверке»,
 # а неработающая безопасность в бою.
 if not CREDENTIALS_KEY:  # noqa: F405
-    raise ImproperlyConfigured(
+    raise ImproperlyConfigured(  # i18n-skip: ошибка запуска в терминале владельца
         "CREDENTIALS_KEY пуст: без ключа пароли учеников не расшифровать. Сгенерируйте: "
         'python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" '
         "и сохраните в менеджере паролей рядом с .env.prod"
     )
 
 if len(SECRET_KEY) < 50:
-    raise ImproperlyConfigured(
+    raise ImproperlyConfigured(  # i18n-skip: ошибка запуска в терминале владельца
         "DJANGO_SECRET_KEY короче 50 символов. Сгенерируйте новый: "
         'python -c "import secrets; print(secrets.token_urlsafe(64))"'
     )
 if not ALLOWED_HOSTS:
-    raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS пуст: укажите домен школы через запятую")
+    raise ImproperlyConfigured(  # i18n-skip: ошибка запуска в терминале владельца
+        "DJANGO_ALLOWED_HOSTS пуст: укажите домен школы через запятую"
+    )
 # админка на стандартном адресе — первое, что перебирают сканеры; в бою
 # у неё своё слово, и наружу через Caddy открыт только этот путь
 if ADMIN_PATH == "admin/":  # noqa: F405
-    raise ImproperlyConfigured(
+    raise ImproperlyConfigured(  # i18n-skip: ошибка запуска в терминале владельца
         "DJANGO_ADMIN_PATH пуст или равен «admin»: в бою админка живёт на своём адресе. "
         "Задайте одно слово без слэшей, например DJANGO_ADMIN_PATH=office-7f3a"
     )

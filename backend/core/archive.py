@@ -14,11 +14,13 @@ from typing import Any
 from django.apps import apps
 from django.db import models, transaction
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from core.archivable import Archivable
 from core.audit import model_label
 from core.domains import PROFILE_MODELS
 from core.models import ArchiveEntry
+from core.phrasing import listing, tn
 
 
 def is_archivable(model: type[models.Model]) -> bool:
@@ -107,8 +109,7 @@ def summarize(related: list[models.Model]) -> tuple[str, list[dict]]:
     parts = [f"{row['count']} — {row['title'].lower()}" for row in rows]
     if not parts:
         return "", rows
-    phrase = parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " и " + parts[-1]
-    return phrase, rows
+    return listing(parts), rows
 
 
 def _revive_user(entry: ArchiveEntry) -> int:
@@ -127,8 +128,21 @@ def _revive_user(entry: ArchiveEntry) -> int:
 REVIVERS = {"accounts.User": _revive_user}
 
 
-#: Слово, которое набирают руками там, где ошибка стоит дорого.
-CONFIRM_WORD = "УДАЛИТЬ"
+#: Слово, которое набирают руками там, где ошибка стоит дорого. Человеку
+#: показывается на его языке (`confirm_word`); русское принимается всегда.
+CONFIRM_WORD = "УДАЛИТЬ"  # i18n-skip: исходное слово для сравнения, показывается через confirm_word()
+
+
+def confirm_word() -> str:
+    """Слово подтверждения на языке ответа: «УДАЛИТЬ», «ЖОЮ», «DELETE»."""
+    return _("УДАЛИТЬ")
+
+
+def is_confirm_word(typed: str) -> bool:
+    """Набрано ли слово подтверждения — на языке человека или по-русски."""
+    word = (typed or "").strip().upper()
+    return word in {CONFIRM_WORD, confirm_word().upper()}
+
 
 #: Здесь слово набирают всегда, сколько бы связей ни было: удаление ученика
 #: и целой группы слишком дорого, чтобы проходить одним случайным кликом.
@@ -153,14 +167,14 @@ def preview(instance: models.Model) -> dict:
 
     consequences: list[str] = []
     if related:
-        consequences.append(f"Вместе с записью уйдёт связанное: {phrase}")
+        consequences.append(_("Вместе с записью уйдёт связанное: {related}").format(related=phrase))
     if model_label(instance) in REVIVERS:
-        consequences.append("Доступ будет отключён, а запись попадёт в архив — оттуда её можно включить обратно")
+        consequences.append(_("Доступ будет отключён, а запись попадёт в архив — оттуда её можно включить обратно"))
     elif soft:
-        consequences.append("Запись отправится в архив: её можно вернуть оттуда со всеми связями")
+        consequences.append(_("Запись отправится в архив: её можно вернуть оттуда со всеми связями"))
     else:
-        consequences.append("Запись будет удалена насовсем — у неё нет истории, возвращать нечего")
-    consequences.append("Записи журнала изменений останутся на месте")
+        consequences.append(_("Запись будет удалена насовсем — у неё нет истории, возвращать нечего"))
+    consequences.append(_("Записи журнала изменений останутся на месте"))
 
     return {
         "model": model_label(instance),
@@ -170,14 +184,14 @@ def preview(instance: models.Model) -> dict:
         "soft": soft,
         # без склонения: «Удалить ученик «Ахметова Алия»?» — так по-русски
         # не говорят, а падеж названия модели программно не вывести
-        "what": f"Удалить «{title_of(instance)}»?",
+        "what": _("Удалить «{title}»?").format(title=title_of(instance)),
         "summary": phrase,
         "related": rows,
         "related_count": len(related),
         "consequences": consequences,
         # слово набирают там, где удаление тянет за собой чужую работу,
         # и всегда — когда сносят ученика или группу
-        "confirm_word": (CONFIRM_WORD if model_label(instance) in ALWAYS_TYPED or len(related) >= 3 else ""),
+        "confirm_word": (confirm_word() if model_label(instance) in ALWAYS_TYPED or len(related) >= 3 else ""),
     }
 
 
@@ -217,7 +231,7 @@ def archive(instance: models.Model, *, actor=None) -> ArchiveEntry:
 def restore(entry: ArchiveEntry, *, actor=None) -> dict:
     """Вернуть из архива всё, что ушло в составе этого удаления."""
     if entry.is_restored:
-        return {"restored": 0, "detail": "Эта запись уже восстановлена"}
+        return {"restored": 0, "detail": _("Эта запись уже восстановлена")}
 
     reviver = REVIVERS.get(entry.model_label)
     if reviver is not None:
@@ -234,7 +248,7 @@ def restore(entry: ArchiveEntry, *, actor=None) -> dict:
     entry.save(update_fields=["restored_at", "restored_by"])
     return {
         "restored": restored,
-        "detail": f"Восстановлено записей: {restored}. Связи вернулись вместе с ними",
+        "detail": _("Восстановлено записей: {count}. Связи вернулись вместе с ними").format(count=restored),
     }
 
 
@@ -259,7 +273,7 @@ def blockers(instance: models.Model) -> list[str]:
         if is_archivable(related_model):
             hidden = rows.filter(archived_at__isnull=False).count()
             if hidden:
-                title += f" (из них в архиве: {hidden})"
+                title += " " + _("(из них в архиве: {count})").format(count=hidden)
         reasons.append(title)
     return reasons
 
@@ -346,23 +360,23 @@ def purge_preview(entry: ArchiveEntry) -> dict:
         "found": len(branch),
         "summary": phrase,
         "related": rows,
-        "what": f"Удалить «{entry.title}» навсегда?",
+        "what": _("Удалить «{title}» навсегда?").format(title=entry.title),
     }
 
     if instance is None:
         # записи уже нет: считать нечего, но сказать об этом надо честно.
         # `consequences` здесь обязателен, как и везде: без него окно
         # подтверждения падало на `.map` и вместо вопроса показывало ошибку (фаза 81)
-        warning = "Самой записи в базе уже нет — уйдёт только строка архива"
+        warning = _("Самой записи в базе уже нет — уйдёт только строка архива")
         return {
             **base,
             "kept": [],
             "erased": [],
             "impact": [],
             "email": "",
-            "confirm": {"kind": "word", "value": CONFIRM_WORD, "email": ""},
+            "confirm": {"kind": "word", "value": confirm_word(), "email": ""},
             "warning": warning,
-            "consequences": [warning, "Записи журнала останутся на месте"],
+            "consequences": [warning, _("Записи журнала останутся на месте")],
         }
 
     numbers = erasing.preview(instance)
@@ -373,14 +387,20 @@ def purge_preview(entry: ArchiveEntry) -> dict:
     consequences = [numbers["warning"]]
     if numbers["files"]:
         size = erasing.megabytes(numbers["bytes"])
-        consequences.append(f"С диска удалятся файлы: {numbers['files']}" + (f" ({size})" if size else ""))
+        consequences.append(
+            _("С диска удалятся файлы: {count} ({size})").format(count=numbers["files"], size=size)
+            if size
+            else _("С диска удалятся файлы: {count}").format(count=numbers["files"])
+        )
     kept = sum(row["count"] for row in numbers["kept"])
     if kept:
         consequences.append(
-            f"Записи журнала останутся ({kept}): автор в них станет текстом — имя, почта и дата удаления"
+            _("Записи журнала останутся ({count}): автор в них станет текстом — имя, почта и дата удаления").format(
+                count=kept
+            )
         )
     else:
-        consequences.append(f"Записи журнала останутся и будут помечены именем «{entry.title}»")
+        consequences.append(_("Записи журнала останутся и будут помечены именем «{title}»").format(title=entry.title))
 
     return {
         "consequences": consequences,
@@ -390,7 +410,7 @@ def purge_preview(entry: ArchiveEntry) -> dict:
         # её — так видно, кого именно стирают; где почты нет, остаётся слово
         "confirm": {
             "kind": "email" if email else "word",
-            "value": email or CONFIRM_WORD,
+            "value": email or confirm_word(),
             "email": email,
         },
     }
@@ -418,9 +438,9 @@ def purge(entry: ArchiveEntry, *, actor=None) -> dict:
     и раскладываем их по записям журнала.
     """
     if entry.is_purged:
-        return {"purged": 0, "detail": "Эта запись уже удалена навсегда"}
+        return {"purged": 0, "detail": _("Эта запись уже удалена навсегда")}
     if entry.is_restored:
-        return {"purged": 0, "detail": "Запись восстановлена — удалять из архива нечего"}
+        return {"purged": 0, "detail": _("Запись восстановлена — удалять из архива нечего")}
 
     from core import purge as erasing
 
@@ -465,13 +485,31 @@ def purge(entry: ArchiveEntry, *, actor=None) -> dict:
         "files": files,
         "audit_marked": marked,
         "signed": signed,
-        "detail": (
-            f"Удалено навсегда записей: {removed}"
-            + (f", файлов: {files}" if files else "")
-            + f". Записи журнала остались ({marked}) и помечены именем «{entry.title}»"
-            + (f", подписано именем автора: {sum(signed.values())}" if signed else "")
-        ),
+        "detail": _purge_detail(removed=removed, files=files, marked=marked, title=entry.title, signed=signed),
     }
+
+
+def _purge_detail(*, removed: int, files: int, marked: int, title: str, signed: dict) -> str:
+    """Итог стирания одной фразой: файлы и подписи — только если они были."""
+    params = {"removed": removed, "files": files, "marked": marked, "title": title, "signed": sum(signed.values())}
+    if files and signed:
+        text = _(
+            "Удалено навсегда записей: {removed}, файлов: {files}. Записи журнала остались ({marked})"
+            " и помечены именем «{title}», подписано именем автора: {signed}"
+        )
+    elif files:
+        text = _(
+            "Удалено навсегда записей: {removed}, файлов: {files}. Записи журнала остались ({marked})"
+            " и помечены именем «{title}»"
+        )
+    elif signed:
+        text = _(
+            "Удалено навсегда записей: {removed}. Записи журнала остались ({marked})"
+            " и помечены именем «{title}», подписано именем автора: {signed}"
+        )
+    else:
+        text = _("Удалено навсегда записей: {removed}. Записи журнала остались ({marked}) и помечены именем «{title}»")
+    return text.format(**params)
 
 
 def purge_batch_preview(*, older_than_days: int) -> dict:
@@ -487,13 +525,16 @@ def purge_batch_preview(*, older_than_days: int) -> dict:
         "older_than_days": older_than_days,
         "entries": rows.count(),
         "kinds": [{"title": name, "count": count} for name, count in sorted(kinds.items(), key=lambda x: -x[1])],
-        "what": f"Очистить архив старше {older_than_days} дней?",
+        "what": tn(
+            older_than_days,
+            "Очистить архив старше {n} дня?|Очистить архив старше {n} дней?|Очистить архив старше {n} дней?",
+        ),
         "consequences": [
-            "Записи будут стёрты из базы — восстановить их будет нельзя",
-            "Учётные записи в очистку не попадают: на них висит журнал правок",
-            "Записи журнала изменений останутся и будут помечены",
+            _("Записи будут стёрты из базы — восстановить их будет нельзя"),
+            _("Учётные записи в очистку не попадают: на них висит журнал правок"),
+            _("Записи журнала изменений останутся и будут помечены"),
         ],
-        "confirm_word": CONFIRM_WORD,
+        "confirm_word": confirm_word(),
     }
 
 
@@ -518,8 +559,11 @@ def purge_batch(*, older_than_days: int, actor=None) -> dict:
         "purged": records,
         "files": files,
         "detail": (
-            f"Очищено удалений: {purged}, записей стёрто: {records}"
-            + (f", файлов: {files}" if files else "")
-            + ". Журнал изменений остался на месте"
-        ),
+            _(
+                "Очищено удалений: {entries}, записей стёрто: {records}, файлов: {files}. "
+                "Журнал изменений остался на месте"
+            )
+            if files
+            else _("Очищено удалений: {entries}, записей стёрто: {records}. Журнал изменений остался на месте")
+        ).format(entries=purged, records=records, files=files),
     }

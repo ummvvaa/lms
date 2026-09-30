@@ -13,11 +13,13 @@ from typing import Any
 
 from django.apps import apps
 from django.db import transaction
+from django.utils.translation import gettext as _
 
 from core.audit import ValueRejected, apply_changes, coerce, normalize, to_text
 from core.domains import DOMAINS, Domain, Source, domain_of_field, spec_of_field
 from core.labels import field_title
 from core.parallels import domain_open_for
+from core.phrasing import counted
 from students.models import Student
 
 MAX_PREVIEW_ROWS = 20
@@ -120,14 +122,16 @@ def build_preview(
     index = {name: i for i, name in enumerate(header)}
     domain = DOMAINS.get(domain_code)
     if domain is None:
-        preview.errors.append("Не выбран домен — сначала укажите, чьи данные в файле")
+        preview.errors.append(_("Не выбран домен — сначала укажите, чьи данные в файле"))
         return preview
 
     key_column = next((col for col, target in mapping.items() if target == "student"), None)
     if key_column is None:
         preview.errors.append(
-            "Не указано, в какой колонке искать ученика. Выберите «Ученик (почта или логин)» "
-            "у колонки с почтой или логином — по ней строка находит своего человека"
+            _(
+                "Не указано, в какой колонке искать ученика. Выберите «Ученик (почта или логин)» "
+                "у колонки с почтой или логином — по ней строка находит своего человека"
+            )
         )
         return preview
 
@@ -155,7 +159,9 @@ def build_preview(
                     "field_title": domain.title,
                     "student_name": student.full_name,
                     "value": cell(key_column),
-                    "message": f"«{domain.title}» ведётся только у 11 параллели — строка пропущена",
+                    "message": _("«{domain}» ведётся только у 11 параллели — строка пропущена").format(
+                        domain=domain.title
+                    ),
                     "hint": "",
                 }
             )
@@ -169,7 +175,9 @@ def build_preview(
                 app_label, model_name, field_name = target.rsplit(".", 2)
             except ValueError:
                 preview.errors.append(
-                    f"Колонка «{column}» сопоставлена с чем-то непонятным. Выберите поле из списка заново"
+                    _("Колонка «{column}» сопоставлена с чем-то непонятным. Выберите поле из списка заново").format(
+                        column=column
+                    )
                 )
                 continue
             model_label = f"{app_label}.{model_name}"
@@ -177,8 +185,10 @@ def build_preview(
             if not _in_domain(domain, model_label, field_name):
                 # чужой домен отсекается на сервере, а не прячется в интерфейсе
                 preview.errors.append(
-                    f"Колонка «{column}»: это поле не из домена «{domain.title}». "
-                    "Выберите для неё поле выбранного домена или не импортируйте её"
+                    _(
+                        "Колонка «{column}»: это поле не из домена «{domain}». "
+                        "Выберите для неё поле выбранного домена или не импортируйте её"
+                    ).format(column=column, domain=domain.title)
                 )
                 continue
 
@@ -260,7 +270,7 @@ def apply_preview(
 
     domain = DOMAINS.get(domain_code)
     if domain is None:
-        raise ValueError("Не выбран домен — сначала укажите, чьи данные в файле")
+        raise ValueError(_("Не выбран домен — сначала укажите, чьи данные в файле"))
     batch = ImportBatch.objects.create(
         actor=actor,
         file_name=file_name,
@@ -311,8 +321,7 @@ def apply_preview(
         "audit_entries": audit_entries,
         "rejected": rejected,
         "batch": batch.pk,
-        "detail": (
-            f"Загрузка сохранена: изменено полей {applied} у {touched_rows} учеников. "
-            "Отменить её целиком можно в истории загрузок"
-        ),
+        "detail": _(
+            "Загрузка сохранена: изменено полей {fields} у {students}. Отменить её целиком можно в истории загрузок"
+        ).format(fields=applied, students=counted(touched_rows, "ученика|учеников|учеников")),
     }

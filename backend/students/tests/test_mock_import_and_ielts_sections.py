@@ -463,7 +463,7 @@ def test_student_sees_the_mock_but_cannot_touch_it(klass, kymbat):
         format="json",
     )
     assert proposed.status_code == 400
-    assert "пробника школы" in proposed.json()["rejected"][0]["reason"]
+    assert "Mock Test школы" in proposed.json()["rejected"][0]["reason"]
     attempt.refresh_from_db()
     assert float(attempt.total_score) == 6.5
 
@@ -673,7 +673,7 @@ def test_remind_makes_tasks_for_those_who_missed(klass, kymbat):
     assert made.status_code == 200
     assert made.json()["created"] == 2
     titles = set(Task.objects.values_list("title", flat=True))
-    assert titles == {"Сдать пробник IELTS"}
+    assert titles == {"Сдать IELTS Mock Test"}
     assert Task.objects.filter(student=klass[0][0]).count() == 0, "сдавшему задача не уходит"
 
 

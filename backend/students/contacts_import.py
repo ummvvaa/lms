@@ -20,14 +20,17 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from django.db import transaction
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy, gettext_noop
 
 from core.domains import Source
+from students.import_registry import header_variants
 from students.lookup import key_map
 from students.models import ContactChannel, ContactRelation, ParentContact, Student
 
 #: Как колонки называют в школьных списках. Сравнение по вхождению
 #: и без регистра: «Телефон мамы» и «e-mail родителя» находятся сами.
-COLUMNS: dict[str, tuple[str, ...]] = {
+COLUMNS: dict[str, tuple[str, ...]] = {  # i18n-skip: синонимы заголовков для распознавания
     "student": ("почта ученика", "email ученика", "логин", "ученик", "student", "школьная почта"),
     "full_name": ("фио родителя", "родитель", "контакт", "опекун", "фио контакта", "представитель"),
     "relation": ("кем приходится", "родство", "кто", "relation", "степень родства"),
@@ -41,20 +44,21 @@ COLUMNS: dict[str, tuple[str, ...]] = {
 REQUIRED = ("student", "full_name")
 
 #: Подписи колонок для отказа: человек читает «почта ученика»,
-#: а не `student`
+#: а не `student`. Заголовок, записанный подписью на любом из трёх
+#: языков, тоже узнаётся (`header_variants`)
 TITLES = {
-    "student": "почта ученика",
-    "full_name": "ФИО родителя",
-    "relation": "кем приходится",
-    "phone": "телефон",
-    "email": "почта",
-    "preferred_channel": "способ связи",
-    "note": "примечание",
-    "is_primary": "основной контакт",
+    "student": gettext_lazy("почта ученика"),
+    "full_name": gettext_lazy("ФИО родителя"),
+    "relation": gettext_lazy("кем приходится"),
+    "phone": gettext_lazy("телефон"),
+    "email": gettext_lazy("почта"),
+    "preferred_channel": gettext_lazy("способ связи"),
+    "note": gettext_lazy("примечание"),
+    "is_primary": gettext_lazy("основной контакт"),
 }
 
 #: Как в файле пишут родство. Ключ — значение колонки в базе
-RELATION_WORDS: dict[str, tuple[str, ...]] = {
+RELATION_WORDS: dict[str, tuple[str, ...]] = {  # i18n-skip: слова из файла для распознавания
     ContactRelation.MOTHER: ("мама", "мать", "мам", "mother", "mom"),
     ContactRelation.FATHER: ("папа", "отец", "пап", "father", "dad"),
     ContactRelation.GUARDIAN: ("опекун", "попечитель", "guardian"),
@@ -62,14 +66,14 @@ RELATION_WORDS: dict[str, tuple[str, ...]] = {
     ContactRelation.RELATIVE: ("тётя", "дядя", "сестра", "брат", "родственник"),
 }
 
-CHANNEL_WORDS: dict[str, tuple[str, ...]] = {
+CHANNEL_WORDS: dict[str, tuple[str, ...]] = {  # i18n-skip: слова из файла для распознавания
     ContactChannel.PHONE: ("звонок", "телефон", "позвонить", "call"),
     ContactChannel.WHATSAPP: ("whatsapp", "вотсап", "ватсап"),
     ContactChannel.TELEGRAM: ("telegram", "телеграм", "тг"),
     ContactChannel.EMAIL: ("почта", "email", "e-mail", "письмо"),
 }
 
-TRUE_WORDS = {"да", "yes", "true", "1", "+", "основной", "y"}
+TRUE_WORDS = {"да", "yes", "true", "1", "+", "основной", "y"}  # i18n-skip: значения ячейки для распознавания
 
 
 def _relation_of(value: str) -> str:
@@ -157,14 +161,19 @@ class Preview:
         """Одна фраза вместо чтения таблицы."""
         if self.missing_columns:
             names = ", ".join(self.missing_columns)
-            return f"В файле не нашлись обязательные колонки: {names}. Проверьте заголовок первой строки"
+            return _("В файле не нашлись обязательные колонки: {columns}. Проверьте заголовок первой строки").format(
+                columns=names
+            )
         exists = sum(1 for row in self.rows if row.status == "exists")
         broken = sum(1 for row in self.rows if row.status == "error")
-        parts = [f"строк в файле: {len(self.rows)}", f"будет заведено контактов: {len(self.ready)}"]
+        parts = [
+            _("строк в файле: {count}").format(count=len(self.rows)),
+            _("будет заведено контактов: {count}").format(count=len(self.ready)),
+        ]
         if exists:
-            parts.append(f"уже есть: {exists}")
+            parts.append(_("уже есть: {count}").format(count=exists))
         if broken:
-            parts.append(f"с ошибками: {broken}")
+            parts.append(_("с ошибками: {count}").format(count=broken))
         return ", ".join(parts).capitalize()
 
 
@@ -177,7 +186,7 @@ def _find_columns(header: list[str]) -> dict[str, int]:
     """
     found: dict[str, int] = {}
     for name in ("student", "full_name", "relation", "phone", "preferred_channel", "note", "is_primary", "email"):
-        hints = COLUMNS[name]
+        hints = (*COLUMNS[name], *sorted(header_variants(TITLES[name])))
         for index, title in enumerate(header):
             low = (title or "").strip().lower()
             if not low or index in found.values():
@@ -200,7 +209,7 @@ def build_preview(*, header: list[str], rows: list[list[str]]) -> Preview:
     missing = [name for name in REQUIRED if name not in columns]
     preview = Preview(
         columns={name: header[index] for name, index in columns.items()},
-        missing_columns=[TITLES[name] for name in missing],
+        missing_columns=[str(TITLES[name]) for name in missing],
     )
     if missing:
         return preview
@@ -226,15 +235,17 @@ def build_preview(*, header: list[str], rows: list[list[str]]) -> Preview:
         found = students.get(row.student_email)
         if found is None:
             row.status = "error"
-            row.reason = f"ученика с почтой или логином «{row.student_email or 'пусто'}» в базе нет"
+            row.reason = _("ученика с почтой или логином «{key}» в базе нет").format(
+                key=row.student_email or _("пусто")
+            )
         else:
             row.student_id, row.student_name = found
             if not row.full_name:
-                row.status, row.reason = "error", "не указано ФИО родителя"
+                row.status, row.reason = "error", _("не указано ФИО родителя")
             elif not row.phone and not row.email:
-                row.status, row.reason = "error", "нет ни телефона, ни почты — связаться по контакту нечем"
+                row.status, row.reason = "error", _("нет ни телефона, ни почты — связаться по контакту нечем")
             elif _already_there(row):
-                row.status, row.reason = "exists", "такой контакт у ученика уже записан"
+                row.status, row.reason = "exists", _("такой контакт у ученика уже записан")
 
         preview.rows.append(row)
 
@@ -283,7 +294,7 @@ def apply_rows(*, rows: list[dict[str, Any]], actor=None, file_name: str = "") -
         student = Student.objects.filter(pk=raw.get("student")).first()
         full_name = (raw.get("full_name") or "").strip()
         if student is None or not full_name:
-            skipped.append({"row": raw.get("number"), "reason": "нет ученика или ФИО"})
+            skipped.append({"row": raw.get("number"), "reason": _("нет ученика или ФИО")})
             continue
 
         contact = ParentContact(student=student)
@@ -306,12 +317,16 @@ def apply_rows(*, rows: list[dict[str, Any]], actor=None, file_name: str = "") -
 
     batch.rows_created = created
     batch.rows_failed = len(skipped)
-    batch.note = "Отмена загрузки уберёт заведённые контакты"
+    batch.note = gettext_noop("Отмена загрузки уберёт заведённые контакты")  # хранится исходником
     batch.save(update_fields=["rows_created", "rows_failed", "note"])
 
     return {
         "created": created,
         "skipped": skipped,
         "batch": batch.pk,
-        "detail": f"Заведено контактов: {created}" + (f", пропущено строк: {len(skipped)}" if skipped else ""),
+        "detail": (
+            _("Заведено контактов: {created}, пропущено строк: {skipped}").format(created=created, skipped=len(skipped))
+            if skipped
+            else _("Заведено контактов: {created}").format(created=created)
+        ),
     }

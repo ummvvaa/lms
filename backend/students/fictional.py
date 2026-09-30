@@ -12,6 +12,8 @@
 обнулении (`reset_data`), чтобы интерфейс не вёл на пустые карточки.
 """
 
+# i18n-skip-file: отчёт читает только команда purge_fictional в терминале владельца
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

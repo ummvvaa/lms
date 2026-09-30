@@ -18,16 +18,19 @@ from typing import Any
 
 from django.db import models
 from django.db.models import Q, UniqueConstraint
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_noop
 
 #: Текст столкновения по имени ограничения. Подстановки — из полей записи.
+#: Строки перевода: на язык запроса их переводит `_describe`
 MESSAGES: dict[str, str] = {
-    "unique_active_exam_goal": "Цель по {exam} уже есть — измените её, а не заводите вторую",
-    "unique_task_per_exam_goal": "Задача по этой цели у ученика уже есть",
-    "uniq_task_per_student_round": "Задача по этому раунду у ученика уже есть",
-    "uniq_task_per_student_template": "Задача по этому шаблону у ученика уже есть",
-    "uniq_task_per_scholarship": "Задача по этой стипендии у ученика уже есть",
-    "unique_active_plan_per_program": "План по этой программе у ученика уже есть",
-    "unique_active_mock_import": "Пробник этого экзамена для этой группы на эту дату уже загружен",
+    "unique_active_exam_goal": gettext_noop("Цель по {exam} уже есть — измените её, а не заводите вторую"),
+    "unique_task_per_exam_goal": gettext_noop("Задача по этой цели у ученика уже есть"),
+    "uniq_task_per_student_round": gettext_noop("Задача по этому раунду у ученика уже есть"),
+    "uniq_task_per_student_template": gettext_noop("Задача по этому шаблону у ученика уже есть"),
+    "uniq_task_per_scholarship": gettext_noop("Задача по этой стипендии у ученика уже есть"),
+    "unique_active_plan_per_program": gettext_noop("План по этой программе у ученика уже есть"),
+    "unique_active_mock_import": gettext_noop("Mock Test этого экзамена для этой группы на эту дату уже загружен"),
 }
 
 
@@ -79,6 +82,7 @@ def _describe(instance: Any, constraint: UniqueConstraint) -> str:
 
     template = MESSAGES.get(constraint.name)
     if template:
+        template = _(template)
         params: dict[str, str] = {}
         for name in constraint.fields:
             related = getattr(instance, name, None)
@@ -89,7 +93,7 @@ def _describe(instance: Any, constraint: UniqueConstraint) -> str:
             return template
     label = model_label(instance)
     titles = ", ".join(f"«{field_title(label, name)}»" for name in constraint.fields)
-    return f"Такая запись уже есть: {titles} совпадают"
+    return _("Такая запись уже есть: {fields} совпадают").format(fields=titles)
 
 
 def conflict_of(instance: Any) -> str | None:

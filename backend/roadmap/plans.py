@@ -12,8 +12,10 @@
 from __future__ import annotations
 
 from django.db import transaction
-from django.utils import timezone
+from django.utils import timezone, translation
+from django.utils.translation import gettext
 
+from core.i18n import language_of, render
 from roadmap.models import ApplicationPlan, TaskCategory, TaskPriority
 from suggestions.engine import apply_suggestion
 from suggestions.models import Suggestion, SuggestionChange, SuggestionSource, SuggestionStatus
@@ -35,7 +37,14 @@ def build_task_specs(plan: ApplicationPlan) -> list[dict]:
     Только то, что реально относится к этой программе: разрывы по её
     требованиям, эссе, документы, подача в её раунд. Ничего не выдумываем
     сверх справочника (инвариант №10).
+
+    Задачи ложатся ученику, а собираются в фоне: текст — на языке ученика.
     """
+    with translation.override(language_of(plan.student.user)):
+        return _task_specs(plan)
+
+
+def _task_specs(plan: ApplicationPlan) -> list[dict]:
     from universities.matching import match
 
     student = plan.student
@@ -48,25 +57,27 @@ def build_task_specs(plan: ApplicationPlan) -> list[dict]:
     # 1. Разрывы по требованиям — задача на подготовку по каждому
     for criterion in result.unmet:
         if not criterion.countable or criterion.is_unknown:
-            title = f"Сдать {criterion.title} для {university}"
+            title = gettext("Сдать {exam} для {university}").format(exam=criterion.title, university=university)
         else:
-            title = f"Поднять {criterion.short_gap()} для {university}"
+            title = gettext("Поднять {gap} для {university}").format(gap=criterion.short_gap(), university=university)
         specs.append(
             {
                 "title": title[:250],
                 "category": TaskCategory.TEST,
                 "priority": TaskPriority.HIGH,
-                "description": f"Требование программы «{program.name}»: {criterion.phrase()}",
+                "description": gettext("Требование программы «{program}»: {requirement}").format(
+                    program=program.name, requirement=criterion.phrase()
+                ),
             }
         )
 
     # 2. Эссе — как минимум одно личное для этой программы
     specs.append(
         {
-            "title": f"Написать эссе для {university}",
+            "title": gettext("Написать эссе для {university}").format(university=university),
             "category": TaskCategory.ESSAY,
             "priority": TaskPriority.MEDIUM,
-            "description": f"Personal statement под программу «{program.name}»",
+            "description": gettext("Personal statement под программу «{program}»").format(program=program.name),
         }
     )
 
@@ -75,39 +86,39 @@ def build_task_specs(plan: ApplicationPlan) -> list[dict]:
     if requirement is not None and requirement.portfolio_required:
         specs.append(
             {
-                "title": f"Собрать портфолио для {university}",
+                "title": gettext("Собрать портфолио для {university}").format(university=university),
                 "category": TaskCategory.PORTFOLIO,
                 "priority": TaskPriority.MEDIUM,
-                "description": requirement.portfolio_note or "Программа требует портфолио",
+                "description": requirement.portfolio_note or gettext("Программа требует портфолио"),
             }
         )
     specs.append(
         {
-            "title": f"Собрать документы для {university}",
+            "title": gettext("Собрать документы для {university}").format(university=university),
             "category": TaskCategory.DOCUMENTS,
             "priority": TaskPriority.MEDIUM,
-            "description": "Аттестат, транскрипт, рекомендательные письма — проверьте чек-лист портфолио",
+            "description": gettext("Аттестат, транскрипт, рекомендательные письма — проверьте чек-лист портфолио"),
         }
     )
 
     # 4. Финансы — если у программы есть требования (значит, подача платная/грант)
     specs.append(
         {
-            "title": f"Разобраться с финансами и стипендиями для {university}",
+            "title": gettext("Разобраться с финансами и стипендиями для {university}").format(university=university),
             "category": TaskCategory.FINANCE,
             "priority": TaskPriority.LOW,
-            "description": "Стоимость обучения, стипендии и гранты этой программы",
+            "description": gettext("Стоимость обучения, стипендии и гранты этой программы"),
         }
     )
 
     # 5. Подача — привязана к раунду плана, срок берётся из дедлайна
-    round_name = plan.admission_round.round_type if plan.admission_round_id else "подача"
+    round_name = plan.admission_round.round_type if plan.admission_round_id else gettext("подача")
     specs.append(
         {
-            "title": f"Подать заявку: {university} ({round_name})",
+            "title": gettext("Подать заявку: {university} ({round})").format(university=university, round=round_name),
             "category": TaskCategory.UNIVERSITY,
             "priority": TaskPriority.HIGH,
-            "description": f"Финальная подача в программу «{program.name}»",
+            "description": gettext("Финальная подача в программу «{program}»").format(program=program.name),
             "use_round": True,
         }
     )
@@ -146,7 +157,7 @@ def _phrase_with_model(plan: ApplicationPlan, specs: list[dict]) -> tuple[list[d
         },
         "required": ["tasks"],
     }
-    system = (
+    system = (  # i18n-skip: промпт ИИ — язык ответа модели настраивается отдельно
         "Ты помогаешь школьнику составить план поступления в конкретный вуз. "
         "Переформулируй названия и описания задач по-русски, коротко и конкретно, "
         "по фактам из запроса. Не добавляй и не убирай задачи, порядок сохрани. "
@@ -254,7 +265,7 @@ def ensure_for_program(student, program, *, user) -> ApplicationPlan | None:
     jobs.start(
         user=user,
         kind="plan",
-        title=f"План по вузу «{program.university.name}»",
+        title=render(language_of(user), "План по вузу «{university}»", university=program.university.name),
         task_id=task.id,
         link=f"/plan/{plan.pk}",
         retry_task="roadmap.generate_plan",
@@ -291,7 +302,7 @@ def apply_plan(plan: ApplicationPlan, *, actor) -> dict:
 
     suggestion = plan.pending_suggestion
     if suggestion is None:
-        return {"applied": 0, "detail": "Задачи ещё не сгенерированы"}
+        return {"applied": 0, "detail": gettext("Задачи ещё не сгенерированы")}
 
     result = apply_suggestion(suggestion, actor=actor)
     created_ids = [

@@ -25,6 +25,7 @@
 from __future__ import annotations
 
 from django.db.models import QuerySet
+from django.utils.translation import gettext, gettext_lazy
 
 from accounts import states, temporary
 from accounts.models import User
@@ -54,7 +55,7 @@ def plan(queryset: QuerySet[User], *, include_ready: bool = False) -> dict:
         "breakdown": [{"code": code, "title": states.TITLES[code], "count": breakdown[code]} for code in states.ORDER],
         "protected": protected,
         "warning": (
-            "У этих людей пароль уже задан — выдача его сбросит, и прежний перестанет работать"
+            gettext("У этих людей пароль уже задан — выдача его сбросит, и прежний перестанет работать")
             if breakdown[states.READY]
             else ""
         ),
@@ -102,10 +103,12 @@ def issue(queryset: QuerySet[User], *, actor, include_ready: bool = False) -> di
         "issued": len(rows),
         "rows": rows,
         "detail": (
-            f"Пароли выданы: {len(rows)}"
-            + (", включая тех, кто уже менял пароль" if include_ready else "")
-            + ". Письма не рассылались — скачайте список"
-        ),
+            gettext(
+                "Пароли выданы: {count}, включая тех, кто уже менял пароль. Письма не рассылались — скачайте список"
+            )
+            if include_ready
+            else gettext("Пароли выданы: {count}. Письма не рассылались — скачайте список")
+        ).format(count=len(rows)),
     }
 
 
@@ -113,7 +116,7 @@ def _record(count: int, *, actor, include_ready: bool) -> None:
     """След в журнале: кто, скольким, когда. Паролей в нём нет."""
     from core.models import AuditLog
 
-    AuditLog.objects.create(
+    AuditLog.objects.create(  # i18n-skip: значение записи журнала хранится в базе как данные
         actor=actor if getattr(actor, "pk", None) else None,
         actor_role=getattr(actor, "role", "") or "",
         model_label="accounts.User",
@@ -128,10 +131,15 @@ def _record(count: int, *, actor, include_ready: bool) -> None:
 
 #: Колонки выгрузки: то, что администратор понесёт в класс на бумаге.
 #: Группы в колонках нет с фазы 70 — группа стала листом
-EXPORT_COLUMNS = ("ФИО", "Почта или логин", "Временный пароль", "Срок действия ссылки")
+EXPORT_COLUMNS = (
+    gettext_lazy("ФИО"),
+    gettext_lazy("Почта или логин"),
+    gettext_lazy("Временный пароль"),
+    gettext_lazy("Срок действия ссылки"),
+)
 
 #: Лист для всех, кто не ученик: директора, кураторы, администраторы
-STAFF_SHEET = "Сотрудники"
+STAFF_SHEET = gettext_lazy("Сотрудники")
 
 
 def sheets_of(rows: list[dict]) -> list[tuple[str, list[dict]]]:
@@ -152,7 +160,7 @@ def sheets_of(rows: list[dict]) -> list[tuple[str, list[dict]]]:
 
     pages: list[tuple[str, list[dict]]] = []
     if staff:
-        pages.append((STAFF_SHEET, staff))
+        pages.append((str(STAFF_SHEET), staff))
     pages.extend((code, groups[code]) for code in sorted(groups))
     return pages
 
@@ -171,13 +179,13 @@ def export(rows: list[dict], *, request=None, kind: str = "students"):
     from core.phrasing import until
 
     columns = [
-        Column("ФИО", lambda r: r.get("full_name", ""), width=30),
+        Column(gettext("ФИО"), lambda r: r.get("full_name", ""), width=30),
         # у 8–10 почты нет — в той же колонке их логин (`accounts.logins`)
-        Column("Почта или логин", lambda r: r.get("login") or r.get("email", ""), width=32),
-        Column("Временный пароль", lambda r: r.get("password", ""), width=20),
+        Column(gettext("Почта или логин"), lambda r: r.get("login") or r.get("email", ""), width=32),
+        Column(gettext("Временный пароль"), lambda r: r.get("password", ""), width=20),
         # срок — датой: человек, получивший распечатку, должен видеть,
         # до какого момента она годна, без пересчёта в уме
-        Column("Срок действия ссылки", lambda r: until(r.get("expires_at")), width=22),
+        Column(gettext("Срок действия ссылки"), lambda r: until(r.get("expires_at")), width=22),
     ]
     return workbook_of_sheets(
         filename=FILENAMES.get(kind, FILENAMES["students"]),

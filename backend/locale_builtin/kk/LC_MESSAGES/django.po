@@ -1,0 +1,611 @@
+# Казахские переводы встроенных сообщений Django, которых нет в самом Django.
+# LOCALE_PATHS ставит этот каталог выше встроенного; makemessages его не трогает.
+msgid ""
+msgstr ""
+"Language: kk\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+
+msgid "Afrikaans"
+msgstr "Африкаанс"
+
+msgid "Asturian"
+msgstr "Астурий"
+
+msgid "Belarusian"
+msgstr "Беларусь"
+
+msgid "Breton"
+msgstr "Бретон"
+
+msgid "Lower Sorbian"
+msgstr "Төменгі лужиц"
+
+msgid "Australian English"
+msgstr "Австралиялық ағылшын"
+
+msgid "Esperanto"
+msgstr "Эсперанто"
+
+msgid "Colombian Spanish"
+msgstr "Колумбиялық испан"
+
+msgid "Venezuelan Spanish"
+msgstr "Венесуэлалық испан"
+
+msgid "Scottish Gaelic"
+msgstr "Шотландиялық гэль"
+
+msgid "Upper Sorbian"
+msgstr "Жоғарғы лужиц"
+
+msgid "Armenian"
+msgstr "Армян"
+
+msgid "Interlingua"
+msgstr "Интерлингва"
+
+msgid "Ido"
+msgstr "Идо"
+
+msgid "Kabyle"
+msgstr "Кабил"
+
+msgid "Luxembourgish"
+msgstr "Люксембург"
+
+msgid "Marathi"
+msgstr "Маратхи"
+
+msgid "Burmese"
+msgstr "Бирма"
+
+msgid "Norwegian Bokmål"
+msgstr "Норвегиялық букмол"
+
+msgid "Nepali"
+msgstr "Непал"
+
+msgid "Ossetic"
+msgstr "Осетин"
+
+msgid "Swahili"
+msgstr "Суахили"
+
+msgid "Tatar"
+msgstr "Татар"
+
+msgid "Udmurt"
+msgstr "Удмурт"
+
+msgid "Uzbek"
+msgstr "Өзбек"
+
+msgid "Messages"
+msgstr "Хабарлар"
+
+msgid "Site Maps"
+msgstr "Сайт карталары"
+
+msgid "Static Files"
+msgstr "Статикалық файлдар"
+
+msgid "Syndication"
+msgstr "Синдикация"
+
+msgid "That page number is not an integer"
+msgstr "Бет нөмірі бүтін сан емес"
+
+msgid "That page number is less than 1"
+msgstr "Бет нөмірі 1-ден кіші"
+
+msgid "That page contains no results"
+msgstr "Бұл бетте нәтиже жоқ"
+
+msgid "Enter a valid integer."
+msgstr "Бүтін санды дұрыс енгізіңіз."
+
+msgid "Enter a valid email address."
+msgstr "Электрондық пошта мекенжайын дұрыс енгізіңіз."
+
+msgid "Enter a valid “slug” consisting of letters, numbers, underscores or hyphens."
+msgstr "Әріптерден, сандардан, астыңғы сызықтардан немесе дефистерден тұратын дұрыс «slug» енгізіңіз."
+
+msgid "Enter a valid “slug” consisting of Unicode letters, numbers, underscores, or hyphens."
+msgstr "Unicode әріптерінен, сандардан, астыңғы сызықтардан немесе дефистерден тұратын дұрыс «slug» енгізіңіз."
+
+msgid "Enter a valid IPv6 address."
+msgstr "IPv6 мекенжайын дұрыс енгізіңіз."
+
+msgid "Enter a valid IPv4 or IPv6 address."
+msgstr "IPv4 немесе IPv6 мекенжайын дұрыс енгізіңіз."
+
+#, python-format
+msgid "Ensure this value has at least %(limit_value)d character (it has %(show_value)d)."
+msgid_plural "Ensure this value has at least %(limit_value)d characters (it has %(show_value)d)."
+msgstr[0] "Мән кемінде %(limit_value)d таңбадан тұруы керек (қазір %(show_value)d)."
+msgstr[1] "Мән кемінде %(limit_value)d таңбадан тұруы керек (қазір %(show_value)d)."
+
+#, python-format
+msgid "Ensure this value has at most %(limit_value)d character (it has %(show_value)d)."
+msgid_plural "Ensure this value has at most %(limit_value)d characters (it has %(show_value)d)."
+msgstr[0] "Мән %(limit_value)d таңбадан аспауы керек (қазір %(show_value)d)."
+msgstr[1] "Мән %(limit_value)d таңбадан аспауы керек (қазір %(show_value)d)."
+
+#, python-format
+msgid "Ensure that there are no more than %(max)s digit in total."
+msgid_plural "Ensure that there are no more than %(max)s digits in total."
+msgstr[0] "Барлығы %(max)s цифрдан аспауы керек."
+msgstr[1] "Барлығы %(max)s цифрдан аспауы керек."
+
+#, python-format
+msgid "Ensure that there are no more than %(max)s decimal place."
+msgid_plural "Ensure that there are no more than %(max)s decimal places."
+msgstr[0] "Үтірден кейін %(max)s цифрдан аспауы керек."
+msgstr[1] "Үтірден кейін %(max)s цифрдан аспауы керек."
+
+#, python-format
+msgid "Ensure that there are no more than %(max)s digit before the decimal point."
+msgid_plural "Ensure that there are no more than %(max)s digits before the decimal point."
+msgstr[0] "Үтірге дейін %(max)s цифрдан аспауы керек."
+msgstr[1] "Үтірге дейін %(max)s цифрдан аспауы керек."
+
+#, python-format
+msgid "File extension “%(extension)s” is not allowed. Allowed extensions are: %(allowed_extensions)s."
+msgstr "«%(extension)s» файл кеңейтіміне рұқсат жоқ. Рұқсат етілген кеңейтімдер: %(allowed_extensions)s."
+
+msgid "Null characters are not allowed."
+msgstr "Бос (null) таңбаларға рұқсат жоқ."
+
+#, python-format
+msgid "%(model_name)s with this %(field_labels)s already exists."
+msgstr "Мұндай %(field_labels)s мәндері бар %(model_name)s бұрыннан бар."
+
+#, python-format
+msgid "Value %(value)r is not a valid choice."
+msgstr "%(value)r мәні рұқсат етілген нұсқалардың қатарында жоқ."
+
+#, python-format
+msgid "%(field_label)s must be unique for %(date_field_label)s %(lookup_type)s."
+msgstr "%(field_label)s өрісі %(date_field_label)s %(lookup_type)s бойынша бірегей болуы керек."
+
+#, python-format
+msgid "“%(value)s” value must be either True or False."
+msgstr "«%(value)s» мәні True немесе False болуы керек."
+
+#, python-format
+msgid "“%(value)s” value must be either True, False, or None."
+msgstr "«%(value)s» мәні True, False немесе None болуы керек."
+
+#, python-format
+msgid "“%(value)s” value has an invalid date format. It must be in YYYY-MM-DD format."
+msgstr "«%(value)s» мәнінің күн пішімі қате. Пішімі YYYY-MM-DD болуы керек."
+
+#, python-format
+msgid "“%(value)s” value has the correct format (YYYY-MM-DD) but it is an invalid date."
+msgstr "«%(value)s» мәнінің пішімі дұрыс (YYYY-MM-DD), бірақ мұндай күн жоқ."
+
+#, python-format
+msgid "“%(value)s” value has an invalid format. It must be in YYYY-MM-DD HH:MM[:ss[.uuuuuu]][TZ] format."
+msgstr "«%(value)s» мәнінің пішімі қате. Пішімі YYYY-MM-DD HH:MM[:ss[.uuuuuu]][TZ] болуы керек."
+
+#, python-format
+msgid "“%(value)s” value has the correct format (YYYY-MM-DD HH:MM[:ss[.uuuuuu]][TZ]) but it is an invalid date/time."
+msgstr "«%(value)s» мәнінің пішімі дұрыс (YYYY-MM-DD HH:MM[:ss[.uuuuuu]][TZ]), бірақ мұндай күн мен уақыт жоқ."
+
+#, python-format
+msgid "“%(value)s” value must be a decimal number."
+msgstr "«%(value)s» мәні ондық сан болуы керек."
+
+#, python-format
+msgid "“%(value)s” value has an invalid format. It must be in [DD] [[HH:]MM:]ss[.uuuuuu] format."
+msgstr "«%(value)s» мәнінің пішімі қате. Пішімі [DD] [[HH:]MM:]ss[.uuuuuu] болуы керек."
+
+msgid "Duration"
+msgstr "Ұзақтығы"
+
+#, python-format
+msgid "“%(value)s” value must be a float."
+msgstr "«%(value)s» мәні бөлшек сан болуы керек."
+
+#, python-format
+msgid "“%(value)s” value must be an integer."
+msgstr "«%(value)s» мәні бүтін сан болуы керек."
+
+msgid "IPv4 address"
+msgstr "IPv4 мекенжайы"
+
+#, python-format
+msgid "“%(value)s” value must be either None, True or False."
+msgstr "«%(value)s» мәні None, True немесе False болуы керек."
+
+msgid "Positive integer"
+msgstr "Оң бүтін сан"
+
+msgid "Positive small integer"
+msgstr "Оң шағын бүтін сан"
+
+#, python-format
+msgid "Slug (up to %(max_length)s)"
+msgstr "Slug (%(max_length)s таңбаға дейін)"
+
+msgid "Small integer"
+msgstr "Шағын бүтін сан"
+
+#, python-format
+msgid "“%(value)s” value has an invalid format. It must be in HH:MM[:ss[.uuuuuu]] format."
+msgstr "«%(value)s» мәнінің пішімі қате. Пішімі HH:MM[:ss[.uuuuuu]] болуы керек."
+
+#, python-format
+msgid "“%(value)s” value has the correct format (HH:MM[:ss[.uuuuuu]]) but it is an invalid time."
+msgstr "«%(value)s» мәнінің пішімі дұрыс (HH:MM[:ss[.uuuuuu]]), бірақ мұндай уақыт жоқ."
+
+msgid "Raw binary data"
+msgstr "Өңделмеген екілік деректер"
+
+#, python-format
+msgid "“%(value)s” is not a valid UUID."
+msgstr "«%(value)s» — жарамды UUID емес."
+
+msgid "Universally unique identifier"
+msgstr "Әмбебап бірегей идентификатор"
+
+msgid "File"
+msgstr "Файл"
+
+msgid "Image"
+msgstr "Сурет"
+
+#, python-format
+msgid "%(model)s instance with %(field)s %(value)r does not exist."
+msgstr "%(field)s өрісі %(value)r болатын %(model)s нысаны жоқ."
+
+#, python-format
+msgid "%(from)s-%(to)s relationship"
+msgstr "%(from)s-%(to)s байланысы"
+
+#, python-format
+msgid "%(from)s-%(to)s relationships"
+msgstr "%(from)s-%(to)s байланыстары"
+
+msgid ":?.!"
+msgstr ":?.!"
+
+msgid "Enter a valid duration."
+msgstr "Ұзақтықты дұрыс енгізіңіз."
+
+#, python-brace-format
+msgid "The number of days must be between {min_days} and {max_days}."
+msgstr "Күн саны {min_days} мен {max_days} аралығында болуы керек."
+
+#, python-format
+msgid "Ensure this filename has at most %(max)d character (it has %(length)d)."
+msgid_plural "Ensure this filename has at most %(max)d characters (it has %(length)d)."
+msgstr[0] "Файл атауы %(max)d таңбадан аспауы керек (қазір %(length)d)."
+msgstr[1] "Файл атауы %(max)d таңбадан аспауы керек (қазір %(length)d)."
+
+msgid "Enter a complete value."
+msgstr "Мәнді толық енгізіңіз."
+
+msgid "Enter a valid UUID."
+msgstr "UUID дұрыс енгізіңіз."
+
+msgid ":"
+msgstr ":"
+
+#, python-format
+msgid "(Hidden field %(name)s) %(error)s"
+msgstr "(Жасырын өріс %(name)s) %(error)s"
+
+msgid "ManagementForm data is missing or has been tampered with"
+msgstr "ManagementForm деректері жоқ немесе оларға рұқсатсыз өзгеріс енгізілген"
+
+#, python-format
+msgid "Please submit %d or fewer forms."
+msgid_plural "Please submit %d or fewer forms."
+msgstr[0] "%d не одан аз форма жіберіңіз."
+msgstr[1] "%d не одан аз форма жіберіңіз."
+
+#, python-format
+msgid "Please submit %d or more forms."
+msgid_plural "Please submit %d or more forms."
+msgstr[0] "%d не одан көп форма жіберіңіз."
+msgstr[1] "%d не одан көп форма жіберіңіз."
+
+msgid "The inline value did not match the parent instance."
+msgstr "Кірістірілген мән негізгі нысанға сәйкес келмеді."
+
+#, python-format
+msgid "“%(pk)s” is not a valid value."
+msgstr "«%(pk)s» — жарамды мән емес."
+
+#, python-format
+msgid "%(datetime)s couldn’t be interpreted in time zone %(current_timezone)s; it may be ambiguous or it may not exist."
+msgstr "%(datetime)s мәнін %(current_timezone)s уақыт белдеуінде анықтау мүмкін болмады: ол екіұшты болуы немесе мүлде болмауы мүмкін."
+
+msgid "Year"
+msgstr "Жыл"
+
+msgid "Month"
+msgstr "Ай"
+
+msgid "Day"
+msgstr "Күн"
+
+msgid "This is not a valid IPv6 address."
+msgstr "Бұл — жарамды IPv6 мекенжайы емес."
+
+#, python-format
+msgid "%(truncated_text)s…"
+msgstr "%(truncated_text)s…"
+
+#, python-format
+msgid "%d year"
+msgid_plural "%d years"
+msgstr[0] "%d жыл"
+msgstr[1] "%d жыл"
+
+#, python-format
+msgid "%d month"
+msgid_plural "%d months"
+msgstr[0] "%d ай"
+msgstr[1] "%d ай"
+
+#, python-format
+msgid "%d week"
+msgid_plural "%d weeks"
+msgstr[0] "%d апта"
+msgstr[1] "%d апта"
+
+#, python-format
+msgid "%d day"
+msgid_plural "%d days"
+msgstr[0] "%d күн"
+msgstr[1] "%d күн"
+
+#, python-format
+msgid "%d hour"
+msgid_plural "%d hours"
+msgstr[0] "%d сағат"
+msgstr[1] "%d сағат"
+
+#, python-format
+msgid "%d minute"
+msgid_plural "%d minutes"
+msgstr[0] "%d минут"
+msgstr[1] "%d минут"
+
+msgid "0 minutes"
+msgstr "0 минут"
+
+msgid "Forbidden"
+msgstr "Тыйым салынған"
+
+msgid "CSRF verification failed. Request aborted."
+msgstr "CSRF тексерісі өтпеді. Сұрау тоқтатылды."
+
+msgid "You are seeing this message because this HTTPS site requires a “Referer header” to be sent by your Web browser, but none was sent. This header is required for security reasons, to ensure that your browser is not being hijacked by third parties."
+msgstr "Бұл хабарды көріп отырсыз, себебі бұл HTTPS сайты браузеріңізден «Referer» тақырыбын жіберуді талап етеді, бірақ ол жіберілмеді. Бұл тақырып қауіпсіздік үшін қажет: ол браузеріңізді бөгде адамдар басып алмағанына көз жеткізуге көмектеседі."
+
+msgid "If you have configured your browser to disable “Referer” headers, please re-enable them, at least for this site, or for HTTPS connections, or for “same-origin” requests."
+msgstr "Егер браузеріңізде «Referer» тақырыптары өшірілген болса, оларды кем дегенде осы сайт үшін, HTTPS қосылымдары үшін немесе «same-origin» сұраулары үшін қайта қосыңыз."
+
+msgid "If you are using the <meta name=\"referrer\" content=\"no-referrer\"> tag or including the “Referrer-Policy: no-referrer” header, please remove them. The CSRF protection requires the “Referer” header to do strict referer checking. If you’re concerned about privacy, use alternatives like <a rel=\"noreferrer\" …> for links to third-party sites."
+msgstr "Егер <meta name=\"referrer\" content=\"no-referrer\"> тегін немесе «Referrer-Policy: no-referrer» тақырыбын қолдансаңыз, оларды алып тастаңыз. CSRF қорғанысы «Referer» тақырыбын қатаң тексеру үшін оны талап етеді. Құпиялылық сізге маңызды болса, бөгде сайттарға сілтемелер үшін <a rel=\"noreferrer\" …> сияқты баламаларды қолданыңыз."
+
+msgid "You are seeing this message because this site requires a CSRF cookie when submitting forms. This cookie is required for security reasons, to ensure that your browser is not being hijacked by third parties."
+msgstr "Бұл хабарды көріп отырсыз, себебі бұл сайт форма жіберген кезде CSRF cookie файлын талап етеді. Бұл cookie қауіпсіздік үшін қажет: ол браузеріңізді бөгде адамдар басып алмағанына көз жеткізуге көмектеседі."
+
+msgid "If you have configured your browser to disable cookies, please re-enable them, at least for this site, or for “same-origin” requests."
+msgstr "Егер браузеріңізде cookie файлдары өшірілген болса, оларды кем дегенде осы сайт үшін немесе «same-origin» сұраулары үшін қайта қосыңыз."
+
+msgid "More information is available with DEBUG=True."
+msgstr "Толығырақ ақпаратты DEBUG=True режимінде көруге болады."
+
+msgid "Date out of range"
+msgstr "Күн рұқсат етілген ауқымнан тыс"
+
+#, python-format
+msgid "Invalid date string “%(datestr)s” given format “%(format)s”"
+msgstr "«%(datestr)s» күн жолы «%(format)s» пішіміне сәйкес келмейді"
+
+msgid "Page is not “last”, nor can it be converted to an int."
+msgstr "Бет мәні «last» емес және оны бүтін санға түрлендіру мүмкін емес."
+
+#, python-format
+msgid "Invalid page (%(page_number)s): %(message)s"
+msgstr "Бет қате (%(page_number)s): %(message)s"
+
+#, python-format
+msgid "Empty list and “%(class_name)s.allow_empty” is False."
+msgstr "Тізім бос, ал «%(class_name)s.allow_empty» мәні False."
+
+msgid "Directory indexes are not allowed here."
+msgstr "Мұнда каталог мазмұнын көрсетуге рұқсат жоқ."
+
+#, python-format
+msgid "“%(path)s” does not exist"
+msgstr "«%(path)s» жоқ"
+
+#, python-format
+msgid "Index of %(directory)s"
+msgstr "%(directory)s мазмұны"
+
+msgid "Django: the Web framework for perfectionists with deadlines."
+msgstr "Django — мерзімі бар перфекционистерге арналған веб-фреймворк."
+
+#, python-format
+msgid "View <a href=\"https://docs.djangoproject.com/en/%(version)s/releases/\" target=\"_blank\" rel=\"noopener\">release notes</a> for Django %(version)s"
+msgstr "Django %(version)s нұсқасының <a href=\"https://docs.djangoproject.com/en/%(version)s/releases/\" target=\"_blank\" rel=\"noopener\">шығарылым жазбаларын</a> қарау"
+
+msgid "The install worked successfully! Congratulations!"
+msgstr "Орнату сәтті аяқталды! Құттықтаймыз!"
+
+#, python-format
+msgid "You are seeing this page because <a href=\"https://docs.djangoproject.com/en/%(version)s/ref/settings/#debug\" target=\"_blank\" rel=\"noopener\">DEBUG=True</a> is in your settings file and you have not configured any URLs."
+msgstr "Бұл бетті көріп отырсыз, себебі баптаулар файлыңызда <a href=\"https://docs.djangoproject.com/en/%(version)s/ref/settings/#debug\" target=\"_blank\" rel=\"noopener\">DEBUG=True</a> орнатылған және бірде-бір URL бапталмаған."
+
+msgid "Django Documentation"
+msgstr "Django құжаттамасы"
+
+msgid "Topics, references, &amp; how-to’s"
+msgstr "Тақырыптар, анықтамалар және нұсқаулықтар"
+
+msgid "Tutorial: A Polling App"
+msgstr "Оқулық: сауалнама қосымшасы"
+
+msgid "Get started with Django"
+msgstr "Django-мен жұмысты бастау"
+
+msgid "Django Community"
+msgstr "Django қауымдастығы"
+
+msgid "Connect, get help, or contribute"
+msgstr "Қосылыңыз, көмек алыңыз немесе үлес қосыңыз"
+
+#, python-format
+msgid "%(name)s object with primary key %(key)r does not exist."
+msgstr "Бастапқы кілті %(key)r болатын %(name)s нысаны жоқ."
+
+msgid "Authentication and Authorization"
+msgstr "Аутентификация және авторизация"
+
+msgid "No password set."
+msgstr "Құпиясөз орнатылмаған."
+
+msgid "Invalid password format or unknown hashing algorithm."
+msgstr "Құпиясөз пішімі қате немесе хэштеу алгоритмі белгісіз."
+
+msgid "Enter the same password as before, for verification."
+msgstr "Тексеру үшін құпиясөзді қайта енгізіңіз."
+
+msgid "Raw passwords are not stored, so there is no way to see this user's password, but you can change the password using <a href=\"{}\">this form</a>."
+msgstr "Құпиясөздер ашық түрде сақталмайды, сондықтан бұл пайдаланушының құпиясөзін көру мүмкін емес, бірақ оны <a href=\"{}\">осы форма</a> арқылы өзгертуге болады."
+
+#, python-format
+msgid "Please enter a correct %(username)s and password. Note that both fields may be case-sensitive."
+msgstr "Дұрыс %(username)s мен құпиясөзді енгізіңіз. Екі өрісте де бас және кіші әріптер ажыратылуы мүмкін."
+
+msgid "Email"
+msgstr "Электрондық пошта"
+
+msgid "algorithm"
+msgstr "алгоритм"
+
+msgid "iterations"
+msgstr "итерациялар"
+
+msgid "salt"
+msgstr "тұз"
+
+msgid "hash"
+msgstr "хэш"
+
+msgid "variety"
+msgstr "түрі"
+
+msgid "version"
+msgstr "нұсқа"
+
+msgid "memory cost"
+msgstr "жад шығыны"
+
+msgid "time cost"
+msgstr "уақыт шығыны"
+
+msgid "parallelism"
+msgstr "параллелизм"
+
+msgid "work factor"
+msgstr "жұмыс факторы"
+
+msgid "checksum"
+msgstr "бақылау сомасы"
+
+msgid "content type"
+msgstr "мазмұн түрі"
+
+msgid "The groups this user belongs to. A user will get all permissions granted to each of their groups."
+msgstr "Пайдаланушы кіретін топтар. Пайдаланушы өз топтарының әрқайсысына берілген барлық рұқсатты алады."
+
+msgid "Specific permissions for this user."
+msgstr "Осы пайдаланушының жеке рұқсаттары."
+
+msgid "Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."
+msgstr "Міндетті. 150 таңбадан аспауы керек. Тек әріптер, цифрлар және @/./+/-/_ таңбалары."
+
+msgid "email address"
+msgstr "электрондық пошта мекенжайы"
+
+#, python-format
+msgid "This password is too short. It must contain at least %(min_length)d character."
+msgid_plural "This password is too short. It must contain at least %(min_length)d characters."
+msgstr[0] "Құпиясөз тым қысқа. Ол кемінде %(min_length)d таңбадан тұруы керек."
+msgstr[1] "Құпиясөз тым қысқа. Ол кемінде %(min_length)d таңбадан тұруы керек."
+
+#, python-format
+msgid "Your password must contain at least %(min_length)d character."
+msgid_plural "Your password must contain at least %(min_length)d characters."
+msgstr[0] "Құпиясөз кемінде %(min_length)d таңбадан тұруы керек."
+msgstr[1] "Құпиясөз кемінде %(min_length)d таңбадан тұруы керек."
+
+#, python-format
+msgid "The password is too similar to the %(verbose_name)s."
+msgstr "Құпиясөз «%(verbose_name)s» мәніне тым ұқсас."
+
+msgid "Your password can't be too similar to your other personal information."
+msgstr "Құпиясөз басқа жеке деректеріңізге тым ұқсас болмауы керек."
+
+msgid "This password is too common."
+msgstr "Бұл құпиясөз тым жиі қолданылады."
+
+msgid "Your password can't be a commonly used password."
+msgstr "Құпиясөз жиі қолданылатын құпиясөз болмауы керек."
+
+msgid "This password is entirely numeric."
+msgstr "Құпиясөз тек цифрлардан тұрады."
+
+msgid "Your password can't be entirely numeric."
+msgstr "Құпиясөз тек цифрлардан тұрмауы керек."
+
+msgid "Enter a valid username. This value may contain only English letters, numbers, and @/./+/-/_ characters."
+msgstr "Пайдаланушы атын дұрыс енгізіңіз. Онда тек латын әріптері, цифрлар және @/./+/-/_ таңбалары болуы мүмкін."
+
+msgid "Enter a valid username. This value may contain only letters, numbers, and @/./+/-/_ characters."
+msgstr "Пайдаланушы атын дұрыс енгізіңіз. Онда тек әріптер, цифрлар және @/./+/-/_ таңбалары болуы мүмкін."
+
+msgid "Password reset"
+msgstr "Құпиясөзді қалпына келтіру"
+
+msgid "Password reset sent"
+msgstr "Құпиясөзді қалпына келтіру нұсқаулығы жіберілді"
+
+msgid "Enter new password"
+msgstr "Жаңа құпиясөзді енгізіңіз"
+
+msgid "Password reset unsuccessful"
+msgstr "Құпиясөзді қалпына келтіру сәтсіз аяқталды"
+
+msgid "Password reset complete"
+msgstr "Құпиясөз қалпына келтірілді"
+
+msgid "Password change"
+msgstr "Құпиясөзді өзгерту"
+
+msgid "Password change successful"
+msgstr "Құпиясөз сәтті өзгертілді"
+
+msgid "Content Types"
+msgstr "Мазмұн түрлері"
+
+#, python-format
+msgid "Content type %(ct_id)s object has no associated model"
+msgstr "%(ct_id)s мазмұн түрінің нысанына байланысты модель жоқ"
+
+#, python-format
+msgid "Content type %(ct_id)s object %(obj_id)s doesn't exist"
+msgstr "%(ct_id)s мазмұн түрінің %(obj_id)s нысаны жоқ"
+
+#, python-format
+msgid "%(ct_name)s objects don't have a get_absolute_url() method"
+msgstr "%(ct_name)s нысандарында get_absolute_url() әдісі жоқ"

@@ -23,10 +23,13 @@ from pathlib import Path
 from django.conf import settings
 from django.db import transaction
 from django.db.models import QuerySet
-from django.utils import timezone
+from django.utils import timezone, translation
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_noop
 
 from core.audit import apply_changes, record_event
 from core.domains import ROLE_STUDENT, Source
+from core.i18n import language_of
 from students.models import DocumentStatus, DocumentType, Student, StudentDocument
 from students.portfolio import REQUIRED_DOCUMENTS
 
@@ -265,7 +268,7 @@ def after_decision(suggestion, *, actor) -> None:
 def revoke(document: StudentDocument, *, actor):
     """Снять подтверждение: документ снова «ждёт проверки» и в очереди, с записью в журнал."""
     if document.status != DocumentStatus.CONFIRMED:
-        raise ValueError("Снять подтверждение можно только с подтверждённого документа")
+        raise ValueError(_("Снять подтверждение можно только с подтверждённого документа"))
     apply_changes(
         document,
         {"status": DocumentStatus.PENDING, "reject_reason": ""},
@@ -293,10 +296,15 @@ def remind(students: QuerySet[Student], *, actor, days: int = 7) -> list[dict]:
         missing = state[student.pk]["missing"]
         if not missing:
             continue
-        titles = ", ".join(DocumentType(code).label for code in missing)
+        titles = ", ".join(str(DocumentType(code).label) for code in missing)
+        # задача — текст для ученика: на его языке, а не на языке куратора
+        with translation.override(language_of(student.user)):
+            task_title = _("Загрузить: {documents}").format(
+                documents=", ".join(str(DocumentType(code).label) for code in missing)
+            )
         assign_to_students(
             [student],
-            title=f"Загрузить: {titles}",
+            title=task_title,
             due_date=due,
             category=TaskCategory.DOCUMENTS,
             actor=actor,
@@ -325,13 +333,20 @@ def send_expiry_notices(today: dt.date | None = None) -> int:
         assignment = curator_of(row.student.group) if row.student.group_id else None
         if assignment is None:
             continue
+        # тип документа — на языке куратора, как и сам шаблон
+        with translation.override(language_of(assignment.curator)):
+            doc = str(row.get_doc_type_display())
         if _notify_once(
             assignment.curator,
             kind=Notification.Kind.DOCUMENT_EXPIRING,
-            template="Через {days} дней истекает срок документа «{doc}» у {student}",
+            template=gettext_noop(
+                "Через {n} день истекает срок документа «{doc}» у {student}|"
+                "Через {n} дня истекает срок документа «{doc}» у {student}|"
+                "Через {n} дней истекает срок документа «{doc}» у {student}"
+            ),
             link=f"/students/{row.student_id}?tab=documents",
-            days=settings.CURATOR_RULES["DOCUMENT_NOTICE_DAYS"],
-            doc=row.get_doc_type_display(),
+            n=settings.CURATOR_RULES["DOCUMENT_NOTICE_DAYS"],
+            doc=doc,
             student=row.student.full_name,
         ):
             sent += 1

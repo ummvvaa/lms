@@ -119,25 +119,6 @@ def test_no_hardcoded_locale_in_screens():
     assert not found, f"язык зашит в формат даты или числа: {found}"
 
 
-def test_server_dictionaries_cover_each_other():
-    """У kk и en одинаковый состав ключей серверных шаблонов."""
-    from core.i18n import SERVER_TEXTS
-
-    assert set(SERVER_TEXTS["kk"]) == set(SERVER_TEXTS["en"])
-
-
-def test_notification_templates_are_translated():
-    """Каждый шаблон уведомления из кода есть в обоих серверных словарях."""
-    from core.i18n import SERVER_TEXTS
-
-    source = (ROOT / "backend" / "materials" / "services.py").read_text(encoding="utf-8")
-    templates = re.findall(r'template="([^"]+)"', source)
-    assert templates, "шаблоны уведомлений не нашлись — проверка ослепла"
-    for template in templates:
-        assert template in SERVER_TEXTS["kk"], f"нет казахского перевода: {template}"
-        assert template in SERVER_TEXTS["en"], f"нет английского перевода: {template}"
-
-
 @pytest.mark.django_db
 def test_letters_follow_the_interface_language(make_user):
     """Письмо уходит на языке интерфейса получателя."""
@@ -168,7 +149,7 @@ def test_notifications_follow_the_interface_language(make_user, student):
         template="Ваш материал «{title}» одобрен и появился в библиотеке",
         title="Разбор",
     )
-    assert row.text == "Your material “Разбор” was approved and appeared in the library"
+    assert row.text == "Your material “Разбор” has been approved and is now in the library"
 
 
 @pytest.mark.django_db

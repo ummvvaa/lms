@@ -16,7 +16,9 @@ from datetime import timedelta
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext
 
+from core.phrasing import tn
 from engagement.models import StudentGameState, XPEvent, XPKind
 from students.models import Student
 
@@ -75,7 +77,7 @@ def award(
     и закрыл снова — это не второй повод дать XP.
     """
     if kind not in XPKind.values:
-        raise ValueError(f"XP за «{kind}» не начисляется: это не действие ученика")
+        raise ValueError(gettext("XP за «{kind}» не начисляется: это не действие ученика").format(kind=kind))
 
     size = award_size(kind) if amount is None else amount
     if size <= 0:
@@ -135,12 +137,20 @@ def refresh_streak(state: StudentGameState) -> StudentGameState:
 def streak_phrase(state: StudentGameState) -> str:
     """Поддерживающая формулировка. Никаких «вы всё потеряли»."""
     if state.streak_days >= 2:
-        return f"{state.streak_days} дней подряд — так держать"
+        return tn(
+            state.streak_days,
+            "{n} день подряд — так держать|{n} дня подряд — так держать|{n} дней подряд — так держать",
+        )
     if state.streak_days == 1:
-        return "Сегодня уже поработали. Завтра — второй день подряд"
+        return gettext("Сегодня уже поработали. Завтра — второй день подряд")
     if state.best_streak:
-        return f"Начнём заново. Ваш лучший результат — {state.best_streak} дней подряд"
-    return "Сделайте сегодня одно дело — и стрик начнётся"
+        return tn(
+            state.best_streak,
+            "Начнём заново. Ваш лучший результат — {n} день подряд|"
+            "Начнём заново. Ваш лучший результат — {n} дня подряд|"
+            "Начнём заново. Ваш лучший результат — {n} дней подряд",
+        )
+    return gettext("Сделайте сегодня одно дело — и стрик начнётся")
 
 
 def summary(student: Student) -> dict:

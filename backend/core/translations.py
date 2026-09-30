@@ -1,9 +1,13 @@
-"""Каталог переводов для вычитки человеком: выгрузка в xlsx и загрузка обратно.
+# i18n-skip-file: инструмент владельца — причины отказа и подсказки выгрузки читает он сам в терминале
+"""Каталоги переводов для вычитки человеком: выгрузка в xlsx и загрузка обратно.
 
-Строки интерфейса живут в словарях фронта `frontend/src/i18n/kk.ts` и `en.ts`
-(ключ — русская строка). Носитель языка в школе правит казахский в таблице,
-а команда `i18n_import` переносит правки в словари — после проверки, что
-подстановки `{имя}` и формы числа не сломаны.
+Два каталога, ключ в обоих — русская строка:
+- интерфейс — словари фронта `frontend/src/i18n/kk.ts` и `en.ts`;
+- сервер — `backend/locale/<язык>/LC_MESSAGES/django.po` (Django gettext).
+
+Носитель языка в школе правит казахский в таблице, а команда `i18n_import`
+переносит правки в каталоги — после проверки, что подстановки `{имя}` и формы
+числа не сломаны; серверный каталог после этого компилируется в `.mo`.
 
 Работает в контуре разработки: словари фронта — исходники, в боевом образе
 их нет. Путь к ним — `I18N_FRONTEND_DIR` (в dev-контуре примонтирован
@@ -221,3 +225,43 @@ def check_translation(key: str, value: str, *, is_plural: bool) -> str | None:
     if not is_plural and forms != key.count("|") + 1:
         return "лишняя черта «|»"
     return None
+
+
+# --- серверный каталог (Django gettext) ---------------------------------------
+
+
+def server_locale() -> Path:
+    """Папка переводов сервера: `backend/locale`."""
+    return Path(__file__).resolve().parents[1] / "locale"
+
+
+def po_path(lang: str, locale: Path | None = None) -> Path:
+    return (locale or server_locale()) / lang / "LC_MESSAGES" / "django.po"
+
+
+def read_po(lang: str, locale: Path | None = None):
+    """Каталог сервера на языке `lang` (`polib.POFile`). polib — зависимость разработки."""
+    import polib
+
+    return polib.pofile(str(po_path(lang, locale)), wrapwidth=0)
+
+
+def server_entries(locale: Path | None = None) -> dict[str, dict]:
+    """Ключ → переводы kk/en и места в коде: как словари фронта, для выгрузки и проверок."""
+    rows: dict[str, dict] = {}
+    for lang in LANGS:
+        for entry in read_po(lang, locale):
+            if entry.obsolete or not entry.msgid:
+                continue
+            row = rows.setdefault(entry.msgid, {"kk": "", "en": "", "where": []})
+            row[lang] = entry.msgstr
+            if not row["where"]:
+                row["where"] = [f"{path}:{line}" if line else path for path, line in entry.occurrences]
+    return rows
+
+
+def compile_server(locale: Path | None = None) -> None:
+    """`.po` → `.mo`: сервер читает скомпилированный каталог."""
+    for lang in LANGS:
+        catalog = read_po(lang, locale)
+        catalog.save_as_mofile(str(po_path(lang, locale).with_suffix(".mo")))

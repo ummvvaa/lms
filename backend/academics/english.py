@@ -10,9 +10,11 @@ from __future__ import annotations
 import datetime as dt
 
 from django.db import transaction
+from django.utils.translation import gettext as _
 
 from academics.calendar import today
 from academics.models import CefrLevel, Course, EnglishLevel, ReportRole
+from core import stored_text
 from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT
 
 EXAM_DIRECTOR = "director_exam"
@@ -68,12 +70,17 @@ def set_level(student, *, level: str, since: dt.date | None, actor) -> EnglishLe
     from core.audit import record_event
 
     if level not in CefrLevel.values:
-        raise LevelRefused("Уровень — от A1 до C2")
+        raise LevelRefused(_("Уровень — от A1 до C2"))
     day = since or today()
     if day > today():
-        raise LevelRefused("Дата уровня — не позже сегодняшней")
+        raise LevelRefused(_("Дата уровня — не позже сегодняшней"))
     row, created = EnglishLevel.objects.update_or_create(
         student=student, since=day, defaults={"level": level, "set_by": actor if getattr(actor, "pk", None) else None}
     )
-    record_event(student=student, code="english_level", text=f"{level} с {day:%d.%m.%Y}", actor=actor)
+    record_event(
+        student=student,
+        code="english_level",
+        text=stored_text.store(stored_text.ENGLISH_LEVEL, level=level, date=f"{day:%d.%m.%Y}"),
+        actor=actor,
+    )
     return row

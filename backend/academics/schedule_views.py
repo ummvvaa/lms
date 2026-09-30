@@ -5,6 +5,9 @@ from __future__ import annotations
 import datetime as dt
 
 from django.db import transaction
+from django.utils import translation
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_noop
 from drf_spectacular.utils import extend_schema
 from rest_framework import status as http
 from rest_framework.decorators import api_view, parser_classes, permission_classes
@@ -52,14 +55,15 @@ from academics.payloads import (
 from academics.results import calendar_period, course_context, student_attendance, student_summary
 from academics.views import _bad, _cohort, _date, _forbid, _group_param, _int, _lesson_for, _not_found, _teacher
 from accounts.models import Role, User
-from core import school_rules
+from core import school_rules, stored_text
 from core.domains import ROLE_ADMIN
+from core.i18n import language_of, render
 from students.models import Student, StudyGroup
 
 
 def _editor(request) -> Response | None:
     if not rights.edits_schedule(request.user.role):
-        return _forbid("Расписание ведут академический директор и администратор")
+        return _forbid(_("Расписание ведут академический директор и администратор"))
     return None
 
 
@@ -178,7 +182,7 @@ def conflicts_check(request):
     date = _date(data.get("date"))
     slot = _int(data.get("slot"))
     if cohort is None or date is None or slot is None:
-        return _bad("Нужны состав, дата и номер урока")
+        return _bad(_("Нужны состав, дата и номер урока"))
     calendar = school_calendar.load()
     found = schedule.conflicts_for(
         date=date,
@@ -229,7 +233,10 @@ def lesson_edit(request, pk: int):
     )
     if found and not bool(data.get("force")):
         return Response(
-            {"detail": "Есть накладка: " + "; ".join(c.text for c in found), "conflicts": [c.as_dict() for c in found]},
+            {
+                "detail": _("Есть накладка: {conflicts}").format(conflicts="; ".join(c.text for c in found)),
+                "conflicts": [c.as_dict() for c in found],
+            },
             status=http.HTTP_409_CONFLICT,
         )
     try:
@@ -289,7 +296,7 @@ def lesson_substitute(request, pk: int):
         return _not_found()
     teacher = _teacher(_int(request.data.get("teacher")))
     if teacher is None:
-        return _bad("Выберите заменяющего учителя")
+        return _bad(_("Выберите заменяющего учителя"))
     try:
         schedule.substitute(lesson, teacher=teacher, reason=str(request.data.get("reason") or ""), actor=request.user)
     except schedule.ScheduleRefused as error:
@@ -312,7 +319,7 @@ def lesson_move(request, pk: int):
     date = _date(request.data.get("date"))
     slot = _int(request.data.get("slot"))
     if date is None or slot is None:
-        return _bad("Нужны новая дата и номер урока")
+        return _bad(_("Нужны новая дата и номер урока"))
     try:
         schedule.move(
             lesson,
@@ -324,9 +331,22 @@ def lesson_move(request, pk: int):
             force=bool(request.data.get("force")),
         )
     except schedule.ScheduleRefused as error:
-        code = http.HTTP_409_CONFLICT if str(error).startswith("Есть накладка") else http.HTTP_400_BAD_REQUEST
+        code = http.HTTP_409_CONFLICT if _is_conflict(error) else http.HTTP_400_BAD_REQUEST
         return Response({"detail": str(error)}, status=code)
     return Response({"lesson": lesson_dict(lesson, calendar)})
+
+
+def _is_conflict(error: Exception) -> bool:
+    """Отказ переноса из-за накладки — ответ 409, остальные отказы — 400.
+
+    Признак — код отказа, если `schedule` его ставит, иначе начало текста:
+    «Есть накладка: …» на языке ответа или исходное русское.
+    """
+    if getattr(error, "code", "") == "conflict":
+        return True
+    text = str(error)
+    prefix = _("Есть накладка: {conflicts}").split("{conflicts}")[0].strip()
+    return text.startswith(prefix) or text.startswith("Есть накладка")  # i18n-skip: сравнение с исходным текстом отказа
 
 
 @extend_schema(request=None, responses={200: dict})
@@ -415,7 +435,7 @@ def cohorts(request):
     for course in Course.objects.select_related("subject", "teacher", "cohort"):
         used.setdefault(course.cohort_id, []).append(
             f"{course.subject.short_title.lower()}, "
-            + ((person(course.teacher) or {}).get("short") or "учитель не назначен")
+            + ((person(course.teacher) or {}).get("short") or _("учитель не назначен"))
         )
     from accounts.curators import curator_of
 
@@ -495,28 +515,31 @@ def cohort(request, pk: int):
     if request.method == "DELETE":
         if Course.objects.filter(cohort=row).exists():
             return Response(
-                {"detail": "Состав стоит в расписании: сначала уберите или перенесите его уроки"},
+                {"detail": _("Состав стоит в расписании: сначала уберите или перенесите его уроки")},
                 status=http.HTTP_409_CONFLICT,
             )
         if row.kind == CohortKind.GROUP:
-            return _bad("Состав «вся группа» не удаляется")
+            return _bad(_("Состав «вся группа» не удаляется"))
         row.delete()
         return Response({"deleted": pk})
     if row.kind == CohortKind.SUBGROUP:
         ids = [int(i) for i in (request.data.get("members") or []) if str(i).isdigit()]
         if not ids:
-            return _bad("В подгруппе должен быть хотя бы один ученик")
+            return _bad(_("В подгруппе должен быть хотя бы один ученик"))
         since = _date(request.data.get("since"), today())
         composing.set_members(row, ids, since)
-        schedule.log_change(f"Изменён состав {row.name}: {len(ids)} уч. с {since:%d.%m.%Y}", actor=request.user)
+        schedule.log_change(
+            stored_text.store(stored_text.COHORT_CHANGED, name=row.name, count=len(ids), date=f"{since:%d.%m.%Y}"),
+            actor=request.user,
+        )
     elif row.kind == CohortKind.STREAM:
         parts = list(
             Cohort.objects.filter(pk__in=[int(i) for i in (request.data.get("parts") or []) if str(i).isdigit()])
         )
         if len(parts) < 2:
-            return _bad("В потоке хотя бы две части")
+            return _bad(_("В потоке хотя бы две части"))
         composing.make_stream(name=str(request.data.get("name") or row.name), parts=parts, stream=row)
-        schedule.log_change(f"Изменён поток {row.name}", actor=request.user)
+        schedule.log_change(stored_text.store(stored_text.STREAM_CHANGED, name=row.name), actor=request.user)
     return Response(cohort_dict(row, with_members=True))
 
 
@@ -533,10 +556,10 @@ def cohort_split(request):
     subject = Subject.objects.filter(pk=_int(request.data.get("subject"))).first()
     parts = request.data.get("parts")
     if group is None or subject is None or not isinstance(parts, list) or len(parts) < 2:
-        return _bad("Нужны группа, предмет и хотя бы две части")
+        return _bad(_("Нужны группа, предмет и хотя бы две части"))
     lists = [[int(i) for i in part if str(i).isdigit()] for part in parts]
     if any(not part for part in lists):
-        return _bad("В каждой подгруппе должен быть хотя бы один ученик")
+        return _bad(_("В каждой подгруппе должен быть хотя бы один ученик"))
     since = _date(request.data.get("since"), today())
     made = composing.split_group(
         group=group,
@@ -547,7 +570,10 @@ def cohort_split(request):
         actor=request.user,
     )
     schedule.log_change(
-        f"Разделена группа {group.code}: {subject.short_title.lower()}, {len(made)} подгруппы", actor=request.user
+        stored_text.store(
+            stored_text.GROUP_SPLIT, group=group.code, subject=subject.short_title.lower(), count=len(made)
+        ),
+        actor=request.user,
     )
     return Response({"cohorts": [cohort_dict(c) for c in made]}, status=http.HTTP_201_CREATED)
 
@@ -565,11 +591,11 @@ def cohort_stream(request):
     ids = [int(i) for i in (request.data.get("parts") or []) if str(i).isdigit()]
     parts = list(Cohort.objects.filter(pk__in=ids).exclude(kind=CohortKind.STREAM))
     if not name:
-        return _bad("Нужно название")
+        return _bad(_("Нужно название"))
     if len(parts) < 2:
-        return _bad("В потоке хотя бы две части")
+        return _bad(_("В потоке хотя бы две части"))
     stream = composing.make_stream(name=name, parts=parts)
-    schedule.log_change(f"Собран поток {stream.name}", actor=request.user)
+    schedule.log_change(stored_text.store(stored_text.STREAM_BUILT, name=stream.name), actor=request.user)
     return Response(cohort_dict(stream, with_members=True), status=http.HTTP_201_CREATED)
 
 
@@ -694,13 +720,14 @@ def _remind(user: User, calendar) -> int:
 
     rows = teachers.unmarked_lessons(user, calendar)
     for lesson in rows:
+        # уведомление — на языке учителя: шаблон переводит `notify`, номер урока — здесь
         notify(
             user,
             kind=Notification.Kind.LESSON_UNMARKED,
-            template="Куратор напоминает: не отмечен урок {lesson}, {when}",
+            template=gettext_noop("Куратор напоминает: не отмечен урок {lesson}, {when}"),
             link=f"/lessons/{lesson.pk}",
             lesson=lesson_words(lesson),
-            when=f"{lesson.slot} урок",
+            when=render(language_of(user), "{slot} урок", slot=lesson.slot),
         )
     return len(rows)
 
@@ -735,7 +762,7 @@ def course_reassign(request, pk: int):
         return _not_found()
     teacher = _teacher(_int(request.data.get("teacher")))
     if teacher is None or teacher.pk == course.teacher_id:
-        return _bad("Выберите другого учителя")
+        return _bad(_("Выберите другого учителя"))
     since = _date(request.data.get("since"), today())
     schedule.reassign(course, teacher=teacher, since=since, actor=request.user)
     return Response(course_dict(course))
@@ -757,14 +784,23 @@ def course_report_role(request, pk: int):
         return _not_found()
     role = str(request.data.get("report_role") or "")
     if role not in ReportRole.values:
-        return _bad("Раздел — GE/EEP, SAT Verbal, SAT Math или нет")
+        return _bad(_("Раздел — GE/EEP, SAT Verbal, SAT Math или нет"))
     if role != course.report_role:
-        before = course.get_report_role_display()
+        # журнал расписания пишется по-русски, как и в `schedule`: подписи разделов — тоже
+        with translation.override("ru"):
+            before = course.get_report_role_display()
         course.report_role = role
         course.save(update_fields=["report_role"])
+        with translation.override("ru"):
+            after = course.get_report_role_display()
         schedule.log_change(
-            f"Журнал {course.subject.short_title.lower()} {course.cohort.name}: раздел отчёта «{before}» → "
-            f"«{course.get_report_role_display()}»",
+            stored_text.store(
+                stored_text.JOURNAL_SECTION,
+                subject=course.subject.short_title.lower(),
+                cohort=course.cohort.name,
+                before=before,
+                after=after,
+            ),
             actor=request.user,
         )
     return Response(course_dict(course))
@@ -947,13 +983,13 @@ def school_grades_export(request):
         return refusal
     payload = school_grades_payload(str(request.query_params.get("period") or _default_period()))
     subjects = payload["subjects"]
-    columns = [Column("Группа", lambda row: row["group"], 14)]
+    columns = [Column(_("Группа"), lambda row: row["group"], 14)]
     for index, subject in enumerate(subjects):
         columns.append(Column(subject["short_title"], (lambda i: lambda row: row["cells"][i]["pct"])(index), 12))
-    columns.append(Column("Посещаемость, %", lambda row: row["attendance"], 14))
+    columns.append(Column(_("Посещаемость, %"), lambda row: row["attendance"], 14))
     return workbook_of_sheets(
-        filename=f"успеваемость {payload['period']['title']}.xlsx",
-        sheets=[("Группы и предметы", columns, payload["heat"])],
+        filename=_("успеваемость {period}.xlsx").format(period=payload["period"]["title"]),
+        sheets=[(_("Группы и предметы"), columns, payload["heat"])],
         request=request,
     )
 
@@ -991,7 +1027,7 @@ def group_grades_payload(group: StudyGroup, code: str) -> dict:
                     found = contexts[course.pk].stats(student.pk)
                     break
             if found is None:
-                cells.append({"text": "", "grade": None, "pct": None, "tone": "", "none": "нет"})
+                cells.append({"text": "", "grade": None, "pct": None, "tone": "", "none": _("нет")})
             elif subject["scheme"] == Scheme.FO:
                 cells.append(
                     {
@@ -999,7 +1035,7 @@ def group_grades_payload(group: StudyGroup, code: str) -> dict:
                         "grade": None,
                         "pct": None,
                         "tone": "",
-                        "none": "нет",
+                        "none": _("нет"),
                     }
                 )
             elif found.quarter_grade is not None:
@@ -1013,7 +1049,7 @@ def group_grades_payload(group: StudyGroup, code: str) -> dict:
                     }
                 )
             else:
-                cells.append({"text": "", "grade": None, "pct": None, "tone": "", "none": "мало"})
+                cells.append({"text": "", "grade": None, "pct": None, "tone": "", "none": _("мало")})
         totals = student_attendance(student.pk, start, end)
         row = {
             **student_brief(student),
@@ -1091,7 +1127,7 @@ def group_grades(request):
     from core.domains import ROLE_CURATOR
 
     if not (rights.reads_all(request.user.role) or request.user.role == ROLE_CURATOR):
-        return _forbid("Успеваемость группы видят куратор, академический директор и администратор")
+        return _forbid(_("Успеваемость группы видят куратор, академический директор и администратор"))
     group = _group_readable(request.user, request.query_params.get("group"))
     if group is None:
         if request.query_params.get("group"):
@@ -1111,13 +1147,13 @@ def group_grades_export(request):
     from core.domains import ROLE_CURATOR
 
     if not (rights.reads_all(request.user.role) or request.user.role == ROLE_CURATOR):
-        return _forbid("Успеваемость группы видят куратор, академический директор и администратор")
+        return _forbid(_("Успеваемость группы видят куратор, академический директор и администратор"))
     group = _group_readable(request.user, request.query_params.get("group"))
     if group is None:
         return _not_found()
     payload = group_grades_payload(group, str(request.query_params.get("period") or _default_period()))
     return group_grades_workbook(
-        filename=f"успеваемость {group.code} {payload['period']['title']}.xlsx",
+        filename=_("успеваемость {group} {period}.xlsx").format(group=group.code, period=payload["period"]["title"]),
         subjects=payload["subjects"],
         rows=payload["rows"],
         group_code=group.code,
@@ -1232,9 +1268,9 @@ def _parse_bells(rows) -> list[tuple[int, dt.time, dt.time]]:
             starts = dt.time.fromisoformat(str(raw.get("starts")))
             ends = dt.time.fromisoformat(str(raw.get("ends")))
         except ValueError as error:
-            raise ValueError(f"Урок {number}: время в виде 08:30") from error
+            raise ValueError(_("Урок {number}: время в виде 08:30").format(number=number)) from error
         if number is None or ends <= starts:
-            raise ValueError(f"Урок {number}: конец раньше начала")
+            raise ValueError(_("Урок {number}: конец раньше начала").format(number=number))
         out.append((number, starts, ends))
     return out
 
@@ -1243,7 +1279,8 @@ def _save_bell_schedule(year, raw: dict) -> BellSchedule:
     """Завести или поправить расписание звонков: название, звонки, группы."""
     row = BellSchedule.objects.filter(year=year, pk=_int(raw.get("id"))).first() if raw.get("id") else None
     if row is None:
-        row = BellSchedule.objects.create(year=year, title=str(raw.get("title") or "Звонки")[:60])
+        # название по умолчанию — данные школы в базе, не перевод
+        row = BellSchedule.objects.create(year=year, title=str(raw.get("title") or "Звонки")[:60])  # i18n-skip: данные
     elif raw.get("title"):
         row.title = str(raw["title"])[:60]
         row.save(update_fields=["title"])
@@ -1270,7 +1307,7 @@ def _save_year(data: dict, *, actor) -> None:
         raw = data["year"] or {}
         starts, ends = _date(raw.get("starts")), _date(raw.get("ends"))
         if starts is None or ends is None or ends <= starts:
-            raise ValueError("У учебного года нужны даты начала и конца")
+            raise ValueError(_("У учебного года нужны даты начала и конца"))
         if year is None:
             AcademicYear.objects.filter(is_current=True).update(is_current=False)
             year = AcademicYear.objects.create(
@@ -1284,7 +1321,7 @@ def _save_year(data: dict, *, actor) -> None:
             year.starts, year.ends = starts, ends
             year.save()
     if year is None:
-        raise ValueError("Сначала заведите учебный год")
+        raise ValueError(_("Сначала заведите учебный год"))
     if "quarters" in data:
         for raw in data["quarters"] or []:
             starts, ends = _date(raw.get("starts")), _date(raw.get("ends"))
@@ -1292,8 +1329,8 @@ def _save_year(data: dict, *, actor) -> None:
             if starts is None or ends is None or number is None:
                 continue
             if ends < starts:
-                raise ValueError(f"{number} четверть: начало позже конца")
-            Quarter.objects.update_or_create(
+                raise ValueError(_("{number} четверть: начало позже конца").format(number=number))
+            Quarter.objects.update_or_create(  # i18n-skip: название четверти по умолчанию — данные школы в базе
                 year=year,
                 number=number,
                 defaults={"starts": starts, "ends": ends, "title": str(raw.get("title") or f"{number} четверть")[:40]},
@@ -1303,7 +1340,7 @@ def _save_year(data: dict, *, actor) -> None:
         for raw in data["breaks"] or []:
             starts, ends = _date(raw.get("starts")), _date(raw.get("ends"))
             if starts and ends and ends >= starts:
-                Break.objects.create(
+                Break.objects.create(  # i18n-skip: название по умолчанию — данные школы в базе
                     year=year, title=str(raw.get("title") or "Каникулы")[:60], starts=starts, ends=ends
                 )
     if "holidays" in data:
@@ -1311,7 +1348,7 @@ def _save_year(data: dict, *, actor) -> None:
         for raw in data["holidays"] or []:
             day = _date(raw.get("date"))
             if day:
-                Holiday.objects.get_or_create(
+                Holiday.objects.get_or_create(  # i18n-skip: название по умолчанию — данные школы в базе
                     year=year, date=day, defaults={"title": str(raw.get("title") or "Праздник")[:80]}
                 )
     if "bells" in data:
@@ -1323,11 +1360,11 @@ def _save_year(data: dict, *, actor) -> None:
     if data.get("drop_bell_schedule"):
         row = BellSchedule.objects.filter(year=year, pk=_int(data["drop_bell_schedule"]), is_default=False).first()
         if row is None:
-            raise ValueError("Общее расписание звонков не удаляется")
+            raise ValueError(_("Общее расписание звонков не удаляется"))
         row.delete()
     if "scale" in data:
         raw = data["scale"] or {}
-        scale, _ = GradingScale.objects.get_or_create(year=year)
+        scale, _created = GradingScale.objects.get_or_create(year=year)
         for name in (
             "weight_fo",
             "weight_sor",
@@ -1341,13 +1378,15 @@ def _save_year(data: dict, *, actor) -> None:
             if name in raw:
                 setattr(scale, name, int(raw[name]))
         if scale.weight_fo + scale.weight_sor + scale.weight_soch != 100:
-            raise ValueError(f"Сумма весов {scale.weight_fo + scale.weight_sor + scale.weight_soch}, нужно 100")
+            raise ValueError(
+                _("Сумма весов {total}, нужно 100").format(total=scale.weight_fo + scale.weight_sor + scale.weight_soch)
+            )
         if not (scale.threshold_5 > scale.threshold_4 > scale.threshold_3):
-            raise ValueError("Пороги должны идти по убыванию")
+            raise ValueError(_("Пороги должны идти по убыванию"))
         scale.save()
     if "reports" in data:
         raw = data["reports"] or {}
-        config, _ = ReportSettings.objects.get_or_create(year=year)
+        config, _created = ReportSettings.objects.get_or_create(year=year)
         if raw.get("cadence") in (ReportCadence.MONTH, ReportCadence.QUARTER):
             config.cadence = raw["cadence"]
         sections = raw.get("sections") or {}
@@ -1397,7 +1436,7 @@ def _save_year(data: dict, *, actor) -> None:
                 starts=dt.time.fromisoformat(starts),
                 ends=dt.time.fromisoformat(ends),
             )
-    schedule.log_change("Изменены настройки учебного года", actor=actor)
+    schedule.log_change(stored_text.store(stored_text.YEAR_SETTINGS), actor=actor)
 
 
 @extend_schema(request=None, responses={200: dict})
@@ -1418,11 +1457,11 @@ def quarter_close(request, pk: int):
     closed = bool(request.data.get("closed", True))
     if closed:
         close_quarter(quarter, actor=request.user)
-        schedule.log_change(f"Закрыт приём итогов: {quarter.title}", actor=request.user)
+        schedule.log_change(stored_text.store(stored_text.RESULTS_CLOSED, quarter=quarter.title), actor=request.user)
         build_quarter_reports.delay(quarter.pk)
     else:
         open_quarter(quarter, actor=request.user)
-        schedule.log_change(f"Открыт приём итогов: {quarter.title}", actor=request.user)
+        schedule.log_change(stored_text.store(stored_text.RESULTS_OPENED, quarter=quarter.title), actor=request.user)
     return Response(
         {"quarter": {"id": quarter.pk, "number": quarter.number, "title": quarter.title, "closed": quarter.is_closed}}
     )
@@ -1438,12 +1477,12 @@ def _unused():  # pragma: no cover
 def _import_file(request) -> tuple[bytes | None, Response | None]:
     """Файл из запроса или ответ-отказ. Импорт — только у администратора."""
     if request.user.role != ROLE_ADMIN:
-        return None, _forbid("Импорт расписания — у администратора")
+        return None, _forbid(_("Импорт расписания — у администратора"))
     uploaded = request.FILES.get("file")
     if uploaded is None:
-        return None, _bad("Файл не приложен")
+        return None, _bad(_("Файл не приложен"))
     if not uploaded.name.lower().endswith((".xlsx", ".xlsm")):
-        return None, _bad("Нужна книга Excel (.xlsx)")
+        return None, _bad(_("Нужна книга Excel (.xlsx)"))
     return uploaded.read(), None
 
 

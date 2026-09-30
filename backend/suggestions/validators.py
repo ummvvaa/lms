@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from django.utils.translation import gettext as _
+
 from core.domains import (
     DOMAINS,
     can_student_propose,
@@ -71,10 +73,11 @@ def validate_changes(rows: list[dict[str, Any]], *, role: str, domain_code: str 
         field_name = str(row.get("field") or "")
 
         if not acting:
-            outcome.rejected.append({**row, "reason": "У роли нет домена"})
+            outcome.rejected.append({**row, "reason": _("У роли нет домена")})
             continue
         if model_label not in ALLOWED_MODELS:
-            outcome.rejected.append({**row, "reason": f"«{model_title(model_label)}» нельзя менять предложением"})
+            reason = _("«{model}» нельзя менять предложением").format(model=model_title(model_label))
+            outcome.rejected.append({**row, "reason": reason})
             continue
         if can_write_shared(role, model_label):
             outcome.accepted.append(row)
@@ -82,9 +85,11 @@ def validate_changes(rows: list[dict[str, Any]], *, role: str, domain_code: str 
         if not can_write_for(role, acting, model_label, field_name):
             owner = domain_of_field(model_label, field_name)
             reason = (
-                f"«{field_title(model_label, field_name)}» ведёт домен «{owner.title}» ({owner.owner_name})"
+                _("«{field}» ведёт домен «{domain}» ({owner})").format(
+                    field=field_title(model_label, field_name), domain=owner.title, owner=owner.owner_name
+                )
                 if owner
-                else "Такого поля нет в реестре доменов"
+                else _("Такого поля нет в реестре доменов")
             )
             outcome.rejected.append({**row, "reason": reason})
             continue
@@ -117,15 +122,15 @@ def _parallel_refusal(student, model_label: str, row: dict[str, Any], *, olympia
     from core.parallels import JUNIOR_ACTIVITY_CATEGORY, has_admission, may_propose
 
     if not may_propose(student, model_label):
-        return f"«{model_title(model_label)}» ведётся только у 11 параллели"
+        return _("«{model}» ведётся только у 11 параллели").format(model=model_title(model_label))
     if has_admission(student) or model_label != "students.Activity":
         return ""
     if not row.get("object_id") and str(row.get("new_object_key") or "") not in olympiad_keys:
-        return "Из достижений у 8–10 вносятся только олимпиады"
+        return _("Из достижений у 8–10 вносятся только олимпиады")
     if row.get("object_id"):
         instance = apps.get_model(model_label).objects.filter(pk=row["object_id"]).first()
         if instance is not None and getattr(instance, "category", "") != JUNIOR_ACTIVITY_CATEGORY:
-            return "Из достижений у 8–10 вносятся только олимпиады"
+            return _("Из достижений у 8–10 вносятся только олимпиады")
     return ""
 
 
@@ -153,11 +158,16 @@ def validate_student_rows(rows: list[dict[str, Any]], *, student) -> ValidationO
 
         target_student = row.get("student")
         if target_student not in (None, "", student.pk):
-            outcome.rejected.append({**row, "reason": "Предложить изменение можно только про себя"})
+            outcome.rejected.append({**row, "reason": _("Предложить изменение можно только про себя")})
             continue
         if model_label not in allowed:
             outcome.rejected.append(
-                {**row, "reason": f"«{model_title(model_label)}» ученик не предлагает — эти данные ведёт школа"}
+                {
+                    **row,
+                    "reason": _("«{model}» ученик не предлагает — эти данные ведёт школа").format(
+                        model=model_title(model_label)
+                    ),
+                }
             )
             continue
         refusal = _parallel_refusal(student, model_label, row, olympiad_keys=olympiad_keys)
@@ -167,23 +177,25 @@ def validate_student_rows(rows: list[dict[str, Any]], *, student) -> ValidationO
         if not can_student_propose(model_label, field_name):
             owner = domain_of_field(model_label, field_name)
             reason = (
-                f"«{field_title(model_label, field_name)}» ведёт школа — предложить это поле нельзя"
+                _("«{field}» ведёт школа — предложить это поле нельзя").format(
+                    field=field_title(model_label, field_name)
+                )
                 if owner
-                else "Такого поля нет в реестре доменов"
+                else _("Такого поля нет в реестре доменов")
             )
             outcome.rejected.append({**row, "reason": reason})
             continue
         if row.get("object_id"):
             instance = apps.get_model(model_label).objects.filter(pk=row["object_id"]).first()
             if instance is None or getattr(instance, "student_id", None) != student.pk:
-                outcome.rejected.append({**row, "reason": "Эта запись не про вас — предложить её изменение нельзя"})
+                outcome.rejected.append({**row, "reason": _("Эта запись не про вас — предложить её изменение нельзя")})
                 continue
             # пробник ученик не правит (фаза 63): его проводил учитель, и балл
             # пришёл файлом. Если результат неверный, это к куратору — иначе
             # смысл пробника пропадает вместе с возможностью его переписать
             if getattr(instance, "attempt_format", "") == "mock":
                 outcome.rejected.append(
-                    {**row, "reason": "Это результат пробника школы — если он неверный, скажите куратору"}
+                    {**row, "reason": _("Это результат Mock Test школы — если он неверный, скажите куратору")}
                 )
                 continue
         reason = _section_refusal(model_label, field_name, row, exams=exams)
@@ -243,4 +255,4 @@ def _section_refusal(model_label: str, field_name: str, row: dict[str, Any], *, 
     scale = scale_of(exam, section=field_name in SECTION_FIELDS)
     if scale is None:
         return ""
-    return "" if scale.holds(value) else f"Шкала {exam} — {scale.hint}"
+    return "" if scale.holds(value) else _("Шкала {exam} — {hint}").format(exam=exam, hint=scale.hint)

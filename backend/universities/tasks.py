@@ -6,13 +6,16 @@ import logging
 
 from celery import shared_task
 from django.utils import timezone
+from django.utils.translation import gettext_noop
+
+from core.i18n import language_of, render
 
 log = logging.getLogger(__name__)
 
 
 #: Причина, с которой закрывается предложение сверки, когда расхождения
 #: больше нет: сайт и справочник сошлись без решения директора
-SYNC_RESOLVED_ITSELF = "Устарело: расхождения с сайтом больше нет"
+SYNC_RESOLVED_ITSELF = gettext_noop("Устарело: расхождения с сайтом больше нет")
 
 
 @shared_task(name="universities.sync_deadlines")
@@ -70,9 +73,10 @@ def sync_deadlines(*, limit: int = 50) -> dict:
             }
         )
 
-    closed = _drop_agreed_rounds(agreed)
-    # предложение адресовано директору по поступлению — это его домен
+    # предложение адресовано директору по поступлению — это его домен,
+    # и тексты сверки пишутся на его языке
     author = User.objects.filter(role=Role.DIRECTOR_ADMISSION).order_by("pk").first()
+    closed = _drop_agreed_rounds(agreed, lang=language_of(author))
     suggestions, changes, rejected = [], 0, []
     for university_id, rows in by_university.items():
         suggestion, refused = _suggestion_of_university(university_id, names[university_id], rows, author=author)
@@ -109,7 +113,9 @@ def _suggestion_of_university(university_id: int, name: str, rows: list[dict], *
         str(pk)
         for pk in AdmissionRound.objects.filter(program__university_id=university_id).values_list("pk", flat=True)
     ]
-    source_ref = f"фоновая сверка {timezone.localdate().isoformat()} · {name}"
+    source_ref = render(
+        language_of(author), "фоновая сверка {date} · {name}", date=timezone.localdate().isoformat(), name=name
+    )
     existing = (
         _pending_sync()
         .filter(changes__model_label="universities.AdmissionRound", changes__object_id__in=round_ids)
@@ -130,7 +136,7 @@ def _suggestion_of_university(university_id: int, name: str, rows: list[dict], *
     )
 
 
-def _drop_agreed_rounds(round_ids: list[int]) -> int:
+def _drop_agreed_rounds(round_ids: list[int], *, lang: str = "ru") -> int:
     """Раунд сошёлся с сайтом — его строка из висящей сверки уходит.
 
     Предложение, в котором строк не осталось, закрывается само: решать
@@ -149,7 +155,7 @@ def _drop_agreed_rounds(round_ids: list[int]) -> int:
     stale.delete()
     emptied = _pending_sync().filter(pk__in=touched, changes__isnull=True)
     return emptied.update(
-        status=SuggestionStatus.REJECTED, reject_reason=SYNC_RESOLVED_ITSELF, resolved_at=timezone.now()
+        status=SuggestionStatus.REJECTED, reject_reason=render(lang, SYNC_RESOLVED_ITSELF), resolved_at=timezone.now()
     )
 
 

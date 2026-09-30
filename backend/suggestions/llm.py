@@ -21,6 +21,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from django.conf import settings
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
 from suggestions.budget import BudgetExceeded, check_available, record
 from suggestions.providers import Attachment, LLMUnavailable, get_provider
@@ -74,17 +76,17 @@ def status() -> dict:
     configured = is_configured()
     within_budget = budget_ok()
     if not configured:
-        detail = (
+        detail = _(
             "Модель не подключена. Разбор идёт правилами, объяснения собираются "
             "из движка соответствия — формулировки проще, но всё работает"
         )
     elif not within_budget:
-        detail = (
-            f"Месячный лимит расходов выбран: потрачено ${spent_this_month():.2f} из ${monthly_limit():.2f}. "
-            f"Операции с моделью отключены до первого числа, разбор продолжает работать правилами"
-        )
+        detail = _(
+            "Месячный лимит расходов выбран: потрачено ${spent} из ${limit}. "
+            "Операции с моделью отключены до первого числа, разбор продолжает работать правилами"
+        ).format(spent=f"{spent_this_month():.2f}", limit=f"{monthly_limit():.2f}")
     else:
-        detail = "Модель подключена"
+        detail = _("Модель подключена")
     return {
         "configured": configured,
         "within_budget": within_budget,
@@ -98,7 +100,7 @@ def status() -> dict:
 #: WEBP и GIF без анимации. Тип берётся из самих байтов, а не со слов клиента
 MODEL_IMAGE_TYPES = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp", "GIF": "image/gif"}
 
-NOT_AN_IMAGE = "Файл не читается как изображение — загрузите снимок в PNG, JPEG, WEBP или GIF"
+NOT_AN_IMAGE = gettext_lazy("Файл не читается как изображение — загрузите снимок в PNG, JPEG, WEBP или GIF")
 
 
 class InvalidImage(ValueError):
@@ -121,7 +123,7 @@ def image_from_bytes(payload: bytes, media_type: str = "") -> Attachment:
 
     del media_type
     if not payload:
-        raise InvalidImage("Файл пустой — загрузите снимок ещё раз")
+        raise InvalidImage(_("Файл пустой — загрузите снимок ещё раз"))
     try:
         # verify() сверяет контрольные суммы, load() — что данные раскрываются
         # до конца; после verify() объект негоден, поэтому открываем дважды
@@ -142,7 +144,7 @@ def image_from_bytes(payload: bytes, media_type: str = "") -> Attachment:
             frame.save(out, format=target)
     except (OSError, SyntaxError, ValueError, Image.DecompressionBombError) as error:
         # UnidentifiedImageError — подкласс OSError
-        raise InvalidImage(NOT_AN_IMAGE) from error
+        raise InvalidImage(str(NOT_AN_IMAGE)) from error
     return Attachment(media_type=MODEL_IMAGE_TYPES[target], data=base64.b64encode(out.getvalue()).decode("ascii"))
 
 
@@ -170,7 +172,7 @@ def complete(
 
     provider = get_provider()
     if not provider.is_configured():
-        raise LLMUnavailable("Модель не настроена")
+        raise LLMUnavailable(_("Модель не настроена"))
 
     started = time.monotonic()
     try:
@@ -222,14 +224,14 @@ def complete(
         searches=answer.usage.searches,
         duration_ms=int((time.monotonic() - started) * 1000),
         is_ok=not outside and not empty,
-        error=("поиск вышел за белый список: " + ", ".join(outside[:3])) if outside else empty[:250],
+        error=_("поиск вышел за белый список: {urls}").format(urls=", ".join(outside[:3])) if outside else empty[:250],
     )
     if outside:
         # это не «немного не тот источник», а ровно то, из-за чего белый
         # список и заведён: ответ целиком уходит в корзину
         log.error("Поиск вышел за белый список: %s", outside)
         raise LLMUnavailable(
-            "Поиск вышел за список официальных сайтов — ответ отброшен. " "Сверьте данные вручную по сайту вуза"
+            _("Поиск вышел за список официальных сайтов — ответ отброшен. Сверьте данные вручную по сайту вуза")
         )
     if empty:
         log.warning("Модель вернула пустой ответ (%s): %s", purpose, empty)
@@ -255,13 +257,13 @@ def empty_reason(raw: Any) -> str:
     body = raw if isinstance(raw, dict) else {}
     reason = str((body.get("incomplete_details") or {}).get("reason") or body.get("stop_reason") or "")
     if reason == "max_output_tokens" or reason == "max_tokens":
-        return "модель вернула пустой ответ: бюджет токенов ушёл на рассуждение"
+        return _("модель вернула пустой ответ: бюджет токенов ушёл на рассуждение")
     if reason == "content_filter":
-        return "модель вернула пустой ответ: ответ остановлен фильтром провайдера"
+        return _("модель вернула пустой ответ: ответ остановлен фильтром провайдера")
     for item in body.get("output") or []:
         for part in (item.get("content") or []) if isinstance(item, dict) else []:
             if isinstance(part, dict) and part.get("type") == "refusal":
-                return "модель отказалась отвечать"
+                return _("модель отказалась отвечать")
     if body.get("status") == "incomplete" or reason:
-        return f"модель вернула пустой ответ: {reason or 'ответ оборван'}"
-    return "модель вернула пустой ответ"
+        return _("модель вернула пустой ответ: {reason}").format(reason=reason or _("ответ оборван"))
+    return _("модель вернула пустой ответ")

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from django.apps import apps
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -14,8 +15,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.archive import (
-    CONFIRM_WORD,
     blockers,
+    confirm_word,
+    is_confirm_word,
     manager_of,
     purge,
     purge_batch,
@@ -163,18 +165,18 @@ def dashboard(request, code: str):
     from core.dashboards import DASHBOARDS, school_overview
 
     if request.user.role == ROLE_STUDENT:
-        return Response({"detail": "Дашборды доступны только сотрудникам"}, status=403)
+        return Response({"detail": _("Дашборды доступны только сотрудникам")}, status=403)
 
     if code == "overview":
         # роль `admin` техническая; школу целиком видит тот, кому это
         # разрешено флагом — так у Салтанат остаётся одна роль
         if not request.user.can_see_whole_school:
-            return Response({"detail": "Сводный вид доступен директору школы"}, status=403)
+            return Response({"detail": _("Сводный вид доступен директору школы")}, status=403)
         return Response(school_overview())
 
     builder = DASHBOARDS.get(code)
     if builder is None:
-        return Response({"detail": "Неизвестный дашборд"}, status=404)
+        return Response({"detail": _("Неизвестный дашборд")}, status=404)
     return Response(builder())
 
 
@@ -190,10 +192,10 @@ def cabinet(request):
     from core.cabinets import build
 
     if request.user.role == ROLE_STUDENT:
-        return Response({"detail": "У ученика своя главная"}, status=403)
+        return Response({"detail": _("У ученика своя главная")}, status=403)
     data = build(request.user.role, request.user)
     if not data:
-        return Response({"detail": "Кабинета для этой роли нет"}, status=404)
+        return Response({"detail": _("Кабинета для этой роли нет")}, status=404)
     return Response(data)
 
 
@@ -232,17 +234,17 @@ def _archive_target(request):
 
     model = resolve_model(label)
     if model is None:
-        return None, Response({"detail": "Неизвестный вид записи"}, status=status.HTTP_400_BAD_REQUEST)
+        return None, Response({"detail": _("Неизвестный вид записи")}, status=status.HTTP_400_BAD_REQUEST)
     if not can_delete(request.user.role, label):
-        allowed = ", ".join(ROLE_TITLES.get(role, role) for role in deleters_of(label)) or "никто"
+        allowed = ", ".join(str(ROLE_TITLES.get(role, role)) for role in deleters_of(label)) or _("никто")
         return None, Response(
-            {"detail": f"Удалять такие записи может: {allowed}"},
+            {"detail": _("Удалять такие записи может: {allowed}").format(allowed=allowed)},
             status=status.HTTP_403_FORBIDDEN,
         )
 
     instance = manager_of(model).filter(pk=object_id).first()
     if instance is None:
-        return None, Response({"detail": "Записи нет — возможно, её уже удалили"}, status=status.HTTP_404_NOT_FOUND)
+        return None, Response({"detail": _("Записи нет — возможно, её уже удалили")}, status=status.HTTP_404_NOT_FOUND)
     return instance, None
 
 
@@ -261,8 +263,8 @@ def delete_preview(request):
         if reasons:
             payload["blocked"] = True
             payload["consequences"] = [
-                "Удалить нельзя: на запись ссылаются " + "; ".join(reasons),
-                "Сначала уберите эти ссылки — иначе история подачи развалится",
+                _("Удалить нельзя: на запись ссылаются {reasons}").format(reasons="; ".join(reasons)),
+                _("Сначала уберите эти ссылки — иначе история подачи развалится"),
             ]
     return Response(payload)
 
@@ -273,7 +275,7 @@ def delete_preview(request):
 def archive_list(request):
     """Экран архива: что удалено, кем, когда, что можно вернуть."""
     if request.user.role != ROLE_ADMIN:
-        return Response({"detail": "Архив ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Архив ведёт администратор")}, status=status.HTTP_403_FORBIDDEN)
 
     rows = ArchiveEntry.objects.select_related("actor", "restored_by")
     if request.query_params.get("restored") == "false":
@@ -305,11 +307,11 @@ def archive_list(request):
 def archive_restore(request, pk: int):
     """Вернуть удалённое из архива вместе со всеми связями."""
     if request.user.role != ROLE_ADMIN:
-        return Response({"detail": "Восстанавливает администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Восстанавливает администратор")}, status=status.HTTP_403_FORBIDDEN)
 
     entry = ArchiveEntry.objects.filter(pk=pk).first()
     if entry is None:
-        return Response({"detail": "Записи архива нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Записи архива нет")}, status=status.HTTP_404_NOT_FOUND)
     return Response(restore(entry, actor=request.user))
 
 
@@ -326,7 +328,7 @@ def import_batches(request):
     from core.domains import DOMAINS, ROLE_TITLES
 
     if request.user.role == ROLE_STUDENT:
-        return Response({"detail": "История загрузок — для сотрудников"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("История загрузок — для сотрудников")}, status=status.HTTP_403_FORBIDDEN)
 
     rows = ImportBatch.objects.select_related("actor", "reverted_by")
     own = domain_of_role(request.user.role)
@@ -374,7 +376,8 @@ def import_batches(request):
                 "created_at": row.created_at,
                 "reverted_at": row.reverted_at,
                 "changes": row.audit_entries.count(),
-                "note": row.note,
+                # заметка загрузки хранится русским исходником — читающему на его языке
+                "note": _(row.note) if row.note else "",
             }
             for row in rows[:200]
         ]
@@ -393,15 +396,15 @@ def import_history_cleanup(request):
     одинаково — отменённую уже не отменить второй раз.
     """
     if request.user.role != ROLE_ADMIN:
-        return Response({"detail": "Историю загрузок чистит администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Историю загрузок чистит администратор")}, status=status.HTTP_403_FORBIDDEN)
 
     source = request.query_params if request.method == "GET" else request.data
     try:
         days = int(source.get("days", 180))
     except (TypeError, ValueError):
-        return Response({"detail": "Срок указывается числом дней"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Срок указывается числом дней")}, status=status.HTTP_400_BAD_REQUEST)
     if days < 1:
-        return Response({"detail": "Срок должен быть хотя бы один день"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Срок должен быть хотя бы один день")}, status=status.HTTP_400_BAD_REQUEST)
 
     edge = timezone.now() - timezone.timedelta(days=days)
     rows = ImportBatch.objects.filter(created_at__lt=edge)
@@ -411,10 +414,9 @@ def import_history_cleanup(request):
             {
                 "older_than_days": days,
                 "entries": rows.count(),
-                "detail": (
-                    f"Уйдёт записей истории: {rows.count()}. "
-                    f"Сами правки останутся в журнале изменений — история не пострадает"
-                ),
+                "detail": _(
+                    "Уйдёт записей истории: {count}. Сами правки останутся в журнале изменений — история не пострадает"
+                ).format(count=rows.count()),
             }
         )
 
@@ -427,10 +429,10 @@ def import_history_cleanup(request):
         {
             "removed": removed,
             "audit_kept": changed,
-            "detail": (
-                f"Удалено записей истории: {removed}. Правок в журнале осталось: {changed} — "
-                f"они больше не привязаны к загрузке, но читаются как раньше"
-            ),
+            "detail": _(
+                "Удалено записей истории: {removed}. Правок в журнале осталось: {kept} — "
+                "они больше не привязаны к загрузке, но читаются как раньше"
+            ).format(removed=removed, kept=changed),
         }
     )
 
@@ -441,14 +443,14 @@ def import_history_cleanup(request):
 def import_batch_revert(request, pk: int):
     """Отменить загрузку целиком: вернуть прежние значения."""
     if request.user.role == ROLE_STUDENT:
-        return Response({"detail": "Загрузки отменяют сотрудники"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Загрузки отменяют сотрудники")}, status=status.HTTP_403_FORBIDDEN)
 
     batch = ImportBatch.objects.filter(pk=pk).first()
     if batch is None:
-        return Response({"detail": "Такой загрузки нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Такой загрузки нет")}, status=status.HTTP_404_NOT_FOUND)
     if batch.status != ImportBatch.Status.APPLIED:
         return Response(
-            {"detail": "Эту загрузку уже отменяли — второй раз откатывать нечего"},
+            {"detail": _("Эту загрузку уже отменяли — второй раз откатывать нечего")},
             status=status.HTTP_400_BAD_REQUEST,
         )
     # загрузку отменяет директор её домена — это исправление его же данных,
@@ -456,10 +458,10 @@ def import_batch_revert(request, pk: int):
     if request.user.role != ROLE_ADMIN:
         own = domain_of_role(request.user.role)
         if own is None:
-            return Response({"detail": "У вашей роли нет домена"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("У вашей роли нет домена")}, status=status.HTTP_403_FORBIDDEN)
         if batch.domain_code != own.code:
             return Response(
-                {"detail": "Эта загрузка по другому домену — отменить её может его директор или администратор"},
+                {"detail": _("Эта загрузка по другому домену — отменить её может его директор или администратор")},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -486,11 +488,11 @@ def archive_purge(request, pk: int):
     каким оно было на момент удаления.
     """
     if request.user.role != ROLE_ADMIN:
-        return Response({"detail": "Удаляет навсегда только администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Удаляет навсегда только администратор")}, status=status.HTTP_403_FORBIDDEN)
 
     entry = ArchiveEntry.objects.filter(pk=pk).first()
     if entry is None:
-        return Response({"detail": "Записи архива нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Записи архива нет")}, status=status.HTTP_404_NOT_FOUND)
 
     preview = purge_preview(entry)
 
@@ -505,15 +507,15 @@ def archive_purge(request, pk: int):
 
     expected = preview["confirm"]
     typed = str(request.data.get("confirm", "")).strip()
-    matches = (
-        typed.lower() == expected["value"].lower()
-        if expected["kind"] == "email"
-        else typed.upper() == expected["value"]
-    )
+    matches = typed.lower() == expected["value"].lower() if expected["kind"] == "email" else is_confirm_word(typed)
     if not matches:
-        asked = "почту удаляемого" if expected["kind"] == "email" else f"«{CONFIRM_WORD}»"
+        detail = (
+            _("Наберите почту удаляемого, чтобы подтвердить — вернуть это будет нельзя")
+            if expected["kind"] == "email"
+            else _("Наберите «{word}», чтобы подтвердить — вернуть это будет нельзя").format(word=confirm_word())
+        )
         return Response(
-            {"detail": f"Наберите {asked}, чтобы подтвердить — вернуть это будет нельзя"},
+            {"detail": detail},
             status=status.HTTP_400_BAD_REQUEST,
         )
     return Response(purge(entry, actor=request.user))
@@ -540,11 +542,11 @@ def archive_journal(request, pk: int):
     Имя показывается то, каким оно было на момент удаления.
     """
     if request.user.role != ROLE_ADMIN:
-        return Response({"detail": "Архив ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Архив ведёт администратор")}, status=status.HTTP_403_FORBIDDEN)
 
     entry = ArchiveEntry.objects.filter(pk=pk).first()
     if entry is None:
-        return Response({"detail": "Записи архива нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Записи архива нет")}, status=status.HTTP_404_NOT_FOUND)
 
     rows = AuditLog.objects.filter(archive_batch=entry.batch).select_related("actor")[:200]
     return Response(
@@ -564,7 +566,7 @@ def archive_journal(request, pk: int):
                     # автор удалённой учётной записи читается текстовым следом
                     # (фаза 67): «система» здесь была бы неправдой
                     "actor_name": (
-                        (row.actor.full_name or row.actor.email) if row.actor_id else (row.actor_title or "система")
+                        (row.actor.full_name or row.actor.email) if row.actor_id else (row.actor_title or _("система"))
                     ),
                 }
                 for row in rows
@@ -579,23 +581,26 @@ def archive_journal(request, pk: int):
 def archive_cleanup(request):
     """Массовая очистка архива старше N дней. GET — предпросмотр, POST — очистка."""
     if request.user.role != ROLE_ADMIN:
-        return Response({"detail": "Очищает архив только администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Очищает архив только администратор")}, status=status.HTTP_403_FORBIDDEN)
 
     source = request.query_params if request.method == "GET" else request.data
     try:
         days = int(source.get("days", 180))
     except (TypeError, ValueError):
-        return Response({"detail": "Срок указывается числом дней"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Срок указывается числом дней")}, status=status.HTTP_400_BAD_REQUEST)
     if days < 1:
-        return Response({"detail": "Срок должен быть хотя бы один день"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Срок должен быть хотя бы один день")}, status=status.HTTP_400_BAD_REQUEST)
 
     if request.method == "GET":
         return Response(purge_batch_preview(older_than_days=days))
 
-    word = str(request.data.get("confirm", "")).strip().upper()
-    if word != CONFIRM_WORD:
+    if not is_confirm_word(str(request.data.get("confirm", ""))):
         return Response(
-            {"detail": f"Наберите «{CONFIRM_WORD}», чтобы подтвердить — вернуть это будет нельзя"},
+            {
+                "detail": _("Наберите «{word}», чтобы подтвердить — вернуть это будет нельзя").format(
+                    word=confirm_word()
+                )
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
     return Response(purge_batch(older_than_days=days, actor=request.user))
@@ -613,7 +618,7 @@ def mail_status(request):
     from core import mail
 
     if request.user.role != ROLE_ADMIN:
-        return Response({"detail": "Настройку почты ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Настройку почты ведёт администратор")}, status=status.HTTP_403_FORBIDDEN)
     return Response(mail.status())
 
 
@@ -625,10 +630,10 @@ def mail_test(request):
     from core import mail
 
     if request.user.role != ROLE_ADMIN:
-        return Response({"detail": "Настройку почты ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Настройку почты ведёт администратор")}, status=status.HTTP_403_FORBIDDEN)
     to = (request.data.get("email") or request.user.email or "").strip()
     if not to:
-        return Response({"detail": "Некуда отправлять: укажите почту"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Некуда отправлять: укажите почту")}, status=status.HTTP_400_BAD_REQUEST)
     return Response(mail.send_test(to))
 
 
@@ -666,10 +671,10 @@ def job_dismiss(request, pk: int):
 
     job = BackgroundJob.objects.filter(pk=pk, owner=request.user).first()
     if job is None:
-        return Response({"detail": "Такой операции нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Такой операции нет")}, status=status.HTTP_404_NOT_FOUND)
     job.dismissed = True
     job.save(update_fields=["dismissed", "updated_at"])
-    return Response({"detail": "Плашка скрыта, операция продолжается"})
+    return Response({"detail": _("Плашка скрыта, операция продолжается")})
 
 
 @extend_schema(responses={200: dict})
@@ -682,13 +687,13 @@ def job_retry(request, pk: int):
 
     job = BackgroundJob.objects.filter(pk=pk, owner=request.user).first()
     if job is None:
-        return Response({"detail": "Такой операции нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Такой операции нет")}, status=status.HTTP_404_NOT_FOUND)
     if job.status != BackgroundJob.Status.FAILED:
-        return Response({"detail": "Повторять нечего: операция не сорвалась"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Повторять нечего: операция не сорвалась")}, status=status.HTTP_400_BAD_REQUEST)
     again = jobs.retry(job)
     if again is None:
         return Response(
-            {"detail": "Эту операцию нельзя повторить отсюда — запустите её заново на своём экране"},
+            {"detail": _("Эту операцию нельзя повторить отсюда — запустите её заново на своём экране")},
             status=status.HTTP_400_BAD_REQUEST,
         )
     job.dismissed = True
@@ -701,7 +706,7 @@ def job_retry(request, pk: int):
 
 def _rules_forbidden(request):
     if request.user.role != ROLE_ADMIN:
-        return Response({"detail": "Правила школы ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Правила школы ведёт администратор")}, status=status.HTTP_403_FORBIDDEN)
     return None
 
 
@@ -726,7 +731,7 @@ def school_rule(request, code: str):
     if refused:
         return refused
     if rules.rule_of(code) is None:
-        return Response({"detail": "Такого правила нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Такого правила нет")}, status=status.HTTP_404_NOT_FOUND)
     try:
         rules.set_value(code, request.data.get("value"), actor=request.user)
     except rules.RuleRejected as error:
@@ -745,6 +750,6 @@ def school_rule_reset(request, code: str):
     if refused:
         return refused
     if rules.rule_of(code) is None:
-        return Response({"detail": "Такого правила нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Такого правила нет")}, status=status.HTTP_404_NOT_FOUND)
     rules.reset(code, actor=request.user)
     return Response(rules.payload())

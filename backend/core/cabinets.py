@@ -20,10 +20,11 @@ from datetime import timedelta
 
 from django.db.models import Avg, Count, Exists, F, OuterRef, Q, Sum
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from core.dashboards import mock_drops
 from core.parallels import admission_q, parallel_of
-from core.phrasing import counted
+from core.phrasing import counted, tn
 from students.models import (
     AdmissionProfile,
     BehaviorProfile,
@@ -111,12 +112,18 @@ def curator_cabinet(user) -> dict:
     queue = pending_queue("curator", group_ids)
     return {
         "role": "curator",
-        "title": "Кабинет куратора",
-        "owner": (user.full_name or user.email) + " · куратор",
+        "title": _("Кабинет куратора"),
+        "owner": _("{name} · куратор").format(name=user.full_name or user.email),
         "stats": [
-            {"code": "groups", "label": "Групп", "value": len(groups), "note": "назначены на сегодня", "tone": "brand"},
-            {"code": "students", "label": "Учеников", "value": total, "note": "в ваших группах", "tone": "teal"},
-            {"code": "queue", "label": "Ждут решения", "value": queue["total"], "note": "", "tone": "warn"},
+            {
+                "code": "groups",
+                "label": _("Групп"),
+                "value": len(groups),
+                "note": _("назначены на сегодня"),
+                "tone": "brand",
+            },
+            {"code": "students", "label": _("Учеников"), "value": total, "note": _("в ваших группах"), "tone": "teal"},
+            {"code": "queue", "label": _("Ждут решения"), "value": queue["total"], "note": "", "tone": "warn"},
         ],
         "groups": groups,
         "queue": queue,
@@ -146,7 +153,7 @@ def exam_cabinet() -> dict:
     # и отбор не разошлись (то же правило, что у плиток фазы 8)
     ranges = [
         {
-            "title": "IELTS 7.5 и выше",
+            "title": _("IELTS 7.5 и выше"),
             "count": profiles.filter(ielts_current__gte=7.5).count(),
             "filter": {"ielts_min": "7.5"},
         },
@@ -161,7 +168,7 @@ def exam_cabinet() -> dict:
             "filter": {"ielts_min": "5.5", "ielts_max": "6.5"},
         },
         {
-            "title": "IELTS ниже 5.5",
+            "title": _("IELTS ниже 5.5"),
             "count": profiles.filter(ielts_current__lt=5.5).count(),
             "filter": {"ielts_max": "5.5"},
         },
@@ -180,30 +187,30 @@ def exam_cabinet() -> dict:
     queue = pending_queue("director_exam")
     return {
         "role": "director_exam",
-        "title": "Экзамены",
-        "owner": "Кымбат · академический директор",
+        "title": _("Экзамены"),
+        "owner": _("Кымбат · академический директор"),
         "stats": [
             {
                 "code": "ielts",
-                "label": "Средний IELTS",
+                "label": _("Средний IELTS"),
                 "value": round(averages["ielts"], 1) if averages["ielts"] else None,
-                "note": "цель школы 6.5",
+                "note": _("цель школы 6.5"),
                 "tone": "teal",
             },
             {
                 "code": "sat",
-                "label": "Средний SAT",
+                "label": _("Средний SAT"),
                 "value": round(averages["sat"]) if averages["sat"] else None,
-                "note": "цель 1300",
+                "note": _("цель 1300"),
                 "tone": "indigo",
             },
             # «Мок просел» плиткой здесь не стоит: то же число — в заголовке списка
             # просевших ниже, и там по каждому есть действие (фаза 80)
             {
                 "code": "queue",
-                "label": "Ждут решения",
+                "label": _("Ждут решения"),
                 "value": queue["total"],
-                "note": "внесли ученики",
+                "note": _("внесли ученики"),
                 "tone": "warn",
             },
         ],
@@ -297,10 +304,10 @@ def admission_cabinet() -> dict:
     stale = today - timedelta(days=30)
     return {
         "role": "director_admission",
-        "title": "Поступление",
-        "owner": "Асем · директор по поступлению",
+        "title": _("Поступление"),
+        "owner": _("Асем · директор по поступлению"),
         "urgent": {
-            "eyebrow": "Дедлайны на этой неделе",
+            "eyebrow": _("Дедлайны на этой неделе"),
             "applying": applying,
             "not_ready": not_ready.count(),
             "first": (
@@ -331,26 +338,26 @@ def admission_cabinet() -> dict:
                 "code": "match",
                 # процент пишется процентом: это соответствие требованиям,
                 # а не шанс поступления (инвариант №11)
-                "label": "Среднее соответствие",
+                "label": _("Среднее соответствие"),
                 "value": f"{match}%" if match is not None else None,
-                "note": "по спискам",
+                "note": _("по спискам"),
                 "tone": "brand",
             },
             {
                 "code": "no_universities",
-                "label": "Без вузов",
+                "label": _("Без вузов"),
                 "value": without_universities,
-                "note": f"из {total}",
+                "note": _("из {total}").format(total=total),
                 "tone": "risk",
             },
-            {"code": "no_plan", "label": "Без плана", "value": without_plan, "note": "", "tone": "indigo"},
-            {"code": "queue", "label": "Ждут решения", "value": queue["total"], "note": "", "tone": "warn"},
+            {"code": "no_plan", "label": _("Без плана"), "value": without_plan, "note": "", "tone": "indigo"},
+            {"code": "queue", "label": _("Ждут решения"), "value": queue["total"], "note": "", "tone": "warn"},
         ],
         "queue": queue,
         "balance": [
-            {"title": "Только reach, нет safety", "count": only_reach, "tone": "risk", "chip": "Риск"},
-            {"title": "Один вуз в списке", "count": single, "tone": "warn", "chip": "Мало"},
-            {"title": "Список сбалансирован", "count": balanced, "tone": "ok", "chip": "Хорошо"},
+            {"title": _("Только reach, нет safety"), "count": only_reach, "tone": "risk", "chip": _("Риск")},
+            {"title": _("Один вуз в списке"), "count": single, "tone": "warn", "chip": _("Мало")},
+            {"title": _("Список сбалансирован"), "count": balanced, "tone": "ok", "chip": _("Хорошо")},
         ],
         "directory": {
             "unverified_requirements": Program.objects.filter(requirement__is_verified=False).distinct().count(),
@@ -431,7 +438,7 @@ def call_list(limit: int = 8) -> list[dict]:
                 student__is_active=True, attendance_percent__isnull=False, attendance_percent__lt=threshold
             ).select_related("student", "student__group")
             for profile in found[:limit]:
-                add(profile.student, rule, f"посещаемость {profile.attendance_percent}%")
+                add(profile.student, rule, _("посещаемость {percent}%").format(percent=profile.attendance_percent))
         elif rule.condition == CallCondition.MOCK_DROP:
             for drop in mock_drops(limit=limit):
                 if abs(drop["delta"]) < threshold:
@@ -448,7 +455,15 @@ def call_list(limit: int = 8) -> list[dict]:
             )
             for student in found[:limit]:
                 days = (timezone.now() - student.user.last_login).days if student.user.last_login else None
-                add(student, rule, f"{days} дн. без входа" if days is not None else "не входил ни разу")
+                add(
+                    student,
+                    rule,
+                    (
+                        tn(days, "{n} день без входа|{n} дня без входа|{n} дней без входа")
+                        if days is not None
+                        else _("не входил ни разу")
+                    ),
+                )
         elif rule.condition == CallCondition.MISSED_DEADLINE:
             missed = (
                 StudentUniversity.objects.filter(
@@ -459,7 +474,7 @@ def call_list(limit: int = 8) -> list[dict]:
                 .select_related("student", "student__group", "admission_round")
             )
             for row in missed[:limit]:
-                add(row.student, rule, f"дедлайн {row.admission_round.deadline:%d.%m}")
+                add(row.student, rule, _("дедлайн {date}").format(date=f"{row.admission_round.deadline:%d.%m}"))
         elif rule.condition == CallCondition.NO_CONTACT:
             has_contact = ParentContact.objects.filter(student=OuterRef("pk"))
             found = _active().select_related("group").annotate(has_c=Exists(has_contact)).filter(has_c=False)
@@ -504,25 +519,25 @@ def behavior_cabinet() -> dict:
     queue = pending_queue("director_behavior")
     return {
         "role": "director_behavior",
-        "title": "Школа",
-        "owner": "Салтанат · директор школы",
+        "title": _("Школа"),
+        "owner": _("Салтанат · директор школы"),
         "calls": calls,
         "stats": [
             {
                 "code": "supervision",
-                "label": "Нужен контроль",
+                "label": _("Нужен контроль"),
                 "value": supervision,
-                "note": f"из {total}",
+                "note": _("из {total}").format(total=total),
                 "tone": "risk",
             },
             {
                 "code": "no_contacts",
-                "label": "Без контактов родителей",
+                "label": _("Без контактов родителей"),
                 "value": without_contacts,
                 "note": "",
                 "tone": "warn",
             },
-            {"code": "silent", "label": "Не заходили месяц", "value": silent, "note": "", "tone": "indigo"},
+            {"code": "silent", "label": _("Не заходили месяц"), "value": silent, "note": "", "tone": "indigo"},
         ],
         "groups": groups,
         "queue": queue,
@@ -585,29 +600,29 @@ def talent_cabinet() -> dict:
     queue = pending_queue("director_talent")
     return {
         "role": "director_talent",
-        "title": "Таланты",
-        "owner": "Арман · директор талантов",
+        "title": _("Таланты"),
+        "owner": _("Арман · директор талантов"),
         "stats": [
-            {"code": "group", "label": "В олимпиадной группе", "value": group_size, "note": "", "tone": "brand"},
+            {"code": "group", "label": _("В олимпиадной группе"), "value": group_size, "note": "", "tone": "brand"},
             {
                 "code": "review",
-                "label": "Материалов на проверке",
+                "label": _("Материалов на проверке"),
                 "value": len(pending),
-                "note": "ваша основная работа",
+                "note": _("ваша основная работа"),
                 "tone": "warn",
             },
             {
                 "code": "library",
-                "label": "В библиотеке",
+                "label": _("В библиотеке"),
                 "value": StudyMaterial.objects.filter(status=MaterialStatus.APPROVED).count(),
-                "note": "материалов",
+                "note": _("материалов"),
                 "tone": "teal",
             },
             {
                 "code": "empty",
-                "label": "Портфолио пустое",
+                "label": _("Портфолио пустое"),
                 "value": empty_portfolio,
-                "note": f"из {_active().count()}",
+                "note": _("из {total}").format(total=_active().count()),
                 "tone": "risk",
             },
         ],
@@ -651,8 +666,8 @@ def sport_cabinet() -> dict:
     queue = pending_queue("director_sport")
     return {
         "role": "director_sport",
-        "title": "Спорт",
-        "owner": "Нурлыбек · директор спорта",
+        "title": _("Спорт"),
+        "owner": _("Нурлыбек · директор спорта"),
         "starts": [
             {
                 "title": row["name"],
@@ -666,23 +681,23 @@ def sport_cabinet() -> dict:
         "stats": [
             {
                 "code": "athletes",
-                "label": "Занимаются спортом",
+                "label": _("Занимаются спортом"),
                 "value": profiles.count(),
-                "note": f"из {_active().count()}",
+                "note": _("из {total}").format(total=_active().count()),
                 "tone": "ok",
             },
             {
                 "code": "queue",
-                "label": "Ждут подтверждения",
+                "label": _("Ждут подтверждения"),
                 "value": queue["total"],
-                "note": "выступлений",
+                "note": _("выступлений"),
                 "tone": "warn",
             },
             {
                 "code": "no_certificate",
-                "label": "Без сертификата",
+                "label": _("Без сертификата"),
                 "value": no_certificate,
-                "note": "выступлений",
+                "note": _("выступлений"),
                 "tone": "risk",
             },
         ],
@@ -715,13 +730,13 @@ def admin_cabinet() -> dict:
     for student in students[:40]:
         user = student.user
         if user is None:
-            status = {"code": "no_account", "title": "Нет записи"}
+            status = {"code": "no_account", "title": _("Нет записи")}
         elif user.last_login is None:
-            status = {"code": "never", "title": "Не входил"}
+            status = {"code": "never", "title": _("Не входил")}
         elif user.must_change_password:
-            status = {"code": "temporary", "title": "Пароль истёк"}
+            status = {"code": "temporary", "title": _("Пароль истёк")}
         else:
-            status = {"code": "ok", "title": "Вошёл"}
+            status = {"code": "ok", "title": _("Вошёл")}
         rows.append(
             {
                 "id": student.pk,
@@ -747,9 +762,9 @@ def admin_cabinet() -> dict:
         actions.append(
             {
                 "code": "invite",
-                "title": "Приглашение не отправлено",
-                "note": counted(len(without_account), ("ученик", "ученика", "учеников")),
-                "action": "Выслать",
+                "title": _("Приглашение не отправлено"),
+                "note": counted(len(without_account), "ученик|ученика|учеников"),
+                "action": _("Выслать"),
                 "count": len(without_account),
                 "emails": without_account,
             }
@@ -758,9 +773,9 @@ def admin_cabinet() -> dict:
         actions.append(
             {
                 "code": "password",
-                "title": "Временный пароль истёк",
-                "note": counted(len(expired), ("ученик", "ученика", "учеников")),
-                "action": "Выпустить",
+                "title": _("Временный пароль истёк"),
+                "note": counted(len(expired), "ученик|ученика|учеников"),
+                "action": _("Выпустить"),
                 "count": len(expired),
                 "users": expired,
             }
@@ -769,9 +784,9 @@ def admin_cabinet() -> dict:
         actions.append(
             {
                 "code": "lock",
-                "title": "Блокировка входа",
+                "title": _("Блокировка входа"),
                 "note": lock["value"],
-                "action": "Снять",
+                "action": _("Снять"),
                 "count": 1,
                 "scope": lock["scope"],
                 "value": lock["value"],
@@ -785,25 +800,25 @@ def admin_cabinet() -> dict:
     )
     return {
         "role": "admin",
-        "title": "Администрирование",
-        "owner": "Администратор · реестр школы",
+        "title": _("Администрирование"),
+        "owner": _("Администратор · реестр школы"),
         "stats": [
             {
                 "code": "students",
-                "label": "Учеников",
+                "label": _("Учеников"),
                 "value": total,
-                "note": f"{StudyGroup.objects.filter(is_active=True).count()} групп",
+                "note": tn(StudyGroup.objects.filter(is_active=True).count(), "{n} группа|{n} группы|{n} групп"),
                 "tone": "brand",
             },
-            {"code": "never", "label": "Не входили ни разу", "value": never, "note": "", "tone": "warn"},
+            {"code": "never", "label": _("Не входили ни разу"), "value": never, "note": "", "tone": "warn"},
             {
                 "code": "spend",
-                "label": "Расходы ИИ за месяц",
+                "label": _("Расходы ИИ за месяц"),
                 "value": f"${spent:.2f}",
-                "note": f"вызовов: {calls_count}",
+                "note": _("вызовов: {count}").format(count=calls_count),
                 "tone": "teal",
             },
-            {"code": "locks", "label": "Блокировок входа", "value": len(locks), "note": "", "tone": "risk"},
+            {"code": "locks", "label": _("Блокировок входа"), "value": len(locks), "note": "", "tone": "risk"},
         ],
         "registry": rows,
         "actions": actions,

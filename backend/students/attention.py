@@ -22,6 +22,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.db.models import Q, QuerySet
 from django.utils import timezone
+from django.utils.translation import gettext_lazy
 
 from students.models import ExamAttempt, ExamGoal, Student
 
@@ -43,32 +44,32 @@ class Bucket:
 BUCKETS: tuple[Bucket, ...] = (
     Bucket(
         "nogoal",
-        "Без цели по экзаменам",
-        "Не поставлена ни цель IELTS, ни цель SAT — учиться не к чему",
+        gettext_lazy("Без цели по экзаменам"),
+        gettext_lazy("Не поставлена ни цель IELTS, ни цель SAT — учиться не к чему"),
         "warn",
     ),
     Bucket(
         "nomock",
-        "Пробника не было больше месяца",
-        "Последний пробник старше 30 дней или его не было вовсе",
+        gettext_lazy("Mock Test не было больше месяца"),
+        gettext_lazy("Последний Mock Test старше 30 дней или его не было вовсе"),
         "warn",
     ),
     Bucket(
         "far",
-        "Балл далеко от цели, экзамен ближе 60 дней",
-        "До цели больше балла по IELTS или больше 100 по SAT, а сдавать скоро",
+        gettext_lazy("Балл далеко от цели, экзамен ближе 60 дней"),
+        gettext_lazy("До цели больше балла по IELTS или больше 100 по SAT, а сдавать скоро"),
         "risk",
     ),
     Bucket(
         "docs",
-        "Документы не собраны",
-        "Не хватает документов чек-листа или последний отклонён",
+        gettext_lazy("Документы не собраны"),
+        gettext_lazy("Не хватает документов чек-листа или последний отклонён"),
         "warn",
     ),
     Bucket(
         "rejected",
-        "Отклонено и не перевнесено",
-        "Вы отклонили значение, а ученик так и не внёс новое",
+        gettext_lazy("Отклонено и не перевнесено"),
+        gettext_lazy("Вы отклонили значение, а ученик так и не внёс новое"),
         "risk",
     ),
 )
@@ -247,8 +248,8 @@ def counts(students: QuerySet[Student]) -> list[dict]:
     return [
         {
             "code": bucket.code,
-            "title": bucket.title,
-            "hint": bucket.hint,
+            "title": str(bucket.title),
+            "hint": str(bucket.hint),
             "tone": bucket.tone,
             "count": sum(1 for row in state.values() if bucket.code in row["buckets"]),
         }

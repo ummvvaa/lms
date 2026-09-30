@@ -16,10 +16,13 @@
 
 from __future__ import annotations
 
-from django.utils import timezone
+from django.utils import timezone, translation
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_noop
 
 from core.audit import record_event
 from core.domains import DOMAINS, ROLE_CURATOR, ROLE_TITLES
+from core.i18n import language_of
 from core.models import Notification
 from suggestions.models import Suggestion, SuggestionSource, SuggestionStatus
 
@@ -66,15 +69,23 @@ def _row_title(suggestion: Suggestion) -> str:
         from students.documents import document_of
 
         document = document_of(suggestion)
-        return document.get_doc_type_display() if document else "документ"
+        return str(document.get_doc_type_display()) if document else _("документ")
     change = suggestion.changes.first()
-    return field_title(change.model_label, change.field_name) if change else "строка"
+    return str(field_title(change.model_label, change.field_name)) if change else _("строка")
 
 
 def _notify(recipient, *, kind: str, template: str, link: str, **params) -> None:
+    """Уведомление на языке получателя: подстановки считаются на его языке.
+
+    `params` может быть функцией без аргументов — тогда подписи («кто»,
+    «что за строка») собираются уже под языком получателя, а не того,
+    кто сделал запрос.
+    """
     from materials.services import notify
 
-    notify(recipient, kind=kind, template=template, link=link, **params)
+    with translation.override(language_of(recipient)):
+        values = {key: value() if callable(value) else value for key, value in params.items()}
+        notify(recipient, kind=kind, template=template, link=link, **values)
 
 
 def after_decision(suggestion: Suggestion, *, actor) -> None:
@@ -89,12 +100,15 @@ def after_decision(suggestion: Suggestion, *, actor) -> None:
     student = _student_of(suggestion)
     if student is None:
         return
-    verb = (
-        "подтвердил"
-        if suggestion.status in (SuggestionStatus.APPLIED, SuggestionStatus.PARTIALLY_APPLIED)
-        else "отклонил"
-    )
-    who = ROLE_TITLES.get(getattr(actor, "role", ""), "")
+    applied = suggestion.status in (SuggestionStatus.APPLIED, SuggestionStatus.PARTIALLY_APPLIED)
+    role = getattr(actor, "role", "")
+
+    def who() -> str:
+        return str(ROLE_TITLES.get(role, ""))
+
+    def what() -> str:
+        return _row_title(suggestion)
+
     link = f"/students/{student.pk}"
 
     # переданную строку решил владелец — отвечаем тому, кто передал
@@ -102,11 +116,14 @@ def after_decision(suggestion: Suggestion, *, actor) -> None:
         _notify(
             suggestion.escalated_by,
             kind=Notification.Kind.ESCALATION_ANSWERED,
-            template="{who} {verb}: {what} · {student} — ответ на переданное",
+            template=(
+                gettext_noop("{who} подтвердил: {what} · {student} — ответ на переданное")
+                if applied
+                else gettext_noop("{who} отклонил: {what} · {student} — ответ на переданное")
+            ),
             link=link,
             who=who,
-            verb=verb,
-            what=_row_title(suggestion),
+            what=what,
             student=student.full_name,
         )
         return
@@ -118,11 +135,14 @@ def after_decision(suggestion: Suggestion, *, actor) -> None:
             _notify(
                 curator,
                 kind=Notification.Kind.QUEUE_DECIDED,
-                template="{who} {verb}: {what} · {student} — из вашей очереди",
+                template=(
+                    gettext_noop("{who} подтвердил: {what} · {student} — из вашей очереди")
+                    if applied
+                    else gettext_noop("{who} отклонил: {what} · {student} — из вашей очереди")
+                ),
                 link=link,
                 who=who,
-                verb=verb,
-                what=_row_title(suggestion),
+                what=what,
                 student=student.full_name,
             )
 
@@ -131,11 +151,11 @@ def escalate(suggestion: Suggestion, *, actor, comment: str) -> Suggestion:
     """Передать строку владельцу её домена с комментарием."""
     comment = comment.strip()
     if not comment:
-        raise EscalationRefused("Напишите, что смущает: владелец домена должен понять, зачем ему строка")
+        raise EscalationRefused(_("Напишите, что смущает: владелец домена должен понять, зачем ему строка"))
     if suggestion.status != SuggestionStatus.PENDING:
-        raise EscalationRefused("Строка уже решена — передавать нечего")
+        raise EscalationRefused(_("Строка уже решена — передавать нечего"))
     if suggestion.escalated_by_id:
-        raise EscalationRefused("Строка уже передана")
+        raise EscalationRefused(_("Строка уже передана"))
 
     suggestion.escalated_by = actor
     suggestion.escalated_at = timezone.now()
@@ -148,10 +168,10 @@ def escalate(suggestion: Suggestion, *, actor, comment: str) -> Suggestion:
         _notify(
             recipient,
             kind=Notification.Kind.ESCALATION_REQUEST,
-            template="Куратор {curator} передал: {what} · {student}. «{comment}»",
+            template=gettext_noop("Куратор {curator} передал: {what} · {student}. «{comment}»"),
             link="/suggestions",
             curator=actor.full_name or actor.email,
-            what=_row_title(suggestion),
+            what=lambda: _row_title(suggestion),
             student=student.full_name if student else "",
             comment=comment[:120],
         )
@@ -165,9 +185,9 @@ def escalate(suggestion: Suggestion, *, actor, comment: str) -> Suggestion:
 def unescalate(suggestion: Suggestion, *, actor) -> Suggestion:
     """Вернуть строку себе — пока владелец не решил."""
     if suggestion.status != SuggestionStatus.PENDING:
-        raise EscalationRefused("Владелец домена уже решил эту строку")
+        raise EscalationRefused(_("Владелец домена уже решил эту строку"))
     if suggestion.escalated_by_id != getattr(actor, "pk", None):
-        raise EscalationRefused("Вернуть можно только то, что передавали вы")
+        raise EscalationRefused(_("Вернуть можно только то, что передавали вы"))
     suggestion.escalated_by = None
     suggestion.escalated_at = None
     suggestion.escalation_comment = ""
@@ -182,15 +202,15 @@ def escalate_student(student, *, actor, domain_code: str, comment: str) -> int:
     """Передать вопрос по ученику без строки очереди: уведомление владельцу и журнал."""
     comment = comment.strip()
     if not comment:
-        raise EscalationRefused("Напишите, что нужно от владельца домена")
+        raise EscalationRefused(_("Напишите, что нужно от владельца домена"))
     if domain_code not in DOMAINS:
-        raise EscalationRefused("Такого домена нет")
+        raise EscalationRefused(_("Такого домена нет"))
     sent = 0
     for recipient in owners_of(domain_code):
         _notify(
             recipient,
             kind=Notification.Kind.ESCALATION_REQUEST,
-            template="Куратор {curator} передал вопрос по {student}: «{comment}»",
+            template=gettext_noop("Куратор {curator} передал вопрос по {student}: «{comment}»"),
             link=f"/students/{student.pk}",
             curator=actor.full_name or actor.email,
             student=student.full_name,
@@ -220,8 +240,8 @@ def document_reuploaded(document) -> None:
     _notify(
         curator,
         kind=Notification.Kind.DOCUMENT_REUPLOADED,
-        template="{student} перезагрузил документ «{doc}» после отклонения",
+        template=gettext_noop("{student} перезагрузил документ «{doc}» после отклонения"),
         link="/queue",
         student=document.student.full_name,
-        doc=document.get_doc_type_display(),
+        doc=lambda: str(document.get_doc_type_display()),
     )

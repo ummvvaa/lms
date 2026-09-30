@@ -19,8 +19,9 @@ from decimal import Decimal
 from django.conf import settings
 from django.db.models import Q, QuerySet
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
-from core.phrasing import counted
+from core.phrasing import tn
 from students.models import Student
 from universities.models import SavedScholarship, Scholarship
 
@@ -52,9 +53,9 @@ def amount_title(row: Scholarship) -> str:
             return money(row.amount_min)
         return f"{money(row.amount_min)} – {money(row.amount_max)}"
     if row.amount_max is not None:
-        return f"до {money(row.amount_max)}"
+        return _("до {amount}").format(amount=money(row.amount_max))
     if row.amount_min is not None:
-        return f"от {money(row.amount_min)}"
+        return _("от {amount}").format(amount=money(row.amount_min))
     return ""
 
 
@@ -65,16 +66,16 @@ def deadline_state(deadline: dt.date | None, today: dt.date | None = None) -> st
     и «осталось 2 дня» — разные слова, и собирать их во фронте нельзя.
     """
     if deadline is None:
-        return "срок не указан"
+        return _("срок не указан")
     today = today or timezone.localdate()
     left = (deadline - today).days
     if left < 0:
-        return "срок прошёл"
+        return _("срок прошёл")
     if left == 0:
-        return "дедлайн сегодня"
+        return _("дедлайн сегодня")
     if left == 1:
-        return "остался 1 день"
-    return f"через {counted(left, ('день', 'дня', 'дней'))}"
+        return _("остался 1 день")
+    return tn(left, "через {n} день|через {n} дня|через {n} дней")
 
 
 # --- Каталог ----------------------------------------------------------------
@@ -169,12 +170,12 @@ def facets(qs: QuerySet[Scholarship]) -> dict:
     countries = sorted({row for row in qs.values_list("country", flat=True) if row})
     return {
         "countries": countries,
-        "levels": [{"value": value, "title": title} for value, title in ProgramLevel.choices],
-        "funding_types": [{"value": value, "title": title} for value, title in FundingType.choices],
+        "levels": [{"value": value, "title": str(title)} for value, title in ProgramLevel.choices],
+        "funding_types": [{"value": value, "title": str(title)} for value, title in FundingType.choices],
         "bases": [
-            {"value": "international", "title": "Для иностранцев"},
-            {"value": "merit", "title": "За заслуги"},
-            {"value": "need", "title": "По нужде"},
+            {"value": "international", "title": _("Для иностранцев")},
+            {"value": "merit", "title": _("За заслуги")},
+            {"value": "need", "title": _("По нужде")},
         ],
     }
 
@@ -188,17 +189,18 @@ def saved_ids(student: Student | None) -> set[int]:
 # --- Подбор под профиль -----------------------------------------------------
 
 
-SYSTEM = """Ты объясняешь ученику школы, чем ему полезны стипендии из справочника.
+SYSTEM = (  # i18n-skip: промпт модели ИИ, язык ответа настраивается отдельно
+    "Ты объясняешь ученику школы, чем ему полезны стипендии из справочника.\n"
+    "\n"
+    "Правила, нарушать нельзя:\n"
+    "- пиши только про стипендии из переданного списка и ссылайся на них по полю id;\n"
+    "- ничего не добавляй от себя: стипендии, которой нет в списке, не существует;\n"
+    "- не обещай, что ученик её получит, и не употребляй слова «шанс», «вероятность», «прогноз»;\n"
+    "- по каждой скажи: почему подходит и чего не хватает по требованиям;\n"
+    "- пиши по-русски, коротко, без общих слов.\n"
+)
 
-Правила, нарушать нельзя:
-- пиши только про стипендии из переданного списка и ссылайся на них по полю id;
-- ничего не добавляй от себя: стипендии, которой нет в списке, не существует;
-- не обещай, что ученик её получит, и не употребляй слова «шанс», «вероятность», «прогноз»;
-- по каждой скажи: почему подходит и чего не хватает по требованиям;
-- пиши по-русски, коротко, без общих слов.
-"""
-
-RESULT_SCHEMA = {
+RESULT_SCHEMA = {  # i18n-skip: схема ответа для модели ИИ, людям не показывается
     "type": "object",
     "properties": {
         "picks": {
@@ -259,23 +261,23 @@ def _rule_pick(student: Student) -> tuple[list[Match], dict]:
         score = 0
         if facts["country"] and row.country:
             if row.country.lower() == facts["country"].lower():
-                reasons.append(f"страна совпадает с вашей целью — {row.country}")
+                reasons.append(_("страна совпадает с вашей целью — {country}").format(country=row.country))
                 score += 3
             else:
                 continue
         elif not row.country:
-            reasons.append("страна не ограничена")
+            reasons.append(_("страна не ограничена"))
             score += 1
         if facts["level"] and row.level:
             if row.level == facts["level"]:
-                reasons.append("подходит вашему уровню обучения")
+                reasons.append(_("подходит вашему уровню обучения"))
                 score += 2
             else:
                 continue
         elif not row.level:
             score += 1
         if row.for_international:
-            reasons.append("рассчитана на иностранных студентов")
+            reasons.append(_("рассчитана на иностранных студентов"))
             score += 2
         if row.deadline:
             score += 1
@@ -297,8 +299,8 @@ def _rule_pick(student: Student) -> tuple[list[Match], dict]:
 def _rule_missing(row: Scholarship) -> str:
     """Чего не хватает — по тексту требований, без выдумок про пороги."""
     if not row.requirements.strip():
-        return "требования в справочнике не заполнены — проверьте на странице стипендии"
-    return f"проверьте требования: {row.requirements.strip()[:180]}"
+        return _("требования в справочнике не заполнены — проверьте на странице стипендии")
+    return _("проверьте требования: {requirements}").format(requirements=row.requirements.strip()[:180])
 
 
 def pick_for(student: Student, *, actor=None, role: str = "") -> dict:
@@ -315,7 +317,7 @@ def pick_for(student: Student, *, actor=None, role: str = "") -> dict:
     if total == 0:
         return {
             "picks": [],
-            "note": "Справочник стипендий пока пуст — подбирать не из чего. " "Наполняет его директор по поступлению.",
+            "note": _("Справочник стипендий пока пуст — подбирать не из чего. Наполняет его директор по поступлению."),
             "offline": True,
             "offline_reason": "",
             "considered": 0,
@@ -323,8 +325,10 @@ def pick_for(student: Student, *, actor=None, role: str = "") -> dict:
     if not picks:
         return {
             "picks": [],
-            "note": "Под ваш профиль в справочнике ничего не нашлось: проверьте целевую страну "
-            "и уровень обучения в портфолио — по ним и идёт отбор.",
+            "note": _(
+                "Под ваш профиль в справочнике ничего не нашлось: проверьте целевую страну "
+                "и уровень обучения в портфолио — по ним и идёт отбор."
+            ),
             "offline": True,
             "offline_reason": "",
             "considered": total,
@@ -376,7 +380,8 @@ def pick_for(student: Student, *, actor=None, role: str = "") -> dict:
     }
 
 
-def _prompt(picks: list[Match], facts: dict) -> str:
+def _prompt(picks: list[Match], facts: dict) -> str:  # i18n-skip: промпт модели ИИ
+    """Запрос к модели ИИ: язык промпта не переводится, язык ответа настраивается отдельно."""
     lines = ["Профиль ученика:"]
     lines.append(f"- целевая страна: {facts['country'] or 'не указана'}")
     lines.append(f"- уровень обучения: {facts['level'] or 'не указан'}")

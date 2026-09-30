@@ -15,6 +15,7 @@ from typing import Any
 
 from django.apps import apps
 from django.db import transaction
+from django.utils.translation import gettext as _
 
 from core.audit import ValueRejected, apply_changes, coerce, to_text
 from core.domains import Source, can_write
@@ -76,17 +77,19 @@ def apply_batch(*, changes: list[dict[str, Any]], role: str, actor=None) -> Batc
         student_id = row.get("student")
 
         if model_label not in ALLOWED_MODELS:
-            result.rejected.append({**row, "reason": "Эта модель не правится через таблицу"})
+            result.rejected.append({**row, "reason": _("Эта модель не правится через таблицу")})
             continue
         if not can_write(role, model_label, field_name):
             # чужой домен — отбрасываем на сервере, не в интерфейсе
             title = field_title(model_label, field_name)
-            result.rejected.append({**row, "field_title": title, "reason": f"«{title}» ведёт другой директор"})
+            result.rejected.append(
+                {**row, "field_title": title, "reason": _("«{field}» ведёт другой директор").format(field=title)}
+            )
             continue
         try:
             student_id = int(student_id)
         except (TypeError, ValueError):
-            result.rejected.append({**row, "reason": "Не указан ученик"})
+            result.rejected.append({**row, "reason": _("Не указан ученик")})
             continue
 
         key = (model_label, student_id)
@@ -98,7 +101,7 @@ def apply_batch(*, changes: list[dict[str, Any]], role: str, actor=None) -> Batc
         instance = _profile_for(model_label, student_id)
         if instance is None:
             result.rejected.append(
-                {"student": student_id, "model": model_label, "reason": "Нет профиля у этого ученика"}
+                {"student": student_id, "model": model_label, "reason": _("Нет профиля у этого ученика")}
             )
             continue
 

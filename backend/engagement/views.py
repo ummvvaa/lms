@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes
@@ -36,7 +38,7 @@ def onboarding_state(request):
     """Где ученик в квизе: что отвечено, какой вопрос следующий."""
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Квиз проходит ученик"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Квиз проходит ученик")}, status=status.HTTP_403_FORBIDDEN)
     return Response(onboarding.state(student))
 
 
@@ -47,7 +49,7 @@ def onboarding_answer(request):
     """Ответить на один шаг. Прогресс сохраняется сразу, а не в конце."""
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Квиз проходит ученик"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Квиз проходит ученик")}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = OnboardingAnswerSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -70,7 +72,7 @@ def onboarding_skip(request):
     """Отложить квиз. Вернуться можно в любой момент."""
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Квиз проходит ученик"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Квиз проходит ученик")}, status=status.HTTP_403_FORBIDDEN)
     return Response(onboarding.skip(student))
 
 
@@ -80,7 +82,7 @@ def onboarding_skip(request):
 def onboarding_pending(request):
     """Что ученики написали о себе и ждёт подтверждения директора."""
     if request.user.role == ROLE_STUDENT:
-        return Response({"detail": "Список подтверждений ведёт директор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Список подтверждений ведёт директор")}, status=status.HTTP_403_FORBIDDEN)
     return Response(onboarding.pending_for(request.user.role))
 
 
@@ -90,7 +92,7 @@ def onboarding_pending(request):
 def onboarding_review(request, pk: int):
     """Подтвердить слова ученика, поправить их или снять."""
     if request.user.role == ROLE_STUDENT:
-        return Response({"detail": "Решение принимает директор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Решение принимает директор")}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = OnboardingReviewSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -117,7 +119,7 @@ def journey_state(request):
 
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Это экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Это экран ученика")}, status=status.HTTP_403_FORBIDDEN)
     return Response(journey.build(student))
 
 
@@ -128,7 +130,7 @@ def game_state(request):
     """XP, уровень, стрик и задания на сегодня."""
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Это экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Это экран ученика")}, status=status.HTTP_403_FORBIDDEN)
 
     payload = scoring.summary(student)
     payload["today"] = today.for_student(student)
@@ -167,8 +169,10 @@ class CareerQuestionViewSet(viewsets.ModelViewSet):
         if instance.answers.exists():
             return Response(
                 {
-                    "detail": f"На вопрос уже отвечали: {instance.answers.count()}. "
-                    "Снимите галочку «Показывать в анкете» — ответы должны остаться читаемыми"
+                    "detail": _(
+                        "На вопрос уже отвечали: {count}. "
+                        "Снимите галочку «Показывать в анкете» — ответы должны остаться читаемыми"
+                    ).format(count=instance.answers.count())
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -184,7 +188,7 @@ def career_state(request):
 
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Профтест проходит ученик"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Профтест проходит ученик")}, status=status.HTTP_403_FORBIDDEN)
 
     state = career.availability()
     runs = CareerRun.objects.filter(student=student).prefetch_related("directions__programs", "answers__question")
@@ -211,7 +215,7 @@ def career_run(request):
 
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Профтест проходит ученик"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Профтест проходит ученик")}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = CareerRunRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -232,13 +236,13 @@ def career_agree(request, pk: int):
 
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Профтест проходит ученик"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Профтест проходит ученик")}, status=status.HTTP_403_FORBIDDEN)
 
     direction = CareerDirection.objects.filter(pk=pk, run__student=student).first()
     if direction is None:
-        return Response({"detail": "Такого направления нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Такого направления нет")}, status=status.HTTP_404_NOT_FOUND)
     if direction.agreed_at is not None:
-        return Response({"detail": "Это направление уже отправлено директору", "ok": False})
+        return Response({"detail": _("Это направление уже отправлено директору"), "ok": False})
 
     outcome = career.agree(direction, user=request.user, student=student)
     return Response(outcome, status=status.HTTP_200_OK if outcome["ok"] else status.HTTP_400_BAD_REQUEST)
@@ -284,7 +288,7 @@ def badges_state(request):
 
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Достижения — кабинет ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Достижения — кабинет ученика")}, status=status.HTTP_403_FORBIDDEN)
     return Response(badges.state_for(student))
 
 
@@ -319,7 +323,7 @@ class HomeCuePermission(DomainFieldPermission):
     и чтением тоже: это настройка школы, а не домен Салтанат.
     """
 
-    message = "Сюжеты главной ведёт администратор"
+    message = gettext_lazy("Сюжеты главной ведёт администратор")
 
     def has_permission(self, request, view) -> bool:
         user = request.user
@@ -399,5 +403,5 @@ def home_cues(request):
 
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Карусель — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Карусель — экран ученика")}, status=status.HTTP_403_FORBIDDEN)
     return Response({"cues": cues.build(student)})

@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 from django.db import models
+from django.utils.translation import gettext as _
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -51,7 +52,7 @@ class DirectoryViewSet(viewsets.ModelViewSet):
     @property
     def owner_message(self) -> str:
         model = self.queryset.model
-        return f"Справочник «{model._meta.verbose_name_plural}» ведёт другой директор"
+        return _("Справочник «{directory}» ведёт другой директор").format(directory=model._meta.verbose_name_plural)
 
     def perform_create(self, serializer):
         self._deny_if_not_owner()
@@ -78,7 +79,7 @@ class DirectoryViewSet(viewsets.ModelViewSet):
 
         name = instance.name
         instance.delete()
-        return Response({"detail": f"Удалено: {name}"})
+        return Response({"detail": _("Удалено: {name}").format(name=name)})
 
     @extend_schema(responses={200: dict})
     @action(detail=True, methods=["get"], url_path="usage")
@@ -96,8 +97,9 @@ class DirectoryViewSet(viewsets.ModelViewSet):
         instance.save(update_fields=["is_active"])
         return Response(
             {
-                "detail": f"«{instance.name}» больше не появится в списке выбора. "
-                f"В уже заведённых записях она осталась",
+                "detail": _(
+                    "«{name}» больше не появится в списке выбора. В уже заведённых записях она осталась"
+                ).format(name=instance.name),
                 "id": instance.pk,
                 "is_active": False,
             }
@@ -111,7 +113,13 @@ class DirectoryViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.is_active = True
         instance.save(update_fields=["is_active"])
-        return Response({"detail": f"«{instance.name}» снова в списке выбора", "id": instance.pk, "is_active": True})
+        return Response(
+            {
+                "detail": _("«{name}» снова в списке выбора").format(name=instance.name),
+                "id": instance.pk,
+                "is_active": True,
+            }
+        )
 
     @extend_schema(request=ReplaceSerializer, responses={200: dict})
     @action(detail=True, methods=["post"], url_path="replace")
@@ -124,7 +132,7 @@ class DirectoryViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         target = self.queryset.filter(pk=payload.validated_data["target"]).first()
         if target is None:
-            return Response({"detail": "Записи, на которую заменяем, нет"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": _("Записи, на которую заменяем, нет")}, status=status.HTTP_404_NOT_FOUND)
         try:
             return Response(replace(instance, target))
         except ValueError as error:
@@ -143,9 +151,9 @@ class DirectoryViewSet(viewsets.ModelViewSet):
             {
                 "groups": groups,
                 "detail": (
-                    "Похожих написаний не нашлось"
+                    _("Похожих написаний не нашлось")
                     if not groups
-                    else "Проверьте: возможно, это одно и то же. Объединение переносит все ссылки"
+                    else _("Проверьте: возможно, это одно и то же. Объединение переносит все ссылки")
                 ),
             }
         )

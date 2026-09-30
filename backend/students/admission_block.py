@@ -21,6 +21,10 @@
 
 from __future__ import annotations
 
+from django.utils import translation
+from django.utils.translation import gettext, gettext_noop
+from django.utils.translation import gettext as _
+
 from students.models import AttemptSource, CredentialKind, DocumentType, ExamAttempt, Student
 
 #: Сколько попыток каждого экзамена в таблице Асем: IELTS-1..3, SAT-1..3.
@@ -82,10 +86,10 @@ def save_attempt(student: Student, *, actor, exam: str, score, date=None, attemp
 
     exam = str(exam or "").upper()
     if exam not in BLOCK_EXAMS:
-        raise BlockRefusal("В блоке «Поступление» — попытки IELTS и SAT")
+        raise BlockRefusal(_("В блоке «Поступление» — попытки IELTS и SAT"))
     scale = scale_of(exam)
     if scale is not None and not scale.holds(score):
-        raise BlockRefusal(f"Балл {exam} — {scale.hint}")
+        raise BlockRefusal(_("Балл {exam} — {hint}").format(exam=exam, hint=scale.hint))
     table_rows = ExamAttempt.objects.filter(student=student, exam_type=exam, source=AttemptSource.ADMISSION_IMPORT)
     wanted = {"total_score": str(score).replace(",", ".")}
     if date:
@@ -94,12 +98,16 @@ def save_attempt(student: Student, *, actor, exam: str, score, date=None, attemp
     if attempt_id:
         attempt = table_rows.filter(pk=attempt_id).first()
         if attempt is None:
-            raise BlockRefusal("Этой попытки нет среди строк таблицы поступления")
+            raise BlockRefusal(_("Этой попытки нет среди строк таблицы поступления"))
         apply_changes(attempt, wanted, actor=actor, source=Source.MANUAL)
         return attempt
 
     if table_rows.count() >= ATTEMPT_SLOTS:
-        raise BlockRefusal(f"Слотов {exam} в таблице {ATTEMPT_SLOTS}, все заняты — поправьте существующую попытку")
+        raise BlockRefusal(
+            _("Слотов {exam} в таблице {slots}, все заняты — поправьте существующую попытку").format(
+                exam=exam, slots=ATTEMPT_SLOTS
+            )
+        )
     attempt = ExamAttempt.objects.create(
         student=student,
         exam_type=exam,
@@ -131,12 +139,12 @@ def save_link(student: Student, *, actor, code: str, url: str):
     from students.models import DocumentStatus, StudentDocument
 
     if code not in TABLE_DOCUMENTS:
-        raise BlockRefusal("В блоке «Поступление» — ссылки на паспорт, табель и рекомендацию")
+        raise BlockRefusal(_("В блоке «Поступление» — ссылки на паспорт, табель и рекомендацию"))
     url = str(url or "").strip()
     try:
         URLValidator(schemes=("http", "https"))(url)
     except ValidationError as error:
-        raise BlockRefusal("Нужна ссылка целиком, с https://") from error
+        raise BlockRefusal(_("Нужна ссылка целиком, с https://")) from error
 
     existing = (
         StudentDocument.objects.filter(student=student, doc_type=code)
@@ -151,7 +159,8 @@ def save_link(student: Student, *, actor, code: str, url: str):
     document = StudentDocument.objects.create(
         student=student,
         doc_type=code,
-        title=f"{DocumentType(code).label}: ссылка из блока «Поступление»",
+        # название хранится в базе как данные — по-русски, как остальные данные школы
+        title=_ru_title(gettext_noop("{document}: ссылка из блока «Поступление»"), code),
         external_url=url,
         expires_at=getattr(admission, "passport_expires_at", None) if code == DocumentType.PASSPORT else None,
         uploaded_by=actor,
@@ -244,3 +253,9 @@ def build(user, student: Student) -> dict:
             for code in TABLE_DOCUMENTS
         ],
     }
+
+
+def _ru_title(template: str, doc_type: str) -> str:
+    """Название документа-ссылки для базы: по-русски, как остальные данные школы."""
+    with translation.override("ru"):
+        return gettext(template).format(document=str(DocumentType(doc_type).label))

@@ -17,6 +17,8 @@ from decimal import Decimal
 from django.conf import settings
 from django.db.models import Count, Sum
 from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
 from core.domains import ROLE_TITLES
 from suggestions.models import LLMCall
@@ -95,10 +97,12 @@ def check_available() -> None:
     spent = spent_this_month()
     if spent >= limit:
         raise BudgetExceeded(
-            f"Месячный лимит расходов на модель выбран: потрачено ${spent:.2f} из ${limit:.2f}. "
-            f"Операции с моделью отключены до первого числа. "
-            f"Разбор и объяснения продолжают работать правилами — просто формулировки будут проще. "
-            f"Поднять лимит может администратор в настройках"
+            _(
+                "Месячный лимит расходов на модель выбран: потрачено ${spent} из ${limit}. "
+                "Операции с моделью отключены до первого числа. "
+                "Разбор и объяснения продолжают работать правилами — просто формулировки будут проще. "
+                "Поднять лимит может администратор в настройках"
+            ).format(spent=f"{spent:.2f}", limit=f"{limit:.2f}")
         )
 
 
@@ -157,7 +161,7 @@ def report(*, days: int = 30) -> dict:
     by_role = [
         {
             "role": row["role"] or "—",
-            "role_title": ROLE_TITLES.get(row["role"], row["role"] or "не указана"),
+            "role_title": ROLE_TITLES.get(row["role"], row["role"] or _("не указана")),
             "calls": row["calls"],
             "cost": float(row["cost"] or 0),
         }
@@ -166,7 +170,7 @@ def report(*, days: int = 30) -> dict:
     by_purpose = [
         {
             "purpose": row["purpose"],
-            "purpose_title": OPERATION_TITLES.get(row["purpose"], row["purpose"]),
+            "purpose_title": str(OPERATION_TITLES.get(row["purpose"], row["purpose"])),
             "calls": row["calls"],
             "cost": float(row["cost"] or 0),
             "tokens": int((row["tokens_in"] or 0) + (row["tokens_out"] or 0)),
@@ -197,9 +201,9 @@ def report(*, days: int = 30) -> dict:
             {
                 "id": row.pk,
                 "created_at": row.created_at,
-                "actor_name": (row.actor.full_name or row.actor.email) if row.actor_id else "система",
-                "role_title": ROLE_TITLES.get(row.role, row.role or "не указана"),
-                "purpose_title": OPERATION_TITLES.get(row.purpose, row.purpose),
+                "actor_name": (row.actor.full_name or row.actor.email) if row.actor_id else _("система"),
+                "role_title": ROLE_TITLES.get(row.role, row.role or _("не указана")),
+                "purpose_title": str(OPERATION_TITLES.get(row.purpose, row.purpose)),
                 "tokens": row.tokens_in + row.tokens_out,
                 "cost": float(row.cost),
                 "is_ok": row.is_ok,
@@ -212,39 +216,42 @@ def report(*, days: int = 30) -> dict:
 
 def _headline(limit: Decimal, spent: Decimal, failures: int) -> str:
     if limit <= 0:
-        return f"Месячный лимит не задан. С начала месяца потрачено ${spent:.2f}"
+        return _("Месячный лимит не задан. С начала месяца потрачено ${spent}").format(spent=f"{spent:.2f}")
     if spent >= limit:
-        return (
-            f"Лимит выбран: ${spent:.2f} из ${limit:.2f}. Операции с моделью отключены, "
-            f"разбор и объяснения работают правилами"
+        return _(
+            "Лимит выбран: ${spent} из ${limit}. Операции с моделью отключены, "
+            "разбор и объяснения работают правилами"
+        ).format(spent=f"{spent:.2f}", limit=f"{limit:.2f}")
+    if failures:
+        return _("С начала месяца потрачено ${spent} из ${limit}, неудачных вызовов: {failures}").format(
+            spent=f"{spent:.2f}", limit=f"{limit:.2f}", failures=failures
         )
-    tail = f", неудачных вызовов: {failures}" if failures else ""
-    return f"С начала месяца потрачено ${spent:.2f} из ${limit:.2f}{tail}"
+    return _("С начала месяца потрачено ${spent} из ${limit}").format(spent=f"{spent:.2f}", limit=f"{limit:.2f}")
 
 
 #: Человеческие названия операций — их читает администратор на экране
 #: расходов, и `parse_certificate` там не годится (фаза 17).
 OPERATION_TITLES = {
-    "paste_second_pass": "Разбор вставленного текста (второй проход)",
-    "parse_university": "Разбор вуза по названию или ссылке",
-    "parse_activity": "Разбор описания активности",
-    "parse_certificate": "Распознавание грамоты",
-    "parse_score_screenshot": "Распознавание скриншота с баллами",
-    "explain_match": "Объяснение соответствия",
-    "pick_universities": "Подбор вузов словами",
-    "digest": "Дайджест на сегодня",
-    "explain_list": "Объяснение списка учеников",
-    "week_changes": "Что изменилось за неделю",
-    "focus_today": "На кого смотреть сегодня",
-    "bulk_tasks": "Массовая постановка задач",
-    "prep_plan": "План подготовки к экзамену",
-    "gap_to_tasks": "Пробелы портфолио в задачи",
-    "check_balance": "Проверка баланса списка вузов",
-    "essay_questions": "Вопросы по эссе",
-    "assistant_chat": "Свободный вопрос помощнику",
-    "assistant_quick": "Быстрая кнопка помощника",
-    "import_reading": "Разбор загружаемого файла",
-    "import_mapping": "Сопоставление колонок файла",
-    "scholarship_pick": "Подбор стипендий под профиль",
-    "career_test": "Разбор анкеты профтеста",
+    "paste_second_pass": gettext_lazy("Разбор вставленного текста (второй проход)"),
+    "parse_university": gettext_lazy("Разбор вуза по названию или ссылке"),
+    "parse_activity": gettext_lazy("Разбор описания активности"),
+    "parse_certificate": gettext_lazy("Распознавание грамоты"),
+    "parse_score_screenshot": gettext_lazy("Распознавание скриншота с баллами"),
+    "explain_match": gettext_lazy("Объяснение соответствия"),
+    "pick_universities": gettext_lazy("Подбор вузов словами"),
+    "digest": gettext_lazy("Дайджест на сегодня"),
+    "explain_list": gettext_lazy("Объяснение списка учеников"),
+    "week_changes": gettext_lazy("Что изменилось за неделю"),
+    "focus_today": gettext_lazy("На кого смотреть сегодня"),
+    "bulk_tasks": gettext_lazy("Массовая постановка задач"),
+    "prep_plan": gettext_lazy("План подготовки к экзамену"),
+    "gap_to_tasks": gettext_lazy("Пробелы портфолио в задачи"),
+    "check_balance": gettext_lazy("Проверка баланса списка вузов"),
+    "essay_questions": gettext_lazy("Вопросы по эссе"),
+    "assistant_chat": gettext_lazy("Свободный вопрос помощнику"),
+    "assistant_quick": gettext_lazy("Быстрая кнопка помощника"),
+    "import_reading": gettext_lazy("Разбор загружаемого файла"),
+    "import_mapping": gettext_lazy("Сопоставление колонок файла"),
+    "scholarship_pick": gettext_lazy("Подбор стипендий под профиль"),
+    "career_test": gettext_lazy("Разбор анкеты профтеста"),
 }

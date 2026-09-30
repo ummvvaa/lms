@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_noop
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
@@ -18,6 +20,7 @@ from core.deletion import ArchiveDeleteMixin, HardDeleteMixin, refuse
 from core.domains import ROLE_STUDENT, can_write, owns_model
 from core.models import ImportBatch
 from core.permissions import DomainFieldPermission
+from core.phrasing import tn
 from students.models import Student
 from universities.catalog import CatalogFilters, facets
 from universities.catalog import build as build_catalog
@@ -145,7 +148,7 @@ class StudentUniversityViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
         """
         student = Student.objects.filter(pk=self.request.data.get("student")).first()
         if student is None:
-            raise ValidationError({"student": "Не указан ученик или его нет в списке"})
+            raise ValidationError({"student": _("Не указан ученик или его нет в списке")})
         serializer.save(student=student)
 
     def create(self, request, *args, **kwargs):
@@ -155,7 +158,7 @@ class StudentUniversityViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
 
         if request.user.role == ROLE_CURATOR:
             return Response(
-                {"detail": "Куратор добавляет программу из каталога — как ученик"}, status=status.HTTP_403_FORBIDDEN
+                {"detail": _("Куратор добавляет программу из каталога — как ученик")}, status=status.HTTP_403_FORBIDDEN
             )
         return super().create(request, *args, **kwargs)
 
@@ -169,7 +172,7 @@ class StudentUniversityViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
             entry = self.get_object()
             if entry.added_by != AddedBy.STUDENT:
                 return Response(
-                    {"detail": "Эту программу добавил директор по поступлению — снять её может он"},
+                    {"detail": _("Эту программу добавил директор по поступлению — снять её может он")},
                     status=status.HTTP_403_FORBIDDEN,
                 )
             from roadmap.plans import archive_for_program
@@ -202,7 +205,7 @@ def match_my_universities(request):
     """Как ученик выглядит на фоне своего списка вузов."""
     student = _student_for(request, request.query_params.get("student"))
     if student is None:
-        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Ученик не найден")}, status=status.HTTP_404_NOT_FOUND)
     return Response([m.as_dict() for m in match_student_list(student)])
 
 
@@ -213,7 +216,7 @@ def match_open_programs(request):
     """Какие программы открываются при текущем профиле."""
     student = _student_for(request, request.query_params.get("student"))
     if student is None:
-        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Ученик не найден")}, status=status.HTTP_404_NOT_FOUND)
 
     results = open_programs(student)
     only_open = request.query_params.get("only_open") == "1"
@@ -229,7 +232,7 @@ def match_list_balance(request):
     """Баланс списка вузов: сколько reach / target / safety и чего добрать."""
     student = _student_for(request, request.query_params.get("student"))
     if student is None:
-        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Ученик не найден")}, status=status.HTTP_404_NOT_FOUND)
     return Response(list_balance(student))
 
 
@@ -240,7 +243,7 @@ def match_what_if(request):
     """Что откроется, если поднять IELTS, SAT или GPA."""
     student = _student_for(request, request.data.get("student"))
     if student is None:
-        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Ученик не найден")}, status=status.HTTP_404_NOT_FOUND)
 
     serializer = WhatIfSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -261,7 +264,7 @@ def match_at_goal(request):
     """«Если сдашь на цель, откроется вот это» — по целям ученика (фаза 39)."""
     student = _student_for(request, request.query_params.get("student"))
     if student is None:
-        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Ученик не найден")}, status=status.HTTP_404_NOT_FOUND)
     return Response(at_goal(student))
 
 
@@ -282,14 +285,14 @@ def import_requirements_view(request):
 
     if not can_upload_files(request.user.role):
         return Response(
-            {"detail": "Файлы загружает администратор. Требования заводятся руками в справочнике"},
+            {"detail": _("Файлы загружает администратор. Требования заводятся руками в справочнике")},
             status=status.HTTP_403_FORBIDDEN,
         )
     domain = DOMAINS["admission"]
 
     uploaded = request.FILES.get("file")
     if uploaded is None:
-        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Файл не приложен")}, status=status.HTTP_400_BAD_REQUEST)
 
     header, rows = read_table(uploaded)
     raw_mapping = request.data.get("mapping") or "{}"
@@ -319,7 +322,7 @@ def import_requirements_view(request):
     batch.rows_updated = payload.get("updated", 0)
     batch.rows_failed = len(payload.get("errors", []))
     if batch.rows_created:
-        batch.note = "Отмена вернёт прежние пороги, но заведённые программы и требования не удалит"
+        batch.note = gettext_noop("Отмена вернёт прежние пороги, но заведённые программы и требования не удалит")
     batch.save(update_fields=["rows_created", "rows_updated", "rows_failed", "note"])
     payload["batch"] = batch.pk
     return Response(payload)
@@ -335,7 +338,7 @@ def catalog(request):
     """Каталог программ с процентом соответствия под конкретного ученика."""
     student = _student_for(request, request.query_params.get("student"))
     if student is None:
-        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Ученик не найден")}, status=status.HTTP_404_NOT_FOUND)
 
     cards = build_catalog(student, CatalogFilters.from_query(request.query_params))
     return Response({"count": len(cards), "results": cards})
@@ -363,14 +366,14 @@ def _list_owner(request):
         student_id = request.data.get("student") or request.query_params.get("student")
         student = Student.objects.filter(pk=student_id).first() if student_id else None
         if student is None or not sees_student(request.user, student.pk):
-            return None, True, Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+            return None, True, Response({"detail": _("Ученик не найден")}, status=status.HTTP_404_NOT_FOUND)
         return student, True, None
     student = getattr(request.user, "student", None)
     if student is None:
         return (
             None,
             False,
-            Response({"detail": "Список вузов есть только у ученика"}, status=status.HTTP_403_FORBIDDEN),
+            Response({"detail": _("Список вузов есть только у ученика")}, status=status.HTTP_403_FORBIDDEN),
         )
     return student, False, None
 
@@ -400,16 +403,23 @@ def add_to_my_list(request):
 
     program = Program.objects.filter(pk=request.data.get("program"), is_active=True).first()
     if program is None:
-        return Response({"detail": "Такой программы нет в справочнике"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Такой программы нет в справочнике")}, status=status.HTTP_404_NOT_FOUND)
 
     tier = request.data.get("tier", Tier.TARGET)
     if tier not in Tier.values:
-        return Response({"detail": "Неизвестная категория"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Неизвестная категория")}, status=status.HTTP_400_BAD_REQUEST)
 
     limit = django_settings.STUDENT_LIST_LIMIT
     if StudentUniversity.objects.filter(student=student).count() >= limit:
         return Response(
-            {"detail": f"В списке уже {limit} программ — это потолок. Уберите лишнее, чтобы добавить новое"},
+            {
+                "detail": tn(
+                    limit,
+                    "В списке уже {n} программа — это потолок. Уберите лишнее, чтобы добавить новое"
+                    "|В списке уже {n} программы — это потолок. Уберите лишнее, чтобы добавить новое"
+                    "|В списке уже {n} программ — это потолок. Уберите лишнее, чтобы добавить новое",
+                )
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -422,7 +432,7 @@ def add_to_my_list(request):
         defaults={"tier": tier, "added_by": AddedBy.STUDENT, "is_confirmed": by_curator},
     )
     if not created:
-        return Response({"detail": "Эта программа уже в списке"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Эта программа уже в списке")}, status=status.HTTP_400_BAD_REQUEST)
     if by_curator:
         _log_list_entry(entry, actor=request.user, fields={"program": ("", program.pk), "tier": ("", tier)})
 
@@ -458,7 +468,7 @@ def set_priority(request, pk: int):
 
     entry = StudentUniversity.objects.filter(pk=pk, student=student).first()
     if entry is None:
-        return Response({"detail": "Записи нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Записи нет")}, status=status.HTTP_404_NOT_FOUND)
 
     with transaction.atomic():
         StudentUniversity.objects.filter(student=student, is_priority=True).exclude(pk=entry.pk).update(
@@ -487,16 +497,16 @@ def change_tier(request, pk: int):
 
     entry = StudentUniversity.objects.filter(pk=pk, student=student).first()
     if entry is None:
-        return Response({"detail": "Записи нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Записи нет")}, status=status.HTTP_404_NOT_FOUND)
     if entry.added_by != AddedBy.STUDENT:
         return Response(
-            {"detail": "Эту программу добавил директор по поступлению — категорию ставит он"},
+            {"detail": _("Эту программу добавил директор по поступлению — категорию ставит он")},
             status=status.HTTP_403_FORBIDDEN,
         )
 
     tier = request.data.get("tier")
     if tier not in Tier.values:
-        return Response({"detail": "Неизвестная категория"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Неизвестная категория")}, status=status.HTTP_400_BAD_REQUEST)
 
     if entry.tier != tier:
         before = entry.tier
@@ -525,10 +535,10 @@ def remove_from_my_list(request, pk: int):
 
     entry = StudentUniversity.objects.filter(pk=pk, student=student).first()
     if entry is None:
-        return Response({"detail": "Записи нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Записи нет")}, status=status.HTTP_404_NOT_FOUND)
     if entry.added_by != AddedBy.STUDENT:
         return Response(
-            {"detail": "Эту программу добавил директор по поступлению — снять её может он"},
+            {"detail": _("Эту программу добавил директор по поступлению — снять её может он")},
             status=status.HTTP_403_FORBIDDEN,
         )
 
@@ -553,7 +563,7 @@ def remove_from_my_list(request, pk: int):
 def pending_additions(request):
     """Что ученики добавили себе сами и ждёт решения директора."""
     if request.user.role == ROLE_STUDENT:
-        return Response({"detail": "Список подтверждений ведёт директор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Список подтверждений ведёт директор")}, status=status.HTTP_403_FORBIDDEN)
 
     rows = (
         StudentUniversity.objects.filter(added_by=AddedBy.STUDENT, is_confirmed=False)
@@ -583,17 +593,17 @@ def pending_additions(request):
 def review_addition(request, pk: int):
     """Директор подтверждает добавление ученика или снимает его."""
     if request.user.role == ROLE_STUDENT:
-        return Response({"detail": "Решение принимает директор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Решение принимает директор")}, status=status.HTTP_403_FORBIDDEN)
     if not can_write(request.user.role, "universities.StudentUniversity", "tier"):
-        return Response({"detail": "Списки вузов ведёт директор по поступлению"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Списки вузов ведёт директор по поступлению")}, status=status.HTTP_403_FORBIDDEN)
 
     entry = StudentUniversity.objects.filter(pk=pk).first()
     if entry is None:
-        return Response({"detail": "Записи нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Записи нет")}, status=status.HTTP_404_NOT_FOUND)
 
     if request.data.get("decision") == "decline":
         entry.delete()
-        return Response({"detail": "Снято"})
+        return Response({"detail": _("Снято")})
 
     entry.is_confirmed = True
     if request.data.get("tier") in Tier.values:
@@ -611,11 +621,11 @@ def catalog_pick(request):
 
     student = _student_for(request, request.data.get("student"))
     if student is None:
-        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Ученик не найден")}, status=status.HTTP_404_NOT_FOUND)
 
     text = (request.data.get("text") or "").strip()
     if not text:
-        return Response({"detail": "Опишите, чего вы хотите"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Опишите, чего вы хотите")}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response(pick(student=student, text=text, actor=request.user).as_dict())
 
@@ -634,7 +644,7 @@ def seed_catalog_view(request):
     """
     if not can_verify(request.user.role):
         return Response(
-            {"detail": "Стартовым справочником распоряжается директор по поступлению"},
+            {"detail": _("Стартовым справочником распоряжается директор по поступлению")},
             status=status.HTTP_403_FORBIDDEN,
         )
 
@@ -643,7 +653,7 @@ def seed_catalog_view(request):
 
     if request.method == "POST":
         created = create_seed()
-        return Response({**seed_stats(), "created": created, "detail": "Стартовый справочник заведён"})
+        return Response({**seed_stats(), "created": created, "detail": _("Стартовый справочник заведён")})
 
     force = str(request.query_params.get("force", "")).lower() in ("1", "true", "yes")
     try:
@@ -653,7 +663,7 @@ def seed_catalog_view(request):
             {"detail": str(error), "held_by_students": error.held, "need_force": True},
             status=status.HTTP_409_CONFLICT,
         )
-    return Response({**seed_stats(), "removed": removed, "detail": "Стартовый справочник удалён"})
+    return Response({**seed_stats(), "removed": removed, "detail": _("Стартовый справочник удалён")})
 
 
 @extend_schema(request=None, responses={200: dict})
@@ -666,7 +676,7 @@ def verify_record(request):
     """
     if not can_verify(request.user.role):
         return Response(
-            {"detail": "Подтверждать данные справочника может только директор по поступлению"},
+            {"detail": _("Подтверждать данные справочника может только директор по поступлению")},
             status=status.HTTP_403_FORBIDDEN,
         )
 
@@ -674,7 +684,7 @@ def verify_record(request):
     record_id = request.data.get("id")
     verified = request.data.get("verified", True)
     if record_id in (None, ""):
-        return Response({"detail": "Не указано, какую запись подтверждаем"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Не указано, какую запись подтверждаем")}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         payload = set_verified(kind, int(record_id), verified=bool(verified), actor=request.user)
@@ -683,7 +693,7 @@ def verify_record(request):
     except LookupError as error:
         return Response({"detail": str(error)}, status=status.HTTP_404_NOT_FOUND)
     except (TypeError, ValueError):
-        return Response({"detail": "Номер записи должен быть числом"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Номер записи должен быть числом")}, status=status.HTTP_400_BAD_REQUEST)
     return Response(payload)
 
 
@@ -771,9 +781,9 @@ def selection_start(request):
 
     student = getattr(request.user, "student", None)
     if student is None:
-        return Response({"detail": "Подбор запускает ученик"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Подбор запускает ученик")}, status=status.HTTP_403_FORBIDDEN)
     if MatchRun.objects.filter(student=student, status="running").exists():
-        return Response({"detail": "Подбор уже считается — дождитесь результата"}, status=status.HTTP_409_CONFLICT)
+        return Response({"detail": _("Подбор уже считается — дождитесь результата")}, status=status.HTTP_409_CONFLICT)
 
     major = str(request.data.get("major") or "")[:150]
     level = str(request.data.get("level") or "")
@@ -789,7 +799,7 @@ def selection_runs(request):
     """История подборов ученика: дата, специальность, охват."""
     student = getattr(request.user, "student", None)
     if student is None:
-        return Response({"detail": "История подборов — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("История подборов — экран ученика")}, status=status.HTTP_403_FORBIDDEN)
     rows = MatchRun.objects.filter(student=student)[:30]
     return Response({"results": [_run_payload(run) for run in rows]})
 
@@ -813,10 +823,10 @@ def selection_run_detail(request, pk: int):
     """Результат прогона — снимок с датой; свой и только свой."""
     student = getattr(request.user, "student", None)
     if student is None:
-        return Response({"detail": "Результат подбора — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Результат подбора — экран ученика")}, status=status.HTTP_403_FORBIDDEN)
     run = MatchRun.objects.filter(pk=pk, student=student).first()
     if run is None:
-        return Response({"detail": "Такого подбора нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Такого подбора нет")}, status=status.HTTP_404_NOT_FOUND)
     return Response(_run_payload(run, with_results=run.status == "done"))
 
 
@@ -831,11 +841,11 @@ def selection_explain(request, pk: int, program_id: int):
     """
     student = getattr(request.user, "student", None)
     if student is None:
-        return Response({"detail": "Разбор — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Разбор — экран ученика")}, status=status.HTTP_403_FORBIDDEN)
     run = MatchRun.objects.filter(pk=pk, student=student).first()
     row = run.results.filter(program_id=program_id).select_related("program__university").first() if run else None
     if row is None:
-        return Response({"detail": "Этой программы нет в подборе"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Этой программы нет в подборе")}, status=status.HTTP_404_NOT_FOUND)
 
     live = match(student, row.program)
     payload = live.as_dict()
@@ -843,10 +853,10 @@ def selection_explain(request, pk: int, program_id: int):
     payload["percent_goal"] = row.percent_goal
     payload["profile_changed"] = live.percent != row.percent_now
     if payload["profile_changed"]:
-        payload["profile_changed_note"] = (
-            f"С даты подбора профиль изменился: сейчас соответствие {live.percent}%. "
+        payload["profile_changed_note"] = _(
+            "С даты подбора профиль изменился: сейчас соответствие {percent}%. "
             "Перезапустите подбор, чтобы обновить снимок"
-        )
+        ).format(percent=live.percent)
     return Response(payload)
 
 
@@ -857,12 +867,12 @@ def favorites_view(request):
     """Избранное: «присмотрел», в отличие от списка «подаюсь»."""
     student = getattr(request.user, "student", None)
     if student is None:
-        return Response({"detail": "Избранное — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Избранное — экран ученика")}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == "POST":
         program = Program.objects.filter(pk=request.data.get("program")).first()
         if program is None:
-            return Response({"detail": "Такой программы нет"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": _("Такой программы нет")}, status=status.HTTP_404_NOT_FOUND)
         row, made = FavoriteProgram.objects.get_or_create(student=student, program=program)
         return Response({"id": row.pk, "created": made}, status=status.HTTP_201_CREATED if made else status.HTTP_200_OK)
 
@@ -896,9 +906,9 @@ def favorite_remove(request, program_id: int):
     student = getattr(request.user, "student", None)
     row = FavoriteProgram.objects.filter(program_id=program_id, student=student).first() if student else None
     if row is None:
-        return Response({"detail": "Такой отметки нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Такой отметки нет")}, status=status.HTTP_404_NOT_FOUND)
     row.delete()
-    return Response({"detail": "Убрано из избранного"})
+    return Response({"detail": _("Убрано из избранного")})
 
 
 # --- Стипендии (фаза 44) ---------------------------------------------------
@@ -964,7 +974,7 @@ def saved_scholarships(request):
     """Сохранённые стипендии ученика — тот же механизм, что избранное вузов."""
     student = getattr(request.user, "student", None)
     if student is None:
-        return Response({"detail": "Сохранённые стипендии — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Сохранённые стипендии — экран ученика")}, status=status.HTTP_403_FORBIDDEN)
     rows = SavedScholarship.objects.filter(student=student).select_related("scholarship__university")
     serializer = ScholarshipSerializer(
         [row.scholarship for row in rows],
@@ -981,21 +991,21 @@ def save_scholarship(request, pk: int):
     """Сохранить стипендию или снять отметку. Истории у отметки нет."""
     student = getattr(request.user, "student", None)
     if student is None:
-        return Response({"detail": "Сохранять стипендии может ученик"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Сохранять стипендии может ученик")}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == "DELETE":
         row = SavedScholarship.objects.filter(student=student, scholarship_id=pk).first()
         if row is None:
-            return Response({"detail": "Такой отметки нет"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": _("Такой отметки нет")}, status=status.HTTP_404_NOT_FOUND)
         row.delete()
-        return Response({"detail": "Убрано из сохранённых"})
+        return Response({"detail": _("Убрано из сохранённых")})
 
     scholarship = Scholarship.objects.filter(pk=pk, is_active=True).first()
     if scholarship is None:
-        return Response({"detail": "Такой стипендии нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Такой стипендии нет")}, status=status.HTTP_404_NOT_FOUND)
     row, made = SavedScholarship.objects.get_or_create(student=student, scholarship=scholarship)
     return Response(
-        {"id": row.pk, "created": made, "detail": "Сохранено. Дедлайн появится в календаре"},
+        {"id": row.pk, "created": made, "detail": _("Сохранено. Дедлайн появится в календаре")},
         status=status.HTTP_201_CREATED if made else status.HTTP_200_OK,
     )
 
@@ -1014,7 +1024,7 @@ def pick_scholarships(request):
 
     student = getattr(request.user, "student", None)
     if student is None:
-        return Response({"detail": "Подбор стипендий — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Подбор стипендий — экран ученика")}, status=status.HTTP_403_FORBIDDEN)
     return Response(pick_for(student, actor=request.user, role=request.user.role))
 
 
@@ -1028,7 +1038,7 @@ def scholarship_attention(request):
 
     if request.user.role not in (DOMAINS["admission"].role, ROLE_ADMIN):
         return Response(
-            {"detail": "Сводка по стипендиям — у директора по поступлению"}, status=status.HTTP_403_FORBIDDEN
+            {"detail": _("Сводка по стипендиям — у директора по поступлению")}, status=status.HTTP_403_FORBIDDEN
         )
     return Response(attention())
 
@@ -1045,14 +1055,14 @@ def import_scholarships_view(request):
 
     if not can_upload_files(request.user.role):
         return Response(
-            {"detail": "Файлы загружает администратор. Стипендии заводятся руками в справочнике"},
+            {"detail": _("Файлы загружает администратор. Стипендии заводятся руками в справочнике")},
             status=status.HTTP_403_FORBIDDEN,
         )
     domain = DOMAINS["admission"]
 
     uploaded = request.FILES.get("file")
     if uploaded is None:
-        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Файл не приложен")}, status=status.HTTP_400_BAD_REQUEST)
 
     header, rows = read_table(uploaded)
     raw_mapping = request.data.get("mapping") or "{}"
@@ -1079,7 +1089,7 @@ def import_scholarships_view(request):
     batch.rows_updated = payload.get("updated", 0)
     batch.rows_failed = len(payload.get("errors", []))
     if batch.rows_created:
-        batch.note = "Отмена вернёт прежние значения, но заведённые стипендии не удалит"
+        batch.note = gettext_noop("Отмена вернёт прежние значения, но заведённые стипендии не удалит")
     batch.save(update_fields=["rows_created", "rows_updated", "rows_failed", "note"])
     payload["batch"] = batch.pk
     return Response(payload)

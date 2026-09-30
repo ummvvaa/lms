@@ -19,11 +19,16 @@ import re
 from dataclasses import dataclass
 
 from django.db import transaction
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
 from core.domains import SCHOOL_SETTINGS, Source
 
 #: модель в журнале: по ней история правил отличается от правок учеников
 AUDIT_LABEL = "core.SchoolRule"
+
+#: раздел экрана настроек, куда правило попадает, если не сказано иное
+STUDY = gettext_lazy("Учёба")
 
 
 @dataclass(frozen=True)
@@ -37,7 +42,7 @@ class Rule:
     default: int
     minimum: int
     maximum: int
-    group: str = "Учёба"
+    group: str = STUDY
     #: `int` — число в границах; `bool` — «да» или «нет», хранится 1 и 0
     kind: str = "int"
 
@@ -68,9 +73,11 @@ HOMEWORK_BEHIND_MISSED = "homework_behind_missed"
 RULES: tuple[Rule, ...] = (
     Rule(
         ATTENDANCE_BELOW,
-        "Порог посещаемости",
-        "Ниже — ученик в «Рисках», процент выделен на экранах посещаемости, "
-        "успеваемости группы, в карточке и в ответах помощника",
+        gettext_lazy("Порог посещаемости"),
+        gettext_lazy(
+            "Ниже — ученик в «Рисках», процент выделен на экранах посещаемости, "
+            "успеваемости группы, в карточке и в ответах помощника"
+        ),
         "%",
         85,
         0,
@@ -78,17 +85,17 @@ RULES: tuple[Rule, ...] = (
     ),
     Rule(
         QUARTER_GRADE_BELOW,
-        "Порог четвертной оценки",
-        "Расчётная четвертная ниже — помощник учителя называет ученика отстающим по предмету",
-        "балл",
+        gettext_lazy("Порог четвертной оценки"),
+        gettext_lazy("Расчётная четвертная ниже — помощник учителя называет ученика отстающим по предмету"),
+        gettext_lazy("балл"),
         4,
         2,
         5,
     ),
     Rule(
         FO_ONLY_BELOW,
-        "Порог для предметов «Только ФО»",
-        "Средний ФО ниже этой доли от максимума — отстаёт по предмету без четвертной",
+        gettext_lazy("Порог для предметов «Только ФО»"),
+        gettext_lazy("Средний ФО ниже этой доли от максимума — отстаёт по предмету без четвертной"),
         "%",
         60,
         0,
@@ -96,18 +103,20 @@ RULES: tuple[Rule, ...] = (
     ),
     Rule(
         NO_GRADES_DAYS,
-        "Окно «нет оценок»",
-        "За сколько последних дней помощник учителя ищет учеников, которые были на уроках, но без оценок",
-        "дней",
+        gettext_lazy("Окно «нет оценок»"),
+        gettext_lazy("За сколько последних дней помощник учителя ищет учеников, которые были на уроках, но без оценок"),
+        gettext_lazy("дней"),
         14,
         1,
         90,
     ),
     Rule(
         EXCUSED_LOWERS_ATTENDANCE,
-        "Пропуск по уважительной причине снижает процент посещаемости",
-        "«Да» — урок по уважительной причине идёт в процент как пропуск; «нет» — такой урок "
-        "в процент не входит вовсе",
+        gettext_lazy("Пропуск по уважительной причине снижает процент посещаемости"),
+        gettext_lazy(
+            "«Да» — урок по уважительной причине идёт в процент как пропуск; «нет» — такой урок "
+            "в процент не входит вовсе"
+        ),
         "",
         1,
         0,
@@ -116,85 +125,91 @@ RULES: tuple[Rule, ...] = (
     ),
     Rule(
         LESSON_MINUTES_DEFAULT,
-        "Длина урока по умолчанию",
-        "Для урока, у номера которого нет звонка в сетке группы: столько минут он весит " "в проценте посещаемости",
-        "мин",
+        gettext_lazy("Длина урока по умолчанию"),
+        gettext_lazy(
+            "Для урока, у номера которого нет звонка в сетке группы: столько минут он весит в проценте посещаемости"
+        ),
+        gettext_lazy("мин"),
         40,
         10,
         180,
     ),
     Rule(
         HOMEWORK_FILE_MB,
-        "Предел файла в сдаче ДЗ",
-        "Один файл ученика или учителя — не больше; для видео свой предел ниже",
-        "МБ",
+        gettext_lazy("Предел файла в сдаче ДЗ"),
+        gettext_lazy("Один файл ученика или учителя — не больше; для видео свой предел ниже"),
+        gettext_lazy("МБ"),
         50,
         1,
         500,
-        group="Домашние задания",
+        group=gettext_lazy("Домашние задания"),
     ),
     Rule(
         HOMEWORK_VIDEO_MB,
-        "Предел видео в сдаче ДЗ",
-        "Видео с телефона весит много — для него предел отдельный",
-        "МБ",
+        gettext_lazy("Предел видео в сдаче ДЗ"),
+        gettext_lazy("Видео с телефона весит много — для него предел отдельный"),
+        gettext_lazy("МБ"),
         500,
         10,
         2000,
-        group="Домашние задания",
+        group=gettext_lazy("Домашние задания"),
     ),
     Rule(
         HOMEWORK_MAX_FILES,
-        "Файлов в одной сдаче ДЗ",
-        "Сколько файлов ученик прикладывает к одной работе (фото, склеенные в PDF, — один файл)",
-        "шт.",
+        gettext_lazy("Файлов в одной сдаче ДЗ"),
+        gettext_lazy("Сколько файлов ученик прикладывает к одной работе (фото, склеенные в PDF, — один файл)"),
+        gettext_lazy("шт."),
         10,
         1,
         50,
-        group="Домашние задания",
+        group=gettext_lazy("Домашние задания"),
     ),
     Rule(
         HOMEWORK_IN_QUARTER,
-        "Оценки за ДЗ входят в четвертную",
-        "«Нет» — оценка за ДЗ стоит в журнале отдельной колонкой «ДЗ» и в четвертную не идёт; "
-        "«да» — идёт в среднюю ФО с весом ниже",
+        gettext_lazy("Оценки за ДЗ входят в четвертную"),
+        gettext_lazy(
+            "«Нет» — оценка за ДЗ стоит в журнале отдельной колонкой «ДЗ» и в четвертную не идёт; "
+            "«да» — идёт в среднюю ФО с весом ниже"
+        ),
         "",
         0,
         0,
         1,
-        group="Домашние задания",
+        group=gettext_lazy("Домашние задания"),
         kind="bool",
     ),
     Rule(
         HOMEWORK_WEIGHT,
-        "Вес оценки за ДЗ в четвертной",
-        "Доля одной оценки ФО: 100 — как обычная оценка ФО, 50 — вдвое легче. Действует, "
-        "только когда оценки за ДЗ входят в четвертную",
+        gettext_lazy("Вес оценки за ДЗ в четвертной"),
+        gettext_lazy(
+            "Доля одной оценки ФО: 100 — как обычная оценка ФО, 50 — вдвое легче. Действует, "
+            "только когда оценки за ДЗ входят в четвертную"
+        ),
         "%",
         100,
         10,
         100,
-        group="Домашние задания",
+        group=gettext_lazy("Домашние задания"),
     ),
     Rule(
         HOMEWORK_BEHIND_PCT,
-        "Порог «не сдаёт ДЗ вовремя»",
-        "Выполнение ДЗ за четверть ниже — ученик в списке куратора «Не сдают ДЗ вовремя»",
+        gettext_lazy("Порог «не сдаёт ДЗ вовремя»"),
+        gettext_lazy("Выполнение ДЗ за четверть ниже — ученик в списке куратора «Не сдают ДЗ вовремя»"),
         "%",
         60,
         0,
         100,
-        group="Домашние задания",
+        group=gettext_lazy("Домашние задания"),
     ),
     Rule(
         HOMEWORK_BEHIND_MISSED,
-        "Несданных ДЗ до списка «не сдаёт»",
-        "Столько несданных заданий за четверть — ученик в списке куратора, даже если процент выше порога",
-        "шт.",
+        gettext_lazy("Несданных ДЗ до списка «не сдаёт»"),
+        gettext_lazy("Столько несданных заданий за четверть — ученик в списке куратора, даже если процент выше порога"),
+        gettext_lazy("шт."),
         2,
         1,
         50,
-        group="Домашние задания",
+        group=gettext_lazy("Домашние задания"),
     ),
 )
 
@@ -227,8 +242,8 @@ def values() -> dict[str, int]:
 
 
 #: как человек и экран пишут «да» и «нет»
-YES = {"да", "true", "1", "yes"}
-NO = {"нет", "false", "0", "no"}
+YES = {"да", "true", "1", "yes"}  # i18n-skip: разбор ввода
+NO = {"нет", "false", "0", "no"}  # i18n-skip: разбор ввода
 
 
 def check(rule: Rule, raw) -> int:
@@ -239,20 +254,27 @@ def check(rule: Rule, raw) -> int:
             return 1
         if raw is False or word in NO:
             return 0
-        raise RuleRejected(f"«{rule.title}»: нужно «да» или «нет»")
+        raise RuleRejected(_("«{rule}»: нужно «да» или «нет»").format(rule=rule.title))
     text = str(raw).strip() if isinstance(raw, int | str) and not isinstance(raw, bool) else ""
     if not re.fullmatch(r"-?\d{1,9}", text):
-        raise RuleRejected(f"«{rule.title}»: нужно целое число")
+        raise RuleRejected(_("«{rule}»: нужно целое число").format(rule=rule.title))
     number = int(text)
     if not rule.minimum <= number <= rule.maximum:
-        raise RuleRejected(f"«{rule.title}»: значение от {rule.minimum} до {rule.maximum}")
+        raise RuleRejected(
+            _("«{rule}»: значение от {minimum} до {maximum}").format(
+                rule=rule.title, minimum=rule.minimum, maximum=rule.maximum
+            )
+        )
     return number
 
 
 def words(rule: Rule, number: int) -> str:
-    """Значение для журнала и экрана: у «да/нет» — словом."""
+    """Значение для журнала и экрана: у «да/нет» — словом.
+
+    Слово пишется в журнал и читается оттуда как данные — не переводится.
+    """
     if rule.kind == "bool":
-        return "да" if number else "нет"
+        return "да" if number else "нет"  # i18n-skip: значение записи журнала в базе
     return str(number)
 
 
@@ -279,7 +301,7 @@ def set_value(code: str, raw, *, actor) -> int:
 
     rule = BY_CODE.get(code)
     if rule is None:
-        raise RuleRejected("Такого правила нет")
+        raise RuleRejected(_("Такого правила нет"))
     number = check(rule, raw)
     old = value(code)
     SchoolRule.objects.update_or_create(code=code, defaults={"value": number, "updated_by": actor})
@@ -295,7 +317,7 @@ def reset(code: str, *, actor) -> int:
 
     rule = BY_CODE.get(code)
     if rule is None:
-        raise RuleRejected("Такого правила нет")
+        raise RuleRejected(_("Такого правила нет"))
     old = value(code)
     SchoolRule.objects.filter(code=code).delete()
     if old != rule.default:

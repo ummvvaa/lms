@@ -33,6 +33,7 @@ import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '
 import { Button } from '../components/ui/button'
 import { t, tk } from '../i18n'
 import { formatDate } from '../lib/format'
+import { ApiError } from '../api/client'
 
 const TIER_TONE: Record<string, Tone> = { dream: 'info', reach: 'warn', match: 'accent', safety: 'good' }
 
@@ -43,9 +44,8 @@ const TIER_NOTE: Record<string, string> = {
   safety: tk('Вы уже соответствуете или превышаете требования'),
 }
 
-/** Кусок текста ошибки сервера «план уже есть» — сравнение, человеку не показывается. */
-// eslint-disable-next-line i18n-text -- сравнение с текстом ошибки сервера, не показывается
-const PLAN_EXISTS = 'уже есть'
+/** План по программе уже есть: сервер отвечает 409 с кодом — текст ответа на языке человека. */
+const planExists = (error: Error) => error instanceof ApiError && (error.status === 409 || (error.payload as { code?: string } | null)?.code === 'plan_exists')
 
 /** Форма запуска: специальность, уровень, страны из справочника. */
 function LaunchForm({ onStarted }: { onStarted: (run: SelectionRun) => void }) {
@@ -186,7 +186,7 @@ function ResultRow({ run, row }: { run: SelectionRun; row: SelectionResultRow })
                 {t('В мой список')}
               </Button>
             )}
-            <Button variant="ghost" size="sm" disabled={plans.create.isPending} onClick={() => plans.create.mutate({ program: row.program }, { onSuccess: (plan) => navigate(`/plan/${plan.id}`), onError: (error) => (error.message.includes('409') || error.message.includes(PLAN_EXISTS) ? navigate('/plan') : toast.error(error.message)) })}>
+            <Button variant="ghost" size="sm" disabled={plans.create.isPending} onClick={() => plans.create.mutate({ program: row.program }, { onSuccess: (plan) => navigate(`/plan/${plan.id}`), onError: (error) => (planExists(error) ? navigate('/plan') : toast.error(error.message)) })}>
               {t('Создать план')}
             </Button>
           </>

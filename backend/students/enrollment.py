@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from django.db import transaction
+from django.utils.translation import gettext as _
 
 from accounts.models import Role, User
 from accounts.naming import NameRejected, check_full_name
@@ -36,7 +37,7 @@ from students.models import Student, StudyGroup
 #: Что ищем в заголовке файла. Ключ — поле, значения — как его называют
 #: в школьных списках. Сравнение по вхождению и без регистра: «ФИО
 #: ученика» и «e-mail (школьный)» должны находиться сами.
-COLUMNS: dict[str, tuple[str, ...]] = {
+COLUMNS: dict[str, tuple[str, ...]] = {  # i18n-skip: синонимы заголовков для распознавания
     "full_name": ("фио", "ф.и.о", "имя", "ученик", "фамилия", "name", "student"),
     "email": ("почта", "email", "e-mail", "мейл", "мэйл"),
     # колонка «класс» не читается: параллель — у группы, а не у ученика
@@ -47,7 +48,7 @@ COLUMNS: dict[str, tuple[str, ...]] = {
 #: у него нет параллели. Почта — нет: у 8–10 её нет, им заводится логин.
 REQUIRED = ("full_name", "group")
 
-EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[a-zA-Zа-яА-Я]{2,}$")
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[a-zA-Zа-яА-Я]{2,}$")  # i18n-skip: регулярное выражение
 
 
 @dataclass
@@ -112,12 +113,17 @@ class Preview:
         """Одна фраза о том, что произойдёт. Её читают вместо таблицы."""
         if self.missing_columns:
             names = ", ".join(self.missing_columns)
-            return f"В файле не нашлись обязательные колонки: {names}. Проверьте заголовок первой строки"
-        parts = [f"строк в файле: {len(self.rows)}", f"будет заведено: {len(self.ready)}"]
+            return _("В файле не нашлись обязательные колонки: {names}. Проверьте заголовок первой строки").format(
+                names=names
+            )
+        parts = [
+            _("строк в файле: {count}").format(count=len(self.rows)),
+            _("будет заведено: {count}").format(count=len(self.ready)),
+        ]
         if self.existing:
-            parts.append(f"уже есть: {len(self.existing)}")
+            parts.append(_("уже есть: {count}").format(count=len(self.existing)))
         if self.broken:
-            parts.append(f"с ошибками: {len(self.broken)}")
+            parts.append(_("с ошибками: {count}").format(count=len(self.broken)))
         return ", ".join(parts).capitalize()
 
 
@@ -150,9 +156,9 @@ def build_preview(*, header: list[str], rows: list[list[str]]) -> Preview:
     columns = _find_columns(header)
     missing = [name for name in REQUIRED if name not in columns]
     titles = {
-        "full_name": "ФИО",
-        "email": "почта",
-        "group": "группа",
+        "full_name": _("ФИО"),
+        "email": _("почта"),
+        "group": _("группа"),
     }
     preview = Preview(
         columns={name: header[index] for name, index in columns.items()},
@@ -182,25 +188,27 @@ def build_preview(*, header: list[str], rows: list[list[str]]) -> Preview:
         # без почты ученик узнаётся по фамилии и имени в своей группе
         key = row.email or f"{last_name.lower()}|{first_name.lower()}|{row.group.lower()}"
         if not row.full_name:
-            row.status, row.reason = "error", "не указано ФИО"
+            row.status, row.reason = "error", _("не указано ФИО")
         elif not row.group:
-            row.status, row.reason = "error", "не указана группа"
+            row.status, row.reason = "error", _("не указана группа")
         elif group is None:
             row.status, row.reason = (
                 "error",
-                f"группы «{row.group}» нет — заведите её с параллелью на вкладке «Учебные группы»",
+                _("группы «{group}» нет — заведите её с параллелью на вкладке «Учебные группы»").format(
+                    group=row.group
+                ),
             )
         elif row.email and not EMAIL_RE.match(row.email):
-            row.status, row.reason = "error", f"почта «{row.email}» не похожа на адрес"
+            row.status, row.reason = "error", _("почта «{email}» не похожа на адрес").format(email=row.email)
         elif key in seen:
             row.status, row.reason = (
                 "error",
-                "эта почта встречается в файле дважды" if row.email else "этот ученик встречается в файле дважды",
+                _("эта почта встречается в файле дважды") if row.email else _("этот ученик встречается в файле дважды"),
             )
         elif (row.email and (row.email in known_emails or row.email in known_users)) or (
             not row.email and _known_by_name(row.full_name, group)
         ):
-            row.status, row.reason = "exists", "такой ученик уже заведён"
+            row.status, row.reason = "exists", _("такой ученик уже заведён")
         else:
             try:
                 check_full_name(row.full_name)
@@ -258,19 +266,19 @@ def enroll(*, rows: list[dict[str, Any]], actor=None, send_mail: bool = True) ->
         group = groups.get(str(raw.get("group") or "").strip().lower())
         who = email or full_name
         if not full_name:
-            skipped.append({"email": who, "reason": "нет ФИО"})
+            skipped.append({"email": who, "reason": _("нет ФИО")})
             continue
         if group is None:
-            skipped.append({"email": who, "reason": "нет такой группы — заведите её с параллелью"})
+            skipped.append({"email": who, "reason": _("нет такой группы — заведите её с параллелью")})
             continue
         if email and (
             Student.all_objects.filter(email__iexact=email).exists()
             or User.objects.filter(email__iexact=email).exists()
         ):
-            skipped.append({"email": email, "reason": "уже заведён"})
+            skipped.append({"email": email, "reason": _("уже заведён")})
             continue
         if not email and _known_by_name(full_name, group):
-            skipped.append({"email": full_name, "reason": "уже заведён"})
+            skipped.append({"email": full_name, "reason": _("уже заведён")})
             continue
 
         last, first, middle = _split_name(full_name)
@@ -328,14 +336,14 @@ def _ttl_hours() -> int:
 
 def _detail(created: int, letters: int, skipped: int) -> str:
     if not created:
-        return "Никого не завели: все строки уже есть в базе или содержат ошибки"
-    parts = [f"Заведено учеников: {created}"]
+        return _("Никого не завели: все строки уже есть в базе или содержат ошибки")
+    parts = [_("Заведено учеников: {count}").format(count=created)]
     if letters:
-        parts.append(f"письма с временным паролем ушли: {letters}")
+        parts.append(_("письма с временным паролем ушли: {count}").format(count=letters))
     else:
-        parts.append("письма не отправлялись — скачайте список паролей и раздайте лично")
+        parts.append(_("письма не отправлялись — скачайте список паролей и раздайте лично"))
     if skipped:
-        parts.append(f"пропущено: {skipped}")
+        parts.append(_("пропущено: {count}").format(count=skipped))
     return ". ".join(parts)
 
 

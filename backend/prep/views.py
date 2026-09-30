@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.http import Http404
+from django.utils.translation import gettext as _
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, parser_classes, permission_classes
@@ -67,7 +68,7 @@ class QuestionViewSet(HardDeleteMixin, viewsets.ModelViewSet):
         if not _keeps_the_bank(self.request.user):
             from rest_framework.exceptions import PermissionDenied
 
-            raise PermissionDenied("Банк заданий ведёт академический директор")
+            raise PermissionDenied(_("Банк заданий ведёт академический директор"))
 
     # право проверяется до разбора формы: чужому директору отвечаем «не ваш
     # банк», а не «нужно хотя бы два варианта ответа»
@@ -109,7 +110,7 @@ class PassageViewSet(viewsets.ModelViewSet):
         if not _keeps_the_bank(self.request.user):
             from rest_framework.exceptions import PermissionDenied
 
-            raise PermissionDenied("Банк заданий ведёт академический директор")
+            raise PermissionDenied(_("Банк заданий ведёт академический директор"))
 
     # право проверяется до разбора формы: чужому директору отвечаем «не ваш
     # банк», а не «нужно хотя бы два варианта ответа»
@@ -145,7 +146,7 @@ class MockExamViewSet(HardDeleteMixin, viewsets.ModelViewSet):
         if not _keeps_the_bank(self.request.user):
             from rest_framework.exceptions import PermissionDenied
 
-            raise PermissionDenied("Пробные экзамены собирает академический директор")
+            raise PermissionDenied(_("Mock Test онлайн собирает академический директор"))
         serializer.save()
 
 
@@ -163,13 +164,13 @@ def questions_import(request):
 
     if not can_upload_files(request.user.role):
         return Response(
-            {"detail": "Файлы загружает администратор. Задания заводятся руками на экране «Пробные»"},
+            {"detail": _("Файлы загружает администратор. Задания заводятся руками на экране «Mock Test онлайн»")},
             status=status.HTTP_403_FORBIDDEN,
         )
 
     uploaded = request.FILES.get("file")
     if uploaded is None:
-        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Файл не приложен")}, status=status.HTTP_400_BAD_REQUEST)
 
     raw = uploaded.read()
     content = raw.decode("utf-8-sig", errors="replace") if isinstance(raw, bytes) else str(raw)
@@ -228,7 +229,7 @@ def practice_start(request):
     """Собрать тренировку по секции и сложности."""
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Тренируется ученик"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Тренируется ученик")}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = StartPracticeSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -255,7 +256,7 @@ def practice_detail(request, pk: int):
     """Текущее состояние тренировки."""
     session = _own_session(request, pk)
     if session is None:
-        return Response({"detail": "Сессии нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Сессии нет")}, status=status.HTTP_404_NOT_FOUND)
     finished = session.status != "running"
     return Response(services.session_payload(session, with_answers=finished))
 
@@ -267,7 +268,7 @@ def practice_answer(request, pk: int):
     """Ответить на одно задание."""
     session = _own_session(request, pk)
     if session is None:
-        return Response({"detail": "Сессии нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Сессии нет")}, status=status.HTTP_404_NOT_FOUND)
 
     serializer = AnswerSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -291,7 +292,7 @@ def practice_finish(request, pk: int):
     """Завершить тренировку и получить разбор."""
     session = _own_session(request, pk)
     if session is None:
-        return Response({"detail": "Сессии нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Сессии нет")}, status=status.HTTP_404_NOT_FOUND)
 
     serializer = FinishSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -337,7 +338,7 @@ def open_answers(request):
 
     if not _keeps_the_bank(request.user):
         return Response(
-            {"detail": "Открытые ответы проверяет академический директор"}, status=status.HTTP_403_FORBIDDEN
+            {"detail": _("Открытые ответы проверяет академический директор")}, status=status.HTTP_403_FORBIDDEN
         )
     rows = (
         PracticeAnswer.objects.filter(question__question_type__in=OPEN_TYPES)
@@ -364,7 +365,7 @@ def open_answer_review(request, pk: int):
 
     if not _keeps_the_bank(request.user):
         return Response(
-            {"detail": "Открытые ответы проверяет академический директор"}, status=status.HTTP_403_FORBIDDEN
+            {"detail": _("Открытые ответы проверяет академический директор")}, status=status.HTTP_403_FORBIDDEN
         )
     row = (
         PracticeAnswer.objects.filter(pk=pk, question__question_type__in=OPEN_TYPES)
@@ -373,14 +374,15 @@ def open_answer_review(request, pk: int):
         .first()
     )
     if row is None:
-        return Response({"detail": "Такого ответа нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Такого ответа нет")}, status=status.HTTP_404_NOT_FOUND)
     serializer = OpenAnswerReviewSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     score = serializer.validated_data.get("score")
     scale = scale_of(row.question.exam_type, section=True) or scale_of(row.question.exam_type)
     if score is not None and scale is not None and not scale.holds(score):
         return Response(
-            {"detail": f"Оценка {row.question.exam_type} — {scale.hint}"}, status=status.HTTP_400_BAD_REQUEST
+            {"detail": _("Оценка {exam} — {hint}").format(exam=row.question.exam_type, hint=scale.hint)},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     row.review_score = score
@@ -401,11 +403,11 @@ def mock_start(request, pk: int):
     """Начать пробный экзамен."""
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Мок проходит ученик"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Mock Test проходит ученик")}, status=status.HTTP_403_FORBIDDEN)
 
     mock = MockExam.objects.filter(pk=pk).prefetch_related("sections").first()
     if mock is None:
-        return Response({"detail": "Такого мока нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Такого Mock Test нет")}, status=status.HTTP_404_NOT_FOUND)
 
     try:
         run, shortages = services.start_mock(student, mock)
@@ -433,7 +435,7 @@ def my_runs(request):
     """Мои пробные экзамены."""
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Это экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Это экран ученика")}, status=status.HTTP_403_FORBIDDEN)
 
     rows = MockRun.objects.filter(student=student).select_related("mock", "exam_attempt", "session")
     return Response(
@@ -459,7 +461,7 @@ def my_runs(request):
 def platform_mocks(request):
     """Платформенные моки — отдельным списком у академического директора."""
     if request.user.role == ROLE_STUDENT:
-        return Response({"detail": "Список ведёт академический директор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Список ведёт академический директор")}, status=status.HTTP_403_FORBIDDEN)
 
     rows = (
         MockRun.objects.exclude(exam_attempt__isnull=True)
@@ -492,11 +494,11 @@ def platform_mocks(request):
 def review_platform_mock(request, pk: int):
     """Учитывать ли платформенный мок в текущем балле."""
     if not _keeps_the_bank(request.user):
-        return Response({"detail": "Решение принимает академический директор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Решение принимает академический директор")}, status=status.HTTP_403_FORBIDDEN)
 
     run = MockRun.objects.filter(pk=pk).select_related("exam_attempt", "student__exam", "mock").first()
     if run is None:
-        return Response({"detail": "Прохождения нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Прохождения нет")}, status=status.HTTP_404_NOT_FOUND)
 
     serializer = ReviewMockSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -515,7 +517,7 @@ def center_exams(request):
 
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Центр подготовки — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Центр подготовки — экран ученика")}, status=status.HTTP_403_FORBIDDEN)
     return Response({"exams": prep_center.exams(student)})
 
 
@@ -528,7 +530,7 @@ def center_sections(request, exam: str):
 
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Центр подготовки — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Центр подготовки — экран ученика")}, status=status.HTTP_403_FORBIDDEN)
     return Response({"sections": prep_center.sections(student, exam)})
 
 
@@ -541,7 +543,7 @@ def center_topics(request, exam: str, section: str):
 
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Центр подготовки — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Центр подготовки — экран ученика")}, status=status.HTTP_403_FORBIDDEN)
     return Response({"topics": prep_center.topics(student, exam, section)})
 
 
@@ -554,7 +556,7 @@ def center_statistics(request, exam: str):
 
     student = _own_student(request)
     if student is None:
-        return Response({"detail": "Статистика — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Статистика — экран ученика")}, status=status.HTTP_403_FORBIDDEN)
     return Response(prep_center.statistics(student, exam))
 
 
@@ -581,7 +583,7 @@ class TheoryLessonViewSet(HardDeleteMixin, viewsets.ModelViewSet):
         from rest_framework.exceptions import PermissionDenied
 
         if not _keeps_the_bank(self.request.user):
-            raise PermissionDenied("Теорию ведёт академический директор")
+            raise PermissionDenied(_("Теорию ведёт академический директор"))
 
     def perform_create(self, serializer):
         self._deny_if_not_owner()
@@ -606,7 +608,7 @@ class TheoryLessonViewSet(HardDeleteMixin, viewsets.ModelViewSet):
             return refuse(request.user.role, "prep.TheoryLesson")
         lesson.is_active = False
         lesson.save(update_fields=["is_active"])
-        return Response({"detail": f"Урок «{lesson.title}» скрыт: ученики его больше не видят"})
+        return Response({"detail": _("Урок «{title}» скрыт: ученики его больше не видят").format(title=lesson.title)})
 
 
 @extend_schema(responses={200: None})
@@ -620,9 +622,9 @@ def theory_file(request, pk: int):
 
     lesson = TheoryLesson.objects.filter(pk=pk).first()
     if lesson is None or not lesson.file:
-        raise Http404("Файла нет")
+        raise Http404(_("Файла нет"))
     if request.user.role == ROLE_STUDENT and not lesson.is_active:
-        raise Http404("Файла нет")
+        raise Http404(_("Файла нет"))
     response = FileResponse(lesson.file.open("rb"), content_type=lesson.file_content_type or "application/octet-stream")
     response["Content-Disposition"] = f'inline; filename="theory-{lesson.pk}"'
     response["Cache-Control"] = "private, no-store"
@@ -639,7 +641,7 @@ def passage_audio(request, pk: int):
 
     passage = QuestionPassage.objects.filter(pk=pk).first()
     if passage is None or not passage.audio:
-        raise Http404("Аудио нет")
+        raise Http404(_("Аудио нет"))
     # ученику — только аудио из его собственной тренировки: прямой адрес чужого
     # источника отвечает так же, как несуществующий
     student = _own_student(request)
@@ -647,7 +649,7 @@ def passage_audio(request, pk: int):
         student is not None
         and PracticeAnswer.objects.filter(session__student=student, question__passage=passage).exists()
     ):
-        raise Http404("Аудио нет")
+        raise Http404(_("Аудио нет"))
     response = FileResponse(passage.audio.open("rb"), content_type=passage.audio_content_type or "audio/mpeg")
     response["Content-Disposition"] = f'inline; filename="audio-{passage.pk}"'
     response["Cache-Control"] = "private, no-store"

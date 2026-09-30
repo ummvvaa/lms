@@ -11,6 +11,8 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext
+
 from core.domains import ROLE_STUDENT
 from students.models import Student
 
@@ -63,10 +65,10 @@ def build(student: Student) -> dict:
     steps = [
         {
             "code": "profile",
-            "title": "Заполнить профиль",
-            "hint": "Кто вы, куда хотите и какое направление вам ближе",
+            "title": gettext("Заполнить профиль"),
+            "hint": gettext("Кто вы, куда хотите и какое направление вам ближе"),
             "path": "/onboarding",
-            "action": "Заполнить",
+            "action": gettext("Заполнить"),
             "done": profile_done,
             "locked": False,
             "lock_reason": "",
@@ -75,30 +77,30 @@ def build(student: Student) -> dict:
         },
         {
             "code": "scores",
-            "title": "Внести баллы и цели по экзаменам",
-            "hint": "Текущие баллы и то, к чему готовитесь. Директор подтвердит",
+            "title": gettext("Внести баллы и цели по экзаменам"),
+            "hint": gettext("Текущие баллы и то, к чему готовитесь. Директор подтвердит"),
             "path": "/my-data",
-            "action": "Внести баллы",
+            "action": gettext("Внести баллы"),
             "done": scores_done,
             "locked": False,
             "lock_reason": "",
         },
         {
             "code": "direction",
-            "title": "Выбрать направление и запустить подбор",
-            "hint": "Подбор покажет, куда вы проходите по требованиям, и соберёт стратегию",
+            "title": gettext("Выбрать направление и запустить подбор"),
+            "hint": gettext("Подбор покажет, куда вы проходите по требованиям, и соберёт стратегию"),
             "path": "/selection",
-            "action": "Открыть подбор",
+            "action": gettext("Открыть подбор"),
             "done": direction_done,
             "locked": False,
             "lock_reason": "",
         },
         {
             "code": "universities",
-            "title": "Собрать список вузов",
-            "hint": "Отберите программы из каталога в свой список",
+            "title": gettext("Собрать список вузов"),
+            "hint": gettext("Отберите программы из каталога в свой список"),
             "path": "/catalog",
-            "action": "Выбрать вузы",
+            "action": gettext("Выбрать вузы"),
             "done": universities > 0,
             "locked": False,
             "lock_reason": "",
@@ -106,13 +108,13 @@ def build(student: Student) -> dict:
         },
         {
             "code": "plan",
-            "title": "Получить план",
-            "hint": "Задачи собираются из ваших вузов и их дедлайнов",
+            "title": gettext("Получить план"),
+            "hint": gettext("Задачи собираются из ваших вузов и их дедлайнов"),
             "path": "/roadmap",
-            "action": "Открыть план",
+            "action": gettext("Открыть план"),
             "done": tasks > 0,
             "locked": plan_locked,
-            "lock_reason": "Откроется после направления и списка вузов: плана не бывает без вузов",
+            "lock_reason": gettext("Откроется после направления и списка вузов: плана не бывает без вузов"),
             "count": tasks,
         },
     ]

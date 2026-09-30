@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
 from rest_framework.exceptions import NotFound
 
 from core.domains import ROLE_STUDENT, can_write
@@ -52,4 +53,4 @@ def has_access(user) -> bool:
 def require_access(user) -> None:
     """404 вместо 403: раздела для этого человека просто нет."""
     if not has_access(user):
-        raise NotFound("Страница не найдена")
+        raise NotFound(_("Страница не найдена"))

@@ -12,7 +12,9 @@ def env(name: str, default: str | None = None) -> str:
     """Переменная окружения; без значения и без умолчания — ошибка запуска."""
     value = os.environ.get(name, default)
     if value is None:
-        raise RuntimeError(f"Не задана обязательная переменная окружения {name}")
+        raise RuntimeError(  # i18n-skip: ошибка запуска в терминале владельца
+            f"Не задана обязательная переменная окружения {name}"
+        )
     return value
 
 
@@ -70,6 +72,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # язык ответа — из профиля вошедшего, без входа — из Accept-Language
+    "core.language.LanguageMiddleware",
     # после AuthenticationMiddleware: нужен уже опознанный request.user
     "core.actor.CurrentActorMiddleware",
     "accounts.permissions.MustChangePasswordMiddleware",
@@ -126,7 +130,13 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LANGUAGE_CODE = "ru-ru"
+LANGUAGE_CODE = "ru"
+#: языки интерфейса и писем; подписи — самоназвания, как в переключателе
+LANGUAGES = [("ru", "Русский"), ("kk", "Қазақша"), ("en", "English")]  # i18n-skip: самоназвания языков
+#: переводы сервера: locale/<язык>/LC_MESSAGES/django.po → .mo (makemessages);
+#: locale_builtin — казахский для встроенных сообщений Django, которых нет в самом
+#: Django (валидация, пароли): стоит выше встроенного каталога, makemessages его не трогает
+LOCALE_PATHS = [BASE_DIR / "locale", BASE_DIR / "locale_builtin"]
 TIME_ZONE = env("TZ", "Asia/Almaty")
 USE_I18N = True
 USE_TZ = True
@@ -178,7 +188,7 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": f"{SCHOOL_NAME} — платформа подготовки к поступлению",
+    "TITLE": f"{SCHOOL_NAME} — платформа подготовки к поступлению",  # i18n-skip: заголовок схемы API для разработчика
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,

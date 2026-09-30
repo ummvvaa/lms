@@ -25,6 +25,8 @@ import datetime as dt
 
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_noop
 
 from core.audit import record_event
 from core.domains import ROLE_CURATOR, ROLE_STUDENT, curator_writes
@@ -84,7 +86,7 @@ def recount_attendance(student: Student) -> int | None:
         return None
     present = days.filter(present=True).count()
     percent = round(present * 100 / total)
-    profile, _ = BehaviorProfile.objects.get_or_create(student=student)
+    profile, _created = BehaviorProfile.objects.get_or_create(student=student)
     if profile.attendance_percent != percent:
         BehaviorProfile.objects.filter(pk=profile.pk).update(attendance_percent=percent)
     return percent
@@ -110,9 +112,12 @@ def mark_day(*, student: Student, date: dt.date, present: bool, reason: str = ""
             record_event(
                 student=student,
                 code="attendance_late_edit",
-                text=f"{date:%d.%m.%Y}: {'был' if present else 'не был'}"
-                + (f", {reason}" if reason else "")
-                + f" (правка спустя {(timezone.localdate() - date).days} дн.)",
+                text=_("{date}: {mark}{reason} (правка спустя {days} дн.)").format(
+                    date=f"{date:%d.%m.%Y}",
+                    mark=_("был") if present else _("не был"),
+                    reason=f", {reason}" if reason else "",
+                    days=(timezone.localdate() - date).days,
+                ),
                 actor=actor,
             )
     recount_attendance(student)
@@ -183,10 +188,24 @@ def save_day(*, group, date: dt.date, rows: list[dict], actor) -> dict:
     return {"written": saved, **day_sheet(group=group, date=date)}
 
 
-WEEKDAYS = ("пн", "вт", "ср", "чт", "пт", "сб", "вс")
+#: исходные слова для каталога (`gettext_noop`); перевод — при сборке ответа
+WEEKDAYS = (
+    gettext_noop("пн"),
+    gettext_noop("вт"),
+    gettext_noop("ср"),
+    gettext_noop("чт"),
+    gettext_noop("пт"),
+    gettext_noop("сб"),
+    gettext_noop("вс"),
+)
 
-#: слова ячейки журнала — одни на экран и на файл
-CELL_WORDS = {"present": "был", "absent": "не был", "off": "выходной", "unmarked": "—"}
+#: слова ячейки журнала — одни на экран и на файл; переводятся при сборке
+CELL_WORDS = {
+    "present": gettext_noop("был"),
+    "absent": gettext_noop("не был"),
+    "off": gettext_noop("выходной"),
+    "unmarked": "—",
+}
 
 
 def month_journal(*, group, month: dt.date, absent_only: bool = False) -> dict:
@@ -232,7 +251,11 @@ def month_journal(*, group, month: dt.date, absent_only: bool = False) -> dict:
                 "cells": cells,
                 "absent": absent,
                 "marked": marked,
-                "summary": f"отсутствовал {absent} из {marked}" if marked else "дни не отмечали",
+                "summary": (
+                    _("отсутствовал {absent} из {marked}").format(absent=absent, marked=marked)
+                    if marked
+                    else _("дни не отмечали")
+                ),
             }
         )
     return {
@@ -240,12 +263,12 @@ def month_journal(*, group, month: dt.date, absent_only: bool = False) -> dict:
         "group_code": group.code,
         "month": first.strftime("%Y-%m"),
         "days": [
-            {"date": day, "day": day.day, "weekday": WEEKDAYS[day.weekday()], "school_day": day in school_days}
+            {"date": day, "day": day.day, "weekday": _(WEEKDAYS[day.weekday()]), "school_day": day in school_days}
             for day in days
         ],
         "school_days": len(school_days),
         "rows": rows,
-        "words": CELL_WORDS,
+        "words": {code: _(word) for code, word in CELL_WORDS.items()},
     }
 
 
@@ -263,7 +286,7 @@ def attendance_history(student: Student, *, limit: int = 60) -> list[dict]:
 def recount_remarks(student: Student) -> int:
     """Пересчитать счётчик замечаний из строк."""
     count = BehaviorRemark.objects.filter(student=student).count()
-    profile, _ = BehaviorProfile.objects.get_or_create(student=student)
+    profile, _created = BehaviorProfile.objects.get_or_create(student=student)
     if profile.remarks_count != count:
         BehaviorProfile.objects.filter(pk=profile.pk).update(remarks_count=count)
     return count
@@ -274,7 +297,7 @@ def add_remark(*, student: Student, text: str, date: dt.date | None = None, acto
     """Записать замечание словами — и пересчитать счётчик профиля."""
     text = (text or "").strip()
     if not text:
-        raise ValueError("Замечание без текста не записывается: через месяц никто не вспомнит, за что")
+        raise ValueError(_("Замечание без текста не записывается: через месяц никто не вспомнит, за что"))
     row = BehaviorRemark.objects.create(
         student=student,
         date=date or timezone.localdate(),

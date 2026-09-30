@@ -22,6 +22,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from django.conf import settings
+from django.utils.translation import gettext as _
+
+from core.phrasing import tn
 
 log = logging.getLogger("llm")
 
@@ -109,7 +112,7 @@ class AnthropicProvider(Provider):
         search: dict | None = None,
     ) -> Completion:
         if not self.is_configured():
-            raise LLMUnavailable("Ключ модели не задан")
+            raise LLMUnavailable(_("Ключ модели не задан"))
 
         import requests
 
@@ -135,7 +138,8 @@ class AnthropicProvider(Provider):
             # список разрешённых доменов: дальше него он не пойдёт
             tools.append(search)
         if schema:
-            tools.append({"name": "result", "description": "Структурированный ответ", "input_schema": schema})
+            description = "Структурированный ответ"  # i18n-skip: описание инструмента читает модель
+            tools.append({"name": "result", "description": description, "input_schema": schema})
         if tools:
             payload["tools"] = tools
         if schema and not search:
@@ -228,7 +232,7 @@ class OpenAIProvider(Provider):
         search: dict | None = None,
     ) -> Completion:
         if not self.is_configured():
-            raise LLMUnavailable("Ключ модели не задан")
+            raise LLMUnavailable(_("Ключ модели не задан"))
 
         import requests
 
@@ -317,11 +321,18 @@ def _openai_search(search: dict) -> dict[str, Any]:
     """
     domains = [str(domain).strip() for domain in search.get("allowed_domains") or [] if str(domain).strip()]
     if not domains:
-        raise LLMUnavailable("Поиск без белого списка запрещён — искать негде")
+        raise LLMUnavailable(_("Поиск без белого списка запрещён — искать негде"))
     if len(domains) > OPENAI_MAX_DOMAINS:
         raise LLMUnavailable(
-            f"Белый список поиска длиннее {OPENAI_MAX_DOMAINS} доменов — провайдер его не принимает. "
-            "Выберите вуз: тогда поиск пойдёт по его сайту и Common App"
+            tn(
+                OPENAI_MAX_DOMAINS,
+                "Белый список поиска длиннее {n} домена — провайдер его не принимает. "
+                "Выберите вуз: тогда поиск пойдёт по его сайту и Common App|"
+                "Белый список поиска длиннее {n} доменов — провайдер его не принимает. "
+                "Выберите вуз: тогда поиск пойдёт по его сайту и Common App|"
+                "Белый список поиска длиннее {n} доменов — провайдер его не принимает. "
+                "Выберите вуз: тогда поиск пойдёт по его сайту и Common App",
+            )
         )
     return {
         "tools": [{"type": "web_search", "filters": {"allowed_domains": domains}}],
@@ -368,10 +379,10 @@ def _with_retries(call) -> dict:
             try:
                 body = response.json()
             except json.JSONDecodeError:
-                body, last = {}, f"ответ не разобран ({response.status_code})"
+                body, last = {}, _("ответ не разобран ({status})").format(status=response.status_code)
             if response.status_code < 400:
                 return body
-            last = f"провайдер вернул {response.status_code}"
+            last = _("провайдер вернул {status}").format(status=response.status_code)
             log.warning("Модель вернула %s: %s", response.status_code, str(body)[:500])
             if response.status_code not in RETRY_CODES or _error_code(body) in NO_RETRY_ERROR_CODES:
                 raise LLMUnavailable(last)
@@ -385,7 +396,7 @@ def _with_retries(call) -> dict:
                 pause = max(pause, wait_hint)
             time.sleep(pause)
 
-    raise LLMUnavailable(last or "Модель не ответила")
+    raise LLMUnavailable(last or _("Модель не ответила"))
 
 
 def _error_code(body: Any) -> str:
@@ -417,7 +428,7 @@ class NullProvider(Provider):
         return False
 
     def complete(self, **_kwargs) -> Completion:
-        raise LLMUnavailable("Модель не подключена — работаем правилами")
+        raise LLMUnavailable(_("Модель не подключена — работаем правилами"))
 
 
 PROVIDERS: dict[str, type[Provider]] = {

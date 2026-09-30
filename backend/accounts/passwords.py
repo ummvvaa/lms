@@ -18,8 +18,10 @@ from django.conf import settings
 from django.contrib.auth.password_validation import CommonPasswordValidator
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.utils.translation import gettext
 
 from accounts.models import LoginAttempt
+from core.phrasing import tn
 
 #: Минимальная длина. В настройках — чтобы школа могла поднять планку без выката.
 MIN_LENGTH = 10
@@ -89,28 +91,37 @@ def validate_password(password: str, *, email: str = "", login: str = "") -> Non
     """Проверить пароль по правилам школы. Молчит, если всё в порядке."""
     limit = min_length()
     if len(password) < limit:
-        raise PasswordRejected(f"Пароль должен быть не короче {limit} символов")
+        raise PasswordRejected(
+            tn(
+                limit,
+                "Пароль должен быть не короче {n} символа|"
+                "Пароль должен быть не короче {n} символов|"
+                "Пароль должен быть не короче {n} символов",
+            )
+        )
 
     local_part = email.split("@")[0].strip().lower()
     lowered = password.strip().lower()
     if email and (lowered == email.strip().lower() or (local_part and lowered == local_part)):
-        raise PasswordRejected("Пароль не должен совпадать с почтой")
+        raise PasswordRejected(gettext("Пароль не должен совпадать с почтой"))
     if login and lowered == login.strip().lower():
-        raise PasswordRejected("Пароль не должен совпадать с логином")
+        raise PasswordRejected(gettext("Пароль не должен совпадать с логином"))
 
     try:
         CommonPasswordValidator().validate(password)
     except ValidationError as error:
-        raise PasswordRejected("Такой пароль слишком распространён — придумайте другой") from error
+        raise PasswordRejected(gettext("Такой пароль слишком распространён — придумайте другой")) from error
 
 
 def _wait_phrase(seconds: int) -> str:
     """«через 3 мин», «через 1 ч 12 мин» — по-человечески, без секунд."""
     minutes = max(1, -(-seconds // 60))
     if minutes < 60:
-        return f"через {minutes} мин"
+        return gettext("через {minutes} мин").format(minutes=minutes)
     hours, rest = divmod(minutes, 60)
-    return f"через {hours} ч {rest} мин" if rest else f"через {hours} ч"
+    if rest:
+        return gettext("через {hours} ч {minutes} мин").format(hours=hours, minutes=rest)
+    return gettext("через {hours} ч").format(hours=hours)
 
 
 @dataclass(frozen=True)
@@ -132,14 +143,14 @@ class Lock:
         """
         wait = _wait_phrase(self.seconds)
         if self.scope == "account":
-            return (
-                f"Слишком много попыток входа в эту учётную запись. Вход откроется {wait}. "
+            return gettext(
+                "Слишком много попыток входа в эту учётную запись. Вход откроется {wait}. "
                 "Если это были не вы — обратитесь к администратору школы"
-            )
-        return (
-            f"Слишком много попыток входа с этого адреса. Вход откроется {wait} — "
+            ).format(wait=wait)
+        return gettext(
+            "Слишком много попыток входа с этого адреса. Вход откроется {wait} — "
             "обратитесь к администратору школы, он снимает блокировку сразу"
-        )
+        ).format(wait=wait)
 
     def as_dict(self) -> dict:
         return {

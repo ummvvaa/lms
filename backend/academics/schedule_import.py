@@ -37,6 +37,8 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 from django.db import transaction
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy, gettext_noop
 
 from academics import cache
 from academics import calendar as school_calendar
@@ -69,14 +71,26 @@ from students.phones import normalize_kz
 #: Еженедельный урок действует с начала года; строки уроков — со дня импорта
 SERIES_START = dt.date(2026, 9, 1)
 
+#: Листы книги школы. Названия листов, колонок и значений в ячейках — как
+#: в файле школы, по-русски: по ним книга читается, и они не переводятся
+#: (шаблон школы один, на русском). Переводятся ошибки и предупреждения
+STAFF, GROUPS, SUBJECTS, BELLS, SUBGROUPS, LESSONS = (  # i18n-skip: названия листов книги школы
+    "Сотрудники",
+    "Группы",
+    "Предметы",
+    "Звонки",
+    "Подгруппы",
+    "Уроки",
+)
+
 #: Лист → колонки, без которых импорт не идёт. Лишние колонки не мешают
-SHEETS: dict[str, tuple[str, ...]] = {
-    "Сотрудники": ("ID", "ФИО", "Фамилия", "Имя", "Отчество", "Роль", "Предметы", "Телефон", "Почта", "Логин"),
-    "Группы": ("Группа", "Параллель", "Литера", "Язык обучения", "ID куратора", "Домашний кабинет"),
-    "Предметы": ("Предмет",),
-    "Звонки": ("Параллели", "Урок", "Начало", "Конец"),
-    "Подгруппы": ("Подгруппа", "Параллель", "Предмет", "Из групп", "ID учителя", "Основной кабинет"),
-    "Уроки": (
+SHEETS: dict[str, tuple[str, ...]] = {  # i18n-skip: заголовки колонок книги школы
+    STAFF: ("ID", "ФИО", "Фамилия", "Имя", "Отчество", "Роль", "Предметы", "Телефон", "Почта", "Логин"),
+    GROUPS: ("Группа", "Параллель", "Литера", "Язык обучения", "ID куратора", "Домашний кабинет"),
+    SUBJECTS: ("Предмет",),
+    BELLS: ("Параллели", "Урок", "Начало", "Конец"),
+    SUBGROUPS: ("Подгруппа", "Параллель", "Предмет", "Из групп", "ID учителя", "Основной кабинет"),
+    LESSONS: (
         "Параллель",
         "Группа",
         "Подгруппа",
@@ -92,15 +106,15 @@ SHEETS: dict[str, tuple[str, ...]] = {
 }
 
 #: Колонки, которых в старых книгах нет: пустое значение — умолчание
-OPTIONAL: dict[str, tuple[str, ...]] = {"Предметы": ("Оценивание",)}
+OPTIONAL: dict[str, tuple[str, ...]] = {SUBJECTS: ("Оценивание",)}  # i18n-skip: заголовок колонки книги школы
 
 #: «Оценивание» на листе «Предметы» → схема предмета. «Без оценок» — существующая
 #: схема «Только ФО», в табель не идёт (решение владельца, 29.09.2026); пусто — ФО, СОР, СОЧ
-SCHEMES: dict[str, str] = {"фо, сор, соч": Scheme.KZ, "без оценок": Scheme.FO}
+SCHEMES: dict[str, str] = {"фо, сор, соч": Scheme.KZ, "без оценок": Scheme.FO}  # i18n-skip: значения ячейки книги
 
 #: Роль в файле → роль учётки и нужен ли профиль учителя. `None` — администрация:
 #: роли под неё нет, учётка заводится выключенной, роль назначает администратор
-ROLES: dict[str, tuple[str | None, bool]] = {
+ROLES: dict[str, tuple[str | None, bool]] = {  # i18n-skip: значения ячейки книги школы
     "учитель": (Role.TEACHER, True),
     "куратор": (Role.CURATOR, False),
     "учитель + куратор": (Role.CURATOR, True),
@@ -110,10 +124,18 @@ ROLES: dict[str, tuple[str | None, bool]] = {
 #: Роли, которые импорт меняет друг на друга. Остальные только называет в отчёте
 SWITCHABLE = (Role.TEACHER, Role.CURATOR)
 
-LANGUAGES = {"казахский": GroupLanguage.KK, "русский": GroupLanguage.RU}
+LANGUAGES = {"казахский": GroupLanguage.KK, "русский": GroupLanguage.RU}  # i18n-skip: значения ячейки книги школы
 
-WEEKDAYS = {"пн": 1, "вт": 2, "ср": 3, "чт": 4, "пт": 5, "сб": 6}
-WEEKDAY_WORDS = {1: "Пн", 2: "Вт", 3: "Ср", 4: "Чт", 5: "Пт", 6: "Сб"}
+WEEKDAYS = {"пн": 1, "вт": 2, "ср": 3, "чт": 4, "пт": 5, "сб": 6}  # i18n-skip: день недели в ячейке книги
+#: День недели в предупреждениях — на языке того, кто загружает
+WEEKDAY_WORDS = {
+    1: gettext_lazy("Пн"),
+    2: gettext_lazy("Вт"),
+    3: gettext_lazy("Ср"),
+    4: gettext_lazy("Чт"),
+    5: gettext_lazy("Пт"),
+    6: gettext_lazy("Сб"),
+}
 
 #: Предел размера файла: книга школы весит около 100 КБ
 MAX_BYTES = 5 * 1024 * 1024
@@ -154,6 +176,11 @@ def _time(value) -> dt.time | None:
         return None
     hours, minutes = int(match.group(1)), int(match.group(2))
     return dt.time(hours, minutes) if hours < 24 and minutes < 60 else None
+
+
+def _where(sheet: str, row: int) -> str:
+    """«Лист», строка N — где в книге ошибка; лист назван, как в файле."""
+    return _("«{sheet}», строка {row}").format(sheet=sheet, row=row)
 
 
 def _key(text: str) -> str:
@@ -269,7 +296,8 @@ def _rows(sheet, title: str, errors: list[str]):
     names = [_text(cell) for cell in header]
     missing = [column for column in SHEETS[title] if column not in names]
     if missing:
-        errors.append(f"На листе «{title}» нет колонок: " + ", ".join(f"«{c}»" for c in missing))
+        columns = ", ".join(f"«{c}»" for c in missing)
+        errors.append(_("На листе «{sheet}» нет колонок: {columns}").format(sheet=title, columns=columns))
         return
     index = {name: names.index(name) for name in (*SHEETS[title], *OPTIONAL.get(title, ())) if name in names}
     for number, values in enumerate(rows, start=2):
@@ -290,14 +318,15 @@ def parse(data: bytes) -> Book:
     try:
         workbook = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
     except (InvalidFileException, KeyError, OSError, ValueError, zipfile.BadZipFile):
-        book.errors.append("Файл не читается как книга Excel (.xlsx)")
+        book.errors.append(_("Файл не читается как книга Excel (.xlsx)"))
         return book
     missing = [title for title in SHEETS if title not in workbook.sheetnames]
     if missing:
-        book.errors.append("В файле нет листов: " + ", ".join(f"«{t}»" for t in missing))
+        sheets = ", ".join(f"«{t}»" for t in missing)
+        book.errors.append(_("В файле нет листов: {sheets}").format(sheets=sheets))
         return book
 
-    for number, cells in _rows(workbook["Сотрудники"], "Сотрудники", book.errors):
+    for number, cells in _rows(workbook[STAFF], STAFF, book.errors):  # i18n-skip: колонки книги школы
         book.staff.append(
             Staff(
                 row=number,
@@ -312,7 +341,7 @@ def parse(data: bytes) -> Book:
                 login=_text(cells["Логин"]).lower(),
             )
         )
-    for number, cells in _rows(workbook["Группы"], "Группы", book.errors):
+    for number, cells in _rows(workbook[GROUPS], GROUPS, book.errors):  # i18n-skip: колонки книги школы
         book.groups.append(
             GroupRow(
                 row=number,
@@ -324,7 +353,7 @@ def parse(data: bytes) -> Book:
                 home_room=_text(cells["Домашний кабинет"]),
             )
         )
-    for number, cells in _rows(workbook["Предметы"], "Предметы", book.errors):
+    for number, cells in _rows(workbook[SUBJECTS], SUBJECTS, book.errors):  # i18n-skip: колонки книги школы
         book.subjects.append(
             SubjectRow(
                 row=number,
@@ -332,7 +361,7 @@ def parse(data: bytes) -> Book:
                 grading=re.sub(r"\s*,\s*", ", ", _key(_text(cells["Оценивание"]))),
             )
         )
-    for number, cells in _rows(workbook["Звонки"], "Звонки", book.errors):
+    for number, cells in _rows(workbook[BELLS], BELLS, book.errors):  # i18n-skip: колонки книги школы
         label = _text(cells["Параллели"])
         book.bells.append(
             BellRow(
@@ -344,7 +373,7 @@ def parse(data: bytes) -> Book:
                 ends=_time(cells["Конец"]),
             )
         )
-    for number, cells in _rows(workbook["Подгруппы"], "Подгруппы", book.errors):
+    for number, cells in _rows(workbook[SUBGROUPS], SUBGROUPS, book.errors):  # i18n-skip: колонки книги школы
         book.subgroups.append(
             SubgroupRow(
                 row=number,
@@ -356,7 +385,7 @@ def parse(data: bytes) -> Book:
                 room=_text(cells["Основной кабинет"]),
             )
         )
-    for number, cells in _rows(workbook["Уроки"], "Уроки", book.errors):
+    for number, cells in _rows(workbook[LESSONS], LESSONS, book.errors):  # i18n-skip: колонки книги школы
         book.lessons.append(
             LessonRow(
                 row=number,
@@ -444,11 +473,17 @@ class Report:
 
     def detail(self) -> str:
         if self.errors:
-            return f"Импорт не выполнен: ошибок {len(self.errors)}"
+            return _("Импорт не выполнен: ошибок {count}").format(count=len(self.errors))
         made = sum(s.created for s in self.sections.values())
         changed = sum(s.updated for s in self.sections.values())
-        head = "Импорт выполнен" if self.applied else "Предпросмотр"
-        return f"{head}: создаётся {made}, обновляется {changed}, предупреждений {len(self.warnings)}"
+        numbers = {"created": made, "updated": changed, "warnings": len(self.warnings)}
+        if self.applied:
+            return _("Импорт выполнен: создаётся {created}, обновляется {updated}, предупреждений {warnings}").format(
+                **numbers
+            )
+        return _("Предпросмотр: создаётся {created}, обновляется {updated}, предупреждений {warnings}").format(
+            **numbers
+        )
 
 
 # --- Запись -----------------------------------------------------------------------
@@ -462,13 +497,13 @@ def preview(data: bytes) -> dict:
 def apply(data: bytes, *, actor, expected: str) -> dict:
     """Применить файл, который видели в предпросмотре. Всё или ничего."""
     if expected != fingerprint(data):
-        raise ImportRefused("Файл не тот, что в предпросмотре: загрузите его заново и проверьте")
+        raise ImportRefused(_("Файл не тот, что в предпросмотре: загрузите его заново и проверьте"))
     return _run(data, actor=actor, commit=True)
 
 
 def _run(data: bytes, *, actor, commit: bool) -> dict:
     if len(data) > MAX_BYTES:
-        raise ImportRefused("Файл больше 5 МБ — это не книга расписания")
+        raise ImportRefused(_("Файл больше 5 МБ — это не книга расписания"))
     report = Report(fingerprint=fingerprint(data))
     book = parse(data)
     report.errors.extend(book.errors)
@@ -512,7 +547,7 @@ class _Writer:
     def run(self) -> None:
         self.year = school_calendar.current_year()
         if self.year is None:
-            self.error("Нет текущего учебного года: заведите его на странице «Учебный год»")
+            self.error(_("Нет текущего учебного года: заведите его на странице «Учебный год»"))
             return
         self._subjects()
         self._staff()
@@ -534,7 +569,7 @@ class _Writer:
     # --- Предметы ---
 
     def _subjects(self) -> None:
-        section = self.report.section("subjects", "Предметы")
+        section = self.report.section("subjects", _("Предметы"))
         known = {_key(s.title): s for s in Subject.objects.all()}
         for row in self.book.subjects:
             title = row.title
@@ -542,7 +577,9 @@ class _Writer:
                 continue
             if row.grading and row.grading not in SCHEMES:
                 self.error(
-                    f"«Предметы», строка {row.row}: оценивание «{row.grading}» — нужно «ФО, СОР, СОЧ» или «без оценок»"
+                    _("{where}: оценивание «{value}» — нужно «ФО, СОР, СОЧ» или «без оценок»").format(
+                        where=_where(SUBJECTS, row.row), value=row.grading
+                    )
                 )
                 continue
             scheme = SCHEMES.get(row.grading, Scheme.KZ)
@@ -559,7 +596,10 @@ class _Writer:
                 section.created += 1
                 if not row.grading:
                     self.report.warn(
-                        "subject", f"Новый предмет «{title}»: оценивание в файле не указано — ФО, СОР и СОЧ, проверьте"
+                        "subject",
+                        _("Новый предмет «{subject}»: оценивание в файле не указано — ФО, СОР и СОЧ, проверьте").format(
+                            subject=title
+                        ),
                     )
             else:
                 section.unchanged += 1
@@ -567,8 +607,9 @@ class _Writer:
                 if row.grading and found.scheme != scheme:
                     self.report.warn(
                         "scheme",
-                        f"Предмет «{found.title}»: в LMS — «{found.get_scheme_display()}», "
-                        f"в файле — «{Scheme(scheme).label}»; схема не меняется",
+                        _("Предмет «{subject}»: в LMS — «{current}», в файле — «{wanted}»; схема не меняется").format(
+                            subject=found.title, current=found.get_scheme_display(), wanted=Scheme(scheme).label
+                        ),
                     )
         self.subjects = known
 
@@ -585,13 +626,13 @@ class _Writer:
     def subject(self, title: str, where: str) -> Subject | None:
         found = self.subjects.get(_key(title))
         if found is None:
-            self.error(f"{where}: предмета «{title}» нет ни в файле, ни в LMS")
+            self.error(_("{where}: предмета «{subject}» нет ни в файле, ни в LMS").format(where=where, subject=title))
         return found
 
     # --- Сотрудники ---
 
     def _staff(self) -> None:
-        section = self.report.section("staff", "Сотрудники")
+        section = self.report.section("staff", _("Сотрудники"))
         people = list(User.objects.exclude(role=Role.STUDENT))
         by_email = {p.email.lower(): p for p in people if p.email}
         by_login = {p.login.lower(): p for p in people if p.login}
@@ -605,20 +646,29 @@ class _Writer:
         taken_logins: set[str] = set()
         codes: set[str] = set()
         for row in self.book.staff:
-            where = f"«Сотрудники», строка {row.row}"
+            where = _where(STAFF, row.row)
             if not row.code or not row.full_name:
-                self.error(f"{where}: нет ID или ФИО")
+                self.error(_("{where}: нет ID или ФИО").format(where=where))
                 continue
             if row.code in codes:
-                self.error(f"{where}: ID {row.code} встречается дважды")
+                self.error(_("{where}: ID {code} встречается дважды").format(where=where, code=row.code))
                 continue
             codes.add(row.code)
             if row.role_text not in ROLES:
-                self.error(f"{where}: роль «{row.role_text}» не из списка: " + ", ".join(ROLES))
+                self.error(
+                    _("{where}: роль «{role}» не из списка: {roles}").format(
+                        where=where, role=row.role_text, roles=", ".join(ROLES)
+                    )
+                )
                 continue
             phone = normalize_kz(row.phone)
             if phone and not re.fullmatch(r"\+7\d{10}", phone):
-                self.report.warn("phone", f"{row.full_name}: телефон «{row.phone}» не похож на номер — не записан")
+                self.report.warn(
+                    "phone",
+                    _("{name}: телефон «{phone}» не похож на номер — не записан").format(
+                        name=row.full_name, phone=row.phone
+                    ),
+                )
                 phone = ""
             user, why = self._match(row, phone, by_email, by_login, by_name, by_phone)
             if why:
@@ -646,17 +696,17 @@ class _Writer:
             if row.email in by_email:
                 return by_email[row.email], ""
             if User.objects.filter(email__iexact=row.email).exists():
-                return None, f"почта {row.email} — у ученика, не у сотрудника"
+                return None, _("почта {email} — у ученика, не у сотрудника").format(email=row.email)
         if row.login and row.login in by_login:
             return by_login[row.login], ""
         named = by_name.get(_key(row.full_name), [])
         if len(named) > 1:
-            return None, f"в LMS несколько сотрудников с ФИО «{row.full_name}» — оставьте одного"
+            return None, _("в LMS несколько сотрудников с ФИО «{name}» — оставьте одного").format(name=row.full_name)
         if named:
             return named[0], ""
         phoned = by_phone.get(phone, []) if phone else []
         if len(phoned) > 1:
-            return None, f"в LMS несколько сотрудников с телефоном {phone}"
+            return None, _("в LMS несколько сотрудников с телефоном {phone}").format(phone=phone)
         return (phoned[0] if phoned else None), ""
 
     def _create(self, row: Staff, phone: str, taken: set[str]) -> User | None:
@@ -665,15 +715,24 @@ class _Writer:
         role, _profile = ROLES[row.role_text]
         email = row.email or None
         if email and User.objects.filter(email__iexact=email).exists():
-            self.error(f"«Сотрудники», строка {row.row}: почта {email} уже занята другой учётной записью")
+            self.error(
+                _("{where}: почта {email} уже занята другой учётной записью").format(
+                    where=_where(STAFF, row.row), email=email
+                )
+            )
             return None
         login = None
         if not email:
             login = row.login if row.login and LOGIN_RE.match(row.login) else ""
             if not login or login in taken or User.objects.filter(login__iexact=login).exists():
-                wanted = login or "без логина"
+                wanted = login or _("без логина")
                 login = make_login(row.first_name, row.last_name, taken=taken)
-                self.report.warn("login", f"{row.full_name}: логин «{wanted}» занят или неверен — выдан «{login}»")
+                self.report.warn(
+                    "login",
+                    _("{name}: логин «{wanted}» занят или неверен — выдан «{login}»").format(
+                        name=row.full_name, wanted=wanted, login=login
+                    ),
+                )
             taken.add(login)
         admin_staff = role is None
         user = User.objects.create_user(
@@ -756,7 +815,12 @@ class _Writer:
         for title in row.subjects:
             found = self.subjects.get(_key(title))
             if found is None:
-                self.report.warn("subject", f"{row.full_name}: предмета «{title}» нет на листе «Предметы» — пропущен")
+                self.report.warn(
+                    "subject",
+                    _("{name}: предмета «{subject}» нет на листе «{sheet}» — пропущен").format(
+                        name=row.full_name, subject=title, sheet=SUBJECTS
+                    ),
+                )
             else:
                 wanted.append(found)
         profile, created = TeacherProfile.objects.get_or_create(user=user)
@@ -771,7 +835,9 @@ class _Writer:
             return None
         found = self.staff.get(code)
         if found is None:
-            self.error(f"{where}: сотрудника с ID {code} нет на листе «Сотрудники»")
+            self.error(
+                _("{where}: сотрудника с ID {code} нет на листе «{sheet}»").format(where=where, code=code, sheet=STAFF)
+            )
         return found
 
     # --- Группы ---
@@ -779,20 +845,24 @@ class _Writer:
     def _groups(self) -> None:
         from accounts.curators import AssignmentRefused, assign, curator_of
 
-        section = self.report.section("groups", "Группы")
+        section = self.report.section("groups", _("Группы"))
         seen: set[str] = set()
         for row in self.book.groups:
-            where = f"«Группы», строка {row.row}"
+            where = _where(GROUPS, row.row)
             if not row.code or row.code in seen:
-                self.error(f"{where}: нет кода группы или он повторяется")
+                self.error(_("{where}: нет кода группы или он повторяется").format(where=where))
                 continue
             seen.add(row.code)
             if row.parallel not in Parallel.values:
-                self.error(f"{where}: параллель должна быть от 8 до 11")
+                self.error(_("{where}: параллель должна быть от 8 до 11").format(where=where))
                 continue
             language = LANGUAGES.get(row.language)
             if language is None:
-                self.error(f"{where}: язык «{row.language}» — нужен «казахский» или «русский»")
+                self.error(
+                    _("{where}: язык «{language}» — нужен «казахский» или «русский»").format(
+                        where=where, language=row.language
+                    )
+                )
                 continue
             wanted = {
                 "parallel": row.parallel,
@@ -809,7 +879,10 @@ class _Writer:
                 diff = {name: value for name, value in wanted.items() if getattr(group, name) != value}
                 if "parallel" in diff:
                     self.report.warn(
-                        "parallel", f"Группа {group.code}: параллель меняется {group.parallel} → {row.parallel}"
+                        "parallel",
+                        _("Группа {group}: параллель меняется {was} → {will}").format(
+                            group=group.code, was=group.parallel, will=row.parallel
+                        ),
                     )
                 for name, value in diff.items():
                     record_change(
@@ -835,7 +908,9 @@ class _Writer:
             if curator.role != Role.CURATOR:
                 self.report.warn(
                     "curator",
-                    f"Группа {group.code}: {user_name(curator)} — не куратор в LMS, куратором не назначен",
+                    _("Группа {group}: {name} — не куратор в LMS, куратором не назначен").format(
+                        group=group.code, name=user_name(curator)
+                    ),
                 )
                 continue
             current = curator_of(group, self.day)
@@ -857,7 +932,7 @@ class _Writer:
             try:
                 assign(group=group, curator=curator, since=since, actor=self.actor)
             except AssignmentRefused as error:
-                self.report.warn("curator", f"Группа {group.code}: {error}")
+                self.report.warn("curator", _("Группа {group}: {error}").format(group=group.code, error=error))
         in_file = set(self.groups)
         self.report.groups_outside = sorted(
             g.code for g in StudyGroup.objects.filter(is_active=True) if g.code.upper() not in in_file
@@ -866,30 +941,35 @@ class _Writer:
     def group(self, code: str, where: str) -> StudyGroup | None:
         found = self.groups.get(code.upper())
         if found is None:
-            self.error(f"{where}: группы {code} нет на листе «Группы»")
+            self.error(_("{where}: группы {code} нет на листе «{sheet}»").format(where=where, code=code, sheet=GROUPS))
         return found
 
     # --- Звонки ---
 
     def _bells(self) -> None:
-        section = self.report.section("bells", "Звонки")
+        section = self.report.section("bells", _("Звонки"))
         grids: dict[str, list[BellRow]] = defaultdict(list)
         for row in self.book.bells:
             if not row.parallels:
-                self.error(f"«Звонки», строка {row.row}: не понятно, каких параллелей звонки «{row.label}»")
+                self.error(
+                    _("{where}: не понятно, каких параллелей звонки «{label}»").format(
+                        where=_where(BELLS, row.row), label=row.label
+                    )
+                )
                 continue
             if row.number is None:
                 # «обед» и другие перемены — не урок, в звонки не идут
                 self.report.skipped_bells += 1
                 continue
             if row.starts is None or row.ends is None or row.starts >= row.ends:
-                self.error(f"«Звонки», строка {row.row}: неверное время урока")
+                self.error(_("{where}: неверное время урока").format(where=_where(BELLS, row.row)))
                 continue
             grids[row.label].append(row)
         for rows in grids.values():
             parallels = rows[0].parallels
             span = f"{parallels[0]}–{parallels[-1]}" if len(parallels) > 1 else str(parallels[0])
-            title = f"Звонки {span}"
+            # имя расписания звонков — ключ повторного импорта, не подпись: не переводится
+            title = f"Звонки {span}"  # i18n-skip: ключ записи расписания звонков
             schedule, created = BellSchedule.objects.get_or_create(year=self.year, title=title)
             changed = created
             for row in rows:
@@ -907,8 +987,10 @@ class _Writer:
                     self.grids.setdefault(parallel, {})[row.number] = (row.starts, row.ends)
             extra = Bell.objects.filter(schedule=schedule).exclude(number__in=[r.number for r in rows])
             if extra.exists():
+                numbers = ", ".join(str(b.number) for b in extra)
                 self.report.warn(
-                    "bells", f"{title}: в LMS есть уроки сверх файла — {', '.join(str(b.number) for b in extra)}"
+                    "bells",
+                    _("{schedule}: в LMS есть уроки сверх файла — {numbers}").format(schedule=title, numbers=numbers),
                 )
             groups = [g for g in self.groups.values() if g.parallel in parallels]
             others = BellSchedule.objects.filter(year=self.year, is_default=False).exclude(pk=schedule.pk)
@@ -924,20 +1006,25 @@ class _Writer:
             else:
                 section.unchanged += 1
         for parallel in sorted({g.parallel for g in self.groups.values()} - set(self.grids)):
-            self.report.warn("bells", f"Для {parallel} параллели звонков в файле нет — уроки пойдут по общим звонкам")
+            self.report.warn(
+                "bells",
+                _("Для {parallel} параллели звонков в файле нет — уроки пойдут по общим звонкам").format(
+                    parallel=parallel
+                ),
+            )
 
     # --- Подгруппы ---
 
     def _subgroups(self) -> None:
-        section = self.report.section("subgroups", "Подгруппы и потоки")
+        section = self.report.section("subgroups", _("Подгруппы и потоки"))
         for row in self.book.subgroups:
-            where = f"«Подгруппы», строка {row.row}"
+            where = _where(SUBGROUPS, row.row)
             subject = self.subject(row.subject, where)
             groups = [self.group(code, where) for code in row.groups]
             self.person(row.teacher, where)
             if subject is None or not row.name or not groups or any(g is None for g in groups):
                 if not row.name or not groups:
-                    self.error(f"{where}: нужны название подгруппы и группы потока")
+                    self.error(_("{where}: нужны название подгруппы и группы потока").format(where=where))
                 continue
             stream, stream_state = self._stream(_stream_name(row.name), groups)
             if stream_state == "created":
@@ -957,7 +1044,8 @@ class _Writer:
                     kind=CohortKind.SUBGROUP,
                     name=row.name[:120],
                     short_name=row.name[:60],
-                    rule="по файлу школы",
+                    # правило хранится русским исходником, экран переводит его при показе
+                    rule=gettext_noop("по файлу школы"),
                     **wanted,
                 )
                 section.created += 1
@@ -986,16 +1074,16 @@ class _Writer:
     # --- Уроки ---
 
     def _lessons(self) -> None:
-        section = self.report.section("lessons", "Уроки в неделю")
+        section = self.report.section("lessons", _("Уроки в неделю"))
         units: list[dict] = []
         joint: dict[str, list[LessonRow]] = defaultdict(list)
         for row in self.book.lessons:
-            where = f"«Уроки», строка {row.row}"
+            where = _where(LESSONS, row.row)
             if bool(row.group) == bool(row.subgroup):
-                self.error(f"{where}: заполните либо «Группа», либо «Подгруппа»")
+                self.error(_("{where}: заполните либо «Группа», либо «Подгруппа»").format(where=where))
                 continue
             if row.weekday is None or row.slot is None:
-                self.error(f"{where}: не понятны день или номер урока")
+                self.error(_("{where}: не понятны день или номер урока").format(where=where))
                 continue
             if row.joint:
                 joint[row.joint].append(row)
@@ -1007,10 +1095,18 @@ class _Writer:
             first = rows[0]
             shape = {(r.weekday, r.slot, _key(r.subject), r.teacher, _key(r.room)) for r in rows}
             if len(shape) > 1:
-                self.error(f"«Уроки», совместный урок {code}: день, урок, предмет, учитель и кабинет должны совпадать")
+                self.error(
+                    _(
+                        "«{sheet}», совместный урок {code}: день, урок, предмет, учитель и кабинет должны совпадать"
+                    ).format(sheet=LESSONS, code=code)
+                )
                 continue
             if any(r.subgroup for r in rows):
-                self.error(f"«Уроки», совместный урок {code}: собирается из групп, не из подгрупп")
+                self.error(
+                    _("«{sheet}», совместный урок {code}: собирается из групп, не из подгрупп").format(
+                        sheet=LESSONS, code=code
+                    )
+                )
                 continue
             unit = self._unit(first, rows)
             if unit is not None:
@@ -1023,7 +1119,9 @@ class _Writer:
         for unit in units:
             key = (unit["cohort"].pk, unit["weekday"], unit["slot"])
             if key in seen:
-                self.report.warn("group", f"{unit['label']}: у состава два урока в {unit['when']}")
+                self.report.warn(
+                    "group", _("{lesson}: у состава два урока в {when}").format(lesson=unit["label"], when=unit["when"])
+                )
             seen.add(key)
             state = self._series(unit)
             if state == "created":
@@ -1037,7 +1135,7 @@ class _Writer:
 
     def _unit(self, row: LessonRow, rows: list[LessonRow]) -> dict | None:
         """Урок недели: состав, предмет, учитель, день, номер, кабинет, время."""
-        where = f"«Уроки», строка {row.row}"
+        where = _where(LESSONS, row.row)
         subject = self.subject(row.subject, where)
         teacher = self.person(row.teacher, where)
         if row.teacher and teacher is None:
@@ -1045,12 +1143,16 @@ class _Writer:
         if row.subgroup:
             cohort = self.subgroups.get(_key(row.subgroup))
             if cohort is None:
-                self.error(f"{where}: подгруппы {row.subgroup} нет на листе «Подгруппы»")
+                self.error(
+                    _("{where}: подгруппы {subgroup} нет на листе «{sheet}»").format(
+                        where=where, subgroup=row.subgroup, sheet=SUBGROUPS
+                    )
+                )
                 return None
             groups = [g for g in self.groups.values() if g.pk in _stream_group_ids(cohort)]
             name = row.subgroup
         else:
-            groups = [self.group(r.group, f"«Уроки», строка {r.row}") for r in rows]
+            groups = [self.group(r.group, _where(LESSONS, r.row)) for r in rows]
             if any(g is None for g in groups):
                 return None
             if len(groups) == 1:
@@ -1071,8 +1173,13 @@ class _Writer:
         elif bell and row.starts and (row.starts, row.ends) != bell:
             self.report.warn(
                 "time",
-                f"{name}, {WEEKDAY_WORDS[row.weekday]} {row.slot} урок: в файле {row.starts:%H:%M}–{row.ends:%H:%M}, "
-                f"по звонкам {bell[0]:%H:%M}–{bell[1]:%H:%M}",
+                _("{name}, {day} {slot} урок: в файле {file_time}, по звонкам {bell_time}").format(
+                    name=name,
+                    day=WEEKDAY_WORDS[row.weekday],
+                    slot=row.slot,
+                    file_time=f"{row.starts:%H:%M}–{row.ends:%H:%M}",
+                    bell_time=f"{bell[0]:%H:%M}–{bell[1]:%H:%M}",
+                ),
             )
         return {
             "cohort": cohort,
@@ -1122,11 +1229,18 @@ class _Writer:
     def _missing_bells(self) -> None:
         """Урок с номером, которого нет в звонках его параллели: время у него не покажется."""
         for (parallel, slot, span), where in sorted(self.missing_bells.items()):
-            shown = ", ".join(where[:6]) + (f" и ещё {len(where) - 6}" if len(where) > 6 else "")
+            shown = ", ".join(where[:6])
+            if len(where) > 6:
+                shown = _("{names} и ещё {rest}").format(names=shown, rest=len(where) - 6)
+            lesson = (
+                _("{slot} урока ({time})").format(slot=slot, time=span) if span else _("{slot} урока").format(slot=slot)
+            )
             self.report.warn(
                 "time",
-                f"{slot} урока{f' ({span})' if span else ''} нет в звонках {parallel} параллели — "
-                f"уроков в неделю: {len(where)} ({shown}). Добавьте звонок на листе «Звонки»",
+                _(
+                    "{lesson} нет в звонках {parallel} параллели — уроков в неделю: {count} ({names}). "
+                    "Добавьте звонок на листе «{sheet}»"
+                ).format(lesson=lesson, parallel=parallel, count=len(where), names=shown, sheet=BELLS),
             )
 
     def _stale(self) -> None:
@@ -1140,8 +1254,13 @@ class _Writer:
         for series in rows:
             course = series.course
             self.report.stale_series.append(
-                f"{course.subject.title} · {course.cohort.name} · {WEEKDAY_WORDS.get(series.weekday, '')} "
-                f"{series.slot} урок · {user_name(course.teacher) or 'учитель не назначен'}"
+                _("{subject} · {cohort} · {day} {slot} урок · {teacher}").format(
+                    subject=course.subject.title,
+                    cohort=course.cohort.name,
+                    day=WEEKDAY_WORDS.get(series.weekday, ""),
+                    slot=series.slot,
+                    teacher=user_name(course.teacher) or _("учитель не назначен"),
+                )
             )
 
     def _conflicts(self) -> None:
@@ -1159,19 +1278,24 @@ class _Writer:
                     when = f"{WEEKDAY_WORDS[weekday]} {max(a['starts'], b['starts']):%H:%M}"
                     if a["room"] and _key(a["room"]) == _key(b["room"]):
                         self.report.warn(
-                            "room", f"Накладка кабинета · каб. {a['room']} · {when}: {a['label']} / {b['label']}"
+                            "room",
+                            _("Накладка кабинета · каб. {room} · {when}: {first} / {second}").format(
+                                room=a["room"], when=when, first=a["label"], second=b["label"]
+                            ),
                         )
                     if a["teacher"] is not None and a["teacher"] == b["teacher"]:
                         self.report.warn(
                             "teacher",
-                            f"Накладка учителя · {user_name(a['teacher'])} · {when}: {a['label']} / {b['label']}",
+                            _("Накладка учителя · {teacher} · {when}: {first} / {second}").format(
+                                teacher=user_name(a["teacher"]), when=when, first=a["label"], second=b["label"]
+                            ),
                         )
 
     def _materialize(self) -> None:
         """Строки уроков новых еженедельных — со дня импорта, не с 1 сентября."""
         calendar = school_calendar.load(self.year)
         if not calendar.quarters:
-            self.report.warn("year", "У учебного года нет четвертей — строки уроков не заведутся")
+            self.report.warn("year", _("У учебного года нет четвертей — строки уроков не заведутся"))
         since = max(self.day, SERIES_START)
         self.report.lessons_from = since
         for series in self.new_series:
@@ -1182,7 +1306,12 @@ class _Writer:
 
     def _log(self) -> None:
         """След импорта в журнале расписания. Паролей в нём нет."""
-        parts = [f"{s.title.lower()}: +{s.created}, изменено {s.updated}" for s in self.report.sections.values()]
+        parts = [
+            _("{section}: +{created}, изменено {updated}").format(
+                section=str(s.title).lower(), created=s.created, updated=s.updated
+            )
+            for s in self.report.sections.values()
+        ]
         AuditLog.objects.create(
             actor=self.actor,
             actor_role=getattr(self.actor, "role", "") or "",
@@ -1191,7 +1320,7 @@ class _Writer:
             field_name=SCHEDULE_EVENT,
             domain_code="academics",
             old_value="",
-            new_value=("Импорт расписания из файла — " + "; ".join(parts))[:2000],
+            new_value=_("Импорт расписания из файла — {sections}").format(sections="; ".join(parts))[:2000],
             source=Source.IMPORT,
         )
         for change in self.report.curator_changes:
@@ -1211,7 +1340,8 @@ class _Writer:
 def _stream_name(subgroup: str) -> str:
     """«EEP-8-1» → «EEP-8»: поток — название подгруппы без номера."""
     match = re.fullmatch(r"(.+?)[-\s]*\d+", subgroup)
-    return match.group(1) if match else f"{subgroup} · поток"
+    # имя потока — ключ повторного импорта, не подпись: не переводится
+    return match.group(1) if match else f"{subgroup} · поток"  # i18n-skip: ключ записи потока
 
 
 def _stream_group_ids(cohort: Cohort) -> set[int]:

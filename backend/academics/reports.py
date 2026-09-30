@@ -15,7 +15,9 @@ import hashlib
 
 from django.conf import settings
 from django.db import transaction
-from django.utils import timezone
+from django.utils import timezone, translation
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_noop
 
 from academics.calendar import SchoolCalendar, date_words, month_title, scale_of, today
 from academics.models import (
@@ -44,7 +46,14 @@ def period_title(kind: str, start: dt.date, end: dt.date, year_title: str = "") 
         return month_title(start)
     if kind == ReportPeriod.CUSTOM:
         return span_title(start, end)
-    return f"{_quarter_number(start, end)} четверть {year_title}".strip()
+    # название периода хранится в отчёте: шапка, имя файла, сообщение родителям
+    quarter = _quarter_number(start, end)
+    return f"{quarter} четверть {year_title}".strip()  # i18n-skip: язык отчёта выбирается при сборке
+
+
+def event_text(report: ParentReport) -> str:
+    """Значение записи журнала о событии отчёта: «за сентябрь 2026»."""
+    return f"за {report.title}"  # i18n-skip: значение записи журнала хранится в базе как данные
 
 
 def span_title(start: dt.date, end: dt.date) -> str:
@@ -66,17 +75,17 @@ def _quarter_number(start: dt.date, end: dt.date) -> str:
 
 def _fmt(value) -> str:
     if value is None:
-        return "нет"
+        return "нет"  # i18n-skip: язык отчёта выбирается при сборке
     if isinstance(value, float):
         return f"{value:.1f}".rstrip("0").rstrip(".")
     return str(value)
 
 
 #: подпись первой строки посещаемости; по ней же список отчётов берёт процент
-ATTENDANCE_ROW = "Присутствие на уроках"
+ATTENDANCE_ROW = "Присутствие на уроках"  # i18n-skip: язык отчёта выбирается при сборке
 
 #: у предмета нет ни одной оценки за период — одна фраза на строку
-NO_GRADES = "оценок пока нет"
+NO_GRADES = "оценок пока нет"  # i18n-skip: язык отчёта выбирается при сборке
 
 
 def _clip(text: str, limit: int) -> str:
@@ -88,7 +97,7 @@ def _clip(text: str, limit: int) -> str:
     return cut.rstrip(" ,;") + "…"
 
 
-def build_lines(
+def build_lines(  # i18n-skip: язык отчёта (стандартный — русский)
     student: Student, *, start: dt.date, end: dt.date, calendar: SchoolCalendar, config: ReportSettings, quarter=None
 ) -> list[dict]:
     """Строки снимка по разделам из настроек. Комментариев учителей нет — решение владельца.
@@ -206,7 +215,7 @@ def build_lines(
         state = documents.state_of(Student.objects.filter(pk=student.pk)).get(student.pk)
         if state:
             add(ReportSection.DOCUMENTS, "Собрано", f"{state['collected']} из {state['total']}")
-            titles = {row["code"]: row["title"] for row in documents.types()}
+            titles = {row["code"]: str(row["title"]) for row in documents.types()}
             missing = [
                 titles.get(code, code)
                 for code in REQUIRED_DOCUMENTS
@@ -242,12 +251,18 @@ def snapshot(
     config: ReportSettings,
     quarter=None,
 ) -> list[dict]:
-    """Строки снимка: стандартный отчёт LMS или шаблон школы."""
+    """Строки снимка: стандартный отчёт LMS или шаблон школы.
+
+    Собирается на языке отчёта, а не того, кто нажал «Собрать»: подписи из
+    справочников (типы документов, варианты) иначе попадали бы в снимок на
+    языке интерфейса, и отпечаток снимка зависел бы от того, кто его собрал.
+    """
     from academics import school_reports
 
-    if school_reports.is_school_template(template):
-        return school_reports.build_lines(student, template=template, language=language, start=start, end=end)
-    return build_lines(student, start=start, end=end, calendar=calendar, config=config, quarter=quarter)
+    with translation.override(language or "ru"):
+        if school_reports.is_school_template(template):
+            return school_reports.build_lines(student, template=template, language=language, start=start, end=end)
+        return build_lines(student, start=start, end=end, calendar=calendar, config=config, quarter=quarter)
 
 
 @transaction.atomic
@@ -318,7 +333,7 @@ def build_report(
     if changed:
         ReportLine.objects.filter(report=report).delete()
         ReportLine.objects.bulk_create([ReportLine(report=report, **line) for line in lines])
-        record_event(student=student, code="report_built", text=f"за {report.title}", actor=actor)
+        record_event(student=student, code="report_built", text=event_text(report), actor=actor)
     if report.template != ReportTemplate.STANDARD:
         from academics import school_reports
 
@@ -420,7 +435,7 @@ def notify_curators(reports: list[ParentReport], period: str) -> int:
         notify(
             row.curator,
             kind=Notification.Kind.REPORTS_BUILT,
-            template="Отчёты родителям за {period} собраны: {count} ждут проверки",
+            template=gettext_noop("Отчёты родителям за {period} собраны: {count} ждут проверки"),
             link="/reports",
             period=period,
             count=by_group[row.group_id],
@@ -452,7 +467,7 @@ def check(report: ParentReport, *, actor, curator_word: str | None = None) -> Pa
         report.status = ReportStatus.CHECKED
         report.checked_at = timezone.now()
         report.checked_by = actor if getattr(actor, "pk", None) else None
-        record_event(student=report.student, code="report_checked", text=f"за {report.title}", actor=actor)
+        record_event(student=report.student, code="report_checked", text=event_text(report), actor=actor)
     report.save()
     return report
 
@@ -461,10 +476,10 @@ def check(report: ParentReport, *, actor, curator_word: str | None = None) -> Pa
 def mark_exported(report: ParentReport, *, actor) -> ParentReport:
     """Скачали или поделились: статус «выгружен» с датой. Черновик выгружать нельзя."""
     if report.status == ReportStatus.DRAFT:
-        raise ReportRefused("Сначала проверьте отчёт: черновик не выгружается")
+        raise ReportRefused(_("Сначала проверьте отчёт: черновик не выгружается"))
     if report.status == ReportStatus.CHECKED:
         report.status = ReportStatus.EXPORTED
-        record_event(student=report.student, code="report_exported", text=f"за {report.title}", actor=actor)
+        record_event(student=report.student, code="report_exported", text=event_text(report), actor=actor)
     report.exported_at = timezone.now()
     report.save(update_fields=["status", "exported_at"])
     return report
@@ -475,16 +490,16 @@ def mark_sent(report: ParentReport, *, actor, sent: bool = True) -> ParentReport
     """Отметка «отправлен родителям» — руками, после мессенджера."""
     if sent:
         if report.status == ReportStatus.DRAFT:
-            raise ReportRefused("Сначала проверьте и выгрузите отчёт")
+            raise ReportRefused(_("Сначала проверьте и выгрузите отчёт"))
         report.status = ReportStatus.SENT
         report.sent_at = timezone.now()
         report.sent_by = actor if getattr(actor, "pk", None) else None
-        record_event(student=report.student, code="report_sent", text=f"за {report.title}", actor=actor)
+        record_event(student=report.student, code="report_sent", text=event_text(report), actor=actor)
     else:
         report.status = ReportStatus.EXPORTED if report.exported_at else ReportStatus.CHECKED
         report.sent_at = None
         report.sent_by = None
-        record_event(student=report.student, code="report_unsent", text=f"за {report.title}", actor=actor)
+        record_event(student=report.student, code="report_unsent", text=event_text(report), actor=actor)
     report.save()
     return report
 
@@ -492,7 +507,7 @@ def mark_sent(report: ParentReport, *, actor, sent: bool = True) -> ParentReport
 # --- Файлы и сообщение -----------------------------------------------------------
 
 
-def file_stem(report: ParentReport) -> str:
+def file_stem(report: ParentReport) -> str:  # i18n-skip: имя файла — на языке отчёта
     """«Фамилия Имя — отчёт за сентябрь 2026»; у шаблона школы — с видом и языком."""
     student = report.student
     if report.template == ReportTemplate.STANDARD:
@@ -501,7 +516,7 @@ def file_stem(report: ParentReport) -> str:
     return f"{student.last_name} {student.first_name} — {variant}, {report.language}, {report.title}"
 
 
-def zip_name(group_code: str, title: str) -> str:
+def zip_name(group_code: str, title: str) -> str:  # i18n-skip: имя архива — как имена файлов отчётов
     return f"{group_code} — отчёты за {title}.zip"
 
 
@@ -536,7 +551,7 @@ def message_text(report: ParentReport, curator_name: str) -> str:
     group = student.group.code if student.group_id else ""
     school = getattr(settings, "SCHOOL_SHORT_NAME", "") or getattr(settings, "SCHOOL_NAME", "")
     first = (curator_name or "").split(" ")[0] if curator_name else ""
-    return (
+    return (  # i18n-skip: язык отчёта (стандартный — русский)
         f"Добрый день! Отчёт {school} за {period} по ученику {student.last_name} {student.first_name} во вложении. "
         f"Куратор группы {group}, {first}".strip().rstrip(",")
     )
@@ -544,8 +559,8 @@ def message_text(report: ParentReport, curator_name: str) -> str:
 
 def cadence_words(config: ReportSettings) -> str:
     if config.cadence == ReportCadence.QUARTER:
-        return "только после закрытия четверти"
-    return "последняя пятница месяца, 08:00; после закрытия четверти"
+        return _("только после закрытия четверти")
+    return _("последняя пятница месяца, 08:00; после закрытия четверти")
 
 
 def period_words(start: dt.date, end: dt.date) -> str:

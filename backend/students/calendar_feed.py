@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import datetime as dt
 
+from django.utils.translation import gettext as _
+
 from core.domains import ROLE_STUDENT
 from students.models import Activity, Competition, ExamGoal, Student
 
@@ -49,7 +51,8 @@ def _pending_goal_events(student: Student, today: dt.date) -> list[dict]:
     events: list[dict] = []
     for fields in groups.values():
         exam = fields.get("exam", "")
-        for field, title in (("exam_date", "Экзамен"), ("registration_date", "Регистрация")):
+        titles = (("exam_date", _("Экзамен: {exam}")), ("registration_date", _("Регистрация: {exam}")))
+        for field, title in titles:
             raw = fields.get(field)
             if not raw:
                 continue
@@ -58,7 +61,7 @@ def _pending_goal_events(student: Student, today: dt.date) -> list[dict]:
             except ValueError:
                 continue
             if _within(date, today):
-                events.append(_event("exam", f"{title}: {exam}".strip(), date, "/my-data", pending=True))
+                events.append(_event("exam", title.format(exam=exam).strip(), date, "/my-data", pending=True))
     return events
 
 
@@ -77,9 +80,11 @@ def events_for(student: Student, today: dt.date | None = None) -> list[dict]:
 
     for goal in ExamGoal.objects.filter(student=student).select_related("exam"):
         if _within(goal.exam_date, today):
-            events.append(_event("exam", f"Экзамен: {goal.exam.name}", goal.exam_date, "/my-data"))
+            events.append(_event("exam", _("Экзамен: {exam}").format(exam=goal.exam.name), goal.exam_date, "/my-data"))
         if _within(goal.registration_date, today):
-            events.append(_event("exam", f"Регистрация: {goal.exam.name}", goal.registration_date, "/my-data"))
+            events.append(
+                _event("exam", _("Регистрация: {exam}").format(exam=goal.exam.name), goal.registration_date, "/my-data")
+            )
     events += _pending_goal_events(student, today)
 
     rows = StudentUniversity.objects.filter(student=student, admission_round__isnull=False).select_related(
@@ -88,7 +93,14 @@ def events_for(student: Student, today: dt.date | None = None) -> list[dict]:
     for row in rows:
         deadline = row.admission_round.deadline
         if _within(deadline, today):
-            events.append(_event("deadline", f"Дедлайн: {row.program.university.name}", deadline, "/universities"))
+            events.append(
+                _event(
+                    "deadline",
+                    _("Дедлайн: {university}").format(university=row.program.university.name),
+                    deadline,
+                    "/universities",
+                )
+            )
 
     # дедлайны сохранённых стипендий (фаза 44): дата живёт у самой
     # стипендии, календарь только показывает её (инвариант №4)
@@ -100,15 +112,33 @@ def events_for(student: Student, today: dt.date | None = None) -> list[dict]:
     for row in saved:
         deadline = row.scholarship.deadline
         if _within(deadline, today):
-            events.append(_event("scholarship", f"Стипендия: {row.scholarship.name}", deadline, "/scholarships"))
+            events.append(
+                _event(
+                    "scholarship",
+                    _("Стипендия: {scholarship}").format(scholarship=row.scholarship.name),
+                    deadline,
+                    "/scholarships",
+                )
+            )
 
     for competition in Competition.objects.filter(student=student, date__isnull=False):
         if _within(competition.date, today):
-            events.append(_event("competition", f"Соревнование: {competition.name}", competition.date, "/my-data"))
+            events.append(
+                _event(
+                    "competition",
+                    _("Соревнование: {competition}").format(competition=competition.name),
+                    competition.date,
+                    "/my-data",
+                )
+            )
 
     for activity in Activity.objects.filter(student=student, category="olympiad", date__isnull=False):
         if _within(activity.date, today):
-            events.append(_event("olympiad", f"Олимпиада: {activity.title}", activity.date, "/my-data"))
+            events.append(
+                _event(
+                    "olympiad", _("Олимпиада: {olympiad}").format(olympiad=activity.title), activity.date, "/my-data"
+                )
+            )
 
     for task in (
         Task.objects.filter(student=student)
@@ -117,7 +147,7 @@ def events_for(student: Student, today: dt.date | None = None) -> list[dict]:
     ):
         due = task.effective_due_date
         if _within(due, today):
-            events.append(_event("task", f"Задача: {task.title}", due, "/roadmap"))
+            events.append(_event("task", _("Задача: {task}").format(task=task.title), due, "/roadmap"))
 
     events.sort(key=lambda e: e["date"])
     return events
@@ -130,10 +160,21 @@ def _junior_events(student: Student, today: dt.date) -> list[dict]:
     events: list[dict] = []
     for competition in Competition.objects.filter(student=student, date__isnull=False):
         if _within(competition.date, today):
-            events.append(_event("competition", f"Соревнование: {competition.name}", competition.date, "/sport"))
+            events.append(
+                _event(
+                    "competition",
+                    _("Соревнование: {competition}").format(competition=competition.name),
+                    competition.date,
+                    "/sport",
+                )
+            )
     for activity in Activity.objects.filter(student=student, category="olympiad", date__isnull=False):
         if _within(activity.date, today):
-            events.append(_event("olympiad", f"Олимпиада: {activity.title}", activity.date, "/olympiads"))
+            events.append(
+                _event(
+                    "olympiad", _("Олимпиада: {olympiad}").format(olympiad=activity.title), activity.date, "/olympiads"
+                )
+            )
     events.sort(key=lambda e: e["date"])
     return events
 
@@ -186,7 +227,7 @@ def homework_events(student: Student, today: dt.date) -> list[dict]:
         due = timezone.localtime(row.due_at)
         if row.pk in handed or not _within(due.date(), today):
             continue
-        title = f"ДЗ: {row.lesson.course.subject.title} — до {due:%H:%M}"
+        title = _("ДЗ: {subject} — до {time}").format(subject=row.lesson.course.subject.title, time=f"{due:%H:%M}")
         events.append(_event("homework", title, due.date(), f"/homework/{row.pk}"))
     return events
 
@@ -251,7 +292,12 @@ def staff_state(today: dt.date | None = None) -> dict:
             continue
         events.append(
             {
-                **_event("deadline", f"Дедлайн {row.program.university.name}", row.deadline, "/deadlines"),
+                **_event(
+                    "deadline",
+                    _("Дедлайн {university}").format(university=row.program.university.name),
+                    row.deadline,
+                    "/deadlines",
+                ),
                 "students": row.students,
             }
         )

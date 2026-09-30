@@ -12,7 +12,8 @@ import secrets
 from datetime import timedelta
 
 from django.conf import settings
-from django.utils import timezone
+from django.utils import timezone, translation
+from django.utils.translation import gettext_noop
 
 from accounts.models import Identity, IdentityProvider, LinkPurpose, MagicLinkToken, User
 from core import mail, phrasing
@@ -24,23 +25,27 @@ def _hash(token: str) -> str:
 
 
 #: Что человек увидит в письме и куда его ведёт ссылка. Тексты — русские
-#: шаблоны, перевод по языку получателя делает `core.i18n` (фаза 24).
+#: шаблоны (`gettext_noop`), перевод по языку получателя делает `core.i18n` (фаза 24).
 #: Название школы подставляется из настроек — в коде его нет (фаза 23).
 LETTERS = {
-    LinkPurpose.LOGIN: ("вход в платформу", "Ссылка для входа действует до {until}:", "/login/link"),
+    LinkPurpose.LOGIN: (
+        gettext_noop("вход в платформу"),
+        gettext_noop("Ссылка для входа действует до {until}:"),
+        "/login/link",
+    ),
     LinkPurpose.INVITE: (
-        "доступ в платформу",
-        "Ссылка для установки пароля действует до {until}:",
+        gettext_noop("доступ в платформу"),
+        gettext_noop("Ссылка для установки пароля действует до {until}:"),
         "/set-password",
     ),
     LinkPurpose.RESET: (
-        "сброс пароля",
-        "Ссылка для смены пароля действует до {until}:",
+        gettext_noop("сброс пароля"),
+        gettext_noop("Ссылка для смены пароля действует до {until}:"),
         "/set-password",
     ),
     LinkPurpose.CONFIRM: (
-        "подтверждение почты",
-        "Подтвердите, что это ваша почта. Ссылка действует до {until}:",
+        gettext_noop("подтверждение почты"),
+        gettext_noop("Подтвердите, что это ваша почта. Ссылка действует до {until}:"),
         "/confirm-email",
     ),
 }
@@ -136,7 +141,10 @@ def _send(address: str, purpose: str, token: str, expires_at, *, lang: str) -> N
     about = translate(lang, about)
     # срок — датой, а не длительностью (фаза 69): «до 13.09.2026, 11:00»
     # человек понимает сразу, «2880 минут» — нет
-    lead = render(lang, lead, until=phrasing.until(expires_at))
+    # и дата — по правилам языка получателя: по-английски «13/09/2026»
+    with translation.override(lang):
+        until = phrasing.until(expires_at)
+    lead = render(lang, lead, until=until)
     school = settings.SCHOOL_NAME
     text = f"{lead}\n\n{link}\n\n{school}\n"
     # HTML-версия с логотипом и названием школы собирается общей обёрткой

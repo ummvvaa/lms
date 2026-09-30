@@ -30,6 +30,8 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
 from core.parallels import admission_q, admission_students
 from roadmap.models import TaskStatus
@@ -62,62 +64,86 @@ class Quick:
 #: Четыре кнопки на роль — состав из задания фазы 25.
 QUICK: dict[str, tuple[Quick, ...]] = {
     STUDENT: (
-        Quick("today", "Что делать сегодня", "none", "Задачи с ближайшими сроками"),
-        Quick("why_percent", "Почему у меня такой процент", "none", "Из чего складывается готовность"),
-        Quick("pick_universities", "Помоги выбрать вузы", "none", "Куда вы проходите уже сейчас"),
-        Quick("explain_task", "Объясни задачу", "none", "Ближайшая задача — что и зачем"),
+        Quick("today", gettext_lazy("Что делать сегодня"), "none", gettext_lazy("Задачи с ближайшими сроками")),
+        Quick(
+            "why_percent",
+            gettext_lazy("Почему у меня такой процент"),
+            "none",
+            gettext_lazy("Из чего складывается готовность"),
+        ),
+        Quick(
+            "pick_universities",
+            gettext_lazy("Помоги выбрать вузы"),
+            "none",
+            gettext_lazy("Куда вы проходите уже сейчас"),
+        ),
+        Quick("explain_task", gettext_lazy("Объясни задачу"), "none", gettext_lazy("Ближайшая задача — что и зачем")),
     ),
     BEHAVIOR: (
-        Quick("focus_today", "Кому звонить сегодня", "none"),
-        Quick("group_summary", "Сводка по группе", "none", "По отфильтрованным или по всем"),
-        Quick("out_of_sight", "Кто пропал из виду", "none"),
-        Quick("deadlines_soon", "Ближайшие дедлайны", "none"),
+        Quick("focus_today", gettext_lazy("Кому звонить сегодня"), "none"),
+        Quick(
+            "group_summary", gettext_lazy("Сводка по группе"), "none", gettext_lazy("По отфильтрованным или по всем")
+        ),
+        Quick("out_of_sight", gettext_lazy("Кто пропал из виду"), "none"),
+        Quick("deadlines_soon", gettext_lazy("Ближайшие дедлайны"), "none"),
     ),
     ADMISSION: (
-        Quick("check_balance", "Проверь баланс списка", "student"),
-        Quick("deadlines_soon", "Ближайшие дедлайны", "none"),
-        Quick("no_common_app", "Кто без Common App", "none"),
-        Quick("parse_university", "Разбери вуз по ссылке", "text", "Название или адрес страницы"),
+        Quick("check_balance", gettext_lazy("Проверь баланс списка"), "student"),
+        Quick("deadlines_soon", gettext_lazy("Ближайшие дедлайны"), "none"),
+        Quick("no_common_app", gettext_lazy("Кто без Common App"), "none"),
+        Quick(
+            "parse_university",
+            gettext_lazy("Разбери вуз по ссылке"),
+            "text",
+            gettext_lazy("Название или адрес страницы"),
+        ),
     ),
     EXAM: (
-        Quick("mock_drop", "Кто просел по мокам", "none"),
-        Quick("prep_plan", "План подготовки для ученика", "student"),
-        Quick("intensive_group", "Собери группу на интенсив", "none"),
-        Quick("parse_score_screenshot", "Разбери скрин с баллами", "image"),
+        Quick("mock_drop", gettext_lazy("Кто просел по Mock Test"), "none"),
+        Quick("prep_plan", gettext_lazy("План подготовки для ученика"), "student"),
+        Quick("intensive_group", gettext_lazy("Собери группу на интенсив"), "none"),
+        Quick("parse_score_screenshot", gettext_lazy("Разбери скрин с баллами"), "image"),
     ),
     TALENT: (
-        Quick("weak_portfolio", "У кого слабое портфолио", "none"),
-        Quick("pick_track", "Подбери трек", "student"),
-        Quick("contests_for_track", "Найди конкурсы под трек", "student"),
-        Quick("parse_activity", "Разбери активность", "text", "Опишите словами, что было"),
+        Quick("weak_portfolio", gettext_lazy("У кого слабое портфолио"), "none"),
+        Quick("pick_track", gettext_lazy("Подбери трек"), "student"),
+        Quick("contests_for_track", gettext_lazy("Найди конкурсы под трек"), "student"),
+        Quick("parse_activity", gettext_lazy("Разбери активность"), "text", gettext_lazy("Опишите словами, что было")),
     ),
     SPORT: (
-        Quick("no_certificates", "У кого нет сертификатов", "none"),
-        Quick("rate_sport_profile", "Оцени спортивный профиль", "student"),
-        Quick("competitions_calendar", "Календарь соревнований", "none"),
-        Quick("parse_certificate", "Распознай грамоту", "image"),
+        Quick("no_certificates", gettext_lazy("У кого нет сертификатов"), "none"),
+        Quick("rate_sport_profile", gettext_lazy("Оцени спортивный профиль"), "student"),
+        Quick("competitions_calendar", gettext_lazy("Календарь соревнований"), "none"),
+        Quick("parse_certificate", gettext_lazy("Распознай грамоту"), "image"),
     ),
     # куратор: только свои группы — список учеников подставляет `run_quick`
     CURATOR: (
-        Quick("focus_today", "На кого смотреть сегодня", "none", "Ученики ваших групп"),
-        Quick("group_summary", "Сводка по моим группам", "none"),
-        Quick("out_of_sight", "Кто пропал из виду", "none"),
-        Quick("deadlines_soon", "Ближайшие дедлайны", "none"),
+        Quick("focus_today", gettext_lazy("На кого смотреть сегодня"), "none", gettext_lazy("Ученики ваших групп")),
+        Quick("group_summary", gettext_lazy("Сводка по моим группам"), "none"),
+        Quick("out_of_sight", gettext_lazy("Кто пропал из виду"), "none"),
+        Quick("deadlines_soon", gettext_lazy("Ближайшие дедлайны"), "none"),
     ),
     ADMIN: (
-        Quick("focus_today", "На кого смотреть сегодня", "none"),
-        Quick("group_summary", "Сводка по школе", "none"),
-        Quick("out_of_sight", "Кто пропал из виду", "none"),
-        Quick("deadlines_soon", "Ближайшие дедлайны", "none"),
+        Quick("focus_today", gettext_lazy("На кого смотреть сегодня"), "none"),
+        Quick("group_summary", gettext_lazy("Сводка по школе"), "none"),
+        Quick("out_of_sight", gettext_lazy("Кто пропал из виду"), "none"),
+        Quick("deadlines_soon", gettext_lazy("Ближайшие дедлайны"), "none"),
     ),
     # учитель: только чтение и только ученики своих составов
     # (`suggestions.teacher_assistant`); пороги — настройки администратора
     TEACHER: (
-        Quick("lessons_week", "Мои уроки сегодня и на неделю", "none", "Свои уроки и замены"),
-        Quick("unmarked", "Неотмеченные уроки", "none", "Прошедшие уроки без посещаемости"),
-        Quick("lagging", "Кто отстаёт по моему предмету", "none", "Четвертная, ФО и посещаемость ниже порога"),
-        Quick("no_grades", "У кого нет оценок", "none", "Были на уроках, а оценок нет"),
-        Quick("assessments", "Ближайшие СОР и СОЧ", "none", "В ваших составах"),
+        Quick(
+            "lessons_week", gettext_lazy("Мои уроки сегодня и на неделю"), "none", gettext_lazy("Свои уроки и замены")
+        ),
+        Quick("unmarked", gettext_lazy("Неотмеченные уроки"), "none", gettext_lazy("Прошедшие уроки без посещаемости")),
+        Quick(
+            "lagging",
+            gettext_lazy("Кто отстаёт по моему предмету"),
+            "none",
+            gettext_lazy("Четвертная, ФО и посещаемость ниже порога"),
+        ),
+        Quick("no_grades", gettext_lazy("У кого нет оценок"), "none", gettext_lazy("Были на уроках, а оценок нет")),
+        Quick("assessments", gettext_lazy("Ближайшие СОР и СОЧ"), "none", gettext_lazy("В ваших составах")),
     ),
 }
 
@@ -125,10 +151,25 @@ QUICK: dict[str, tuple[Quick, ...]] = {
 #: Кнопки ученика 8–10 — только учёба (`suggestions.junior_assistant`):
 #: вузов, готовности и задач плана у него нет, и кнопок для них тоже
 JUNIOR_STUDENT: tuple[Quick, ...] = (
-    Quick("week", "Что у меня на этой неделе", "none", "Уроки, СОР и СОЧ, олимпиады и соревнования"),
-    Quick("improve_subject", "Как подтянуть предмет", "none", "Предмет, где итог четверти ниже всего"),
-    Quick("quarter_formula", "Как считается итог четверти", "none", "ФО, СОР и СОЧ по шкале школы"),
-    Quick("soch_plan", "План подготовки к СОЧ", "none", "К ближайшему СОЧ"),
+    Quick(
+        "week",
+        gettext_lazy("Что у меня на этой неделе"),
+        "none",
+        gettext_lazy("Уроки, СОР и СОЧ, олимпиады и соревнования"),
+    ),
+    Quick(
+        "improve_subject",
+        gettext_lazy("Как подтянуть предмет"),
+        "none",
+        gettext_lazy("Предмет, где итог четверти ниже всего"),
+    ),
+    Quick(
+        "quarter_formula",
+        gettext_lazy("Как считается итог четверти"),
+        "none",
+        gettext_lazy("ФО, СОР и СОЧ по шкале школы"),
+    ),
+    Quick("soch_plan", gettext_lazy("План подготовки к СОЧ"), "none", gettext_lazy("К ближайшему СОЧ")),
 )
 
 
@@ -146,8 +187,9 @@ def quick_for(role: str, user=None) -> tuple[Quick, ...]:
         from suggestions.junior_assistant import hints
 
         found = hints(user.student)
-        return tuple(Quick(q.code, q.title, q.needs, found.get(q.code, q.hint)) for q in JUNIOR_STUDENT)
-    return QUICK.get(role, ())
+        return tuple(Quick(q.code, str(q.title), q.needs, str(found.get(q.code, q.hint))) for q in JUNIOR_STUDENT)
+    # подписи — ленивые строки: здесь они становятся текстом на языке запроса
+    return tuple(Quick(q.code, str(q.title), q.needs, str(q.hint)) for q in QUICK.get(role, ()))
 
 
 #: Сколько строк-фактов показываем рядом с ответом. Длинный список
@@ -169,7 +211,7 @@ def _reply(
     extra = len(rows) - MAX_LINES
     shown = rows[:MAX_LINES]
     if extra > 0:
-        shown = [*shown, f"…и ещё {extra}"]
+        shown = [*shown, _("…и ещё {count}").format(count=extra)]
     return {
         "text": text,
         "lines": shown,
@@ -195,12 +237,15 @@ def _one_student(student_ids: list[int] | None) -> Student | None:
     return Student.objects.filter(pk=student_ids[0]).first()
 
 
-NEED_ONE = "Нужен один ученик: откройте его карточку или отметьте одного в таблице — и нажмите кнопку ещё раз."
+NEED_ONE = gettext_lazy(
+    "Нужен один ученик: откройте его карточку или отметьте одного в таблице — и нажмите кнопку ещё раз."
+)
 
 
 # --- Голос помощника: факты собирают правила, формулирует модель ------------
 
-VOICE_RULES = """Ты помощник внутренней школьной платформы подготовки к поступлению.
+VOICE_RULES = (  # i18n-skip: промпт модели
+    """Ты помощник внутренней школьной платформы подготовки к поступлению.
 
 Тебе передают готовые факты из системы. Твоя работа — сказать человеку
 коротко и по-русски, что это значит и что делать дальше.
@@ -215,11 +260,14 @@ VOICE_RULES = """Ты помощник внутренней школьной п�
   имена подставит система;
 - три-пять предложений максимум, без вступлений и без канцелярита;
 - если фактов нет — так и скажи одной фразой, не придумывай причины."""
+)  # fmt: skip
 
-STUDENT_VOICE_RULES = """ Ты говоришь с учеником:
+STUDENT_VOICE_RULES = (  # i18n-skip: промпт модели
+    """ Ты говоришь с учеником:
 - не используй внутренние ярлыки и категории сотрудников;
 - не пиши и не переписывай эссе — только наводящие вопросы;
 - говори «соответствие требованиям», никогда — «шанс поступления»."""
+)  # fmt: skip
 
 
 #: Пометка упрощённого режима. Человек должен понимать, почему ответ
@@ -228,10 +276,10 @@ def _simple_mode_note() -> str:
     from suggestions.budget import is_available as budget_ok
 
     if not is_configured():
-        return "Упрощённый режим: модель не подключена, ответ собран правилами"
+        return _("Упрощённый режим: модель не подключена, ответ собран правилами")
     if not budget_ok():
-        return "Упрощённый режим: месячный лимит расходов на модель выбран, ответ собран правилами"
-    return "Упрощённый режим: модель не ответила, ответ собран правилами"
+        return _("Упрощённый режим: месячный лимит расходов на модель выбран, ответ собран правилами")
+    return _("Упрощённый режим: модель не ответила, ответ собран правилами")
 
 
 def _voice(payload: dict, *, code: str, title: str, actor, role: str, students=None, system: str = "") -> dict:
@@ -250,7 +298,7 @@ def _voice(payload: dict, *, code: str, title: str, actor, role: str, students=N
 
     system = system or VOICE_RULES + (STUDENT_VOICE_RULES if role == STUDENT else "")
     try:
-        response = complete(
+        response = complete(  # i18n-skip: промпт модели
             system=system,
             user=f"Кнопка: {title}.\nФакты из системы:\n{hidden}",
             purpose="assistant_quick",
@@ -293,7 +341,7 @@ def _hide_names(text: str, roster: operations.Roster) -> tuple[str, set[int]]:
 
 #: «ученик 3», «ученика 3», «ученику 3» — модель склоняет по-русски,
 #: и без окончаний половина номеров осталась бы номерами.
-NUMBERED = re.compile(r"[Уу]ченик[а-яё]{0,3}\s+(\d+)")
+NUMBERED = re.compile(r"[Уу]ченик[а-яё]{0,3}\s+(\d+)")  # i18n-skip: регулярное выражение
 
 
 def _show_names(text: str, roster: operations.Roster, mentioned: set[int]) -> str:
@@ -336,12 +384,12 @@ def out_of_sight(*, student_ids=None, **_kwargs) -> dict:
         pct = found.pct if found is not None else None
         behavior = getattr(student, "behavior", None)
         if pct is not None and pct < threshold:
-            lines.append(f"{_name(student)} — посещаемость {pct}%")
+            lines.append(_("{student} — посещаемость {percent}%").format(student=_name(student), percent=pct))
         elif pct is None and behavior is not None and behavior.updated_at < horizon:
-            lines.append(f"{_name(student)} — профиль не обновлялся больше двух недель")
+            lines.append(_("{student} — профиль не обновлялся больше двух недель").format(student=_name(student)))
     if not lines:
-        return _reply("Никто не пропал: посещаемость в норме, профили обновляются.")
-    return _reply(f"Стоит вернуть в поле зрения: {len(lines)}.", lines=lines[:15])
+        return _reply(_("Никто не пропал: посещаемость в норме, профили обновляются."))
+    return _reply(_("Стоит вернуть в поле зрения: {count}.").format(count=len(lines)), lines=lines[:15])
 
 
 def deadlines_soon(*, student_ids=None, **_kwargs) -> dict:
@@ -366,16 +414,16 @@ def deadlines_soon(*, student_ids=None, **_kwargs) -> dict:
         for row in rows[:15]
     ]
     if not lines:
-        return _reply("В ближайшие 60 дней дедлайнов по спискам учеников нет.")
-    return _reply(f"Дедлайны на ближайшие 60 дней: {len(lines)}.", lines=lines)
+        return _reply(_("В ближайшие 60 дней дедлайнов по спискам учеников нет."))
+    return _reply(_("Дедлайны на ближайшие 60 дней: {count}.").format(count=len(lines)), lines=lines)
 
 
 def no_common_app(*, student_ids=None, **_kwargs) -> dict:
     rows = admission_students(_students(student_ids)).filter(admission__has_common_app=False)
     lines = [_name(s) for s in rows[:20]]
     if not lines:
-        return _reply("У всех, у кого заполнен профиль поступления, Common App заведён.")
-    return _reply(f"Без Common App: {rows.count()}.", lines=lines)
+        return _reply(_("У всех, у кого заполнен профиль поступления, Common App заведён."))
+    return _reply(_("Без Common App: {count}.").format(count=rows.count()), lines=lines)
 
 
 def mock_drop(*, student_ids=None, **_kwargs) -> dict:
@@ -394,8 +442,8 @@ def mock_drop(*, student_ids=None, **_kwargs) -> dict:
                 f"{_name(student)} — {attempts[0].exam_type}: " f"{attempts[1].total_score} → {attempts[0].total_score}"
             )
     if not lines:
-        return _reply("Никто не просел: последние моки не ниже предыдущих.")
-    return _reply(f"Просели по мокам: {len(lines)}.", lines=lines[:15])
+        return _reply(_("Никто не просел: последние Mock Test не ниже предыдущих."))
+    return _reply(_("Просели по Mock Test: {count}.").format(count=len(lines)), lines=lines[:15])
 
 
 def intensive_group(*, student_ids=None, **_kwargs) -> dict:
@@ -411,13 +459,23 @@ def intensive_group(*, student_ids=None, **_kwargs) -> dict:
             and exam.ielts_current + 1 <= exam.ielts_target
         )
         if ielts_gap:
-            lines.append(f"{_name(student)} — IELTS {exam.ielts_current} при цели {exam.ielts_target}")
+            lines.append(
+                _("{student} — IELTS {current} при цели {target}").format(
+                    student=_name(student), current=exam.ielts_current, target=exam.ielts_target
+                )
+            )
         elif exam.sat_current is not None and exam.sat_target is not None and exam.sat_current + 150 <= exam.sat_target:
-            lines.append(f"{_name(student)} — SAT {exam.sat_current} при цели {exam.sat_target}")
+            lines.append(
+                _("{student} — SAT {current} при цели {target}").format(
+                    student=_name(student), current=exam.sat_current, target=exam.sat_target
+                )
+            )
     if not lines:
-        return _reply("Кандидатов на интенсив нет: разрыв с целью меньше порога у всех.")
+        return _reply(_("Кандидатов на интенсив нет: разрыв с целью меньше порога у всех."))
     return _reply(
-        f"Кандидаты на интенсив: {len(lines)}. Дальше можно поставить им задачу — напишите её словами.",
+        _("Кандидаты на интенсив: {count}. Дальше можно поставить им задачу — напишите её словами.").format(
+            count=len(lines)
+        ),
         lines=lines[:20],
     )
 
@@ -430,29 +488,33 @@ def weak_portfolio(*, student_ids=None, **_kwargs) -> dict:
             continue
         activities = student.activities.count()
         if talent.portfolio_status == "weak" or (not talent.portfolio_status and activities == 0):
-            note = "нет активностей" if activities == 0 else f"активностей: {activities}"
+            note = _("нет активностей") if activities == 0 else _("активностей: {count}").format(count=activities)
             lines.append(f"{_name(student)} — {note}")
     if not lines:
-        return _reply("Слабых портфолио по текущим данным нет.")
-    return _reply(f"Слабое портфолио: {len(lines)}.", lines=lines[:20])
+        return _reply(_("Слабых портфолио по текущим данным нет."))
+    return _reply(_("Слабое портфолио: {count}.").format(count=len(lines)), lines=lines[:20])
 
 
 def pick_track(*, student_ids=None, **_kwargs) -> dict:
     student = _one_student(student_ids)
     if student is None:
-        return _reply(NEED_ONE)
+        return _reply(str(NEED_ONE))
     counts: dict[str, int] = {}
     for activity in student.activities.all():
         counts[activity.get_category_display()] = counts.get(activity.get_category_display(), 0) + 1
     if not counts:
         return _reply(
-            f"У {_name(student)} пока нет активностей — трек не из чего выводить. "
-            "Начните с одной-двух записей: олимпиада, проект или волонтёрство."
+            _(
+                "У {student} пока нет активностей — трек не из чего выводить. "
+                "Начните с одной-двух записей: олимпиада, проект или волонтёрство."
+            ).format(student=_name(student))
         )
     top = sorted(counts.items(), key=lambda kv: -kv[1])
     lines = [f"{title}: {count}" for title, count in top]
     return _reply(
-        f"По активностям {_name(student)} сильнее всего направление «{top[0][0]}» — логично строить трек вокруг него.",
+        _("По активностям {student} сильнее всего направление «{track}» — логично строить трек вокруг него.").format(
+            student=_name(student), track=top[0][0]
+        ),
         lines=lines,
     )
 
@@ -461,16 +523,20 @@ def contests_for_track(*, student_ids=None, **_kwargs) -> dict:
     """Только то, что есть в базе: выдумывать внешние конкурсы нельзя."""
     student = _one_student(student_ids)
     if student is None:
-        return _reply(NEED_ONE)
+        return _reply(str(NEED_ONE))
     today = timezone.localdate()
     upcoming = student.activities.filter(date__gte=today).order_by("date")
     lines = [f"{a.date:%d.%m} — {a.title}" for a in upcoming[:10]]
     if not lines:
         return _reply(
-            "Предстоящих конкурсов в базе нет. Помощник не подбирает внешние списки из головы — "
-            "заведите конкурс активностью с датой, и он появится здесь."
+            _(
+                "Предстоящих конкурсов в базе нет. Помощник не подбирает внешние списки из головы — "
+                "заведите конкурс активностью с датой, и он появится здесь."
+            )
         )
-    return _reply(f"Запланировано у {_name(student)}: {len(lines)}.", lines=lines)
+    return _reply(
+        _("Запланировано у {student}: {count}.").format(student=_name(student), count=len(lines)), lines=lines
+    )
 
 
 def no_certificates(*, student_ids=None, **_kwargs) -> dict:
@@ -482,33 +548,41 @@ def no_certificates(*, student_ids=None, **_kwargs) -> dict:
         if not student.competitions.filter(has_certificate=True).exists():
             lines.append(f"{_name(student)} — {sport.sport_type.name}")
     if not lines:
-        return _reply("У всех спортсменов есть хотя бы один сертификат.")
-    return _reply(f"Спортсмены без сертификатов: {len(lines)}.", lines=lines[:20])
+        return _reply(_("У всех спортсменов есть хотя бы один сертификат."))
+    return _reply(_("Спортсмены без сертификатов: {count}.").format(count=len(lines)), lines=lines[:20])
 
 
 def rate_sport_profile(*, student_ids=None, **_kwargs) -> dict:
     student = _one_student(student_ids)
     if student is None:
-        return _reply(NEED_ONE)
+        return _reply(str(NEED_ONE))
     sport = getattr(student, "sport", None)
     if sport is None or sport.sport_type_id is None:
-        return _reply(f"{_name(student)} не отмечен спортсменом: вид спорта в профиле не задан.")
+        return _reply(
+            _("{student} не отмечен спортсменом: вид спорта в профиле не задан.").format(student=_name(student))
+        )
     competitions = student.competitions.count()
     with_cert = student.competitions.filter(has_certificate=True).count()
     lines = [
-        f"Вид спорта: {sport.sport_type.name}",
-        f"Уровень: {sport.get_level_display() or 'не указан'}",
-        f"Соревнований в базе: {competitions}, с сертификатом: {with_cert}",
+        _("Вид спорта: {sport}").format(sport=sport.sport_type.name),
+        _("Уровень: {level}").format(level=sport.get_level_display() or _("не указан")),
+        _("Соревнований в базе: {count}, с сертификатом: {certified}").format(count=competitions, certified=with_cert),
     ]
     if sport.leadership_role:
-        lines.append(f"Лидерская роль: {sport.leadership_role}")
+        lines.append(_("Лидерская роль: {role}").format(role=sport.leadership_role))
     missing = []
     if not with_cert:
-        missing.append("нет ни одного сертификата")
+        missing.append(_("нет ни одного сертификата"))
     if not sport.level:
-        missing.append("не указан уровень")
-    tail = f" Чего не хватает: {', '.join(missing)}." if missing else " Профиль заполнен."
-    return _reply(f"Спортивный профиль {_name(student)} по данным системы.{tail}", lines=lines)
+        missing.append(_("не указан уровень"))
+    summary = (
+        _("Спортивный профиль {student} по данным системы. Чего не хватает: {missing}.").format(
+            student=_name(student), missing=", ".join(missing)
+        )
+        if missing
+        else _("Спортивный профиль {student} по данным системы. Профиль заполнен.").format(student=_name(student))
+    )
+    return _reply(summary, lines=lines)
 
 
 def competitions_calendar(*, student_ids=None, **_kwargs) -> dict:
@@ -522,8 +596,8 @@ def competitions_calendar(*, student_ids=None, **_kwargs) -> dict:
     )
     lines = [f"{row.date:%d.%m} — {row.name} — {_name(row.student)}" for row in rows[:15]]
     if not lines:
-        return _reply("Предстоящих соревнований в базе нет.")
-    return _reply(f"Ближайшие соревнования: {len(lines)}.", lines=lines)
+        return _reply(_("Предстоящих соревнований в базе нет."))
+    return _reply(_("Ближайшие соревнования: {count}.").format(count=len(lines)), lines=lines)
 
 
 # --- Правила: ученик -------------------------------------------------------
@@ -537,11 +611,13 @@ def student_today(*, student: Student, **_kwargs) -> dict:
     )
     lines = []
     for task in tasks:
-        when = f" — до {task.due_date:%d.%m}" if task.due_date else ""
-        lines.append(f"{task.title}{when}")
+        if task.due_date:
+            lines.append(_("{task} — до {date}").format(task=task.title, date=f"{task.due_date:%d.%m}"))
+        else:
+            lines.append(task.title)
     if not lines:
-        return _reply("Открытых задач нет. Загляните в каталог — выбранные вузы сами превратятся в план.")
-    return _reply("Ближайшие задачи по плану:", lines=lines)
+        return _reply(_("Открытых задач нет. Загляните в каталог — выбранные вузы сами превратятся в план."))
+    return _reply(_("Ближайшие задачи по плану:"), lines=lines)
 
 
 def student_why_percent(*, student: Student, **_kwargs) -> dict:
@@ -549,15 +625,23 @@ def student_why_percent(*, student: Student, **_kwargs) -> dict:
     from core.readiness import compute
 
     readiness = compute(student)
-    lines = [f"{part.title}: {round(part.value)}% (вес {round(part.weight)}%)" for part in readiness.parts]
-    tail = ""
+    lines = [
+        _("{part}: {value}% (вес {weight}%)").format(
+            part=part.title, value=round(part.value), weight=round(part.weight)
+        )
+        for part in readiness.parts
+    ]
     if readiness.weakest is not None:
-        tail = f" Больше всего добавит блок «{readiness.weakest.title}»."
-    return _reply(
-        f"Ваша готовность — {round(readiness.score)}%. Это соответствие требованиям и заполненность "
-        f"профиля, а не вероятность поступления.{tail}",
-        lines=lines,
-    )
+        text = _(
+            "Ваша готовность — {score}%. Это соответствие требованиям и заполненность "
+            "профиля, а не вероятность поступления. Больше всего добавит блок «{part}»."
+        ).format(score=round(readiness.score), part=readiness.weakest.title)
+    else:
+        text = _(
+            "Ваша готовность — {score}%. Это соответствие требованиям и заполненность "
+            "профиля, а не вероятность поступления."
+        ).format(score=round(readiness.score))
+    return _reply(text, lines=lines)
 
 
 def student_pick_universities(*, student: Student, **_kwargs) -> dict:
@@ -566,13 +650,15 @@ def student_pick_universities(*, student: Student, **_kwargs) -> dict:
     results = open_programs(student)
     if not results:
         return _reply(
-            "В справочнике пока нет программ, по которым можно посчитать соответствие. "
-            "Загляните в каталог позже или спросите директора по поступлению."
+            _(
+                "В справочнике пока нет программ, по которым можно посчитать соответствие. "
+                "Загляните в каталог позже или спросите директора по поступлению."
+            )
         )
     top = sorted(results, key=lambda r: -r.percent)[:5]
     lines = [f"{r.university_name} — {r.program_name} — {r.percent}%" for r in top]
     return _reply(
-        "Куда вы проходите уже сейчас — по проценту соответствия требованиям (это не шанс поступления):",
+        _("Куда вы проходите уже сейчас — по проценту соответствия требованиям (это не шанс поступления):"),
         lines=lines,
     )
 
@@ -585,34 +671,39 @@ def student_explain_task(*, student: Student, **_kwargs) -> dict:
         .first()
     )
     if task is None:
-        return _reply("Открытых задач нет — объяснять нечего.")
-    lines = [f"Задача: {task.title}"]
+        return _reply(_("Открытых задач нет — объяснять нечего."))
+    lines = [_("Задача: {task}").format(task=task.title)]
     if task.description:
         lines.append(task.description)
     if task.due_date:
-        lines.append(f"Срок: {task.due_date:%d.%m.%Y}")
+        lines.append(_("Срок: {date}").format(date=f"{task.due_date:%d.%m.%Y}"))
     if task.admission_round_id:
-        lines.append("Срок привязан к дедлайну вуза: сдвинется дедлайн — сдвинется и задача.")
+        lines.append(_("Срок привязан к дедлайну вуза: сдвинется дедлайн — сдвинется и задача."))
     if task.category == "essay":
         lines.append(
-            "Эссе помощник за вас не пишет. Подумайте: какой случай из жизни показывает то, "
-            "о чём просит тема? Что вы сделали сами? Что поняли после?"
+            _(
+                "Эссе помощник за вас не пишет. Подумайте: какой случай из жизни показывает то, "
+                "о чём просит тема? Что вы сделали сами? Что поняли после?"
+            )
         )
-    return _reply("Разбор ближайшей задачи:", lines=lines)
+    return _reply(_("Разбор ближайшей задачи:"), lines=lines)
 
 
 # --- Свободный ввод --------------------------------------------------------
 
 #: Просьба поставить задачу — уходит в bulk_tasks и создаёт предложение.
-TASK_INTENT = re.compile(r"(поставь|создай|добавь|назнач)\w*\s+(?:\w+\s+){0,3}?задач", re.IGNORECASE)
+TASK_INTENT = re.compile(  # i18n-skip: регулярное выражение
+    r"(поставь|создай|добавь|назнач)\w*\s+(?:\w+\s+){0,3}?задач",
+    re.IGNORECASE,
+)
 
 #: Просьба написать эссе — ученику отвечаем вопросами, а не текстом.
-ESSAY_INTENT = re.compile(
+ESSAY_INTENT = re.compile(  # i18n-skip: регулярное выражение
     r"(напиши|перепиши|сочини|допиши)\w*.{0,40}эссе|эссе.{0,40}(напиши|перепиши|сочини)",
     re.IGNORECASE | re.S,
 )
 
-NO_MODEL_TEXT = (
+NO_MODEL_TEXT = gettext_lazy(
     "Свободные вопросы отвечает модель, а она сейчас не подключена. "
     "Быстрые кнопки работают и без неё — выберите одну из них."
 )
@@ -620,7 +711,7 @@ NO_MODEL_TEXT = (
 #: Модель подключена, но ответила пустым или не ответила вовсе. Писать
 #: здесь «не подключена» нельзя: администратор пойдёт проверять ключ,
 #: с которым всё в порядке.
-EMPTY_ANSWER_TEXT = (
+EMPTY_ANSWER_TEXT = gettext_lazy(
     "Модель не ответила на этот вопрос. Попробуйте спросить иначе — "
     "или воспользуйтесь быстрыми кнопками, они работают всегда."
 )
@@ -630,17 +721,21 @@ def free_text(*, text: str, actor, role: str, student_ids=None, screen: str = ""
     """Свободный ввод: намерение «поставить задачу» — через предложение,
     остальное — вопрос модели. Без модели — честный отказ."""
     if role == CURATOR and TASK_INTENT.search(text):
-        return _reply("Задачу своим ученикам ставьте в кабинете — «Задача группе»: она уйдёт сразу, без очереди.")
+        return _reply(_("Задачу своим ученикам ставьте в кабинете — «Задача группе»: она уйдёт сразу, без очереди."))
     if role == TEACHER and TASK_INTENT.search(text):
         return _reply(
-            "Помощник учителя только читает: задач, оценок и отметок он не ставит. "
-            "Оценки и посещаемость вносятся в журнале или на экране урока."
+            _(
+                "Помощник учителя только читает: задач, оценок и отметок он не ставит. "
+                "Оценки и посещаемость вносятся в журнале или на экране урока."
+            )
         )
     if role != STUDENT and TASK_INTENT.search(text):
         if not student_ids:
             return _reply(
-                "Кому ставим? Отфильтруйте таблицу или отметьте учеников — задача уйдёт именно им, "
-                "а не всем двумстам пятидесяти."
+                _(
+                    "Кому ставим? Отфильтруйте таблицу или отметьте учеников — задача уйдёт именно им, "
+                    "а не всем двумстам пятидесяти."
+                )
             )
         outcome = operations.bulk_tasks(student_ids=list(student_ids), wish=text, actor=actor, role=role)
         payload = outcome.as_dict()
@@ -655,37 +750,40 @@ def free_text(*, text: str, actor, role: str, student_ids=None, screen: str = ""
 
     if role == STUDENT and ESSAY_INTENT.search(text) and not _junior(actor):
         return _reply(
-            "Эссе помощник не пишет и не переписывает — приёмная комиссия ждёт ваш голос, не машинный. "
-            "Помогу вопросами: о каком случае вы хотите рассказать? Что вы в нём сделали сами? "
-            "Что поняли после — и как это связано с программой, куда подаёте?"
+            _(
+                "Эссе помощник не пишет и не переписывает — приёмная комиссия ждёт ваш голос, не машинный. "
+                "Помогу вопросами: о каком случае вы хотите рассказать? Что вы в нём сделали сами? "
+                "Что поняли после — и как это связано с программой, куда подаёте?"
+            )
         )
 
     if not is_configured():
-        return _reply(NO_MODEL_TEXT)
+        return _reply(str(NO_MODEL_TEXT))
 
     if role == STUDENT and _junior(actor):
         # у 8–10 — только учёба: ни слова о поступлении ни в правилах, ни в контексте
         from suggestions.junior_assistant import CHAT_RULES
 
-        return _ask_model(CHAT_RULES, f"Экран: {screen}.\n{text}" if screen else text, actor=actor, role=role)
+        question = f"Экран: {screen}.\n{text}" if screen else text  # i18n-skip: промпт модели
+        return _ask_model(CHAT_RULES, question, actor=actor, role=role)
 
     if role == TEACHER:
         return _teacher_chat(text=text, actor=actor, student_ids=student_ids)
 
-    system = (
+    system = (  # i18n-skip: промпт модели
         "Ты помощник внутренней школьной платформы подготовки к поступлению. "
         "Отвечай коротко и по-русски. Не выдумывай вузы, программы и требования: "
         "если данных нет в вопросе, скажи об этом прямо. "
         "Проценты называй «соответствием требованиям», никогда — шансом или вероятностью поступления."
     )
     if role == STUDENT:
-        system += (
+        system += (  # i18n-skip: промпт модели
             " Ты говоришь с учеником: не используй внутренние ярлыки и категории сотрудников, "
             "не пиши и не переписывай эссе — только задавай наводящие вопросы."
         )
-    context = f"Экран: {screen}." if screen else ""
+    context = f"Экран: {screen}." if screen else ""  # i18n-skip: промпт модели
     if student_ids:
-        context += f" Выбрано учеников: {len(student_ids)}."
+        context += f" Выбрано учеников: {len(student_ids)}."  # i18n-skip: промпт модели
     return _ask_model(system, f"{context}\n{text}".strip(), actor=actor, role=role)
 
 
@@ -710,8 +808,8 @@ def _teacher_chat(*, text: str, actor, student_ids=None) -> dict:
     for student in people:
         if roster.label(student) in named:
             mentioned.add(roster.number_of[student.pk])
-    about = f"В вопросе, судя по фамилии: {', '.join(named)}.\n" if named else ""
-    answer = _ask_model(
+    about = f"В вопросе, судя по фамилии: {', '.join(named)}.\n" if named else ""  # i18n-skip: промпт модели
+    answer = _ask_model(  # i18n-skip: промпт модели
         CHAT_RULES,
         f"Факты из журналов учителя:\n{hidden}\n\n{about}Вопрос учителя: {text}",
         actor=actor,
@@ -738,10 +836,10 @@ def _ask_model(system: str, question: str, *, actor, role: str) -> dict:
         # надо сказать, какая именно: одно чинит администратор, другое ждут
         # модель здесь подключена (проверено выше): не ответила — не значит
         # «не подключена», иначе администратор пойдёт проверять живой ключ
-        return _reply(str(error) if isinstance(error, BudgetExceeded) else EMPTY_ANSWER_TEXT)
+        return _reply(str(error) if isinstance(error, BudgetExceeded) else str(EMPTY_ANSWER_TEXT))
     answer = (response.content or "").strip()
     if not answer:
-        return _reply(EMPTY_ANSWER_TEXT)
+        return _reply(str(EMPTY_ANSWER_TEXT))
     return _reply(answer, offline=False)
 
 
@@ -761,8 +859,8 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
     if code not in buttons:
         # у 8–10 кнопок поступления нет: вузы, готовность и задачи плана
         # не выполняются для них и прямым запросом
-        return _reply("Такой кнопки у вашей роли нет.")
-    title = buttons[code].title
+        return _reply(_("Такой кнопки у вашей роли нет."))
+    title = str(buttons[code].title)
 
     if junior:
         from suggestions.junior_assistant import HANDLERS
@@ -782,7 +880,7 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
     if role == STUDENT:
         student = getattr(actor, "student", None)
         if student is None:
-            return _reply("У вашей учётной записи нет карточки ученика — попросите администратора связать их.")
+            return _reply(_("У вашей учётной записи нет карточки ученика — попросите администратора связать их."))
         handlers = {
             "today": student_today,
             "why_percent": student_why_percent,
@@ -806,9 +904,9 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
     pool = picked or operations.pool_of(actor, role)
     if not pool:
         if role == CURATOR:
-            return _reply("В ваших группах пока нет учеников — назначает группы администратор.")
+            return _reply(_("В ваших группах пока нет учеников — назначает группы администратор."))
         if role == TEACHER:
-            return _reply("Учеников в ваших составах пока нет — журналы заводит расписание.")
+            return _reply(_("Учеников в ваших составах пока нет — журналы заводит расписание."))
 
     if role == TEACHER:
         from suggestions.teacher_assistant import HANDLERS as TEACHER_HANDLERS
@@ -833,12 +931,12 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
     if code == "check_balance":
         student = _one_student(picked)
         if student is None:
-            return _reply(NEED_ONE)
+            return _reply(str(NEED_ONE))
         return _outcome(operations.check_balance(student_id=student.pk, actor=actor, role=role))
     if code == "prep_plan":
         student = _one_student(picked)
         if student is None:
-            return _reply(NEED_ONE)
+            return _reply(str(NEED_ONE))
         return _outcome(operations.prep_plan(student_id=student.pk, actor=actor, role=role))
     if code == "parse_university":
         return _parse_university(text=text, actor=actor, role=role)
@@ -860,7 +958,7 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
     }
     handler = rules.get(code)
     if handler is None:
-        return _reply("Эта кнопка принимает файл или изображение — воспользуйтесь полем загрузки рядом с ней.")
+        return _reply(_("Эта кнопка принимает файл или изображение — воспользуйтесь полем загрузки рядом с ней."))
 
     # факты собирают правила, формулирует модель; список учеников нужен,
     # чтобы обезличить имена перед отправкой и вернуть их в ответе. Кнопка
@@ -894,13 +992,13 @@ def _parse_university(*, text: str, actor, role: str) -> dict:
     from suggestions.extraction import parse_university as run
 
     if not text.strip():
-        return _reply("Пришлите название вуза или ссылку на его страницу — тогда будет что разбирать.")
+        return _reply(_("Пришлите название вуза или ссылку на его страницу — тогда будет что разбирать."))
     try:
         result = run(text=text, actor=actor, role=role)
     except NeedsModel as error:
         return _reply(str(error))
     return _reply(
-        result.get("detail") or "Разобрал: смотрите предпросмотр.",
+        result.get("detail") or _("Разобрал: смотрите предпросмотр."),
         suggestion=result.get("suggestion"),
         offline=False,
         affected=result.get("rows") or 0,
@@ -913,15 +1011,15 @@ def _parse_activity(*, text: str, actor, role: str, student_ids=None) -> dict:
 
     student = _one_student(student_ids)
     if student is None:
-        return _reply(NEED_ONE)
+        return _reply(str(NEED_ONE))
     if not text.strip():
-        return _reply("Опишите активность словами: что было, когда, чем закончилось.")
+        return _reply(_("Опишите активность словами: что было, когда, чем закончилось."))
     try:
         result = run(text=text, student_id=student.pk, actor=actor, role=role)
     except NeedsModel as error:
         return _reply(str(error))
     return _reply(
-        result.get("detail") or "Разобрал: смотрите предпросмотр.",
+        result.get("detail") or _("Разобрал: смотрите предпросмотр."),
         suggestion=result.get("suggestion"),
         offline=False,
         affected=result.get("rows") or 0,

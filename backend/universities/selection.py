@@ -14,7 +14,10 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
+from core.i18n import language_of, render
 from core.parallels import parallel_of
 from students.models import Student
 from universities.matching import MatchResult, match
@@ -29,11 +32,11 @@ from universities.models import (
 
 #: Этапы прогона — по порядку, подписи читает человек на экране расчёта.
 STAGES: tuple[tuple[str, str, int], ...] = (
-    ("filter", "Отбираем программы", 15),
-    ("profile", "Оцениваем профиль", 35),
-    ("analyze", "Разбираем вузы", 60),
-    ("assemble", "Собираем финальный список", 80),
-    ("strategy", "Готовим стратегию", 95),
+    ("filter", gettext_lazy("Отбираем программы"), 15),
+    ("profile", gettext_lazy("Оцениваем профиль"), 35),
+    ("analyze", gettext_lazy("Разбираем вузы"), 60),
+    ("assemble", gettext_lazy("Собираем финальный список"), 80),
+    ("strategy", gettext_lazy("Готовим стратегию"), 95),
 )
 
 #: Сколько программ разбирается подробно и сколько попадает в финал.
@@ -42,7 +45,7 @@ FINAL_LIMIT = 12
 
 
 def stage_titles() -> list[dict]:
-    return [{"code": code, "title": title, "at": at} for code, title, at in STAGES]
+    return [{"code": code, "title": str(title), "at": at} for code, title, at in STAGES]
 
 
 def tier_for(percent: int) -> str:
@@ -129,7 +132,8 @@ def start_run(student: Student, *, major: str = "", level: str = "", countries: 
         jobs.start(
             user=student.user,
             kind="selection",
-            title="Подбор вузов",
+            # плашка и колокольчик — ученика: название на его языке, кто бы ни запустил
+            title=render(language_of(student.user), "Подбор вузов"),
             task_id=task.id,
             link=f"/selection/{run.pk}",
             retry_task="universities.run_match_selection",
@@ -148,7 +152,7 @@ def execute(run_id: int) -> dict:
     """Тело фоновой задачи: пять этапов с отметками прогресса."""
     run = MatchRun.objects.select_related("student").filter(pk=run_id).first()
     if run is None:
-        return {"error": "прогона нет"}
+        return {"error": "прогона нет"}  # i18n-skip: итог задачи Celery, человек его не видит
     if run.status != MatchRunStatus.RUNNING:
         # двойная доставка задачи не должна дублировать строки результата
         return {"run": run.pk, "already": run.status}
@@ -264,22 +268,30 @@ def methodology() -> list[str]:
         f"{title} — {int(weights[key])}%"
         for key, title in (
             ("gpa", "GPA"),
-            ("english", "английский (IELTS или TOEFL)"),
-            ("standardized", "стандартный тест (SAT или ACT)"),
-            ("portfolio", "портфолио"),
+            ("english", _("английский (IELTS или TOEFL)")),
+            ("standardized", _("стандартный тест (SAT или ACT)")),
+            ("portfolio", _("портфолио")),
         )
         if key in weights
     )
     return [
-        "Процент — это соответствие требованиям программы, а не шанс поступления: "
-        "он считается механически от порогов, заведённых в справочнике.",
-        f"Позиции и веса: {weight_line}. Группа альтернатив (IELTS/TOEFL, SAT/ACT) весит как одна позиция — "
-        "достаточно сдать один экзамен из пары.",
-        "По каждой позиции считается, насколько текущий балл закрывает порог. Счёт идёт от нижней планки "
-        "шкалы экзамена, а не от нуля: IELTS 6.0 при пороге 6.5 — это не 92%.",
-        "Пустой порог в справочнике значит «требования нет» — такая позиция не участвует.",
-        f"Категории по проценту: от {int(tiers['safety'])}% — Safety, от {int(tiers['match'])}% — Match, "
-        f"от {int(tiers['reach'])}% — Reach, ниже — Dream. Границы задаются настройками школы.",
-        "«Если закрыть разрывы» — тот же расчёт при целевых баллах из ваших целей по экзаменам.",
-        "Требования, не подтверждённые школой, помечаются отдельно — процент по ним стоит перепроверить.",
+        _(
+            "Процент — это соответствие требованиям программы, а не шанс поступления: "
+            "он считается механически от порогов, заведённых в справочнике."
+        ),
+        _(
+            "Позиции и веса: {weights}. Группа альтернатив (IELTS/TOEFL, SAT/ACT) весит как одна позиция — "
+            "достаточно сдать один экзамен из пары."
+        ).format(weights=weight_line),
+        _(
+            "По каждой позиции считается, насколько текущий балл закрывает порог. Счёт идёт от нижней планки "
+            "шкалы экзамена, а не от нуля: IELTS 6.0 при пороге 6.5 — это не 92%."
+        ),
+        _("Пустой порог в справочнике значит «требования нет» — такая позиция не участвует."),
+        _(
+            "Категории по проценту: от {safety}% — Safety, от {match}% — Match, "
+            "от {reach}% — Reach, ниже — Dream. Границы задаются настройками школы."
+        ).format(safety=int(tiers["safety"]), match=int(tiers["match"]), reach=int(tiers["reach"])),
+        _("«Если закрыть разрывы» — тот же расчёт при целевых баллах из ваших целей по экзаменам."),
+        _("Требования, не подтверждённые школой, помечаются отдельно — процент по ним стоит перепроверить."),
     ]

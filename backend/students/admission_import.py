@@ -33,7 +33,9 @@ import datetime as dt
 from dataclasses import dataclass, field
 
 from django.db import transaction
-from django.utils import timezone
+from django.utils import timezone, translation
+from django.utils.translation import gettext, gettext_noop
+from django.utils.translation import gettext as _
 
 from students import import_registry as registry
 from students.import_registry import parse_date as parse_expiry  # noqa: F401
@@ -168,15 +170,15 @@ def read_sheets(uploaded, *, group: str = "") -> list[tuple[str, list[str], list
         # у CSV листов нет: файл считается одним листом группы, которую
         # человек выбрал на первом шаге (фаза 72)
         if not group:
-            raise FileRejected("Для CSV укажите группу: у файла нет листов, а лист — это группа")
+            raise FileRejected(_("Для CSV укажите группу: у файла нет листов, а лист — это группа"))
         return [(group, *_read_csv(uploaded))]
     if not name.endswith((".xlsx", ".xlsm")):
-        raise FileRejected("Файл читается из книги Excel (.xlsx) или CSV: лист — это группа")
+        raise FileRejected(_("Файл читается из книги Excel (.xlsx) или CSV: лист — это группа"))
     uploaded.seek(0)
     try:
         book = load_workbook(uploaded, read_only=True, data_only=True)
     except (InvalidFileException, KeyError, ValueError) as error:
-        raise FileRejected(f"Файл не открылся как книга Excel: {error}") from error
+        raise FileRejected(_("Файл не открылся как книга Excel: {error}").format(error=error)) from error
 
     out = []
     for sheet_name in book.sheetnames:
@@ -235,7 +237,7 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
     fixes = fixes or {}
     sheets_raw = read_sheets(uploaded, group=group)
     if not sheets_raw:
-        raise FileRejected("В книге нет ни одного листа")
+        raise FileRejected(_("В книге нет ни одного листа"))
 
     # границу «свои группы» держит то же место, что и везде, — назначения куратора
     own_groups: set[int] | None = None
@@ -249,11 +251,13 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
         sheet = Sheet(name=sheet_name, group_code=_text(sheet_name).upper())
         group = _group_of(sheet_name)
         if group is None:
-            sheet.error = f"Группы «{sheet.group_code}» нет в системе — лист пропущен целиком"
+            sheet.error = _("Группы «{group}» нет в системе — лист пропущен целиком").format(group=sheet.group_code)
             out.append(sheet)
             continue
         if own_groups is not None and group.pk not in own_groups:
-            sheet.error = f"Группа «{sheet.group_code}» — не ваша группа: куратор загружает только свои — лист пропущен"
+            sheet.error = _("Группа «{group}» — не ваша группа: куратор загружает только свои — лист пропущен").format(
+                group=sheet.group_code
+            )
             out.append(sheet)
             continue
         sheet.group_id = group.pk
@@ -261,7 +265,9 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
         sheet.columns = [spec.key for spec in registry.COLUMNS if spec.key in columns]
         sheet.unknown = registry.unknown_columns(header, columns)
         if "name" not in columns:
-            sheet.error = "На листе не нашлась колонка «ФИО» — лист пропущен целиком"
+            sheet.error = _("На листе не нашлась колонка «{column}» — лист пропущен целиком").format(
+                column=registry.spec_of("name").title
+            )
             out.append(sheet)
             continue
 
@@ -286,7 +292,7 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
             _resolve_values(row, cell=cell, keys=sheet.columns)
             if row.student is not None:
                 if row.student in seen:
-                    row.error = f"этот ученик уже был в строке №{seen[row.student]}"
+                    row.error = _("этот ученик уже был в строке №{number}").format(number=seen[row.student])
                 else:
                     seen[row.student] = number
             sheet.rows.append(row)
@@ -300,7 +306,7 @@ def _refuse_junior(row: Row, students: list) -> None:
 
     student = next((s for s in students if s.pk == row.student), None) if row.student else None
     if student is not None and not has_admission(student):
-        row.error = "поступление ведётся только у 11 параллели — строка пропущена"
+        row.error = _("поступление ведётся только у 11 параллели — строка пропущена")
 
 
 def _resolve_student(row: Row, *, students: list, fix: Fix | None, finder) -> None:
@@ -315,7 +321,9 @@ def _resolve_student(row: Row, *, students: list, fix: Fix | None, finder) -> No
     if outcome.is_confident and outcome.best:
         row.student, row.student_name = outcome.best.student_id, outcome.best.full_name
         return
-    row.error = "похожих учеников несколько — выберите" if outcome.is_ambiguous else "ученик не найден в этой группе"
+    row.error = (
+        _("похожих учеников несколько — выберите") if outcome.is_ambiguous else _("ученик не найден в этой группе")
+    )
 
 
 def _resolve_values(row: Row, *, cell, keys: list[str]) -> None:
@@ -367,12 +375,12 @@ def columns_payload(sheets: list[Sheet]) -> list[dict]:
         out.append(
             {
                 "key": spec.key,
-                "title": spec.title,
+                "title": str(spec.title),
                 "field_title": _field_title(spec),
                 "domain": spec.domain,
                 "domain_title": domain.title if domain else "",
                 "owner": domain.owner_name if domain else "",
-                "kind": registry.KIND_TITLES[spec.kind],
+                "kind": str(registry.KIND_TITLES[spec.kind]),
                 "rows_with_data": sum(1 for sheet in sheets for row in sheet.rows if spec.key in row.values),
             }
         )
@@ -391,12 +399,12 @@ def _field_title(spec) -> str:
         found = spec_of_field("students.ExamProfile", spec.field)
         return found.title if found else spec.field
     if spec.target == registry.ATTEMPT:
-        return f"{spec.exam}, результат {spec.slot}"
+        return _("{exam}, результат {slot}").format(exam=spec.exam, slot=spec.slot)
     if spec.target == registry.DOCUMENT:
-        return f"Документ «{DocumentType(spec.doc_type).label}»"
+        return _("Документ «{document}»").format(document=DocumentType(spec.doc_type).label)
     if spec.target == registry.CREDENTIAL:
         return CredentialKind(spec.credential).label
-    return spec.title
+    return str(spec.title)
 
 
 def unknown_payload(sheets: list[Sheet]) -> list[str]:
@@ -439,6 +447,26 @@ def preview_payload(sheets: list[Sheet]) -> dict:
 
 # --- Применение -----------------------------------------------------------
 
+#: Вид строки отчёта — машинное слово: фронт сравнивает его («домен»)
+#: и переводит сам по словарю, поэтому оно по-русски и не переводится.
+#: Текст строки — на языке того, кто загружал
+KIND_SHEET, KIND_COLUMN, KIND_SKIP, KIND_WARNING, KIND_DOMAIN = (  # i18n-skip: машинные коды вида строки отчёта
+    "лист",
+    "колонка",
+    "пропуск",
+    "внимание",
+    "домен",
+)
+
+
+def _line(sheet: str, row, student: str, kind: str, text: str, code: str) -> str:
+    """Строка отчёта: лист, строка, ученик, вид, текст и код пропуска.
+
+    Код (шестая колонка) — машинный: по нему отчёт делит пропуски на виды.
+    Текст переведён на язык загружавшего, и искать в нём слова нельзя.
+    """
+    return "\t".join([sheet, str(row), student, kind, text, code])
+
 
 @transaction.atomic
 def apply(uploaded, *, actor, fixes: dict[str, Fix] | None = None, domains: list[str] | None = None, group: str = ""):
@@ -465,22 +493,24 @@ def apply(uploaded, *, actor, fixes: dict[str, Fix] | None = None, domains: list
 
     for sheet in sheets:
         if sheet.error:
-            report.append(f"{sheet.name}\t—\t—\tлист\t{sheet.error}")
+            report.append(_line(sheet.name, "—", "—", KIND_SHEET, sheet.error, "sheet"))
             continue
         for title in sheet.unknown:
-            report.append(f"{sheet.name}\t—\t—\tколонка\tколонка «{title}» не распознана, пропущена")
+            text = _("колонка «{column}» не распознана, пропущена").format(column=title)
+            report.append(_line(sheet.name, "—", "—", KIND_COLUMN, text, "unknown"))
         for key in sheet.columns:
             spec = registry.spec_of(key)
             if spec.domain and spec.domain not in chosen:
-                report.append(
-                    f"{sheet.name}\t—\t—\tколонка\t"
-                    f"колонка «{spec.title}» пропущена: домен «{spec.domain_title}» не выбран"
+                text = _("колонка «{column}» пропущена: домен «{domain}» не выбран").format(
+                    column=spec.title, domain=spec.domain_title
                 )
+                report.append(_line(sheet.name, "—", "—", KIND_COLUMN, text, "domain"))
         for row in sheet.rows:
             if row.skip or row.error:
                 skipped += 1
-                reason = "пропущена человеком" if row.skip else row.error
-                report.append(f"{sheet.name}\t{row.index}\t{row.raw_name}\tпропуск\t{reason}")
+                reason = _("пропущена человеком") if row.skip else row.error
+                code = "manual" if row.skip else "row"
+                report.append(_line(sheet.name, row.index, row.raw_name, KIND_SKIP, reason, code))
                 continue
             outcome = _apply_row(row, actor=actor, today=today, domains=chosen)
             if first_student is None:
@@ -492,13 +522,14 @@ def apply(uploaded, *, actor, fixes: dict[str, Fix] | None = None, domains: list
             for code, count in outcome["by_domain"].items():
                 written[code] = written.get(code, 0) + count
             for warning in row.warnings:
-                report.append(f"{sheet.name}\t{row.index}\t{row.student_name}\tвнимание\t{warning}")
+                report.append(_line(sheet.name, row.index, row.student_name, KIND_WARNING, warning, "warning"))
 
     from core.domains import DOMAINS
 
     for code in chosen:
         title = DOMAINS[code].title if code in DOMAINS else code
-        report.append(f"—\t—\t—\tдомен\t{title}: записано значений — {written.get(code, 0)}")
+        text = _("{domain}: записано значений — {count}").format(domain=title, count=written.get(code, 0))
+        report.append(_line("—", "—", "—", KIND_DOMAIN, text, "written"))
 
     record = AdmissionImport.objects.create(
         uploaded_by=actor if getattr(actor, "pk", None) else None,
@@ -624,7 +655,8 @@ def _apply_links(row: Row, *, student, actor, domains: list[str]) -> int:
         document = StudentDocument.objects.create(
             student=student,
             doc_type=doc_type,
-            title=f"{DocumentType(doc_type).label}: ссылка из таблицы поступления",
+            # название хранится в базе как данные — по-русски, как остальные данные школы
+            title=_ru_title(gettext_noop("{document}: ссылка из таблицы поступления"), doc_type),
             external_url=link["url"],
             expires_at=expires,
             uploaded_by=actor if getattr(actor, "pk", None) else None,
@@ -698,9 +730,19 @@ def report_rows(record) -> list[dict]:
     out = []
     for line in (record.report or "").splitlines():
         parts = line.split("\t")
-        while len(parts) < 5:
+        while len(parts) < 6:
             parts.append("")
-        out.append({"sheet": parts[0], "row": parts[1], "student": parts[2], "kind": parts[3], "text": parts[4]})
+        out.append(
+            {
+                "sheet": parts[0],
+                "row": parts[1],
+                "student": parts[2],
+                "kind": parts[3],
+                "text": parts[4],
+                # код пропуска; у записей до перевода его нет — пусто
+                "code": parts[5],
+            }
+        )
     return out
 
 
@@ -727,19 +769,29 @@ def record_payload(record) -> dict:
 
 def _skipped_by_kind(record) -> list[dict]:
     """Что пропущено и почему — по видам: колонка не распознана, домен не выбран, строка."""
-    kinds = {
-        "unknown": ("Колонки не распознаны", lambda r: r["kind"] == "колонка" and "не распознана" in r["text"]),
-        "domain": ("Колонки вне выбранных доменов", lambda r: r["kind"] == "колонка" and "домен" in r["text"]),
-        "sheet": ("Листы без группы", lambda r: r["kind"] == "лист"),
-        "row": ("Строки с ошибкой", lambda r: r["kind"] == "пропуск" and "человеком" not in r["text"]),
-        "manual": ("Строки, пропущенные человеком", lambda r: r["kind"] == "пропуск" and "человеком" in r["text"]),
-    }
-    rows = report_rows(record)
-    return [
-        {"kind": code, "title": title, "count": sum(1 for r in rows if test(r))}
-        for code, (title, test) in kinds.items()
-        if any(test(r) for r in rows)
-    ]
+    kinds = (
+        ("unknown", _("Колонки не распознаны")),
+        ("domain", _("Колонки вне выбранных доменов")),
+        ("sheet", _("Листы без группы")),
+        ("row", _("Строки с ошибкой")),
+        ("manual", _("Строки, пропущенные человеком")),
+    )
+    codes = [row["code"] or _legacy_code(row) for row in report_rows(record)]
+    return [{"kind": code, "title": title, "count": codes.count(code)} for code, title in kinds if code in codes]
+
+
+def _legacy_code(row: dict) -> str:  # i18n-skip: отчёты до перевода — вид пропуска узнаётся по русскому тексту
+    """Код пропуска у записи отчёта, собранной до перевода: кода в ней нет, текст русский."""
+    kind, text = row["kind"], row["text"]
+    if kind == "колонка" and "не распознана" in text:
+        return "unknown"
+    if kind == "колонка" and "домен" in text:
+        return "domain"
+    if kind == "лист":
+        return "sheet"
+    if kind == "пропуск":
+        return "manual" if "человеком" in text else "row"
+    return ""
 
 
 def template_workbook() -> bytes:
@@ -750,8 +802,17 @@ def template_workbook() -> bytes:
 
     book = Workbook()
     page = book.active
-    page.title = "ГРУППА"
-    page.append(["№", *[spec.title for spec in registry.COLUMNS]])
+    # имя листа — код группы; в шаблоне на его месте подсказка
+    page.title = _("ГРУППА")
+    page.append(["№", *[str(spec.title) for spec in registry.COLUMNS]])
     buffer = BytesIO()
     book.save(buffer)
     return buffer.getvalue()
+
+
+def _ru_title(template: str, doc_type: str) -> str:
+    """Название документа-ссылки для базы: по-русски, как остальные данные школы."""
+    from students.models import DocumentType
+
+    with translation.override("ru"):
+        return gettext(template).format(document=str(DocumentType(doc_type).label))

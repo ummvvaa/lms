@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from django.conf import settings
 from django.db.models import Q, QuerySet
+from django.utils.translation import gettext_lazy
 
 from students.models import Student
 from universities.matching import match
@@ -17,9 +18,9 @@ from universities.models import AdmissionRound, Program, StudentUniversity
 
 #: Пороги уровня соответствия — ими фильтрует каталог и подписывает карточки.
 LEVELS = {
-    "high": (80, 100, "проходите почти по всему"),
-    "medium": (50, 79, "есть куда расти"),
-    "low": (0, 49, "далеко"),
+    "high": (80, 100, gettext_lazy("проходите почти по всему")),
+    "medium": (50, 79, gettext_lazy("есть куда расти")),
+    "low": (0, 49, gettext_lazy("далеко")),
 }
 
 
@@ -143,7 +144,7 @@ def facets() -> dict:
         "majors": majors,
         "round_types": round_types,
         "levels": [
-            {"code": code, "title": title, "from": low, "to": high} for code, (low, high, title) in LEVELS.items()
+            {"code": code, "title": str(title), "from": low, "to": high} for code, (low, high, title) in LEVELS.items()
         ],
         "list_limit": settings.STUDENT_LIST_LIMIT,
     }

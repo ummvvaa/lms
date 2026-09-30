@@ -17,15 +17,18 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from django.db import transaction
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy, gettext_noop
 
 from core.domains import Source
 from directories.models import SportType
+from students.import_registry import header_variants
 from students.lookup import key_map
 from students.models import Competition, SportLevel, Student
 
 #: Как эти колонки называют в школьных списках. Сравнение по вхождению
 #: и без регистра.
-COLUMNS: dict[str, tuple[str, ...]] = {
+COLUMNS: dict[str, tuple[str, ...]] = {  # i18n-skip: синонимы заголовков для распознавания
     "student": ("почта ученика", "email ученика", "логин", "ученик", "student", "участник"),
     "name": ("соревнование", "название", "турнир", "старт", "competition"),
     "sport_type": ("вид спорта", "спорт", "sport"),
@@ -38,19 +41,21 @@ COLUMNS: dict[str, tuple[str, ...]] = {
 
 REQUIRED = ("student", "name")
 
+#: Подписи колонок для отказа; заголовок, записанный подписью на любом
+#: из трёх языков, тоже узнаётся (`header_variants`)
 TITLES = {
-    "student": "почта ученика",
-    "name": "название соревнования",
-    "sport_type": "вид спорта",
-    "level": "уровень",
-    "date": "дата",
-    "result": "результат",
-    "has_certificate": "сертификат",
-    "proof_url": "ссылка",
+    "student": gettext_lazy("почта ученика"),
+    "name": gettext_lazy("название соревнования"),
+    "sport_type": gettext_lazy("вид спорта"),
+    "level": gettext_lazy("уровень"),
+    "date": gettext_lazy("дата"),
+    "result": gettext_lazy("результат"),
+    "has_certificate": gettext_lazy("сертификат"),
+    "proof_url": gettext_lazy("ссылка"),
 }
 
 #: Как в файле пишут уровень.
-LEVEL_WORDS: dict[str, tuple[str, ...]] = {
+LEVEL_WORDS: dict[str, tuple[str, ...]] = {  # i18n-skip: слова из файла для распознавания
     SportLevel.SCHOOL: ("школ",),
     SportLevel.CITY: ("город", "район"),
     SportLevel.REGIONAL: ("област", "регион", "край"),
@@ -58,7 +63,7 @@ LEVEL_WORDS: dict[str, tuple[str, ...]] = {
     SportLevel.INTERNATIONAL: ("междунар", "интернацио", "мир", "world"),
 }
 
-TRUE_WORDS = {"да", "yes", "true", "1", "+", "есть"}
+TRUE_WORDS = {"да", "yes", "true", "1", "+", "есть"}  # i18n-skip: значения ячейки для распознавания
 
 
 def _level_of(value: str) -> str:
@@ -137,14 +142,19 @@ class Preview:
     def detail(self) -> str:
         if self.missing_columns:
             names = ", ".join(self.missing_columns)
-            return f"В файле не нашлись обязательные колонки: {names}. Проверьте заголовок первой строки"
+            return _("В файле не нашлись обязательные колонки: {columns}. Проверьте заголовок первой строки").format(
+                columns=names
+            )
         exists = sum(1 for row in self.rows if row.status == "exists")
         broken = sum(1 for row in self.rows if row.status == "error")
-        parts = [f"строк в файле: {len(self.rows)}", f"будет заведено выступлений: {len(self.ready)}"]
+        parts = [
+            _("строк в файле: {count}").format(count=len(self.rows)),
+            _("будет заведено выступлений: {count}").format(count=len(self.ready)),
+        ]
         if exists:
-            parts.append(f"уже есть: {exists}")
+            parts.append(_("уже есть: {count}").format(count=exists))
         if broken:
-            parts.append(f"с ошибками: {broken}")
+            parts.append(_("с ошибками: {count}").format(count=broken))
         return ", ".join(parts).capitalize()
 
 
@@ -152,11 +162,12 @@ def _find_columns(header: list[str]) -> dict[str, int]:
     """Сопоставить колонки файла полям; занятая колонка второй раз не берётся."""
     found: dict[str, int] = {}
     for name in ("student", "name", "sport_type", "level", "date", "result", "has_certificate", "proof_url"):
+        hints = (*COLUMNS[name], *sorted(header_variants(TITLES[name])))
         for index, title in enumerate(header):
             low = (title or "").strip().lower()
             if not low or index in found.values():
                 continue
-            if any(hint in low for hint in COLUMNS[name]):
+            if any(hint in low for hint in hints):
                 found[name] = index
                 break
     return found
@@ -174,7 +185,7 @@ def build_preview(*, header: list[str], rows: list[list[str]]) -> Preview:
     missing = [name for name in REQUIRED if name not in columns]
     preview = Preview(
         columns={name: header[index] for name, index in columns.items()},
-        missing_columns=[TITLES[name] for name in missing],
+        missing_columns=[str(TITLES[name]) for name in missing],
     )
     if missing:
         return preview
@@ -201,9 +212,11 @@ def build_preview(*, header: list[str], rows: list[list[str]]) -> Preview:
         found = students.get(row.student_email)
         if found is None:
             row.status = "error"
-            row.reason = f"ученика с почтой или логином «{row.student_email or 'пусто'}» в базе нет"
+            row.reason = _("ученика с почтой или логином «{key}» в базе нет").format(
+                key=row.student_email or _("пусто")
+            )
         elif not row.name:
-            row.status, row.reason = "error", "не указано название соревнования"
+            row.status, row.reason = "error", _("не указано название соревнования")
         else:
             row.student_id, row.student_name = found
             if sport_text:
@@ -212,11 +225,13 @@ def build_preview(*, header: list[str], rows: list[list[str]]) -> Preview:
                 sport = sports.get(sport_text.strip().lower())
                 if sport is None:
                     row.status = "error"
-                    row.reason = f"вида спорта «{sport_text}» нет в справочнике — заведите его или поправьте файл"
+                    row.reason = _("вида спорта «{sport}» нет в справочнике — заведите его или поправьте файл").format(
+                        sport=sport_text
+                    )
                 else:
                     row.sport_type_id, row.sport_type_name = sport.pk, sport.name
             if row.status == "new" and _already_there(row):
-                row.status, row.reason = "exists", "это выступление уже записано"
+                row.status, row.reason = "exists", _("это выступление уже записано")
 
         preview.rows.append(row)
 
@@ -251,7 +266,7 @@ def apply_rows(*, rows: list[dict[str, Any]], actor=None, file_name: str = "") -
         student = Student.objects.filter(pk=raw.get("student")).first()
         name = (raw.get("name") or "").strip()
         if student is None or not name:
-            skipped.append({"row": raw.get("number"), "reason": "нет ученика или названия"})
+            skipped.append({"row": raw.get("number"), "reason": _("нет ученика или названия")})
             continue
 
         competition = Competition(student=student)
@@ -274,12 +289,18 @@ def apply_rows(*, rows: list[dict[str, Any]], actor=None, file_name: str = "") -
 
     batch.rows_created = created
     batch.rows_failed = len(skipped)
-    batch.note = "Отмена загрузки уберёт заведённые выступления"
+    batch.note = gettext_noop("Отмена загрузки уберёт заведённые выступления")  # хранится исходником
     batch.save(update_fields=["rows_created", "rows_failed", "note"])
 
     return {
         "created": created,
         "skipped": skipped,
         "batch": batch.pk,
-        "detail": f"Заведено выступлений: {created}" + (f", пропущено строк: {len(skipped)}" if skipped else ""),
+        "detail": (
+            _("Заведено выступлений: {created}, пропущено строк: {skipped}").format(
+                created=created, skipped=len(skipped)
+            )
+            if skipped
+            else _("Заведено выступлений: {created}").format(created=created)
+        ),
     }

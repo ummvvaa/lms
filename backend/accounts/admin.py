@@ -2,6 +2,7 @@
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.utils.translation import gettext_lazy
 
 from accounts.models import Identity, LoginAttempt, MagicLinkToken, User
 
@@ -22,18 +23,18 @@ class UserAdmin(BaseUserAdmin):
     inlines = [IdentityInline]
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Профиль", {"fields": ("full_name", "role")}),
+        (gettext_lazy("Профиль"), {"fields": ("full_name", "role")}),
         (
-            "Доступ",
+            gettext_lazy("Доступ"),
             {
                 "fields": ("is_active", "must_change_password", "sees_whole_school"),
-                "description": (
+                "description": gettext_lazy(
                     "«Видит всю школу» — право читать все домены и сводный вид. "
                     "Писать человек по-прежнему может только в свой домен."
                 ),
             },
         ),
-        ("Права Django", {"fields": ("is_staff", "is_superuser", "groups", "user_permissions")}),
+        (gettext_lazy("Права Django"), {"fields": ("is_staff", "is_superuser", "groups", "user_permissions")}),
     )
     add_fieldsets = (
         (None, {"classes": ("wide",), "fields": ("email", "full_name", "role", "password1", "password2")}),

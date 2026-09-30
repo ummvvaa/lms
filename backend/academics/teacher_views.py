@@ -10,6 +10,7 @@ from __future__ import annotations
 import datetime as dt
 
 from django.db.models import Q
+from django.utils.translation import gettext as _
 from drf_spectacular.utils import extend_schema
 from rest_framework import status as http
 from rest_framework.decorators import api_view, permission_classes
@@ -57,7 +58,7 @@ def today_screen(request):
     """Уроки дня по звонкам, не отмечено за неделю, оценки за неделю, ближайшие СОР и СОЧ."""
     user = request.user
     if user.role != ROLE_TEACHER:
-        return _forbid("Это кабинет учителя")
+        return _forbid(_("Это кабинет учителя"))
     calendar = school_calendar.load()
     day = today()
     courses = teachers.courses_of(user)
@@ -164,7 +165,7 @@ def journals(request):
     """Список журналов учителя с числами: ученики, уроки, средний ФО, СОР."""
     user = request.user
     if user.role != ROLE_TEACHER:
-        return _forbid("Это кабинет учителя")
+        return _forbid(_("Это кабинет учителя"))
     calendar = school_calendar.load()
     scale = scale_of(calendar.year)
     quarter = calendar.current_quarter()
@@ -388,7 +389,11 @@ def journal_export(request, pk: int):
     start, end, title, period_quarter = calendar_period(calendar, code)
     context = course_context(course, start, end, scale, quarter=period_quarter or quarter)
     return journal_workbook(
-        context, filename=f"журнал {course.subject.short_title} {course.cohort.name} {title}.xlsx", request=request
+        context,
+        filename=_("журнал {subject} {cohort} {period}.xlsx").format(
+            subject=course.subject.short_title, cohort=course.cohort.name, period=title
+        ),
+        request=request,
     )
 
 
@@ -402,13 +407,13 @@ def journal_final(request, pk: int):
     if course is None:
         return _not_found()
     if not rights.owns_course(request.user, course):
-        return _forbid("Итог выставляет учитель журнала")
+        return _forbid(_("Итог выставляет учитель журнала"))
     quarter = Quarter.objects.filter(pk=_int(request.data.get("quarter"))).first()
     if quarter is None:
-        return Response({"detail": "Не указана четверть"}, status=http.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Не указана четверть")}, status=http.HTTP_400_BAD_REQUEST)
     rows = request.data.get("rows") or []
     if not isinstance(rows, list):
-        return Response({"detail": "Не переданы итоги"}, status=http.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Не переданы итоги")}, status=http.HTTP_400_BAD_REQUEST)
     calendar = school_calendar.load()
     try:
         written = set_finals(course, quarter, rows, actor=request.user, scale=scale_of(calendar.year))
@@ -428,7 +433,7 @@ def profile(request):
     """Профиль учителя: учётная запись, предметы, кабинет, что видит и кто видит его оценки."""
     user = request.user
     if user.role != ROLE_TEACHER:
-        return _forbid("Это кабинет учителя")
+        return _forbid(_("Это кабинет учителя"))
     profile = teachers.profile_of(user)
     return Response(
         {
@@ -461,7 +466,7 @@ def student_view(request, pk: int):
     """Ученик глазами учителя: имя, группа, куратор, оценки и пропуски по его предметам."""
     user = request.user
     if user.role != ROLE_TEACHER:
-        return _forbid("Это кабинет учителя")
+        return _forbid(_("Это кабинет учителя"))
     student = Student.objects.select_related("group").filter(pk=pk).first()
     if student is None or student.pk not in set(teachers.taught_student_ids(user)):
         return _not_found()

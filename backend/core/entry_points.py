@@ -360,7 +360,7 @@ CURATOR_ENTRY_POINTS: dict[str, dict[str, Entry]] = {
 
 #: Действия, которых в интерфейсе нет намеренно. Причина обязательна:
 #: пустая клетка в таблице прав — это дефект, а не умолчание.
-NO_SCREEN: dict[tuple[str, str], str] = {
+NO_SCREEN: dict[tuple[str, str], str] = {  # i18n-skip: причины для таблицы прав и теста, людям не показываются
     ("students.Student", "delete_hard"): "ученик уходит в архив, физического удаления нет (инвариант №13)",
     (
         "materials.MaterialComment",

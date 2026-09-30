@@ -12,6 +12,8 @@ from typing import Any
 
 from django.db import transaction
 from django.utils import timezone
+from django.utils.functional import lazy
+from django.utils.translation import gettext as _
 
 from core.labels import field_title
 from universities.models import AdmissionRequirement, Program, ProgramLevel, University
@@ -32,17 +34,21 @@ REQUIREMENT_FIELDS = (
     "source_url",
 )
 
+#: Подпись считается при чтении, а не при загрузке модуля: словарь уходит
+#: на экран сопоставления, и подписи в нём — на языке того, кто загружает
+_title = lazy(field_title, str)
+
 TARGET_FIELDS: dict[str, str] = {
-    "university": field_title("universities.University", "name"),
-    "program": field_title("universities.Program", "name"),
-    "level": field_title("universities.Program", "level"),
-    **{name: field_title("universities.AdmissionRequirement", name) for name in REQUIREMENT_FIELDS},
+    "university": _title("universities.University", "name"),
+    "program": _title("universities.Program", "name"),
+    "level": _title("universities.Program", "level"),
+    **{name: _title("universities.AdmissionRequirement", name) for name in REQUIREMENT_FIELDS},
 }
 
 DECIMAL_FIELDS = {"min_gpa", "min_ielts"}
 INT_FIELDS = {"min_toefl", "min_sat", "min_act"}
 BOOL_FIELDS = {"portfolio_required"}
-TRUE_WORDS = {"1", "true", "yes", "да", "y", "+", "есть", "нужно"}
+TRUE_WORDS = {"1", "true", "yes", "да", "y", "+", "есть", "нужно"}  # i18n-skip: значения ячейки для распознавания
 
 
 @dataclass
@@ -74,14 +80,18 @@ def _coerce(field_name: str, raw: str) -> Any:
             return Decimal(raw.replace(",", "."))
         except InvalidOperation as exc:
             raise ValueError(
-                f"«{TARGET_FIELDS.get(field_name, field_name)}»: ожидалось число, получено «{raw}»"
+                _("«{field}»: ожидалось число, получено «{value}»").format(
+                    field=TARGET_FIELDS.get(field_name, field_name), value=raw
+                )
             ) from exc
     if field_name in INT_FIELDS:
         try:
             return int(float(raw.replace(",", ".")))
         except ValueError as exc:
             raise ValueError(
-                f"«{TARGET_FIELDS.get(field_name, field_name)}»: ожидалось число, получено «{raw}»"
+                _("«{field}»: ожидалось число, получено «{value}»").format(
+                    field=TARGET_FIELDS.get(field_name, field_name), value=raw
+                )
             ) from exc
     return raw
 
@@ -96,7 +106,7 @@ def import_requirements(
 
     reverse = {target: column for column, target in mapping.items() if target}
     if "university" not in reverse or "program" not in reverse:
-        report.errors.append("Не сопоставлены обязательные колонки: вуз и программа")
+        report.errors.append(_("Не сопоставлены обязательные колонки: вуз и программа"))
         return report
 
     for number, row in enumerate(rows, start=2):
@@ -111,7 +121,7 @@ def import_requirements(
         university_name = cell("university").strip()
         program_name = cell("program").strip()
         if not university_name or not program_name:
-            report.errors.append(f"строка {number}: пустой вуз или программа")
+            report.errors.append(_("строка {number}: пустой вуз или программа").format(number=number))
             continue
 
         try:
@@ -121,16 +131,16 @@ def import_requirements(
                 if target not in ("university", "program", "level") and target in reverse
             }
         except ValueError as exc:
-            report.errors.append(f"строка {number}: {exc}")
+            report.errors.append(_("строка {number}: {error}").format(number=number, error=exc))
             continue
 
-        university, _ = University.objects.get_or_create(
+        university, _created = University.objects.get_or_create(
             name=university_name, defaults={"country": cell("country") or "—"}
         )
         level = (cell("level") or ProgramLevel.BACHELOR).strip().lower()
         if level not in dict(ProgramLevel.choices):
             level = ProgramLevel.BACHELOR
-        program, _ = Program.objects.get_or_create(university=university, name=program_name, level=level)
+        program, _created = Program.objects.get_or_create(university=university, name=program_name, level=level)
 
         requirement = AdmissionRequirement.objects.filter(program=program).first()
         clean = {k: v for k, v in values.items() if v is not None}
@@ -139,7 +149,7 @@ def import_requirements(
         if requirement is None:
             AdmissionRequirement.objects.create(program=program, **clean)
             report.created += 1
-            state = "создано"
+            state = _("создано")
         else:
             changed = [k for k, v in clean.items() if k != "checked_at" and getattr(requirement, k) != v]
             for key, value in clean.items():
@@ -147,10 +157,10 @@ def import_requirements(
             requirement.save()
             if changed:
                 report.updated += 1
-                state = f"обновлено: {', '.join(changed)}"
+                state = _("обновлено: {fields}").format(fields=", ".join(changed))
             else:
                 report.unchanged += 1
-                state = "без изменений"
+                state = _("без изменений")
 
         report.rows.append({"row": number, "program": str(program), "state": state})
 

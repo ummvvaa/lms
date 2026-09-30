@@ -10,6 +10,8 @@ from __future__ import annotations
 import datetime as dt
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_noop
 from drf_spectacular.utils import extend_schema
 from rest_framework import status as http
 from rest_framework.decorators import api_view, permission_classes
@@ -61,7 +63,7 @@ def _forbid(detail: str) -> Response:
 
 
 def _not_found() -> Response:
-    return Response({"detail": "Не найдено"}, status=http.HTTP_404_NOT_FOUND)
+    return Response({"detail": _("Не найдено")}, status=http.HTTP_404_NOT_FOUND)
 
 
 def _bad(detail: str) -> Response:
@@ -245,7 +247,7 @@ def lessons(request):
     start, end = _week_bounds(request.query_params)
     rows = _lessons_for(request.user, start, end, request.query_params)
     if rows is None:
-        return _forbid("Расписание этой роли не открыто")
+        return _forbid(_("Расписание этой роли не открыто"))
     counts = _counts(rows)
     ghosts = schedule.moved_ghosts(rows, start, end)
     if request.user.role == ROLE_TEACHER:
@@ -273,7 +275,7 @@ def lessons(request):
 
 def _create_lesson(request):
     if not rights.edits_schedule(request.user.role):
-        return _forbid("Уроки заводят академический директор и администратор")
+        return _forbid(_("Уроки заводят академический директор и администратор"))
     calendar = school_calendar.load()
     data = request.data
     subject = Subject.objects.filter(pk=_int(data.get("subject"))).first()
@@ -283,9 +285,9 @@ def _create_lesson(request):
     slot = _int(data.get("slot"))
     # учитель необязателен: урок можно поставить, а учителя назначить потом
     if subject is None or cohort is None or date is None or slot is None:
-        return _bad("Нужны предмет, состав, дата и номер урока")
+        return _bad(_("Нужны предмет, состав, дата и номер урока"))
     if data.get("teacher") and teacher is None:
-        return _bad("Такого учителя нет")
+        return _bad(_("Такого учителя нет"))
     room = str(data.get("room") or "").strip()
     repeat = str(data.get("repeat") or "weekly")
     found = schedule.conflicts_for(
@@ -293,7 +295,10 @@ def _create_lesson(request):
     )
     if found and not bool(data.get("force")):
         return Response(
-            {"detail": "Есть накладка: " + "; ".join(c.text for c in found), "conflicts": [c.as_dict() for c in found]},
+            {
+                "detail": _("Есть накладка: {conflicts}").format(conflicts="; ".join(c.text for c in found)),
+                "conflicts": [c.as_dict() for c in found],
+            },
             status=http.HTTP_409_CONFLICT,
         )
     try:
@@ -430,9 +435,11 @@ def lesson_detail(request, pk: int):
     payload = {"lesson": lesson_dict(lesson, calendar), "course": course_dict(lesson.course)}
     series = lesson.series
     payload["repeat"] = (
-        f"каждый {lesson_dict(lesson, calendar)['weekday_full']}, до {series.ends:%d.%m.%Y}"
+        _("каждый {weekday}, до {date}").format(
+            weekday=lesson_dict(lesson, calendar)["weekday_full"], date=f"{series.ends:%d.%m.%Y}"
+        )
         if series
-        else "разовый урок"
+        else _("разовый урок")
     )
     if role == ROLE_STUDENT:
         student = request.user.student
@@ -451,7 +458,11 @@ def lesson_detail(request, pk: int):
     payload["roster"] = _roster(lesson, calendar, scale)
     payload["absent"] = [row["short"] for row in payload["roster"] if row["mark"] in ("absent", "excused")]
     payload["late"] = [
-        f"{row['short']} (на {row['late_by']} мин)" if row["late_by"] is not None else row["short"]
+        (
+            _("{name} (на {minutes} мин)").format(name=row["short"], minutes=row["late_by"])
+            if row["late_by"] is not None
+            else row["short"]
+        )
         for row in payload["roster"]
         if row["mark"] == "late"
     ]
@@ -501,11 +512,11 @@ def lesson_attendance(request, pk: int):
     if lesson is None:
         return _not_found()
     if not rights.marks_lesson(request.user, lesson):
-        return _forbid("Посещаемость отмечает учитель урока")
+        return _forbid(_("Посещаемость отмечает учитель урока"))
     calendar = school_calendar.load()
     rows = request.data.get("rows") or []
     if not isinstance(rows, list):
-        return _bad("Не переданы отметки")
+        return _bad(_("Не переданы отметки"))
     try:
         result = marking.save_attendance(
             lesson, rows, actor=request.user, calendar=calendar, all_present=bool(request.data.get("all_present"))
@@ -527,7 +538,7 @@ def lesson_grade(request, pk: int):
     if lesson is None:
         return _not_found()
     if not rights.grades_lesson(request.user, lesson):
-        return _forbid("Оценку ставит учитель урока")
+        return _forbid(_("Оценку ставит учитель урока"))
     calendar = school_calendar.load()
     scale = scale_of(calendar.year)
     student = Student.objects.filter(pk=_int(request.data.get("student"))).first()
@@ -567,7 +578,7 @@ def lesson_meta(request, pk: int):
     if lesson is None:
         return _not_found()
     if not (rights.grades_lesson(request.user, lesson) or rights.edits_schedule(request.user.role)):
-        return _forbid("Тему и задание пишет учитель урока")
+        return _forbid(_("Тему и задание пишет учитель урока"))
     fields = {k: v for k, v in request.data.items() if k in ("topic", "homework", "kind", "number", "max_score")}
     try:
         marking.set_lesson_meta(lesson, actor=request.user, **fields)
@@ -609,7 +620,7 @@ def requests(request):
         elif rights.edits_schedule(role):
             rows = LessonRequest.objects.all()
         else:
-            return _forbid("Просьбы учителей видят академический директор и администратор")
+            return _forbid(_("Просьбы учителей видят академический директор и администратор"))
         rows = rows.select_related(
             "teacher",
             "lesson",
@@ -621,32 +632,34 @@ def requests(request):
         )
         return Response({"rows": [_request_dict(row, calendar) for row in rows[:100]]})
     if role != ROLE_TEACHER:
-        return _forbid("Просьбу о переносе подаёт учитель")
+        return _forbid(_("Просьбу о переносе подаёт учитель"))
     lesson = _lesson_for(request.user, _int(request.data.get("lesson")) or 0)
     if lesson is None:
         return _not_found()
     reason = str(request.data.get("reason") or "").strip()
     if not reason:
-        return _bad("Напишите причину")
+        return _bad(_("Напишите причину"))
     if lesson.date < today():
-        return _bad("Прошедший урок не переносят")
+        return _bad(_("Прошедший урок не переносят"))
     row = LessonRequest.objects.create(
         teacher=request.user, lesson=lesson, wanted=str(request.data.get("wanted") or "")[:200], reason=reason[:300]
     )
     from academics.teachers import lesson_words
     from accounts.models import Role, User
+    from core.i18n import language_of, render
     from core.models import Notification
     from materials.services import notify
 
     for user in User.objects.filter(role__in=(Role.DIRECTOR_EXAM, Role.ADMIN), is_active=True):
+        # шаблон переводит `notify` на язык получателя
         notify(
             user,
             kind=Notification.Kind.LESSON_REQUEST,
-            template="Просьба о переносе: {teacher} — {lesson}, {when}",
+            template=gettext_noop("Просьба о переносе: {teacher} — {lesson}, {when}"),
             link="/schedule",
             teacher=user_name(request.user),
             lesson=lesson_words(lesson),
-            when=f"{lesson.slot} урок",
+            when=render(language_of(user), "{slot} урок", slot=lesson.slot),
         )
     return Response({"request": _request_dict(row, calendar)}, status=http.HTTP_201_CREATED)
 
@@ -658,7 +671,7 @@ def requests(request):
 def request_decide(request, pk: int):
     """«Одобрить» переносит урок, «Отклонить» просит ответ."""
     if not rights.edits_schedule(request.user.role):
-        return _forbid("Просьбы решают академический директор и администратор")
+        return _forbid(_("Просьбы решают академический директор и администратор"))
     row = (
         LessonRequest.objects.select_related(
             "lesson", "teacher", "lesson__course", "lesson__course__subject", "lesson__course__cohort"
@@ -669,11 +682,12 @@ def request_decide(request, pk: int):
     if row is None:
         return _not_found()
     if row.status != RequestStatus.PENDING:
-        return _bad("Просьба уже решена")
+        return _bad(_("Просьба уже решена"))
     calendar = school_calendar.load()
     approve = bool(request.data.get("approve"))
     answer = str(request.data.get("answer") or "").strip()
     from academics.teachers import lesson_words
+    from core.i18n import language_of, render
     from core.models import Notification
     from materials.services import notify
 
@@ -693,14 +707,17 @@ def request_decide(request, pk: int):
         except schedule.ScheduleRefused as error:
             return _bad(str(error))
         row.status = RequestStatus.APPROVED
-        row.answer = answer or f"перенесён на {date:%d.%m}, {slot} урок"
-        template = "Просьба о переносе {lesson} одобрена: {answer}"
+        # ответ хранится в просьбе и уходит учителю — на его языке
+        row.answer = answer or render(
+            language_of(row.teacher), "перенесён на {date}, {slot} урок", date=f"{date:%d.%m}", slot=slot
+        )
+        template = gettext_noop("Просьба о переносе {lesson} одобрена: {answer}")
     else:
         if not answer:
-            return _bad("Напишите ответ учителю")
+            return _bad(_("Напишите ответ учителю"))
         row.status = RequestStatus.REJECTED
         row.answer = answer[:300]
-        template = "Просьба о переносе {lesson} отклонена: {answer}"
+        template = gettext_noop("Просьба о переносе {lesson} отклонена: {answer}")
     row.decided_by = request.user
     row.decided_at = timezone.now()
     row.save()
@@ -726,27 +743,29 @@ def request_decide(request, pk: int):
 def lesson_remind(request, pk: int):
     """Куратор, Кымбат или администратор напоминает учителю о неотмеченном уроке."""
     if not rights.reminds(request.user.role):
-        return _forbid("Напоминают куратор, академический директор и администратор")
+        return _forbid(_("Напоминают куратор, академический директор и администратор"))
     lesson = _lesson_for(request.user, pk)
     if lesson is None:
         return _not_found()
     if lesson.is_marked or not lesson.is_live:
-        return _bad("Урок уже отмечен")
+        return _bad(_("Урок уже отмечен"))
     from academics.teachers import lesson_words
     from core.audit import record_event
+    from core.i18n import language_of, render
     from core.models import Notification
     from materials.services import notify
 
     who = lesson.substitute or lesson.teacher
     if who is None:
-        return _bad("У урока не назначен учитель — напоминать некому")
+        return _bad(_("У урока не назначен учитель — напоминать некому"))
     notify(
         who,
         kind=Notification.Kind.LESSON_UNMARKED,
-        template="Куратор напоминает: не отмечен урок {lesson}, {when}",
+        # шаблон переводит `notify` на язык учителя
+        template=gettext_noop("Куратор напоминает: не отмечен урок {lesson}, {when}"),
         link=f"/lessons/{lesson.pk}",
         lesson=lesson_words(lesson),
-        when=f"{lesson.slot} урок",
+        when=render(language_of(who), "{slot} урок", slot=lesson.slot),
     )
     for sid in member_ids(lesson.course.cohort, lesson.date)[:1]:
         student = Student.objects.filter(pk=sid).first()
@@ -786,7 +805,7 @@ def excuses(request):
     """Уважительные причины ученика: список и оформление за период."""
     role = request.user.role
     if role == ROLE_STUDENT:
-        return _forbid("Причины оформляет школа")
+        return _forbid(_("Причины оформляет школа"))
     if request.method == "GET":
         student = Student.objects.filter(pk=_int(request.query_params.get("student"))).first()
         if student is None or not sees_student(request.user, student.pk):
@@ -794,14 +813,14 @@ def excuses(request):
         rows = Excuse.objects.filter(student=student).select_related("created_by")
         return Response({"rows": [_excuse_dict(r) for r in rows], "may_write": rights.writes_excuse(role)})
     if not rights.writes_excuse(role):
-        return _forbid("Уважительную причину оформляют куратор группы и администратор")
+        return _forbid(_("Уважительную причину оформляют куратор группы и администратор"))
     student = Student.objects.filter(pk=_int(request.data.get("student"))).first()
     if student is None or not sees_student(request.user, student.pk):
         return _not_found()
     starts = _date(request.data.get("starts"))
     ends = _date(request.data.get("ends"), starts)
     if starts is None:
-        return _bad("Укажите даты")
+        return _bad(_("Укажите даты"))
     try:
         row = marking.add_excuse(
             student=student,
@@ -824,7 +843,7 @@ def excuses(request):
 def excuse_drop(request, pk: int):
     """Снять причину: пропуски снова «н»."""
     if not rights.writes_excuse(request.user.role):
-        return _forbid("Уважительную причину снимают куратор группы и администратор")
+        return _forbid(_("Уважительную причину снимают куратор группы и администратор"))
     row = Excuse.objects.select_related("student").filter(pk=pk).first()
     if row is None or not sees_student(request.user, row.student_id):
         return _not_found()
@@ -965,7 +984,7 @@ def homework_grade_rows(student, start: dt.date, end: dt.date) -> list[dict]:
             "subject": row.assignment.lesson.course.subject.short_title,
             "subject_title": row.assignment.lesson.course.subject.title,
             "kind": "homework",
-            "kind_label": "ДЗ",
+            "kind_label": _("ДЗ"),
             "value": row.grade,
             "max": 10,
             "comment": row.teacher_comment,
@@ -987,9 +1006,9 @@ def student_grades(request, pk: int):
     """Вкладка «Успеваемость» в карточке: куратор своей группы, учитель своих составов, Кымбат, администратор."""
     role = request.user.role
     if role == ROLE_STUDENT:
-        return _forbid("Свои оценки — на экране «Оценки»")
+        return _forbid(_("Свои оценки — на экране «Оценки»"))
     if not rights.reads_grades(role):
-        return _forbid("Оценки видят куратор, учитель, академический директор и администратор")
+        return _forbid(_("Оценки видят куратор, учитель, академический директор и администратор"))
     student = Student.objects.select_related("group").filter(pk=pk).first()
     if student is None or not sees_student(request.user, student.pk):
         return _not_found()
@@ -1016,12 +1035,12 @@ def student_english_level(request, pk: int):
     if student is None or request.user.role == ROLE_STUDENT or not sees_student(request.user, student.pk):
         return _not_found()
     if not english.may_set(request.user, student):
-        return _forbid("Уровень английского вносят учитель GE/EEP, академический директор, куратор и администратор")
+        return _forbid(_("Уровень английского вносят учитель GE/EEP, академический директор, куратор и администратор"))
     raw = str(request.data.get("since") or "")
     try:
         since = dt.date.fromisoformat(raw) if raw else None
     except ValueError:
-        return _bad("Дата уровня не читается")
+        return _bad(_("Дата уровня не читается"))
     try:
         english.set_level(student, level=str(request.data.get("level") or ""), since=since, actor=request.user)
     except english.LevelRefused as error:
@@ -1037,7 +1056,7 @@ def my_grades(request):
     """Оценки и пропуски ученика — без ярлыков, без средних по группе."""
     student = getattr(request.user, "student", None)
     if request.user.role != ROLE_STUDENT or student is None:
-        return _forbid("Экран ученика")
+        return _forbid(_("Экран ученика"))
     return Response(student_grades_payload(student, str(request.query_params.get("period") or ""), for_student=True))
 
 
@@ -1049,7 +1068,7 @@ def my_lessons(request):
     """Уроки ученика на день: для главной и календаря."""
     student = getattr(request.user, "student", None)
     if request.user.role != ROLE_STUDENT or student is None:
-        return _forbid("Экран ученика")
+        return _forbid(_("Экран ученика"))
     calendar = school_calendar.load()
     day = _date(request.query_params.get("date"), today())
     rows = schedule.for_student(list(schedule.lessons_between(day, day)), student.pk)
@@ -1099,7 +1118,7 @@ def my_home(request):
 
     student = getattr(request.user, "student", None)
     if request.user.role != ROLE_STUDENT or student is None:
-        return _forbid("Экран ученика")
+        return _forbid(_("Экран ученика"))
     return Response(home_payload(student))
 
 
@@ -1120,7 +1139,7 @@ def _attendance_groups(user) -> list[StudyGroup]:
 def attendance(request):
     """Посещаемость группы по урокам: день или месяц. Куратор — свои группы, Салтанат читает."""
     if not rights.reads_attendance(request.user.role):
-        return _forbid("Посещаемость по урокам видят куратор, директор школы и академический директор")
+        return _forbid(_("Посещаемость по урокам видят куратор, директор школы и академический директор"))
     groups = _attendance_groups(request.user)
     picked = _group_param(request.query_params.get("group"))
     if picked is not None and picked.pk not in {g.pk for g in groups}:
@@ -1146,7 +1165,7 @@ def last_school_day(limit: int = 30) -> dt.date:
     """Сегодня, если учебный день, иначе ближайший прошедший учебный."""
     calendar = school_calendar.load()
     day = today()
-    for _ in range(limit):
+    for _step in range(limit):
         if calendar.is_school_day(day):
             return day
         day -= dt.timedelta(days=1)
@@ -1328,7 +1347,7 @@ def attendance_export(request):
     from academics.exports import day_attendance_workbook, month_attendance_workbook
 
     if not rights.reads_attendance(request.user.role):
-        return _forbid("Посещаемость по урокам видят куратор, директор школы и академический директор")
+        return _forbid(_("Посещаемость по урокам видят куратор, директор школы и академический директор"))
     groups = _attendance_groups(request.user)
     picked = _group_param(request.query_params.get("group"))
     if picked is not None and picked.pk not in {g.pk for g in groups}:
@@ -1345,14 +1364,14 @@ def attendance_export(request):
     )
     if view == "month":
         return month_attendance_workbook(
-            filename=f"посещаемость {group.code} {payload['month']}.xlsx",
+            filename=_("посещаемость {group} {period}.xlsx").format(group=group.code, period=payload["month"]),
             days=[d["date"] for d in payload["days"]],
             rows=payload["rows"],
             group_code=group.code,
             request=request,
         )
     return day_attendance_workbook(
-        filename=f"посещаемость {group.code} {payload['date']:%d.%m.%Y}.xlsx",
+        filename=_("посещаемость {group} {period}.xlsx").format(group=group.code, period=f"{payload['date']:%d.%m.%Y}"),
         slots=[s["slot"] for s in payload["slots"]],
         rows=payload["rows"],
         group_code=group.code,
@@ -1370,7 +1389,7 @@ def attendance_export(request):
 def risks(request):
     """Пропуски по урокам за месяц: посещаемость ниже порога и дни без причины."""
     if not rights.reads_risks(request.user.role):
-        return _forbid("Риски по посещаемости читают директор школы и администратор")
+        return _forbid(_("Риски по посещаемости читают директор школы и администратор"))
     calendar = school_calendar.load()
     start, end, title, _q = calendar_period(
         calendar, str(request.query_params.get("period") or _default_period(calendar))
@@ -1412,7 +1431,7 @@ def curator_home(request):
     from accounts.curators import picked_groups
 
     if request.user.role != ROLE_CURATOR:
-        return _forbid("Это кабинет куратора")
+        return _forbid(_("Это кабинет куратора"))
     calendar = school_calendar.load()
     scale = scale_of(calendar.year)
     group_ids, picked = picked_groups(request.user, request.query_params.get("group"))
@@ -1513,7 +1532,7 @@ def dashboard_block(request):
     from academics.models import LessonSeries, ParentReport, ReportStatus
 
     if not rights.reads_all(request.user.role):
-        return _forbid("Блок учёбы — у академического директора и администратора")
+        return _forbid(_("Блок учёбы — у академического директора и администратора"))
     calendar = school_calendar.load()
     day = today()
     start = week_start(day)

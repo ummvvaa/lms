@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext
 from rest_framework import serializers
 
 from core.serializers import PartialUniqueMixin
@@ -32,7 +33,7 @@ class TaskCommentSerializer(serializers.ModelSerializer):
         read_only_fields = ("author", "author_name", "created_at")
 
     def get_author_name(self, obj) -> str:
-        return (obj.author.full_name or obj.author.email) if obj.author_id else "система"
+        return (obj.author.full_name or obj.author.email) if obj.author_id else gettext("система")
 
 
 class TaskSerializer(PartialUniqueMixin, serializers.ModelSerializer):

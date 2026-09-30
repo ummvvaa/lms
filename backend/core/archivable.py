@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 from django.db import models
+from django.utils.translation import gettext_lazy
 
 
 class ActiveManager(models.Manager):
@@ -29,8 +30,8 @@ class Archivable(models.Model):
     поднимать из архива задачу, удалённую отдельно месяц назад.
     """
 
-    archived_at = models.DateTimeField("В архиве с", null=True, blank=True, db_index=True)
-    archive_batch = models.UUIDField("Номер удаления", null=True, blank=True, db_index=True)
+    archived_at = models.DateTimeField(gettext_lazy("В архиве с"), null=True, blank=True, db_index=True)
+    archive_batch = models.UUIDField(gettext_lazy("Номер удаления"), null=True, blank=True, db_index=True)
 
     objects = ActiveManager()
     all_objects = models.Manager()  # noqa: DJ012 — менеджеры идут после своих полей

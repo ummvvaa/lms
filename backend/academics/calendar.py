@@ -11,6 +11,7 @@ import datetime as dt
 from dataclasses import dataclass, field
 
 from django.utils import timezone
+from django.utils.translation import gettext, gettext_noop
 
 from academics.models import AcademicYear, Bell, BellSchedule, Break, GradingScale, Quarter, ReportSettings
 
@@ -26,35 +27,81 @@ DEFAULT_BELLS: tuple[tuple[int, str, str], ...] = (
     (8, "15:05", "15:50"),
 )
 
-WEEKDAYS_SHORT = ("пн", "вт", "ср", "чт", "пт", "сб", "вс")
-WEEKDAYS_FULL = ("понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье")
-MONTHS_GENITIVE = (
-    "января",
-    "февраля",
-    "марта",
-    "апреля",
-    "мая",
-    "июня",
-    "июля",
-    "августа",
-    "сентября",
-    "октября",
-    "ноября",
-    "декабря",
+
+class Words(tuple):
+    """Слова на язык ответа: `WEEKDAYS_SHORT[4]` — «пт», «жм» или «Fri».
+
+    В таблице лежат исходные русские слова (`gettext_noop` — только пометка
+    для каталога), перевод берётся при обращении: таблица живёт на уровне
+    модуля, а язык у каждого запроса свой. Отдаётся обычная строка — годится
+    и для ответа, и для книги Excel. В фоновой задаче языка нет — русский.
+    """
+
+    def __getitem__(self, index):
+        found = super().__getitem__(index)
+        if isinstance(index, slice):
+            return tuple(gettext(word) for word in found)
+        return gettext(found)
+
+    def __iter__(self):
+        return (gettext(word) for word in super().__iter__())
+
+
+WEEKDAYS_SHORT = Words(
+    (
+        gettext_noop("пн"),
+        gettext_noop("вт"),
+        gettext_noop("ср"),
+        gettext_noop("чт"),
+        gettext_noop("пт"),
+        gettext_noop("сб"),
+        gettext_noop("вс"),
+    )
 )
-MONTHS_NOMINATIVE = (
-    "январь",
-    "февраль",
-    "март",
-    "апрель",
-    "май",
-    "июнь",
-    "июль",
-    "август",
-    "сентябрь",
-    "октябрь",
-    "ноябрь",
-    "декабрь",
+WEEKDAYS_FULL = Words(
+    (
+        gettext_noop("понедельник"),
+        gettext_noop("вторник"),
+        gettext_noop("среда"),
+        gettext_noop("четверг"),
+        gettext_noop("пятница"),
+        gettext_noop("суббота"),
+        gettext_noop("воскресенье"),
+    )
+)
+#: «25 сентября» — месяц при числе
+MONTHS_GENITIVE = Words(
+    (
+        gettext_noop("января"),
+        gettext_noop("февраля"),
+        gettext_noop("марта"),
+        gettext_noop("апреля"),
+        gettext_noop("мая"),
+        gettext_noop("июня"),
+        gettext_noop("июля"),
+        gettext_noop("августа"),
+        gettext_noop("сентября"),
+        gettext_noop("октября"),
+        gettext_noop("ноября"),
+        gettext_noop("декабря"),
+    )
+)
+#: «сентябрь 2026» — месяц сам по себе
+MONTHS_NOMINATIVE = Words(
+    (
+        gettext_noop("январь"),
+        gettext_noop("февраль"),
+        gettext_noop("март"),
+        gettext_noop("апрель"),
+        gettext_noop("май"),
+        gettext_noop("июнь"),
+        gettext_noop("июль"),
+        gettext_noop("август"),
+        gettext_noop("сентябрь"),
+        gettext_noop("октябрь"),
+        gettext_noop("ноябрь"),
+        gettext_noop("декабрь"),
+    )
 )
 
 
@@ -226,7 +273,7 @@ def default_schedule(year: AcademicYear) -> BellSchedule:
     """Общее расписание звонков года — заводится при первом обращении."""
     found = year.bell_schedules.filter(is_default=True).first()
     if found is None:
-        found = BellSchedule.objects.create(year=year, title="Общее", is_default=True)
+        found = BellSchedule.objects.create(year=year, title="Общее", is_default=True)  # i18n-skip: данные в базе
         Bell.objects.filter(year=year, schedule__isnull=True).update(schedule=found)
     return found
 
@@ -304,7 +351,7 @@ def period_bounds(calendar: SchoolCalendar, code: str) -> tuple[dt.date, dt.date
     day = today()
     if code == "week":
         start = week_start(day)
-        return start, start + dt.timedelta(days=6), "эта неделя"
+        return start, start + dt.timedelta(days=6), gettext("эта неделя")
     if code.startswith("q") and code[1:].isdigit():
         number = int(code[1:])
         for quarter in calendar.quarters:
@@ -323,7 +370,7 @@ def period_choices(calendar: SchoolCalendar) -> list[dict]:
     """Периоды для переключателей: неделя, текущий месяц, четверти года."""
     day = today()
     out = [
-        {"code": "week", "title": "Неделя"},
+        {"code": "week", "title": gettext("Неделя")},
         {"code": f"{day.year}-{day.month:02d}", "title": MONTHS_NOMINATIVE[day.month - 1].capitalize()},
     ]
     for quarter in calendar.quarters:

@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 from django.conf import settings
+from django.utils.translation import gettext as _
 
 #: Фраза контрольной записи: по ней видно, что ключ тот самый.
 CHECK_PHRASE = "bhs-credentials-key-check"
@@ -36,11 +37,11 @@ def _fernet():
 
     key = getattr(settings, "CREDENTIALS_KEY", "") or ""
     if not key:
-        raise KeyMissing("CREDENTIALS_KEY пуст")
+        raise KeyMissing(_("CREDENTIALS_KEY пуст"))
     try:
         return Fernet(key.encode() if isinstance(key, str) else key)
     except (ValueError, TypeError) as error:
-        raise KeyMissing("CREDENTIALS_KEY не похож на ключ Fernet") from error
+        raise KeyMissing(_("CREDENTIALS_KEY не похож на ключ Fernet")) from error
 
 
 def key_ready() -> bool:
@@ -63,7 +64,7 @@ def decrypt(token: str) -> str:
     try:
         return _fernet().decrypt(token.encode("ascii")).decode("utf-8")
     except InvalidToken as error:
-        raise KeyMismatch("шифртекст сделан другим ключом или повреждён") from error
+        raise KeyMismatch(_("шифртекст сделан другим ключом или повреждён")) from error
 
 
 def ensure_key_check():
@@ -77,18 +78,31 @@ def ensure_key_check():
 
 
 def verify_key() -> tuple[bool, str]:
-    """Ключ на месте и расшифровывает контрольную запись — для `preflight`."""
+    """Ключ на месте и расшифровывает контрольную запись — для `preflight`.
+
+    Ответ читает владелец в терминале (`preflight`, `credentials_key`), поэтому
+    строки здесь не переводятся.
+    """
     from core.models import KeyCheck
 
     if not key_ready():
-        return False, "CREDENTIALS_KEY пуст или не похож на ключ Fernet"
+        return (  # i18n-skip: вывод preflight в терминал владельца
+            False,
+            "CREDENTIALS_KEY пуст или не похож на ключ Fernet",
+        )
     row = KeyCheck.objects.first()
     if row is None:
-        return False, "контрольной записи нет — выполните `manage.py credentials_key --init`"
+        return (  # i18n-skip: вывод preflight в терминал владельца
+            False,
+            "контрольной записи нет — выполните `manage.py credentials_key --init`",
+        )
     try:
         phrase = decrypt(row.ciphertext)
     except KeyMismatch:
-        return False, "ключ не расшифровывает контрольную запись: это другой ключ, пароли учеников им не открыть"
+        return (  # i18n-skip: вывод preflight в терминал владельца
+            False,
+            "ключ не расшифровывает контрольную запись: это другой ключ, пароли учеников им не открыть",
+        )
     if phrase != CHECK_PHRASE:
-        return False, "контрольная запись расшифровалась в чужую фразу"
-    return True, f"контрольная запись от {row.created_at:%d.%m.%Y}"
+        return False, "контрольная запись расшифровалась в чужую фразу"  # i18n-skip: вывод preflight в терминал
+    return True, f"контрольная запись от {row.created_at:%d.%m.%Y}"  # i18n-skip: вывод preflight в терминал

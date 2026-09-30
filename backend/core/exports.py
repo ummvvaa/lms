@@ -24,6 +24,8 @@ from typing import Any
 
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
+from django.utils.functional import Promise
+from django.utils.translation import gettext as _
 
 #: сколько строк листа уходит в предпросмотр. Файл отдаётся целиком; экрану
 #: тысяча строк ни к чему — их число предпросмотр называет словами
@@ -32,7 +34,11 @@ PREVIEW_ROWS = 500
 
 @dataclass(frozen=True)
 class Column:
-    """Колонка выгрузки: заголовок по-русски и как достать значение."""
+    """Колонка выгрузки: заголовок и как достать значение.
+
+    Заголовок — на языке того, кто выгружает: `_()` или ленивая строка,
+    в книгу он попадает строкой (`str`) в момент сборки.
+    """
 
     title: str
     value: Callable[[Any], Any]
@@ -44,8 +50,11 @@ def _cell(value: Any) -> Any:
     """Значение в том виде, в каком его поймёт Excel."""
     if value is None:
         return ""
+    if isinstance(value, Promise):
+        # ленивая подпись (слово-отметка, вариант выбора) — строкой на языке выгрузки
+        return str(value)
     if isinstance(value, bool):
-        return "да" if value else "нет"
+        return _("да") if value else _("нет")
     if isinstance(value, datetime):
         return timezone.localtime(value).replace(tzinfo=None)
     if isinstance(value, date):
@@ -81,7 +90,7 @@ def table_payload(*, filename: str, sheets: Iterable[tuple[str, Iterable[Column]
         pages.append(
             {
                 "title": sheet_title(title),
-                "columns": [column.title for column in columns],
+                "columns": [str(column.title) for column in columns],
                 "rows": [[_shown(column.value(row)) for column in columns] for row in rows[:PREVIEW_ROWS]],
                 "total": len(rows),
             }
@@ -91,7 +100,7 @@ def table_payload(*, filename: str, sheets: Iterable[tuple[str, Iterable[Column]
 
 #: Транслит для запасного имени файла: браузер без `filename*` сохранит
 #: «Ahmetova Aliya — otchet za sentyabr 2026.pdf», а не «  2026.pdf»
-TRANSLIT = str.maketrans(
+TRANSLIT = str.maketrans(  # i18n-skip: таблица транслита, не текст
     {
         "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e", "ж": "zh", "з": "z", "и": "i",
         "й": "y", "к": "k", "л": "l", "м": "m", "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t",
@@ -142,8 +151,8 @@ def _disposition(filename: str, content_type: str = "") -> str:
 
 def sheet_title(title: str) -> str:
     """Имя листа Excel: без `\\ / : * ? [ ]` и не длиннее 31 (D61)."""
-    cleaned = " ".join(title.translate(SHEET_FORBIDDEN).split()).strip()
-    return (cleaned or "Лист")[:31]
+    cleaned = " ".join(str(title).translate(SHEET_FORBIDDEN).split()).strip()
+    return (cleaned or _("Лист"))[:31]
 
 
 def file_response(*, content: bytes, filename: str, content_type: str) -> HttpResponse:
@@ -189,7 +198,7 @@ def workbook_of_sheets(
     for title, columns, rows in sheets:
         columns = list(columns)
         page = book.create_sheet(sheet_title(title))
-        page.append([column.title for column in columns])
+        page.append([str(column.title) for column in columns])
         for index, column in enumerate(columns, start=1):
             letter = page.cell(row=1, column=index).column_letter
             page.column_dimensions[letter].width = column.width
@@ -202,7 +211,7 @@ def workbook_of_sheets(
             page.append([_cell(column.value(row)) for column in columns])
 
     if not book.sheetnames:
-        book.create_sheet("Пусто")
+        book.create_sheet(sheet_title(_("Пусто")))
 
     buffer = BytesIO()
     book.save(buffer)

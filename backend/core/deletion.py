@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
 from rest_framework import status
 from rest_framework.response import Response
 
@@ -17,9 +18,9 @@ from core.domains import ROLE_TITLES, can_delete, deleters_of
 
 def refuse(role: str, label: str) -> Response:
     """Отказ с указанием, кто это удалять вправе."""
-    allowed = ", ".join(ROLE_TITLES.get(item, item) for item in deleters_of(label)) or "никто"
+    allowed = ", ".join(str(ROLE_TITLES.get(item, item)) for item in deleters_of(label)) or _("никто")
     return Response(
-        {"detail": f"Эту запись ведёт другой домен. Удалять её может: {allowed}"},
+        {"detail": _("Эту запись ведёт другой домен. Удалять её может: {allowed}").format(allowed=allowed)},
         status=status.HTTP_403_FORBIDDEN,
     )
 
@@ -45,10 +46,13 @@ class ArchiveDeleteMixin:
                 "title": entry.title,
                 "related_count": entry.related_count,
                 "detail": (
-                    f"{entry.kind_title} «{entry.title}» в архиве"
-                    + (f". Вместе с записью ушло: {summary['summary']}" if summary["summary"] else "")
-                    + ". Восстановить можно на экране архива"
-                ),
+                    _(
+                        "{kind} «{title}» в архиве. Вместе с записью ушло: {related}. "
+                        "Восстановить можно на экране архива"
+                    )
+                    if summary["summary"]
+                    else _("{kind} «{title}» в архиве. Восстановить можно на экране архива")
+                ).format(kind=entry.kind_title, title=entry.title, related=summary["summary"]),
             }
         )
 
@@ -70,7 +74,7 @@ class HardDeleteMixin:
         if reasons:
             return Response(
                 {
-                    "detail": "Удалить нельзя: на запись ссылаются " + "; ".join(reasons),
+                    "detail": _("Удалить нельзя: на запись ссылаются {reasons}").format(reasons="; ".join(reasons)),
                     "blocked_by": reasons,
                 },
                 status=status.HTTP_409_CONFLICT,
@@ -78,4 +82,4 @@ class HardDeleteMixin:
 
         title = str(instance)
         instance.delete()
-        return Response({"detail": f"Удалено: {title}"})
+        return Response({"detail": _("Удалено: {title}").format(title=title)})

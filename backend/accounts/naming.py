@@ -13,9 +13,11 @@ from __future__ import annotations
 
 import re
 
+from django.utils.translation import gettext, gettext_noop
+
 #: Слова-пометки. Ищем по корню и с любой стороны от него: «тест»,
 #: «(тест)», «Тестовый», «test», «demo», «разработка».
-MARKERS = (
+MARKERS = (  # i18n-skip: корни для поиска в имени, не текст интерфейса
     "тест",
     "демо",
     "разработ",
@@ -27,7 +29,7 @@ MARKERS = (
     "fake",
 )
 
-MESSAGE = (
+MESSAGE = gettext_noop(
     "В имени пользователя нельзя писать «{word}»: такая запись останется "
     "в журнале правок и в письмах навсегда. Заведите человека под его "
     "настоящим именем, а для проверок используйте отдельный контур"
@@ -52,5 +54,5 @@ def check_full_name(full_name: str) -> str:
     name = (full_name or "").strip()
     found = marker_in(name)
     if found is not None:
-        raise NameRejected(MESSAGE.format(word=found))
+        raise NameRejected(gettext(MESSAGE).format(word=found))
     return name

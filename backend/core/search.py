@@ -13,8 +13,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from django.db.models import Q
+from django.utils.translation import gettext as _
 
 from core.domains import ROLE_CURATOR, ROLE_STUDENT
+from core.phrasing import tn
 
 #: Сколько строк отдаём в одной группе. Больше в выпадающий список
 #: всё равно не помещается, а искать надо точнее.
@@ -54,7 +56,7 @@ def _students(query: str, *, user=None) -> list[Hit]:
         Hit(
             id=row.pk,
             title=row.full_name,
-            note=(f"группа {row.group.code} · " if row.group_id else "") + row.email,
+            note=(_("группа {code}").format(code=row.group.code) + " · " if row.group_id else "") + row.email,
             path=f"/students/{row.pk}",
         )
         for row in rows
@@ -71,7 +73,7 @@ def _universities(query: str, *, for_student: bool) -> list[Hit]:
         Hit(
             id=row.pk,
             title=row.name,
-            note=row.country + ("" if row.is_verified else " · данные не подтверждены"),
+            note=row.country + ("" if row.is_verified else " · " + _("данные не подтверждены")),
             # ученику некуда идти в справочник: его вузы живут в каталоге
             path=f"/catalog?search={row.name}" if for_student else "/directory",
         )
@@ -91,7 +93,7 @@ def _programs(query: str, *, for_student: bool) -> list[Hit]:
         Hit(
             id=row.pk,
             title=f"{row.university.name} — {row.name}",
-            note=row.university.country + ("" if row.is_verified else " · данные не подтверждены"),
+            note=row.university.country + ("" if row.is_verified else " · " + _("данные не подтверждены")),
             path=f"/catalog?search={row.name}" if for_student else "/directory",
         )
         for row in rows
@@ -106,7 +108,7 @@ def search(query: str, *, role: str, user=None) -> dict:
             "query": query,
             "total": 0,
             "groups": [],
-            "detail": f"Наберите хотя бы {MIN_QUERY} буквы",
+            "detail": tn(MIN_QUERY, "Наберите хотя бы {n} букву|Наберите хотя бы {n} буквы|Наберите хотя бы {n} букв"),
         }
 
     is_student = role == ROLE_STUDENT
@@ -119,21 +121,21 @@ def search(query: str, *, role: str, user=None) -> dict:
         # ученик не ищет одноклассников: чужой профиль ему закрыт целиком
         rows = _students(query, user=user)
         if rows:
-            groups.append({"code": "students", "title": "Ученики", "rows": [r.as_dict() for r in rows]})
+            groups.append({"code": "students", "title": _("Ученики"), "rows": [r.as_dict() for r in rows]})
 
     if not only_students:
         universities = _universities(query, for_student=is_student)
         if universities:
-            groups.append({"code": "universities", "title": "Вузы", "rows": [r.as_dict() for r in universities]})
+            groups.append({"code": "universities", "title": _("Вузы"), "rows": [r.as_dict() for r in universities]})
 
         programs = _programs(query, for_student=is_student)
         if programs:
-            groups.append({"code": "programs", "title": "Программы", "rows": [r.as_dict() for r in programs]})
+            groups.append({"code": "programs", "title": _("Программы"), "rows": [r.as_dict() for r in programs]})
 
     total = sum(len(g["rows"]) for g in groups)
     return {
         "query": query,
         "total": total,
         "groups": groups,
-        "detail": "" if total else "Ничего не нашлось",
+        "detail": "" if total else _("Ничего не нашлось"),
     }

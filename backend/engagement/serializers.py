@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext_lazy
 from rest_framework import serializers
 
 from engagement.models import Badge, CallRule, CareerDirection, CareerQuestion, CareerRun, HomeCue
@@ -17,7 +18,9 @@ class OnboardingAnswerSerializer(serializers.Serializer):
 class OnboardingReviewSerializer(serializers.Serializer):
     """Решение директора по ответу ученика."""
 
-    decision = serializers.ChoiceField(choices=(("confirm", "Подтвердить"), ("decline", "Отклонить")))
+    decision = serializers.ChoiceField(
+        choices=(("confirm", gettext_lazy("Подтвердить")), ("decline", gettext_lazy("Отклонить")))
+    )
     value = serializers.CharField(allow_blank=True, required=False, max_length=250)
 
 

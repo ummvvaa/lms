@@ -1,6 +1,7 @@
 """Админка учеников и справочника групп."""
 
 from django.contrib import admin
+from django.utils.translation import gettext_lazy
 
 from students.models import (
     Activity,
@@ -23,7 +24,7 @@ class StudyGroupAdmin(admin.ModelAdmin):
     list_filter = ("parallel", "is_active")
     search_fields = ("code",)
 
-    @admin.display(description="Учеников")
+    @admin.display(description=gettext_lazy("Учеников"))
     def student_count(self, obj: StudyGroup) -> int:
         return obj.students.count()
 

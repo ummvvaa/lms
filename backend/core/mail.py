@@ -21,6 +21,7 @@ import logging
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives, get_connection
+from django.utils.translation import gettext as _
 
 log = logging.getLogger("mail")
 
@@ -51,7 +52,7 @@ def is_configured() -> bool:
 def warning() -> str:
     """Что показать администратору. Пустая строка — всё в порядке."""
     if not is_configured():
-        return (
+        return _(
             "Отправка писем не настроена: приглашения и ссылки на смену пароля "
             "никуда не уходят, они пишутся в журнал сервера. Новый человек войти "
             "не сможет. Задайте EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD "
@@ -59,7 +60,7 @@ def warning() -> str:
         )
     host = (getattr(settings, "EMAIL_HOST", "") or "").lower()
     if any(host == known or host.endswith(f".{known}") for known in MICROSOFT_HOSTS):
-        return (
+        return _(
             "Почта настроена на SMTP Microsoft с логином и паролем ящика. "
             "Microsoft отключает такую аутентификацию, и в один день приглашения "
             "перестанут уходить без предупреждения. Переведите отправку "
@@ -78,7 +79,10 @@ def status() -> dict:
         "from_email": getattr(settings, "DEFAULT_FROM_EMAIL", ""),
         "backend": getattr(settings, "EMAIL_BACKEND", ""),
         "warning": note,
-        "detail": note or f"Письма уходят через {settings.EMAIL_HOST} от имени {settings.DEFAULT_FROM_EMAIL}",
+        "detail": note
+        or _("Письма уходят через {host} от имени {sender}").format(
+            host=settings.EMAIL_HOST, sender=settings.DEFAULT_FROM_EMAIL
+        ),
     }
 
 
@@ -134,18 +138,16 @@ def send_test(to: str) -> dict:
     Отдельная функция, а не «пригласите себя и посмотрите»: приглашение
     заводит учётную запись, а проверка почты не должна ничего создавать.
     """
+    # письмо уходит на адрес, который набрал администратор (обычно свой), —
+    # поэтому на языке того, кто проверяет почту
     school = settings.SCHOOL_NAME
+    greeting = _("Это пробное письмо от платформы {school}.")
+    promise = _("Если вы его получили, приглашения и ссылки на смену пароля тоже дойдут.")
     ok = send(
         to=to,
-        subject="проверка отправки писем",
-        text=(
-            f"Это пробное письмо от платформы {school}.\n\n"
-            f"Если вы его получили, приглашения и ссылки на смену пароля тоже дойдут.\n"
-        ),
-        html=(
-            f"<p>Это пробное письмо от платформы <b>{school}</b>.</p>"
-            f"<p>Если вы его получили, приглашения и ссылки на смену пароля тоже дойдут.</p>"
-        ),
+        subject=_("проверка отправки писем"),
+        text=f"{greeting.format(school=school)}\n\n{promise}\n",
+        html=f"<p>{greeting.format(school=f'<b>{school}</b>')}</p><p>{promise}</p>",
     )
     if not is_configured():
         # консольный бэкенд «отправляет» что угодно и возвращает успех —
@@ -153,16 +155,20 @@ def send_test(to: str) -> dict:
         return {
             "ok": False,
             "configured": False,
-            "detail": (f"Письмо для {to} ушло только в журнал сервера: отправка не настроена. " + warning()),
+            "detail": _("Письмо для {to} ушло только в журнал сервера: отправка не настроена. {warning}").format(
+                to=to, warning=warning()
+            ),
         }
     return {
         "ok": ok,
         "configured": True,
         "detail": (
-            f"Письмо отправлено на {to}. Если через пять минут его нет — проверьте спам "
-            f"и записи SPF, DKIM и DMARC у домена отправителя"
+            _(
+                "Письмо отправлено на {to}. Если через пять минут его нет — проверьте спам "
+                "и записи SPF, DKIM и DMARC у домена отправителя"
+            ).format(to=to)
             if ok
-            else "Письмо не ушло. Проверьте EMAIL_HOST, порт, логин и пароль — подробности в журнале сервера"
+            else _("Письмо не ушло. Проверьте EMAIL_HOST, порт, логин и пароль — подробности в журнале сервера")
         ),
     }
 
@@ -176,5 +182,5 @@ def connection_check() -> tuple[bool, str]:
         connection.open()
         connection.close()
     except Exception as error:  # почтовый сервер отвечает как умеет
-        return False, f"Почтовый сервер не отвечает: {error}"
-    return True, f"Соединение с {settings.EMAIL_HOST}:{settings.EMAIL_PORT} установлено"
+        return False, _("Почтовый сервер не отвечает: {error}").format(error=error)
+    return True, _("Соединение с {host}:{port} установлено").format(host=settings.EMAIL_HOST, port=settings.EMAIL_PORT)

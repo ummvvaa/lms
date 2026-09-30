@@ -143,7 +143,7 @@ def test_duplicate_student_rows_are_found(people):
 
 @pytest.mark.django_db
 def test_mixed_date_formats_in_one_column_are_called_out(people):
-    header = ["Почта", "Дата следующего пробного экзамена"]
+    header = ["Почта", "Дата следующего Mock Test"]
     rows = [["one@school.kz", "2027-01-15"], ["two@school.kz", "15.01.2027"]]
 
     reading = read(header=header, rows=rows, domain_code="exam")

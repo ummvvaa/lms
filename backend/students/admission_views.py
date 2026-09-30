@@ -16,6 +16,8 @@ from __future__ import annotations
 import datetime as dt
 import json
 
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import api_view, parser_classes, permission_classes
@@ -29,7 +31,7 @@ from students.models import AdmissionImport, CredentialKind, Student
 
 #: Ученику мастер закрыт словами, а не «не найдено»: таблица школы —
 #: не его дело, и делать вид, что её нет, незачем
-IMPORT_REFUSAL = "Файлы загружают администратор и академический директор — остальные вносят руками"
+IMPORT_REFUSAL = gettext_lazy("Файлы загружают администратор и академический директор — остальные вносят руками")
 
 
 def _student_or_none(request, pk: int) -> Student | None:
@@ -53,9 +55,11 @@ def credentials_state(request, pk: int):
     """
     student = _student_or_none(request, pk)
     if student is None:
-        return Response({"detail": "Ученика нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Ученика нет")}, status=status.HTTP_404_NOT_FOUND)
     if not credentials.may_view(request.user, student):
-        return Response({"detail": "Пароли ученика видят директора и куратор группы"}, status=status.HTTP_403_FORBIDDEN)
+        return Response(
+            {"detail": _("Пароли ученика видят директора и куратор группы")}, status=status.HTTP_403_FORBIDDEN
+        )
     present = credentials.state(student)
     return Response(
         {
@@ -82,22 +86,27 @@ def credential_reveal(request, pk: int):
     """
     student = _student_or_none(request, pk)
     if student is None:
-        return Response({"detail": "Ученика нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Ученика нет")}, status=status.HTTP_404_NOT_FOUND)
     if not credentials.may_view(request.user, student):
-        return Response({"detail": "Пароли ученика видят директора и куратор группы"}, status=status.HTTP_403_FORBIDDEN)
+        return Response(
+            {"detail": _("Пароли ученика видят директора и куратор группы")}, status=status.HTTP_403_FORBIDDEN
+        )
     kind = str(request.data.get("kind") or "")
     if kind not in CredentialKind.values:
-        return Response({"detail": "Неизвестный вид пароля"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Неизвестный вид пароля")}, status=status.HTTP_400_BAD_REQUEST)
     try:
         secret = credentials.reveal(student, kind, actor=request.user)
     except Exception as error:  # ключ не тот или запись повреждена
         from core.secrets import KeyMismatch, KeyMissing
 
         if isinstance(error, KeyMissing | KeyMismatch):
-            return Response({"detail": f"Пароль не расшифровать: {error}"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return Response(
+                {"detail": _("Пароль не расшифровать: {error}").format(error=error)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         raise
     if secret is None:
-        return Response({"detail": "Этот пароль не записан"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Этот пароль не записан")}, status=status.HTTP_404_NOT_FOUND)
     return Response({"kind": kind, "password": secret})
 
 
@@ -108,15 +117,15 @@ def credential_set(request, pk: int):
     """Записать или убрать пароль. Пустая строка — убрать."""
     student = _student_or_none(request, pk)
     if student is None:
-        return Response({"detail": "Ученика нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Ученика нет")}, status=status.HTTP_404_NOT_FOUND)
     if not credentials.may_edit(request.user, student):
         return Response(
-            {"detail": "Пароль ученика записывают директор по поступлению, куратор группы и сам ученик"},
+            {"detail": _("Пароль ученика записывают директор по поступлению, куратор группы и сам ученик")},
             status=status.HTTP_403_FORBIDDEN,
         )
     kind = str(request.data.get("kind") or "")
     if kind not in CredentialKind.values:
-        return Response({"detail": "Неизвестный вид пароля"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Неизвестный вид пароля")}, status=status.HTTP_400_BAD_REQUEST)
     changed = credentials.set_credential(student, kind, str(request.data.get("password") or ""), actor=request.user)
     return Response({"kind": kind, "changed": changed, "present": credentials.state(student)[kind]})
 
@@ -130,10 +139,10 @@ def _block_editor_or_refusal(request, pk: int):
 
     student = _student_or_none(request, pk)
     if student is None:
-        return None, Response({"detail": "Ученика нет"}, status=status.HTTP_404_NOT_FOUND)
+        return None, Response({"detail": _("Ученика нет")}, status=status.HTTP_404_NOT_FOUND)
     if not admission_block.may_edit_whole(request.user, student):
         return None, Response(
-            {"detail": "Попытки и ссылки блока «Поступление» правят директор по поступлению и администратор"},
+            {"detail": _("Попытки и ссылки блока «Поступление» правят директор по поступлению и администратор")},
             status=status.HTTP_403_FORBIDDEN,
         )
     return student, None
@@ -153,7 +162,7 @@ def block_attempt(request, pk: int):
     try:
         date = dt.date.fromisoformat(raw_date) if raw_date else None
     except ValueError:
-        return Response({"detail": "Дата — в виде ГГГГ-ММ-ДД"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Дата — в виде ГГГГ-ММ-ДД")}, status=status.HTTP_400_BAD_REQUEST)
     try:
         attempt = admission_block.save_attempt(
             student,
@@ -247,12 +256,15 @@ def _check_domains(user, chosen: list[str] | None) -> Response | None:
         return None
     unknown = [code for code in chosen if code not in DOMAINS]
     if unknown:
-        return Response({"detail": f"Домена «{unknown[0]}» нет в реестре"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"detail": _("Домена «{domain}» нет в реестре").format(domain=unknown[0])},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     allowed = import_registry.writable_domains(user)
     outside = [DOMAINS[code].title for code in chosen if code not in allowed]
     if outside:
         return Response(
-            {"detail": f"Домен «{outside[0]}» вам не принадлежит — выберите свои домены"},
+            {"detail": _("Домен «{domain}» вам не принадлежит — выберите свои домены").format(domain=outside[0])},
             status=status.HTTP_403_FORBIDDEN,
         )
     return None
@@ -285,7 +297,7 @@ def admission_preview(request):
         return _refuse_import()
     uploaded = request.FILES.get("file")
     if uploaded is None:
-        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Файл не приложен")}, status=status.HTTP_400_BAD_REQUEST)
     try:
         sheets = admission_import.parse(
             uploaded,
@@ -314,7 +326,7 @@ def admission_apply(request):
         return _refuse_import()
     uploaded = request.FILES.get("file")
     if uploaded is None:
-        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Файл не приложен")}, status=status.HTTP_400_BAD_REQUEST)
     chosen = _domains(request.data.get("domains"))
     refused = _check_domains(request.user, chosen)
     if refused is not None:
@@ -369,7 +381,7 @@ def admission_report(request, pk: int):
         return _refuse_import()
     record = _visible_imports(request.user).filter(pk=pk).first()
     if record is None:
-        return Response({"detail": "Загрузки нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Загрузки нет")}, status=status.HTTP_404_NOT_FOUND)
     return Response(admission_import.record_payload(record))
 
 
@@ -384,17 +396,17 @@ def admission_export(request, pk: int):
 
     record = _visible_imports(request.user).filter(pk=pk).first()
     if record is None:
-        return Response({"detail": "Загрузки нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Загрузки нет")}, status=status.HTTP_404_NOT_FOUND)
     columns = [
-        Column("Лист", lambda r: r["sheet"], width=16),
-        Column("Строка", lambda r: r["row"], width=8),
-        Column("Ученик", lambda r: r["student"], width=28),
-        Column("Что", lambda r: r["kind"], width=12),
-        Column("Подробности", lambda r: r["text"], width=70),
+        Column(_("Лист"), lambda r: r["sheet"], width=16),
+        Column(_("Строка"), lambda r: r["row"], width=8),
+        Column(_("Ученик"), lambda r: r["student"], width=28),
+        Column(_("Что"), lambda r: r["kind"], width=12),
+        Column(_("Подробности"), lambda r: r["text"], width=70),
     ]
     return workbook_response(
-        filename=f"таблица-поступления-{record.created_at:%Y-%m-%d}.xlsx",
-        sheet="Отчёт",
+        filename=_("таблица-поступления-{date}.xlsx").format(date=f"{record.created_at:%Y-%m-%d}"),
+        sheet=_("Отчёт"),
         columns=columns,
         rows=admission_import.report_rows(record),
         request=request,

@@ -9,6 +9,8 @@ from __future__ import annotations
 from django.db.models import Count, Q
 from django.http import FileResponse
 from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action, api_view, parser_classes, permission_classes
@@ -108,7 +110,7 @@ class MaterialViewSet(SectionViewSet):
             services.announce_upload(material)
             return
         if not keeps_the_group(self.request.user):
-            raise PermissionDenied("Материалы выкладывают ученики олимпиадной группы и директор талантов")
+            raise PermissionDenied(_("Материалы выкладывают ученики олимпиадной группы и директор талантов"))
         material = serializer.save(
             staff_author=self.request.user,
             status=MaterialStatus.APPROVED,
@@ -123,7 +125,7 @@ class MaterialViewSet(SectionViewSet):
         mine = material.author_id == getattr(student, "pk", None) if student else False
         staff_mine = material.staff_author_id == self.request.user.pk
         if not mine and not staff_mine:
-            raise PermissionDenied("Править материал может только его автор")
+            raise PermissionDenied(_("Править материал может только его автор"))
         if staff_mine:
             # материал сотрудника модерации не проходил: правка его туда
             # не отправляет, иначе Арман встал бы в очередь сам к себе
@@ -131,8 +133,10 @@ class MaterialViewSet(SectionViewSet):
             return
         if material.status == MaterialStatus.APPROVED:
             raise PermissionDenied(
-                "Одобренный материал не правится: иначе в библиотеке окажется не то, что проверяли. "
-                "Загрузите новый и попросите убрать прежний"
+                _(
+                    "Одобренный материал не правится: иначе в библиотеке окажется не то, что проверяли. "
+                    "Загрузите новый и попросите убрать прежний"
+                )
             )
         # правка возвращает материал в очередь: проверять надо то, что лежит
         updated = serializer.save(status=MaterialStatus.PENDING, reject_reason="")
@@ -153,12 +157,14 @@ class MaterialViewSet(SectionViewSet):
         student = student_of(request.user)
         mine = material.author_id == getattr(student, "pk", None) if student else False
         if not mine and not keeps_the_group(request.user):
-            raise PermissionDenied("Убрать материал может автор или директор талантов")
+            raise PermissionDenied(_("Убрать материал может автор или директор талантов"))
 
         from core.archive import archive
 
         entry = archive(material, actor=request.user)
-        return Response({"archived": entry.pk, "detail": f"«{material.title}» убран из библиотеки"})
+        return Response(
+            {"archived": entry.pk, "detail": _("«{title}» убран из библиотеки").format(title=material.title)}
+        )
 
     @extend_schema(request=None, responses={200: dict})
     @action(detail=True, methods=["post"])
@@ -166,10 +172,10 @@ class MaterialViewSet(SectionViewSet):
         """«Было полезно». Один голос от ученика, повторное нажатие снимает."""
         student = student_of(request.user)
         if student is None:
-            raise PermissionDenied("Отмечать материалы могут ученики")
+            raise PermissionDenied(_("Отмечать материалы могут ученики"))
         material = self.get_object()
         if material.status != MaterialStatus.APPROVED:
-            raise PermissionDenied("Отмечать можно то, что уже в библиотеке")
+            raise PermissionDenied(_("Отмечать можно то, что уже в библиотеке"))
         return Response(services.mark_helpful(material, student))
 
     @extend_schema(request=ReviewSerializer, responses={200: dict})
@@ -177,7 +183,7 @@ class MaterialViewSet(SectionViewSet):
     def review(self, request, pk=None):
         """Решение Армана: одобрить или отклонить с причиной."""
         if not keeps_the_group(request.user):
-            raise PermissionDenied("Материалы проверяет директор талантов")
+            raise PermissionDenied(_("Материалы проверяет директор талантов"))
         payload = ReviewSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
 
@@ -191,7 +197,7 @@ class MaterialViewSet(SectionViewSet):
     def queue(self, request):
         """Очередь проверки: новые материалы и неразобранные жалобы."""
         if not keeps_the_group(request.user):
-            raise PermissionDenied("Очередь проверки — у директора талантов")
+            raise PermissionDenied(_("Очередь проверки — у директора талантов"))
 
         pending = self.queryset.filter(status=MaterialStatus.PENDING).order_by("created_at")
         reports = MaterialReport.objects.filter(status=MaterialReport.Status.OPEN).select_related(
@@ -236,19 +242,19 @@ class MaterialCommentViewSet(SectionViewSet):
         разговором.
         """
         if self.get_object().author_id != self.request.user.pk:
-            raise PermissionDenied("Править можно только свой комментарий")
+            raise PermissionDenied(_("Править можно только свой комментарий"))
         serializer.save()
 
     def destroy(self, request, *args, **kwargs):
         """Свой комментарий убирает автор, чужой — только Арман."""
         comment = self.get_object()
         if comment.author_id != request.user.pk and not keeps_the_group(request.user):
-            raise PermissionDenied("Чужие комментарии убирает директор талантов")
+            raise PermissionDenied(_("Чужие комментарии убирает директор талантов"))
 
         from core.archive import archive
 
         archive(comment, actor=request.user)
-        return Response({"detail": "Комментарий убран"})
+        return Response({"detail": _("Комментарий убран")})
 
 
 class MaterialReportViewSet(SectionViewSet):
@@ -270,31 +276,31 @@ class MaterialReportViewSet(SectionViewSet):
     def perform_update(self, serializer):
         """Текст жалобы правит только тот, кто её написал."""
         if self.get_object().reporter_id != self.request.user.pk:
-            raise PermissionDenied("Править можно только свою жалобу")
+            raise PermissionDenied(_("Править можно только свою жалобу"))
         serializer.save()
 
     def destroy(self, request, *args, **kwargs):
         """Свою жалобу можно отозвать, пока её не разобрали."""
         report = self.get_object()
         if report.reporter_id != request.user.pk:
-            raise PermissionDenied("Отозвать жалобу может тот, кто её подал")
+            raise PermissionDenied(_("Отозвать жалобу может тот, кто её подал"))
         if report.status != MaterialReport.Status.OPEN:
-            raise PermissionDenied("Эту жалобу уже разобрали — отзывать нечего")
+            raise PermissionDenied(_("Эту жалобу уже разобрали — отзывать нечего"))
         report.delete()
-        return Response({"detail": "Жалоба отозвана"})
+        return Response({"detail": _("Жалоба отозвана")})
 
     @extend_schema(request=None, responses={200: dict})
     @action(detail=True, methods=["post"])
     def resolve(self, request, pk=None):
         """Пометить жалобу разобранной, записав, что сделали."""
         if not keeps_the_group(request.user):
-            raise PermissionDenied("Жалобы разбирает директор талантов")
+            raise PermissionDenied(_("Жалобы разбирает директор талантов"))
         report = self.get_object()
         report.status = MaterialReport.Status.RESOLVED
         report.resolution = str(request.data.get("resolution", "")).strip()
         report.resolved_at = timezone.now()
         report.save(update_fields=["status", "resolution", "resolved_at"])
-        return Response({"detail": "Жалоба помечена разобранной", "id": report.pk})
+        return Response({"detail": _("Жалоба помечена разобранной"), "id": report.pk})
 
 
 class MaterialRequestViewSet(SectionViewSet):
@@ -308,7 +314,7 @@ class MaterialRequestViewSet(SectionViewSet):
     def perform_create(self, serializer):
         student = student_of(self.request.user)
         if student is None:
-            raise PermissionDenied("Запросы заводят ученики олимпиадной группы")
+            raise PermissionDenied(_("Запросы заводят ученики олимпиадной группы"))
         serializer.save(author=student)
 
     def perform_update(self, serializer):
@@ -316,19 +322,19 @@ class MaterialRequestViewSet(SectionViewSet):
         instance = self.get_object()
         student = student_of(self.request.user)
         if instance.author_id != getattr(student, "pk", None) and not keeps_the_group(self.request.user):
-            raise PermissionDenied("Править запрос может тот, кто его завёл, или директор талантов")
+            raise PermissionDenied(_("Править запрос может тот, кто его завёл, или директор талантов"))
         serializer.save()
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         student = student_of(request.user)
         if instance.author_id != getattr(student, "pk", None) and not keeps_the_group(request.user):
-            raise PermissionDenied("Снять запрос может тот, кто его завёл, или директор талантов")
+            raise PermissionDenied(_("Снять запрос может тот, кто его завёл, или директор талантов"))
 
         from core.archive import archive
 
         archive(instance, actor=request.user)
-        return Response({"detail": "Запрос снят"})
+        return Response({"detail": _("Запрос снят")})
 
 
 class MaterialCollectionViewSet(SectionViewSet):
@@ -341,7 +347,7 @@ class MaterialCollectionViewSet(SectionViewSet):
 
     def _deny_if_not_curator(self):
         if not keeps_the_group(self.request.user):
-            raise PermissionDenied("Подборки собирает директор талантов")
+            raise PermissionDenied(_("Подборки собирает директор талантов"))
 
     def perform_create(self, serializer):
         self._deny_if_not_curator()
@@ -356,7 +362,7 @@ class MaterialCollectionViewSet(SectionViewSet):
         collection = self.get_object()
         name = collection.name
         collection.delete()
-        return Response({"detail": f"Подборка «{name}» удалена"})
+        return Response({"detail": _("Подборка «{name}» удалена").format(name=name)})
 
     @extend_schema(request=CollectionPickSerializer, responses={200: dict})
     @action(detail=True, methods=["post"], url_path="add")
@@ -372,7 +378,7 @@ class MaterialCollectionViewSet(SectionViewSet):
         ).first()
         if material is None:
             return Response(
-                {"detail": "В подборку кладут только одобренные материалы"},
+                {"detail": _("В подборку кладут только одобренные материалы")},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         item, created = CollectionItem.objects.get_or_create(
@@ -383,7 +389,14 @@ class MaterialCollectionViewSet(SectionViewSet):
         if not created:
             item.position = payload.validated_data.get("position", item.position)
             item.save(update_fields=["position"])
-        return Response({"detail": f"«{material.title}» в подборке «{collection.name}»", "item": item.pk})
+        return Response(
+            {
+                "detail": _("«{title}» в подборке «{collection}»").format(
+                    title=material.title, collection=collection.name
+                ),
+                "item": item.pk,
+            }
+        )
 
     @extend_schema(request=CollectionPickSerializer, responses={200: dict})
     @action(detail=True, methods=["post"], url_path="remove")
@@ -391,10 +404,10 @@ class MaterialCollectionViewSet(SectionViewSet):
         self._deny_if_not_curator()
         payload = CollectionPickSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
-        removed, _ = CollectionItem.objects.filter(
+        removed, _kinds = CollectionItem.objects.filter(
             collection=self.get_object(), material_id=payload.validated_data["material"]
         ).delete()
-        return Response({"detail": "Убрано из подборки" if removed else "Этого материала в подборке и не было"})
+        return Response({"detail": _("Убрано из подборки") if removed else _("Этого материала в подборке и не было")})
 
 
 # --- Отбор в олимпиадную группу -------------------------------------------
@@ -406,7 +419,7 @@ class MaterialCollectionViewSet(SectionViewSet):
 def group_list(request):
     """Экран отбора: кто в группе, кто нет. Ведёт его директор талантов."""
     if not keeps_the_group(request.user):
-        raise PermissionDenied("Олимпиадную группу отбирает директор талантов")
+        raise PermissionDenied(_("Олимпиадную группу отбирает директор талантов"))
 
     rows = (
         Student.objects.filter(is_active=True)
@@ -427,9 +440,9 @@ def group_list(request):
         {
             "members": members,
             "detail": (
-                f"В олимпиадной группе {members} — раздел материалов открыт только им"
+                _("В олимпиадной группе {count} — раздел материалов открыт только им").format(count=members)
                 if members
-                else "В олимпиадной группе пока никого: отметьте тех, кто выступает на олимпиадах"
+                else _("В олимпиадной группе пока никого: отметьте тех, кто выступает на олимпиадах")
             ),
             # чем наполнить фильтр: группы, в которых есть действующие ученики
             # `order_by()` обязателен: сортировка модели (фамилия, имя, id) попадает
@@ -461,13 +474,13 @@ def group_list(request):
 def group_pick(request):
     """Отметить или снять ученика. Правка идёт через журнал (инвариант №9)."""
     if not keeps_the_group(request.user):
-        raise PermissionDenied("Олимпиадную группу отбирает директор талантов")
+        raise PermissionDenied(_("Олимпиадную группу отбирает директор талантов"))
 
     payload = GroupPickSerializer(data=request.data)
     payload.is_valid(raise_exception=True)
     student = Student.objects.filter(pk=payload.validated_data["student"]).first()
     if student is None:
-        raise NotFound("Такого ученика нет")
+        raise NotFound(_("Такого ученика нет"))
 
     member = payload.validated_data["member"]
     apply_changes(student, {"in_olympiad_group": member}, actor=request.user, source=Source.MANUAL)
@@ -476,9 +489,9 @@ def group_pick(request):
             "id": student.pk,
             "in_group": member,
             "detail": (
-                f"{student.full_name} в олимпиадной группе — раздел материалов ему открыт"
+                _("{name} в олимпиадной группе — раздел материалов ему открыт").format(name=student.full_name)
                 if member
-                else f"{student.full_name} больше не в олимпиадной группе — раздел закрыт"
+                else _("{name} больше не в олимпиадной группе — раздел закрыт").format(name=student.full_name)
             ),
         }
     )
@@ -500,7 +513,7 @@ def download(request, pk: int):
     require_access(request.user)
     row = MaterialFile.objects.select_related("material", "material__author").filter(pk=pk).first()
     if row is None:
-        raise NotFound("Файла нет")
+        raise NotFound(_("Файла нет"))
 
     material = row.material
     student = student_of(request.user)
@@ -510,7 +523,7 @@ def download(request, pk: int):
         or (student is not None and material.author_id == student.pk)
     )
     if not visible:
-        raise NotFound("Файла нет")
+        raise NotFound(_("Файла нет"))
 
     response = FileResponse(row.file.open("rb"), content_type=row.content_type)
     response["Content-Disposition"] = f'inline; filename="{row.pk}{row.extension}"'
@@ -529,14 +542,14 @@ def delete_file(request, pk: int):
     require_access(request.user)
     row = MaterialFile.objects.select_related("material").filter(pk=pk).first()
     if row is None:
-        raise NotFound("Файла нет")
+        raise NotFound(_("Файла нет"))
     student = student_of(request.user)
     if row.material.author_id != getattr(student, "pk", None) and not keeps_the_group(request.user):
-        raise PermissionDenied("Убрать файл может автор материала")
+        raise PermissionDenied(_("Убрать файл может автор материала"))
     name = row.original_name
     row.file.delete(save=False)
     row.delete()
-    return Response({"detail": f"Файл «{name}» убран"})
+    return Response({"detail": _("Файл «{name}» убран").format(name=name)})
 
 
 # --- Уведомления ----------------------------------------------------------
@@ -610,7 +623,7 @@ def _keeps_resources(user) -> bool:
 class ResourcePermission(permissions.BasePermission):
     """Читают все, ведут пять директоров — как задачи и шаблоны."""
 
-    message = "Материалы раздела «Ресурсы» ведут директора"
+    message = gettext_lazy("Материалы раздела «Ресурсы» ведут директора")
 
     def has_permission(self, request, view) -> bool:
         if not (request.user and request.user.is_authenticated):
@@ -636,8 +649,9 @@ class ResourceCategoryViewSet(viewsets.ModelViewSet):
         if instance.resources.exists():
             return Response(
                 {
-                    "detail": f"На категорию ссылаются материалы: {instance.resources.count()}. "
-                    "Скройте её или перенесите материалы в другую"
+                    "detail": _(
+                        "На категорию ссылаются материалы: {count}. Скройте её или перенесите материалы в другую"
+                    ).format(count=instance.resources.count())
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -699,13 +713,13 @@ class ResourceViewSet(viewsets.ModelViewSet):
         """Отметка «прочитано». Ставит и снимает сам ученик."""
         student = student_of(request.user)
         if student is None:
-            return Response({"detail": "Отметку «прочитано» ставит ученик"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("Отметку «прочитано» ставит ученик")}, status=status.HTTP_403_FORBIDDEN)
         resource = self.get_object()
         if request.method == "DELETE":
             ResourceRead.objects.filter(resource=resource, student=student).delete()
-            return Response({"detail": "Отметка снята", "is_read": False})
+            return Response({"detail": _("Отметка снята"), "is_read": False})
         ResourceRead.objects.get_or_create(resource=resource, student=student)
-        return Response({"detail": "Отмечено как прочитанное", "is_read": True})
+        return Response({"detail": _("Отмечено как прочитанное"), "is_read": True})
 
     @action(detail=False, methods=["get"], url_path="overview")
     def overview(self, request):

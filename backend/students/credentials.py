@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
+
 from core import secrets
 from core.audit import record_event
 from core.domains import CREDENTIAL_EDITORS, CREDENTIAL_VIEWERS, ROLE_STUDENT
@@ -53,14 +55,19 @@ def set_credential(student: Student, kind: str, plaintext: str, *, actor) -> boo
     иначе повторный импорт таблицы двигал бы «обновлён» у всех.
     """
     if kind not in CredentialKind.values:
-        raise ValueError("Неизвестный вид пароля")
+        raise ValueError(_("Неизвестный вид пароля"))
     plaintext = (plaintext or "").strip()
     row = StudentCredential.objects.filter(student=student, kind=kind).first()
     if not plaintext:
         if row is None:
             return False
         row.delete()
-        record_event(student=student, code="credential_set", text=f"{CredentialKind(kind).label}: убран", actor=actor)
+        record_event(
+            student=student,
+            code="credential_set",
+            text=_("{kind}: убран").format(kind=CredentialKind(kind).label),
+            actor=actor,
+        )
         return True
     if row is not None:
         try:
@@ -84,7 +91,7 @@ def reveal(student: Student, kind: str, *, actor) -> str | None:
     ответ потом не дошёл. Нет пароля — `None`, журнал не трогается.
     """
     if kind not in CredentialKind.values:
-        raise ValueError("Неизвестный вид пароля")
+        raise ValueError(_("Неизвестный вид пароля"))
     row = StudentCredential.objects.filter(student=student, kind=kind).first()
     if row is None:
         return None

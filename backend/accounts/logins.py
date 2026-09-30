@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 
 #: паспортная латиница: русский алфавит и казахские буквы
-PASSPORT_LATIN: dict[str, str] = {
+PASSPORT_LATIN: dict[str, str] = {  # i18n-skip: таблица транслитерации, не текст интерфейса
     "а": "a",
     "б": "b",
     "в": "v",

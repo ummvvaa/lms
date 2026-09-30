@@ -27,6 +27,8 @@ import zipfile
 from pathlib import Path
 
 from django.core.cache import cache
+from django.utils import translation
+from django.utils.translation import gettext
 
 from academics.models import ParentReport, ReportSection, ReportTemplate, ReviewKind
 from academics.school_reports import (
@@ -39,6 +41,7 @@ from academics.school_reports import (
     SPORT,
     address_name,
 )
+from core.i18n import language_of
 from students.models import GroupLanguage
 
 TEMPLATES = Path(__file__).resolve().parent / "report_templates"
@@ -68,7 +71,7 @@ def template_path(report: ParentReport) -> Path:
 
 #: заголовки блоков отзывов; постоянные — как в шаблоне школы. Эмодзи
 #: перед заголовком ставит сам шаблон по виду блока (`block.kind`)
-REVIEW_TITLES = {
+REVIEW_TITLES = {  # i18n-skip: язык отчёта выбирается при сборке
     GroupLanguage.RU: {
         ReviewKind.SAT_VERBAL: "SAT Verbal Trainer",
         ReviewKind.SAT_MATH: "SAT Math Trainer",
@@ -141,7 +144,7 @@ def context_of(report: ParentReport) -> dict:
         if present:
             counter += 1
             numbers[name] = counter
-    period_mark = "ж" if language == GroupLanguage.KK else " г."
+    period_mark = "ж" if language == GroupLanguage.KK else " г."  # i18n-skip: язык отчёта выбирается при сборке
     return {
         "student": f"{student.last_name} {student.first_name}".strip(),
         "group": student.group.code if student.group_id else "",
@@ -174,7 +177,7 @@ def render_docx(report: ParentReport) -> bytes:
 
     path = template_path(report)
     if not path.is_file():
-        raise FileRefused(f"Шаблона {path.name} нет на сервере")
+        raise FileRefused(gettext("Шаблона {name} нет на сервере").format(name=path.name))
     document = DocxTemplate(str(path))
     document.render(context_of(report), autoescape=True)
     out = io.BytesIO()
@@ -188,7 +191,7 @@ def render_docx(report: ParentReport) -> bytes:
 def soffice() -> str:
     found = shutil.which("soffice") or shutil.which("libreoffice")
     if not found:
-        raise FileRefused("PDF сейчас не собрать: на сервере нет LibreOffice. Скачайте Word")
+        raise FileRefused(gettext("PDF сейчас не собрать: на сервере нет LibreOffice. Скачайте Word"))
     return found
 
 
@@ -219,12 +222,12 @@ def to_pdf(documents: list[bytes]) -> list[bytes]:
         try:
             subprocess.run(command, check=True, capture_output=True, timeout=CONVERT_TIMEOUT)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
-            raise FileRefused("PDF не собрался — попробуйте ещё раз или скачайте Word") from error
+            raise FileRefused(gettext("PDF не собрался — попробуйте ещё раз или скачайте Word")) from error
         out = []
         for name in names:
             pdf = root / "out" / f"{name.stem}.pdf"
             if not pdf.is_file():
-                raise FileRefused("PDF не собрался — попробуйте ещё раз или скачайте Word")
+                raise FileRefused(gettext("PDF не собрался — попробуйте ещё раз или скачайте Word"))
             out.append(pdf.read_bytes())
     return out
 
@@ -237,7 +240,7 @@ def render(report: ParentReport, file_format: str) -> tuple[bytes, str, str]:
     stem = file_stem(report)
     if report.template == ReportTemplate.STANDARD:
         if file_format == WORD:
-            raise FileRefused("Стандартный отчёт скачивается только в PDF")
+            raise FileRefused(gettext("Стандартный отчёт скачивается только в PDF"))
         return render_standard(report, curator_name=_standard_curator(report)), f"{stem}.pdf", "application/pdf"
     document = render_docx(report)
     if file_format == WORD:
@@ -351,7 +354,10 @@ def run_export(job: str, *, user_id: int, ids: list[int], file_format: str, zip_
     )
     save(state="running", done=0, total=len(rows))
     try:
-        payload = render_zip(rows, file_format, progress=lambda done: save(done=done))
+        # очередь без языка запроса: причина отказа — на языке того, кто заказал;
+        # текст отчётов от этого не зависит — его язык выбран при сборке
+        with translation.override(language_of(user)):
+            payload = render_zip(rows, file_format, progress=lambda done: save(done=done))
     except FileRefused as error:
         save(state="failed", error=str(error))
         return "failed"

@@ -14,19 +14,22 @@ from __future__ import annotations
 
 import datetime as dt
 
+from django.utils.translation import gettext as _
+
 from academics import calendar as school_calendar
 from academics import schedule
 from academics.calendar import date_with_weekday, scale_of, today
 from academics.models import Grade, Lesson, LessonKind, LessonStatus
 from academics.payloads import kind_label
 from academics.results import student_summary
-from core.phrasing import counted
+from core.phrasing import tn
 from students.models import Activity, Competition, Student
 
 #: сколько тем четверти назвать в плане подготовки к СОЧ
 TOPICS_IN_PLAN = 8
 
-VOICE_RULES = """Ты помощник по учёбе ученика 8–10 класса школьной платформы.
+VOICE_RULES = (  # i18n-skip: промпт модели
+    """Ты помощник по учёбе ученика 8–10 класса школьной платформы.
 
 Тебе передают готовые факты из системы: его уроки, оценки, темы и даты
 работ. Твоя работа — коротко и по-русски сказать, что это значит и что
@@ -38,8 +41,9 @@ VOICE_RULES = """Ты помощник по учёбе ученика 8–10 к�
 - не упоминай поступление, вузы, экзамены IELTS и SAT — у ученика их нет;
 - не сравнивай ученика с классом и не называй средних по группе;
 - три-шесть предложений или короткий список, без вступлений."""
+)  # fmt: skip
 
-CHAT_RULES = (
+CHAT_RULES = (  # i18n-skip: промпт модели
     "Ты помощник по учёбе ученика 8–10 класса. Отвечай коротко и по-русски. "
     "Помогай разобраться в предмете и спланировать подготовку, но не решай "
     "контрольные за ученика и не ставь оценок. Не говори о поступлении, вузах "
@@ -93,10 +97,12 @@ def hints(student: Student) -> dict[str, str]:
     soch = nearest_soch(student)
     return {
         "improve_subject": (
-            f"{weakest['course'].subject.title} — ниже всего в четверти" if weakest else "Когда появятся оценки"
+            _("{subject} — ниже всего в четверти").format(subject=weakest["course"].subject.title)
+            if weakest
+            else _("Когда появятся оценки")
         ),
         "soch_plan": (
-            f"{soch.course.subject.title}, {date_with_weekday(soch.date)}" if soch else "Ближайшего СОЧ пока нет"
+            f"{soch.course.subject.title}, {date_with_weekday(soch.date)}" if soch else _("Ближайшего СОЧ пока нет")
         ),
     }
 
@@ -122,35 +128,40 @@ def week(*, student: Student, **_kwargs) -> dict:
     for lesson in lessons:
         by_day[lesson.date] = by_day.get(lesson.date, 0) + 1
     for day in sorted(by_day):
-        lines.append(f"{date_with_weekday(day)}: {counted(by_day[day], ('урок', 'урока', 'уроков'))}")
+        lessons_count = tn(by_day[day], "{n} урок|{n} урока|{n} уроков")
+        lines.append(f"{date_with_weekday(day)}: {lessons_count}")
     for lesson in sorted(lessons, key=lambda row: (row.date, row.slot)):
         if lesson.kind != LessonKind.FO:
             lines.append(f"{kind_label(lesson)} — {lesson.course.subject.title}, {date_with_weekday(lesson.date)}")
     for row in Activity.objects.filter(student=student, category="olympiad", date__gte=monday, date__lte=sunday):
-        lines.append(f"Олимпиада: {row.title}, {date_with_weekday(row.date)}")
+        lines.append(_("Олимпиада: {title}, {date}").format(title=row.title, date=date_with_weekday(row.date)))
     for row in Competition.objects.filter(student=student, date__gte=monday, date__lte=sunday):
-        lines.append(f"Соревнование: {row.name}, {date_with_weekday(row.date)}")
+        lines.append(_("Соревнование: {title}, {date}").format(title=row.name, date=date_with_weekday(row.date)))
     if not lines:
-        return _reply("На этой неделе уроков в расписании нет.")
-    return _reply("Ваша неделя:", lines)
+        return _reply(_("На этой неделе уроков в расписании нет."))
+    return _reply(_("Ваша неделя:"), lines)
 
 
 def improve_subject(*, student: Student, **_kwargs) -> dict:
     """Предмет, где итог ниже всего: свои оценки и комментарии учителя, без имён."""
     weakest = weakest_subject(student)
     if weakest is None:
-        return _reply("Оценок за четверть пока нет — подсказать, что подтянуть, не по чему.")
+        return _reply(_("Оценок за четверть пока нет — подсказать, что подтянуть, не по чему."))
     course, stats = weakest["course"], weakest["stats"]
     subject = course.subject.title
-    lines = [f"Сейчас выходит: {round(weakest['pct'])}%"]
+    lines = [_("Сейчас выходит: {percent}%").format(percent=round(weakest["pct"]))]
     if stats.fo:
-        lines.append(f"ФО: {', '.join(str(value) for value in stats.fo)} (из {stats.fo_max})")
+        lines.append(
+            _("ФО: {grades} (из {maximum})").format(
+                grades=", ".join(str(value) for value in stats.fo), maximum=stats.fo_max
+            )
+        )
     if stats.sor_max:
-        lines.append(f"СОР: {stats.sor_got} из {stats.sor_max}")
+        lines.append(_("СОР: {got} из {maximum}").format(got=stats.sor_got, maximum=stats.sor_max))
     else:
-        lines.append("СОР за четверть ещё не было")
+        lines.append(_("СОР за четверть ещё не было"))
     if stats.soch_max:
-        lines.append(f"СОЧ: {stats.soch_got} из {stats.soch_max}")
+        lines.append(_("СОЧ: {got} из {maximum}").format(got=stats.soch_got, maximum=stats.soch_max))
     _quarter_row, start, end = _quarter(school_calendar.load())
     comments = (
         Grade.objects.filter(student=student, lesson__course=course, lesson__date__gte=start, lesson__date__lte=end)
@@ -158,13 +169,13 @@ def improve_subject(*, student: Student, **_kwargs) -> dict:
         .order_by("-lesson__date")
         .values_list("comment", flat=True)[:3]
     )
-    lines += [f"Комментарий учителя: {comment}" for comment in comments]
-    parts = {"ФО": stats.fo_pct, "СОР": stats.sor_pct, "СОЧ": stats.soch_pct}
+    lines += [_("Комментарий учителя: {comment}").format(comment=comment) for comment in comments]
+    parts = {_("ФО"): stats.fo_pct, _("СОР"): stats.sor_pct, _("СОЧ"): stats.soch_pct}
     known = {name: value for name, value in parts.items() if value is not None}
     if known:
         lowest = min(known, key=known.get)
-        lines.append(f"Слабее всего — {lowest}: {round(known[lowest])}%")
-    return _reply(f"Ниже всего в четверти — {subject}.", lines)
+        lines.append(_("Слабее всего — {part}: {percent}%").format(part=lowest, percent=round(known[lowest])))
+    return _reply(_("Ниже всего в четверти — {subject}.").format(subject=subject), lines)
 
 
 def quarter_formula(*, student: Student, **_kwargs) -> dict:
@@ -172,32 +183,42 @@ def quarter_formula(*, student: Student, **_kwargs) -> dict:
     calendar = school_calendar.load()
     scale = scale_of(calendar.year)
     lines = [
-        f"ФО — средняя оценка из {scale.fo_max}, её вес {scale.weight_fo}%",
-        f"СОР — сумма баллов к сумме максимумов, вес {scale.weight_sor}%",
-        f"СОЧ — баллы к максимуму, вес {scale.weight_soch}%",
-        "Пока какой-то части нет, её вес делится между остальными",
-        f"Оценка по порогам: от {scale.threshold_5}% — 5, от {scale.threshold_4}% — 4, от {scale.threshold_3}% — 3",
-        "«Сейчас выходит» на экране «Оценки» считается по той же формуле",
+        _("ФО — средняя оценка из {maximum}, её вес {weight}%").format(maximum=scale.fo_max, weight=scale.weight_fo),
+        _("СОР — сумма баллов к сумме максимумов, вес {weight}%").format(weight=scale.weight_sor),
+        _("СОЧ — баллы к максимуму, вес {weight}%").format(weight=scale.weight_soch),
+        _("Пока какой-то части нет, её вес делится между остальными"),
+        _("Оценка по порогам: от {five}% — 5, от {four}% — 4, от {three}% — 3").format(
+            five=scale.threshold_5, four=scale.threshold_4, three=scale.threshold_3
+        ),
+        _("«Сейчас выходит» на экране «Оценки» считается по той же формуле"),
     ]
-    return _reply("Итог четверти считается по шкале школы:", lines)
+    return _reply(_("Итог четверти считается по шкале школы:"), lines)
 
 
 def soch_plan(*, student: Student, **_kwargs) -> dict:
     """План подготовки к ближайшему СОЧ: дата, свои баллы по предмету, темы четверти."""
     soch = nearest_soch(student)
     if soch is None:
-        return _reply("Ближайшего СОЧ в расписании нет — план строить не к чему.")
+        return _reply(_("Ближайшего СОЧ в расписании нет — план строить не к чему."))
     current = today()
     days = (soch.date - current).days
     subject = soch.course.subject.title
-    lines = [f"{subject}: СОЧ {date_with_weekday(soch.date)}, осталось {counted(days, ('день', 'дня', 'дней'))}"]
+    lines = [
+        tn(
+            days,
+            "{subject}: СОЧ {date}, остался {n} день|{subject}: СОЧ {date}, осталось {n} дня|"
+            "{subject}: СОЧ {date}, осталось {n} дней",
+            subject=subject,
+            date=date_with_weekday(soch.date),
+        )
+    ]
     for row in _subjects(student):
         if row["course"].pk == soch.course_id:
             stats = row["stats"]
             if stats.sor_max:
-                lines.append(f"СОР по предмету: {stats.sor_got} из {stats.sor_max}")
+                lines.append(_("СОР по предмету: {got} из {maximum}").format(got=stats.sor_got, maximum=stats.sor_max))
             if stats.fo:
-                lines.append(f"ФО: {', '.join(str(value) for value in stats.fo)}")
+                lines.append(_("ФО: {grades}").format(grades=", ".join(str(value) for value in stats.fo)))
     _quarter_row, start, _end = _quarter(school_calendar.load())
     topics = list(
         Lesson.objects.filter(course=soch.course, date__gte=start, date__lt=soch.date)
@@ -207,13 +228,17 @@ def soch_plan(*, student: Student, **_kwargs) -> dict:
     )
     unique = list(dict.fromkeys(topics))[-TOPICS_IN_PLAN:]
     if unique:
-        lines.append("Темы четверти: " + "; ".join(unique))
+        lines.append(_("Темы четверти: {topics}").format(topics="; ".join(unique)))
     weeks = max(1, days // 7)
     lines.append(
-        f"Разбейте темы на {counted(weeks, ('неделю', 'недели', 'недель'))}: "
-        "повторение, задания как в СОР, пробная работа за день-два до СОЧ"
+        tn(
+            weeks,
+            "Разбейте темы на {n} неделю: повторение, задания как в СОР, пробная работа за день-два до СОЧ|"
+            "Разбейте темы на {n} недели: повторение, задания как в СОР, пробная работа за день-два до СОЧ|"
+            "Разбейте темы на {n} недель: повторение, задания как в СОР, пробная работа за день-два до СОЧ",
+        )
     )
-    return _reply(f"План подготовки к СОЧ по предмету «{subject}»:", lines)
+    return _reply(_("План подготовки к СОЧ по предмету «{subject}»:").format(subject=subject), lines)
 
 
 HANDLERS = {

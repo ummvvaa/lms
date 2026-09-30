@@ -11,6 +11,8 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext
+
 from engagement.models import Badge, BadgeAward, BadgeMetric
 from students.models import Student
 
@@ -100,7 +102,9 @@ def state_for(student: Student) -> dict:
                 "icon": badge.icon or "medal",
                 "threshold": badge.threshold,
                 "value": min(value, badge.threshold),
-                "progress": f"{min(value, badge.threshold)} из {badge.threshold}",
+                "progress": gettext("{value} из {total}").format(
+                    value=min(value, badge.threshold), total=badge.threshold
+                ),
                 "percent": min(100, round(value / badge.threshold * 100)) if badge.threshold else 0,
                 "earned": done,
                 "earned_at": awarded.get(badge.pk),

@@ -30,7 +30,7 @@ def generate_plan(plan_id: int = 0, **kwargs) -> dict:
         .first()
     )
     if plan is None:
-        return {"error": "плана нет"}
+        return {"error": "плана нет"}  # i18n-skip: результат фоновой задачи, человеку не показывается
     try:
         generate(plan)
         # Задачи применяются сразу, без второго подтверждения (фаза 48):

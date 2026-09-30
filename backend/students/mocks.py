@@ -26,6 +26,8 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from django.db import transaction
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
 from core.domains import scale_of
 from students.models import (
@@ -43,35 +45,35 @@ from students.models import (
 MOCK_EXAMS: tuple[str, ...] = (ExamType.IELTS, ExamType.SAT)
 
 #: Как учитель называет колонку с учеником.
-NAME_HINTS = ("фио", "ученик", "имя", "фамилия", "student", "name")
+NAME_HINTS = ("фио", "ученик", "имя", "фамилия", "student", "name")  # i18n-skip: синонимы заголовка для распознавания
 
 #: Как называют колонку с общим баллом.
-SCORE_HINTS = ("балл", "итог", "общий", "overall", "total", "score", "band")
+SCORE_HINTS = ("балл", "итог", "общий", "overall", "total", "score", "band")  # i18n-skip: синонимы заголовка
 
 #: Названия секций: по-русски и по-английски, как в бланке.
-SECTION_HINTS: dict[str, tuple[str, ...]] = {
+SECTION_HINTS: dict[str, tuple[str, ...]] = {  # i18n-skip: синонимы заголовков для распознавания
     "listening": ("listening", "аудирование", "listen"),
     "reading": ("reading", "чтение", "read"),
     "writing": ("writing", "письмо", "write"),
     "speaking": ("speaking", "говорение", "speak"),
 }
 
-NOTE_HINTS = ("примечание", "коммент", "note", "comment")
+NOTE_HINTS = ("примечание", "коммент", "note", "comment")  # i18n-skip: синонимы заголовка
 
 #: Ошибки строки. Ключ уходит на фронт, подпись — человеку.
 ERROR_TITLES: dict[str, str] = {
-    "no_name": "В строке нет ФИО",
-    "not_found": "Ученик не найден в этой группе",
-    "ambiguous": "Похожих учеников несколько",
-    "no_score": "Нет общего балла",
-    "score_range": "Балл вне шкалы",
-    "sections_missing": "Заполнены не все секции",
-    "sections_range": "Секция вне шкалы",
-    "sections_mismatch": "Секции не сходятся с общим баллом",
-    "duplicate": "Ученик встречается в файле дважды",
-    "already": "У ученика уже есть пробник на эту дату",
+    "no_name": gettext_lazy("В строке нет ФИО"),
+    "not_found": gettext_lazy("Ученик не найден в этой группе"),
+    "ambiguous": gettext_lazy("Похожих учеников несколько"),
+    "no_score": gettext_lazy("Нет общего балла"),
+    "score_range": gettext_lazy("Балл вне шкалы"),
+    "sections_missing": gettext_lazy("Заполнены не все секции"),
+    "sections_range": gettext_lazy("Секция вне шкалы"),
+    "sections_mismatch": gettext_lazy("Секции не сходятся с общим баллом"),
+    "duplicate": gettext_lazy("Ученик встречается в файле дважды"),
+    "already": gettext_lazy("У ученика уже есть Mock Test на эту дату"),
     # параллели с пробниками — `core.parallels.MOCK_PARALLELS` (сейчас все)
-    "parallel_closed": "У параллели этого ученика пробники не ведутся",
+    "parallel_closed": gettext_lazy("У параллели этого ученика Mock Test не проводятся"),
 }
 
 #: Что человеку делать с этой ошибкой: выбрать ученика или ввести балл.
@@ -214,7 +216,7 @@ class Row:
             "sections": {name: float(value) for name, value in self.sections.items()},
             "note": self.note,
             "error": self.error,
-            "error_title": ERROR_TITLES.get(self.error, ""),
+            "error_title": str(ERROR_TITLES.get(self.error, "")),
             "fix": FIX_KIND.get(self.error, ""),
             "skip": self.skip,
         }
@@ -250,16 +252,20 @@ def parse(
     fixes = fixes or {}
     header, body = read_table(uploaded)
     if not header:
-        raise FileRejected("Файл пустой — в нём нет ни заголовка, ни строк")
+        raise FileRejected(_("Файл пустой — в нём нет ни заголовка, ни строк"))
 
     columns = read_columns(header)
     if columns.name < 0:
-        raise FileRejected("Не нашлась колонка с ФИО — назовите её «ФИО» или «Ученик»")
+        raise FileRejected(_("Не нашлась колонка с ФИО — назовите её «ФИО» или «Ученик»"))
     if columns.score < 0 and not (exam_type == ExamType.IELTS and columns.found_sections):
-        raise FileRejected("Не нашлась колонка с баллом — назовите её «Балл»")
+        raise FileRejected(_("Не нашлась колонка с баллом — назовите её «Балл»"))
     if exam_type == ExamType.IELTS and not columns.found_sections:
         missing = [name for name in IELTS_SECTIONS if name not in columns.sections]
-        raise FileRejected("Для IELTS нужны все четыре секции, а в файле нет: " + ", ".join(missing).title())
+        raise FileRejected(
+            _("Для IELTS нужны все четыре секции, а в файле нет: {sections}").format(
+                sections=", ".join(missing).title()
+            )
+        )
 
     students = list(Student.objects.filter(group=group, is_active=True).select_related("group"))
     taken = set(
@@ -424,10 +430,12 @@ def apply(
     rows = parse(uploaded, exam_type=exam_type, group=group, date=date, fixes=fixes)
     broken = [row for row in rows if row.error and not row.skip]
     if broken:
-        raise FileRejected("В файле остались строки с ошибками: " + ", ".join(f"№{row.index}" for row in broken))
+        raise FileRejected(
+            _("В файле остались строки с ошибками: {rows}").format(rows=", ".join(f"№{row.index}" for row in broken))
+        )
     ready = [row for row in rows if not row.skip and not row.error]
     if not ready:
-        raise FileRejected("Записывать нечего: все строки пропущены")
+        raise FileRejected(_("Записывать нечего: все строки пропущены"))
 
     uploaded.seek(0)
     skipped = [row for row in rows if row.skip]
@@ -443,7 +451,7 @@ def apply(
         rows_applied=len(ready),
         rows_skipped=len(skipped),
         skipped_report="\n".join(
-            f"№{row.index} · {row.raw_name or 'без ФИО'} · {ERROR_TITLES.get(row.error, 'пропущено человеком')}"
+            f"№{row.index} · {row.raw_name or _('без ФИО')} · {ERROR_TITLES.get(row.error) or _('пропущено человеком')}"
             for row in skipped
         ),
     )
@@ -475,7 +483,11 @@ def _record_journal(record: MockImport, *, actor) -> None:
     """
     from core.audit import record_event
 
-    text = f"{record.exam_type} · {record.date:%d.%m.%Y}" + (f" · учитель {record.teacher}" if record.teacher else "")
+    text = f"{record.exam_type} · {record.date:%d.%m.%Y}"
+    if record.teacher:
+        text = _("{exam} · {date} · учитель {teacher}").format(
+            exam=record.exam_type, date=f"{record.date:%d.%m.%Y}", teacher=record.teacher
+        )
     for attempt in record.attempts.select_related("student"):
         record_event(student=attempt.student, code="mock_import", text=text, actor=actor)
 
@@ -572,17 +584,26 @@ def remind(record: MockImport, *, actor, days: int = 7) -> list[int]:
 
     took = set(ExamAttempt.all_objects.filter(mock_import=record).values_list("student_id", flat=True))
     missing = [
-        student for student in Student.objects.filter(group=record.group, is_active=True) if student.pk not in took
+        student
+        for student in Student.objects.filter(group=record.group, is_active=True).select_related("user")
+        if student.pk not in took
     ]
     if not missing:
         return []
-    assign_to_students(
-        missing,
-        title=f"Сдать пробник {record.exam_type}",
-        due_date=timezone.localdate() + dt.timedelta(days=days),
-        category=TaskCategory.TEST,
-        actor=actor,
-    )
+    from core.i18n import language_of, render
+
+    # задача — текст для ученика: на его языке, а не на языке куратора
+    by_language: dict[str, list] = {}
+    for student in missing:
+        by_language.setdefault(language_of(student.user), []).append(student)
+    for lang, students in by_language.items():
+        assign_to_students(
+            students,
+            title=render(lang, "Сдать {exam} Mock Test", exam=record.exam_type),
+            due_date=timezone.localdate() + dt.timedelta(days=days),
+            category=TaskCategory.TEST,
+            actor=actor,
+        )
     return [student.pk for student in missing]
 
 
@@ -591,9 +612,10 @@ def remind(record: MockImport, *, actor, days: int = 7) -> list[int]:
 
 def template_columns(exam_type: str) -> list[str]:
     """Заголовок шаблона под выбранный экзамен."""
+    # заголовки не переводятся: это формат файла, по ним разбор узнаёт колонки
     if exam_type == ExamType.IELTS:
-        return ["ФИО", "Listening", "Reading", "Writing", "Speaking", "Балл", "Примечание"]
-    return ["ФИО", "Балл", "Примечание"]
+        return ["ФИО", *(name.title() for name in IELTS_SECTIONS), "Балл", "Примечание"]  # i18n-skip: формат файла
+    return ["ФИО", "Балл", "Примечание"]  # i18n-skip: формат файла
 
 
 def template_rows(exam_type: str, students) -> list[list[Any]]:

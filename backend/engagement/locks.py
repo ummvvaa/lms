@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from django.utils.translation import gettext
+
 from students.models import Student
 
 
@@ -50,17 +52,17 @@ def locks_for(student: Student) -> list[dict]:
         {
             "path": "/selection",
             "locked": not (has_numbers or has_goals),
-            "reason": "Откроется, когда внесёте баллы или цели по экзаменам",
-            "hint": "Подбор считает соответствие требованиям по вашим числам: без них считать нечего",
-            "action": "Заполнить портфолио",
+            "reason": gettext("Откроется, когда внесёте баллы или цели по экзаменам"),
+            "hint": gettext("Подбор считает соответствие требованиям по вашим числам: без них считать нечего"),
+            "action": gettext("Заполнить портфолио"),
             "to": "/my-data",
         },
         {
             "path": "/plan",
             "locked": not (has_universities or has_run),
-            "reason": "Откроется, когда выберете вузы",
-            "hint": "План собирается под конкретную программу: её дедлайн и её требования",
-            "action": "Открыть подбор",
+            "reason": gettext("Откроется, когда выберете вузы"),
+            "hint": gettext("План собирается под конкретную программу: её дедлайн и её требования"),
+            "action": gettext("Открыть подбор"),
             "to": "/selection",
         },
     ]

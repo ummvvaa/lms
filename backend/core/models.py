@@ -6,6 +6,8 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
 from core.domains import Source
 
@@ -19,7 +21,7 @@ class AuditLog(models.Model):
 
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто изменил",
+        verbose_name=gettext_lazy("Кто изменил"),
         related_name="audit_entries",
         on_delete=models.SET_NULL,
         null=True,
@@ -28,48 +30,48 @@ class AuditLog(models.Model):
     #: подпись автора на случай, если самой записи больше нет: учётные
     #: записи людей не удаляются никогда, а одноразовые записи прогона —
     #: всегда, и строка журнала после этого не должна читаться как «система»
-    actor_title = models.CharField("Автор на момент удаления", max_length=250, blank=True)
+    actor_title = models.CharField(gettext_lazy("Автор на момент удаления"), max_length=250, blank=True)
     #: роль автора на момент действия (фаза 60). Роль у записи может смениться —
     #: куратор станет директором, — а журнал должен читаться как было:
     #: «подтвердил куратор», а не «подтвердил директор»
-    actor_role = models.CharField("Роль автора на момент действия", max_length=32, blank=True)
+    actor_role = models.CharField(gettext_lazy("Роль автора на момент действия"), max_length=32, blank=True)
     #: группа ученика на момент действия (фаза 60): смена куратора и перевод
     #: ученика в другую группу историю не переписывают
-    student_group = models.CharField("Группа ученика на момент действия", max_length=16, blank=True)
-    created_at = models.DateTimeField("Когда", auto_now_add=True)
-    model_label = models.CharField("Модель", max_length=100)
-    object_id = models.CharField("Объект", max_length=64)
-    student_id = models.BigIntegerField("Ученик", null=True, blank=True, db_index=True)
-    field_name = models.CharField("Поле", max_length=100)
-    domain_code = models.CharField("Домен", max_length=32, blank=True)
+    student_group = models.CharField(gettext_lazy("Группа ученика на момент действия"), max_length=16, blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Когда"), auto_now_add=True)
+    model_label = models.CharField(gettext_lazy("Модель"), max_length=100)
+    object_id = models.CharField(gettext_lazy("Объект"), max_length=64)
+    student_id = models.BigIntegerField(gettext_lazy("Ученик"), null=True, blank=True, db_index=True)
+    field_name = models.CharField(gettext_lazy("Поле"), max_length=100)
+    domain_code = models.CharField(gettext_lazy("Домен"), max_length=32, blank=True)
     #: домен, за который действовал автор, когда это не его домен.
     #: Администратор грузит файлы и вставляет текст по всем пяти доменам
     #: (фаза 35) — и владелец домена должен видеть в истории не просто
     #: «изменил администратор», а «изменил администратор за домен
     #: «Экзамены»»: иначе откуда взялось значение, которое он не вносил,
     #: не понять. У правки владельца домена поле пустое
-    acting_for = models.CharField("За домен", max_length=32, blank=True)
-    old_value = models.TextField("Было", blank=True)
-    new_value = models.TextField("Стало", blank=True)
+    acting_for = models.CharField(gettext_lazy("За домен"), max_length=32, blank=True)
+    old_value = models.TextField(gettext_lazy("Было"), blank=True)
+    new_value = models.TextField(gettext_lazy("Стало"), blank=True)
     # 32 символа: «student_onboarding» в 16 не помещается
-    source = models.CharField("Источник", max_length=32, choices=Source.CHOICES, default=Source.MANUAL)
+    source = models.CharField(gettext_lazy("Источник"), max_length=32, choices=Source.CHOICES, default=Source.MANUAL)
     #: объект, к которому относится запись, удалён из базы. Запись остаётся:
     #: журнал не должен ссылаться в пустоту, но и вести на несуществующую
     #: карточку интерфейс не должен
-    object_deleted = models.BooleanField("Объект удалён", default=False)
+    object_deleted = models.BooleanField(gettext_lazy("Объект удалён"), default=False)
     #: имя объекта на момент удаления. Без него запись про удалённого
     #: насовсем ученика читалась бы как «students.Student#57» — то есть
     #: никак: спросить, чьё это изменение, было бы уже не у кого
-    object_title = models.CharField("Имя на момент удаления", max_length=250, blank=True)
+    object_title = models.CharField(gettext_lazy("Имя на момент удаления"), max_length=250, blank=True)
     #: удалён безвозвратно, а не просто убран из интерфейса: возвращать
     #: нечего, и предлагать восстановление нельзя
-    object_purged = models.BooleanField("Удалён безвозвратно", default=False)
+    object_purged = models.BooleanField(gettext_lazy("Удалён безвозвратно"), default=False)
     #: номер удаления, которым объект вычистили из архива. По нему журнал
     #: читается после того, как самой карточки уже нет
-    archive_batch = models.UUIDField("Номер удаления", null=True, blank=True, db_index=True)
+    archive_batch = models.UUIDField(gettext_lazy("Номер удаления"), null=True, blank=True, db_index=True)
     suggestion = models.ForeignKey(
         "suggestions.Suggestion",
-        verbose_name="Предложение",
+        verbose_name=gettext_lazy("Предложение"),
         related_name="audit_entries",
         on_delete=models.SET_NULL,
         null=True,
@@ -79,7 +81,7 @@ class AuditLog(models.Model):
     #: импорт целиком — тем же способом, что и предложение
     import_batch = models.ForeignKey(
         "core.ImportBatch",
-        verbose_name="Загрузка",
+        verbose_name=gettext_lazy("Загрузка"),
         related_name="audit_entries",
         on_delete=models.SET_NULL,
         null=True,
@@ -87,8 +89,8 @@ class AuditLog(models.Model):
     )
 
     class Meta:
-        verbose_name = "Запись аудита"
-        verbose_name_plural = "Журнал изменений"
+        verbose_name = gettext_lazy("Запись аудита")
+        verbose_name_plural = gettext_lazy("Журнал изменений")
         ordering = ("-created_at", "-id")
         indexes = [
             models.Index(fields=("model_label", "object_id")),
@@ -109,21 +111,24 @@ class ReadinessSnapshot(models.Model):
     """
 
     student = models.ForeignKey(
-        "students.Student", verbose_name="Ученик", related_name="readiness_snapshots", on_delete=models.CASCADE
+        "students.Student",
+        verbose_name=gettext_lazy("Ученик"),
+        related_name="readiness_snapshots",
+        on_delete=models.CASCADE,
     )
-    date = models.DateField("Дата среза")
-    score = models.PositiveSmallIntegerField("Готовность, %")
-    exam = models.DecimalField("Экзамены", max_digits=5, decimal_places=1, null=True, blank=True)
-    admission = models.DecimalField("Поступление", max_digits=5, decimal_places=1, null=True, blank=True)
-    talent = models.DecimalField("Портфолио", max_digits=5, decimal_places=1, null=True, blank=True)
-    behavior = models.DecimalField("Дисциплина", max_digits=5, decimal_places=1, null=True, blank=True)
-    sport = models.DecimalField("Спорт", max_digits=5, decimal_places=1, null=True, blank=True)
-    weakest = models.CharField("Слабое звено", max_length=32, blank=True)
-    created_at = models.DateTimeField("Создан", auto_now_add=True)
+    date = models.DateField(gettext_lazy("Дата среза"))
+    score = models.PositiveSmallIntegerField(gettext_lazy("Готовность, %"))
+    exam = models.DecimalField(gettext_lazy("Экзамены"), max_digits=5, decimal_places=1, null=True, blank=True)
+    admission = models.DecimalField(gettext_lazy("Поступление"), max_digits=5, decimal_places=1, null=True, blank=True)
+    talent = models.DecimalField(gettext_lazy("Портфолио"), max_digits=5, decimal_places=1, null=True, blank=True)
+    behavior = models.DecimalField(gettext_lazy("Дисциплина"), max_digits=5, decimal_places=1, null=True, blank=True)
+    sport = models.DecimalField(gettext_lazy("Спорт"), max_digits=5, decimal_places=1, null=True, blank=True)
+    weakest = models.CharField(gettext_lazy("Слабое звено"), max_length=32, blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Создан"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Срез готовности"
-        verbose_name_plural = "Срезы готовности"
+        verbose_name = gettext_lazy("Срез готовности")
+        verbose_name_plural = gettext_lazy("Срезы готовности")
         ordering = ("-date",)
         constraints = [
             models.UniqueConstraint(fields=("student", "date"), name="uniq_readiness_snapshot_per_day"),
@@ -142,47 +147,47 @@ class ImportBatch(models.Model):
     """
 
     class Kind(models.TextChoices):
-        STUDENTS = "students", "Данные учеников"
-        REQUIREMENTS = "requirements", "Требования вузов"
-        QUESTIONS = "questions", "Банк заданий"
-        SCHOLARSHIPS = "scholarships", "Стипендии"
+        STUDENTS = "students", gettext_lazy("Данные учеников")
+        REQUIREMENTS = "requirements", gettext_lazy("Требования вузов")
+        QUESTIONS = "questions", gettext_lazy("Банк заданий")
+        SCHOLARSHIPS = "scholarships", gettext_lazy("Стипендии")
 
     class Status(models.TextChoices):
-        APPLIED = "applied", "Применена"
-        REVERTED = "reverted", "Отменена"
-        PARTIAL = "partial", "Отменена частично"
+        APPLIED = "applied", gettext_lazy("Применена")
+        REVERTED = "reverted", gettext_lazy("Отменена")
+        PARTIAL = "partial", gettext_lazy("Отменена частично")
 
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто загрузил",
+        verbose_name=gettext_lazy("Кто загрузил"),
         related_name="import_batches",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    created_at = models.DateTimeField("Когда", auto_now_add=True)
-    file_name = models.CharField("Файл", max_length=250, blank=True)
-    kind = models.CharField("Что загружали", max_length=16, choices=Kind.choices, default=Kind.STUDENTS)
-    domain_code = models.CharField("Домен", max_length=32, blank=True)
-    rows_total = models.PositiveIntegerField("Строк в файле", default=0)
-    rows_created = models.PositiveIntegerField("Создано записей", default=0)
-    rows_updated = models.PositiveIntegerField("Обновлено записей", default=0)
-    rows_failed = models.PositiveIntegerField("Строк с ошибкой", default=0)
-    status = models.CharField("Состояние", max_length=16, choices=Status.choices, default=Status.APPLIED)
-    reverted_at = models.DateTimeField("Отменена", null=True, blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Когда"), auto_now_add=True)
+    file_name = models.CharField(gettext_lazy("Файл"), max_length=250, blank=True)
+    kind = models.CharField(gettext_lazy("Что загружали"), max_length=16, choices=Kind.choices, default=Kind.STUDENTS)
+    domain_code = models.CharField(gettext_lazy("Домен"), max_length=32, blank=True)
+    rows_total = models.PositiveIntegerField(gettext_lazy("Строк в файле"), default=0)
+    rows_created = models.PositiveIntegerField(gettext_lazy("Создано записей"), default=0)
+    rows_updated = models.PositiveIntegerField(gettext_lazy("Обновлено записей"), default=0)
+    rows_failed = models.PositiveIntegerField(gettext_lazy("Строк с ошибкой"), default=0)
+    status = models.CharField(gettext_lazy("Состояние"), max_length=16, choices=Status.choices, default=Status.APPLIED)
+    reverted_at = models.DateTimeField(gettext_lazy("Отменена"), null=True, blank=True)
     reverted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто отменил",
+        verbose_name=gettext_lazy("Кто отменил"),
         related_name="reverted_batches",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    note = models.CharField("Примечание", max_length=500, blank=True)
+    note = models.CharField(gettext_lazy("Примечание"), max_length=500, blank=True)
 
     class Meta:
-        verbose_name = "Загрузка файла"
-        verbose_name_plural = "История загрузок"
+        verbose_name = gettext_lazy("Загрузка файла")
+        verbose_name_plural = gettext_lazy("История загрузок")
         ordering = ("-created_at", "-id")
         indexes = [models.Index(fields=("-created_at",)), models.Index(fields=("domain_code", "-created_at"))]
 
@@ -197,30 +202,30 @@ class ArchiveEntry(models.Model):
     то, что ушло в составе этого удаления — по `batch`.
     """
 
-    batch = models.UUIDField("Номер удаления", default=uuid.uuid4, unique=True)
-    model_label = models.CharField("Модель", max_length=100)
-    object_id = models.CharField("Объект", max_length=64)
+    batch = models.UUIDField(gettext_lazy("Номер удаления"), default=uuid.uuid4, unique=True)
+    model_label = models.CharField(gettext_lazy("Модель"), max_length=100)
+    object_id = models.CharField(gettext_lazy("Объект"), max_length=64)
     #: имя на момент удаления: сама запись могла бы потом измениться
-    title = models.CharField("Что удалено", max_length=250)
-    kind_title = models.CharField("Вид записи", max_length=100, blank=True)
-    summary = models.CharField("Что ушло вместе", max_length=500, blank=True)
-    related_count = models.PositiveIntegerField("Связанных записей", default=0)
+    title = models.CharField(gettext_lazy("Что удалено"), max_length=250)
+    kind_title = models.CharField(gettext_lazy("Вид записи"), max_length=100, blank=True)
+    summary = models.CharField(gettext_lazy("Что ушло вместе"), max_length=500, blank=True)
+    related_count = models.PositiveIntegerField(gettext_lazy("Связанных записей"), default=0)
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто удалил",
+        verbose_name=gettext_lazy("Кто удалил"),
         related_name="archive_entries",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    created_at = models.DateTimeField("Когда удалено", auto_now_add=True)
-    restored_at = models.DateTimeField("Когда восстановлено", null=True, blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Когда удалено"), auto_now_add=True)
+    restored_at = models.DateTimeField(gettext_lazy("Когда восстановлено"), null=True, blank=True)
     #: запись вычищена из архива насовсем: сама она остаётся строкой
     #: истории — кто, когда и что снёс, — но возвращать уже нечего
-    purged_at = models.DateTimeField("Когда удалено навсегда", null=True, blank=True)
+    purged_at = models.DateTimeField(gettext_lazy("Когда удалено навсегда"), null=True, blank=True)
     purged_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто удалил навсегда",
+        verbose_name=gettext_lazy("Кто удалил навсегда"),
         related_name="purged_entries",
         on_delete=models.SET_NULL,
         null=True,
@@ -228,7 +233,7 @@ class ArchiveEntry(models.Model):
     )
     restored_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто восстановил",
+        verbose_name=gettext_lazy("Кто восстановил"),
         related_name="restored_entries",
         on_delete=models.SET_NULL,
         null=True,
@@ -236,8 +241,8 @@ class ArchiveEntry(models.Model):
     )
 
     class Meta:
-        verbose_name = "Запись архива"
-        verbose_name_plural = "Архив"
+        verbose_name = gettext_lazy("Запись архива")
+        verbose_name_plural = gettext_lazy("Архив")
         ordering = ("-created_at", "-id")
         indexes = [models.Index(fields=("-created_at",)), models.Index(fields=("model_label", "object_id"))]
 
@@ -264,48 +269,48 @@ class Notification(models.Model):
     """
 
     class Kind(models.TextChoices):
-        MATERIAL_COMMENT = "material_comment", "Комментарий к материалу"
-        MATERIAL_REVIEWED = "material_reviewed", "Материал проверен"
-        MATERIAL_PENDING = "material_pending", "Материал ждёт проверки"
-        MATERIAL_REPORT = "material_report", "Жалоба на материал"
-        MATERIAL_REQUEST = "material_request", "Просят материал"
+        MATERIAL_COMMENT = "material_comment", gettext_lazy("Комментарий к материалу")
+        MATERIAL_REVIEWED = "material_reviewed", gettext_lazy("Материал проверен")
+        MATERIAL_PENDING = "material_pending", gettext_lazy("Материал ждёт проверки")
+        MATERIAL_REPORT = "material_report", gettext_lazy("Жалоба на материал")
+        MATERIAL_REQUEST = "material_request", gettext_lazy("Просят материал")
         #: напоминание о событии календаря: экзамен, дедлайн, срок задачи (фаза 39)
-        EVENT_REMINDER = "event_reminder", "Напоминание о событии"
+        EVENT_REMINDER = "event_reminder", gettext_lazy("Напоминание о событии")
         #: фоновая операция закончилась — приходит и тогда, когда человек
         #: ушёл с экрана, на котором её запустил (фаза 47)
-        JOB_DONE = "job_done", "Фоновая операция закончилась"
-        JOB_FAILED = "job_failed", "Фоновая операция не получилась"
+        JOB_DONE = "job_done", gettext_lazy("Фоновая операция закончилась")
+        JOB_FAILED = "job_failed", gettext_lazy("Фоновая операция не получилась")
         # кабинет куратора (фаза 62)
-        QUEUE_DECIDED = "queue_decided", "Строку из вашей очереди решил владелец домена"
-        DOCUMENT_REUPLOADED = "document_reuploaded", "Ученик перезагрузил документ"
-        DOCUMENT_EXPIRING = "document_expiring", "Срок документа истекает"
-        ESCALATION_ANSWERED = "escalation_answered", "Владелец домена ответил на переданное"
-        ESCALATION_REQUEST = "escalation_request", "Куратор передал вопрос"
+        QUEUE_DECIDED = "queue_decided", gettext_lazy("Строку из вашей очереди решил владелец домена")
+        DOCUMENT_REUPLOADED = "document_reuploaded", gettext_lazy("Ученик перезагрузил документ")
+        DOCUMENT_EXPIRING = "document_expiring", gettext_lazy("Срок документа истекает")
+        ESCALATION_ANSWERED = "escalation_answered", gettext_lazy("Владелец домена ответил на переданное")
+        ESCALATION_REQUEST = "escalation_request", gettext_lazy("Куратор передал вопрос")
         # дисциплина у куратора (фаза 66): директор школы оставила заметку
-        NOTE_FOR_CURATOR = "note_for_curator", "Директор школы оставила заметку"
+        NOTE_FOR_CURATOR = "note_for_curator", gettext_lazy("Директор школы оставила заметку")
         # учебная часть: урок изменён, не отмечен, просьба о переносе, отчёты собраны
-        LESSON_CHANGED = "lesson_changed", "Изменение в расписании"
-        LESSON_UNMARKED = "lesson_unmarked", "Урок не отмечен"
-        LESSON_REQUEST = "lesson_request", "Просьба учителя о переносе"
-        LESSON_REQUEST_DECIDED = "lesson_request_decided", "Ответ на просьбу о переносе"
-        REPORTS_BUILT = "reports_built", "Отчёты родителям собраны"
+        LESSON_CHANGED = "lesson_changed", gettext_lazy("Изменение в расписании")
+        LESSON_UNMARKED = "lesson_unmarked", gettext_lazy("Урок не отмечен")
+        LESSON_REQUEST = "lesson_request", gettext_lazy("Просьба учителя о переносе")
+        LESSON_REQUEST_DECIDED = "lesson_request_decided", gettext_lazy("Ответ на просьбу о переносе")
+        REPORTS_BUILT = "reports_built", gettext_lazy("Отчёты родителям собраны")
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кому",
+        verbose_name=gettext_lazy("Кому"),
         related_name="notifications",
         on_delete=models.CASCADE,
     )
-    kind = models.CharField("Вид", max_length=32, choices=Kind.choices)
-    text = models.CharField("Текст", max_length=500)
+    kind = models.CharField(gettext_lazy("Вид"), max_length=32, choices=Kind.choices)
+    text = models.CharField(gettext_lazy("Текст"), max_length=500)
     #: куда вести по нажатию — путь внутри интерфейса, а не внешняя ссылка
-    link = models.CharField("Куда ведёт", max_length=200, blank=True)
-    is_read = models.BooleanField("Прочитано", default=False)
-    created_at = models.DateTimeField("Когда", auto_now_add=True)
+    link = models.CharField(gettext_lazy("Куда ведёт"), max_length=200, blank=True)
+    is_read = models.BooleanField(gettext_lazy("Прочитано"), default=False)
+    created_at = models.DateTimeField(gettext_lazy("Когда"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Уведомление"
-        verbose_name_plural = "Уведомления"
+        verbose_name = gettext_lazy("Уведомление")
+        verbose_name_plural = gettext_lazy("Уведомления")
         ordering = ("-created_at", "-id")
         indexes = [models.Index(fields=("recipient", "is_read", "-created_at"))]
 
@@ -328,36 +333,39 @@ class BackgroundJob(models.Model):
     """
 
     class Status(models.TextChoices):
-        RUNNING = "running", "Идёт"
-        DONE = "done", "Готово"
-        FAILED = "failed", "Не получилось"
+        RUNNING = "running", gettext_lazy("Идёт")
+        DONE = "done", gettext_lazy("Готово")
+        FAILED = "failed", gettext_lazy("Не получилось")
 
     owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name="Кто запустил", related_name="jobs", on_delete=models.CASCADE
+        settings.AUTH_USER_MODEL,
+        verbose_name=gettext_lazy("Кто запустил"),
+        related_name="jobs",
+        on_delete=models.CASCADE,
     )
-    kind = models.CharField("Вид операции", max_length=40)
-    title = models.CharField("Название", max_length=200)
-    status = models.CharField("Состояние", max_length=8, choices=Status.choices, default=Status.RUNNING)
-    stage = models.CharField("Этап", max_length=120, blank=True)
-    percent = models.PositiveSmallIntegerField("Процент", default=0)
-    steps_done = models.PositiveSmallIntegerField("Пройдено этапов", default=0)
+    kind = models.CharField(gettext_lazy("Вид операции"), max_length=40)
+    title = models.CharField(gettext_lazy("Название"), max_length=200)
+    status = models.CharField(gettext_lazy("Состояние"), max_length=8, choices=Status.choices, default=Status.RUNNING)
+    stage = models.CharField(gettext_lazy("Этап"), max_length=120, blank=True)
+    percent = models.PositiveSmallIntegerField(gettext_lazy("Процент"), default=0)
+    steps_done = models.PositiveSmallIntegerField(gettext_lazy("Пройдено этапов"), default=0)
     #: id задачи Celery — по нему её находят сигналы завершения
-    task_id = models.CharField("Задача", max_length=64, blank=True, db_index=True)
+    task_id = models.CharField(gettext_lazy("Задача"), max_length=64, blank=True, db_index=True)
     #: куда вести по нажатию, путь внутри интерфейса
-    link = models.CharField("Куда ведёт", max_length=200, blank=True)
-    error = models.CharField("Что пошло не так", max_length=300, blank=True)
+    link = models.CharField(gettext_lazy("Куда ведёт"), max_length=200, blank=True)
+    error = models.CharField(gettext_lazy("Что пошло не так"), max_length=300, blank=True)
     #: чем повторить: имя задачи Celery и её аргументы строкой JSON
-    retry_task = models.CharField("Задача для повтора", max_length=80, blank=True)
-    retry_payload = models.TextField("Аргументы повтора", blank=True)
+    retry_task = models.CharField(gettext_lazy("Задача для повтора"), max_length=80, blank=True)
+    retry_payload = models.TextField(gettext_lazy("Аргументы повтора"), blank=True)
     #: плашку закрыли крестиком — операция при этом продолжается
-    dismissed = models.BooleanField("Плашка скрыта", default=False)
-    created_at = models.DateTimeField("Запущена", auto_now_add=True)
-    updated_at = models.DateTimeField("Обновлена", auto_now=True)
-    finished_at = models.DateTimeField("Закончена", null=True, blank=True)
+    dismissed = models.BooleanField(gettext_lazy("Плашка скрыта"), default=False)
+    created_at = models.DateTimeField(gettext_lazy("Запущена"), auto_now_add=True)
+    updated_at = models.DateTimeField(gettext_lazy("Обновлена"), auto_now=True)
+    finished_at = models.DateTimeField(gettext_lazy("Закончена"), null=True, blank=True)
 
     class Meta:
-        verbose_name = "Фоновая операция"
-        verbose_name_plural = "Фоновые операции"
+        verbose_name = gettext_lazy("Фоновая операция")
+        verbose_name_plural = gettext_lazy("Фоновые операции")
         ordering = ("-created_at",)
         indexes = [models.Index(fields=("owner", "-created_at")), models.Index(fields=("status",))]
 
@@ -374,15 +382,15 @@ class KeyCheck(models.Model):
     учеников этим ключом не открыть. Создаётся `credentials_key --init`.
     """
 
-    ciphertext = models.TextField("Шифртекст")
-    created_at = models.DateTimeField("Создана", auto_now_add=True)
+    ciphertext = models.TextField(gettext_lazy("Шифртекст"))
+    created_at = models.DateTimeField(gettext_lazy("Создана"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Контрольная запись ключа"
-        verbose_name_plural = "Контрольные записи ключа"
+        verbose_name = gettext_lazy("Контрольная запись ключа")
+        verbose_name_plural = gettext_lazy("Контрольные записи ключа")
 
     def __str__(self) -> str:
-        return f"Контрольная запись от {self.created_at:%d.%m.%Y}"
+        return _("Контрольная запись от {date}").format(date=f"{self.created_at:%d.%m.%Y}")
 
 
 class SchoolRule(models.Model):
@@ -394,21 +402,21 @@ class SchoolRule(models.Model):
     удаляет строку. Правила — целые числа: проценты, дни, оценки.
     """
 
-    code = models.CharField("Правило", max_length=64, unique=True)
-    value = models.IntegerField("Значение")
+    code = models.CharField(gettext_lazy("Правило"), max_length=64, unique=True)
+    value = models.IntegerField(gettext_lazy("Значение"))
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто поменял",
+        verbose_name=gettext_lazy("Кто поменял"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    updated_at = models.DateTimeField("Когда поменяли", auto_now=True)
+    updated_at = models.DateTimeField(gettext_lazy("Когда поменяли"), auto_now=True)
 
     class Meta:
-        verbose_name = "Правило школы"
-        verbose_name_plural = "Правила школы"
+        verbose_name = gettext_lazy("Правило школы")
+        verbose_name_plural = gettext_lazy("Правила школы")
 
     def __str__(self) -> str:
         return f"{self.code} = {self.value}"

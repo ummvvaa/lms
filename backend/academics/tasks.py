@@ -12,6 +12,7 @@ import datetime as dt
 
 from celery import shared_task
 from django.utils import timezone
+from django.utils.translation import gettext_noop
 
 from academics import calendar as school_calendar
 
@@ -36,6 +37,7 @@ def remind_unmarked() -> int:
 def _remind(calendar, now, day, sent) -> int:
     from academics.models import Lesson, LessonStatus
     from academics.teachers import lesson_words
+    from core.i18n import language_of, render
     from core.models import Notification
     from materials.services import notify
 
@@ -57,10 +59,11 @@ def _remind(calendar, now, day, sent) -> int:
         notify(
             who,
             kind=Notification.Kind.LESSON_UNMARKED,
-            template="Не отмечен урок: {lesson}, {when}",
+            # шаблон переводит `notify` на язык учителя
+            template=gettext_noop("Не отмечен урок: {lesson}, {when}"),
             link=f"/lessons/{lesson.pk}",
             lesson=lesson_words(lesson),
-            when=f"{lesson.slot} урок",
+            when=render(language_of(who), "{slot} урок", slot=lesson.slot),
         )
         lesson.reminded_at = timezone.now()
         lesson.save(update_fields=["reminded_at"])
@@ -115,7 +118,7 @@ def draft_report(report_id: int, actor_id: int | None = None, overwrite: bool = 
 
     report = ParentReport.objects.select_related("student", "student__group").filter(pk=report_id).first()
     if report is None:
-        return "нет отчёта"
+        return "нет отчёта"  # i18n-skip: результат задачи Celery, человек его не видит
     actor = User.objects.filter(pk=actor_id).first() if actor_id else None
     return draft(report, actor=actor, overwrite=overwrite).draft_state
 

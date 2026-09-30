@@ -17,6 +17,7 @@ import datetime as dt
 from django.core import signing
 from django.http import FileResponse, Http404, StreamingHttpResponse
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from drf_spectacular.utils import extend_schema
 from rest_framework import status as http
 from rest_framework.decorators import api_view, parser_classes, permission_classes
@@ -42,7 +43,7 @@ def _forbid(detail: str) -> Response:
 
 
 def _not_found() -> Response:
-    return Response({"detail": "Не найдено"}, status=http.HTTP_404_NOT_FOUND)
+    return Response({"detail": _("Не найдено")}, status=http.HTTP_404_NOT_FOUND)
 
 
 def _bad(detail: str) -> Response:
@@ -142,7 +143,7 @@ def _parse_due(raw) -> dt.datetime | None:
     try:
         value = dt.datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
     except ValueError as error:
-        raise services.HomeworkRefused("Срок не читается") from error
+        raise services.HomeworkRefused(_("Срок не читается")) from error
     if timezone.is_naive(value):
         value = timezone.make_aware(value, timezone.get_current_timezone())
     return value
@@ -180,7 +181,7 @@ def lesson_assignment(request, pk: int):
         return _not_found()
     if request.method == "PUT":
         if not services.may_set(user, lesson):
-            return _forbid("ДЗ задаёт учитель, который ведёт урок")
+            return _forbid(_("ДЗ задаёт учитель, который ведёт урок"))
         try:
             services.save_assignment(
                 lesson,
@@ -223,7 +224,7 @@ def _upload_target(request):
 @permission_classes([IsAuthenticated])
 def upload_start(request):
     """Начать загрузку: строка файла и подписанная ссылка (или ссылки частей)."""
-    name = str(request.data.get("name") or "файл").strip()[:250] or "файл"
+    name = str(request.data.get("name") or _("файл")).strip()[:250] or _("файл")
     size = _int(request.data.get("size")) or 0
     declared = str(request.data.get("content_type") or "")[:120]
     try:
@@ -284,7 +285,7 @@ def upload_complete(request, pk: int):
     except Exception:
         store.abort(row.key, row.upload_id)
         row.delete()
-        return _bad("Файл не собрался из частей — загрузите его ещё раз")
+        return _bad(_("Файл не собрался из частей — загрузите его ещё раз"))
     size = store.size(row.key)
     try:
         found = hwfiles.refine(hwfiles.sniff(store.head(row.key, hwfiles.HEAD_BYTES)), row.name)
@@ -404,7 +405,7 @@ def local_file(request, token: str):
     if not target.is_file():
         raise Http404
     response = FileResponse(target.open("rb"), content_type=data.get("t") or "application/octet-stream")
-    disposition = _disposition(data.get("n") or "файл", data.get("t") or "")
+    disposition = _disposition(data.get("n") or _("файл"), data.get("t") or "")
     response["Content-Disposition"] = disposition.replace("attachment", "inline", 1) if data.get("i") else disposition
     response["Cache-Control"] = "private, no-store"
     response["X-Content-Type-Options"] = "nosniff"
@@ -453,7 +454,7 @@ def my_list(request):
     """«Домашние задания» ученика: к сдаче, на проверке, проверено, не сдано."""
     student = _student(request.user)
     if student is None:
-        return _forbid("Экран ученика")
+        return _forbid(_("Экран ученика"))
     rows = student_assignments(student)
     mine = {
         row.assignment_id: row
@@ -479,7 +480,7 @@ def my_detail(request, pk: int):
     """Задание ученика со своей работой. Чужое — 404."""
     student = _student(request.user)
     if student is None:
-        return _forbid("Экран ученика")
+        return _forbid(_("Экран ученика"))
     row = _my_assignment(student, pk)
     if row is None:
         return _not_found()
@@ -494,7 +495,7 @@ def _detail_payload(student, row: Assignment) -> dict:
         if submission is not None:
             services.may_change(submission, now)
         elif services.is_past_due(row, now) and row.late_policy == LatePolicy.CLOSE:
-            raise services.HomeworkRefused("Срок прошёл, учитель не принимает работы после срока")
+            raise services.HomeworkRefused(_("Срок прошёл, учитель не принимает работы после срока"))
         payload["may_change"] = True
         payload["change_note"] = ""
     except services.HomeworkRefused as error:
@@ -511,7 +512,7 @@ def my_submit(request, pk: int):
     """«Сдать работу»: файлы уже загружены, здесь — текст, ссылка и комментарий учителю."""
     student = _student(request.user)
     if student is None:
-        return _forbid("Экран ученика")
+        return _forbid(_("Экран ученика"))
     row = _my_assignment(student, pk)
     if row is None:
         return _not_found()
@@ -570,7 +571,7 @@ def _review_row(row: Assignment, now) -> dict:
 def review_list(request):
     """«Проверка ДЗ»: задания со сдачей по своим урокам, три вкладки."""
     if request.user.role == ROLE_STUDENT:
-        return _forbid("Экран учителя")
+        return _forbid(_("Экран учителя"))
     since = timezone.localdate() - dt.timedelta(days=LIST_DAYS)
     rows = _checkable(request.user).filter(lesson__date__gte=since).prefetch_related("submissions", "files")
     now = timezone.now()
@@ -681,6 +682,8 @@ def review_zip(request, pk: int):
         return _not_found()
     store = backend()
     rows = [f for f in row.files.all() if f.state == FileState.READY]
+    # имя считается здесь: архив собирается потоком, когда язык запроса уже снят
+    answer_name = _("ответ.txt")
 
     class Sink:
         def __init__(self) -> None:
@@ -716,7 +719,7 @@ def review_zip(request, pk: int):
                 source.close()
             text = "\n\n".join(part for part in (row.text, row.link, row.comment) if part)
             if text:
-                archive.writestr("ответ.txt", text)
+                archive.writestr(answer_name, text)
         yield from sink.chunks
 
     from core.exports import _disposition
@@ -741,7 +744,7 @@ def overview(request):
 
     user = request.user
     if user.role == ROLE_STUDENT:
-        return _forbid("Экран сотрудника")
+        return _forbid(_("Экран сотрудника"))
     students = visible_students(user).filter(is_active=True).select_related("group")
     code = str(request.query_params.get("group") or "")
     if code:

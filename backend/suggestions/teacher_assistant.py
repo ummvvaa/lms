@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import datetime as dt
 
+from django.utils.translation import gettext as _
+
 from academics import calendar as school_calendar
 from academics import teachers
 from academics.calendar import WEEKDAYS_SHORT, by_time, date_with_weekday, lesson_groups, scale_of, today, week_start
@@ -22,14 +24,12 @@ from academics.models import Course, LessonKind, Scheme
 from academics.payloads import kind_label
 from academics.results import course_context
 from core import school_rules
-from core.phrasing import counted
+from core.phrasing import tn
 from core.scope import visible_ids
 from students.models import Student
 
-#: «урок, урока, уроков» — формы для `counted`
-LESSONS = ("урок", "урока", "уроков")
-
-VOICE_RULES = """Ты помощник учителя школьной платформы.
+VOICE_RULES = (  # i18n-skip: промпт модели
+    """Ты помощник учителя школьной платформы.
 
 Тебе передают готовые факты из системы: уроки учителя, отметки и оценки
 его учеников. Твоя работа — коротко и по-русски сказать, что это значит
@@ -42,8 +42,9 @@ VOICE_RULES = """Ты помощник учителя школьной плат�
 - учеников называй ровно так, как они названы в фактах («ученик 3»):
   имена подставит система;
 - три-пять предложений или короткий список, без вступлений."""
+)  # fmt: skip
 
-CHAT_RULES = (
+CHAT_RULES = (  # i18n-skip: промпт модели
     "Ты помощник учителя школьной платформы. Отвечай коротко и по-русски. "
     "Ниже — факты из журналов учителя: только его ученики и его уроки. Отвечай "
     "только по этим фактам; об учениках, которых в фактах нет, скажи прямо, что "
@@ -69,16 +70,24 @@ def _name(student: Student) -> str:
     return f"{student.last_name} {student.first_name}".strip()
 
 
+def _lessons(number: int) -> str:
+    """«3 урока» — число уроков словом на языке ответа."""
+    return tn(number, "{n} урок|{n} урока|{n} уроков")
+
+
+def _swap(lesson, user) -> str:
+    """Пометка замены после названия урока."""
+    return " " + _("(замена)") if lesson.substitute_id == user.pk else ""
+
+
 def _lesson_line(lesson, user, calendar=None) -> str:
     """«10:15, 1 урок — английский BOSTON, СОР 1 (замена)»: время — по звонкам группы урока."""
     calendar = calendar or school_calendar.load()
     bell = calendar.bell(lesson.slot, lesson_groups(lesson))
     at = f"{bell[0]:%H:%M}, " if bell else ""
     kind = f", {kind_label(lesson)}" if lesson.kind != LessonKind.FO else ""
-    swap = " (замена)" if lesson.substitute_id == user.pk else ""
-    return (
-        f"{at}{lesson.slot} урок — {lesson.course.subject.short_title.lower()} {lesson.course.cohort.name}{kind}{swap}"
-    )
+    course = f"{lesson.course.subject.short_title.lower()} {lesson.course.cohort.name}"
+    return at + _("{slot} урок — {course}").format(slot=lesson.slot, course=course) + kind + _swap(lesson, user)
 
 
 def _quarter(calendar):
@@ -115,7 +124,7 @@ def _week(actor) -> tuple[str, list[str]]:
     # по времени звонков, а не по номеру: 1 урок 10 класса идёт после 2 урока 8-го
     rows = [lesson for lesson in by_time(teachers.lessons_of(actor, day, end), calendar) if lesson.is_live]
     if not rows:
-        return "До конца недели уроков у вас нет.", []
+        return _("До конца недели уроков у вас нет."), []
     todays = [lesson for lesson in rows if lesson.date == day]
     lines = [_lesson_line(lesson, actor, calendar) for lesson in todays]
     later: dict[dt.date, list] = {}
@@ -124,13 +133,21 @@ def _week(actor) -> tuple[str, list[str]]:
             later.setdefault(lesson.date, []).append(lesson)
     for date, lessons in sorted(later.items()):
         titles = ", ".join(
-            f"{lesson.course.subject.short_title.lower()} {lesson.course.cohort.name}"
-            + (" (замена)" if lesson.substitute_id == actor.pk else "")
+            f"{lesson.course.subject.short_title.lower()} {lesson.course.cohort.name}" + _swap(lesson, actor)
             for lesson in lessons
         )
-        lines.append(f"{WEEKDAYS_SHORT[date.weekday()]} {date:%d.%m} — {counted(len(lessons), LESSONS)}: {titles}")
-    head = f"Сегодня {counted(len(todays), LESSONS)}" if todays else "Сегодня уроков нет"
-    return f"{head}, до конца недели всего {counted(len(rows), LESSONS)}.", lines
+        lines.append(f"{WEEKDAYS_SHORT[date.weekday()]} {date:%d.%m} — {_lessons(len(lessons))}: {titles}")
+    head = (
+        tn(len(todays), "Сегодня {n} урок|Сегодня {n} урока|Сегодня {n} уроков") if todays else _("Сегодня уроков нет")
+    )
+    total = tn(
+        len(rows),
+        "{today}, до конца недели всего {n} урок.|"
+        "{today}, до конца недели всего {n} урока.|"
+        "{today}, до конца недели всего {n} уроков.",
+        today=head,
+    )
+    return total, lines
 
 
 def lessons_week(*, actor, **_kwargs) -> dict:
@@ -143,9 +160,12 @@ def unmarked(*, actor, **_kwargs) -> dict:
     calendar = school_calendar.load()
     rows = teachers.unmarked_lessons(actor, calendar)
     if not rows:
-        return _reply("Все прошедшие уроки за неделю отмечены.")
+        return _reply(_("Все прошедшие уроки за неделю отмечены."))
     lines = [f"{date_with_weekday(lesson.date)}, {_lesson_line(lesson, actor)}" for lesson in rows]
-    return _reply(f"Не отмечено уроков: {len(rows)}. Отметить можно в журнале или на экране урока.", lines=lines)
+    return _reply(
+        _("Не отмечено уроков: {count}. Отметить можно в журнале или на экране урока.").format(count=len(rows)),
+        lines=lines,
+    )
 
 
 def lagging(*, actor, student_ids=None, **_kwargs) -> dict:
@@ -170,21 +190,24 @@ def lagging(*, actor, student_ids=None, **_kwargs) -> dict:
             why: list[str] = []
             if course.subject.scheme == Scheme.FO:
                 if stats.fo_pct is not None and stats.fo_pct < fo_below:
-                    why.append(f"средний ФО {stats.fo_avg} из {stats.fo_max}")
+                    why.append(
+                        _("средний ФО {average} из {maximum}").format(average=stats.fo_avg, maximum=stats.fo_max)
+                    )
             else:
                 grade = stats.final or stats.quarter_grade
                 if grade is not None and grade < grade_below:
-                    why.append(f"за четверть выходит {grade}")
+                    why.append(_("за четверть выходит {grade}").format(grade=grade))
             if stats.attendance_pct is not None and stats.attendance_pct < attendance_below:
-                why.append(f"посещаемость {stats.attendance_pct} %")
+                why.append(_("посещаемость {percent} %").format(percent=stats.attendance_pct))
             if why:
                 lines.append(f"{_name(student)} — {title}: {', '.join(why)}")
     if not lines:
         return _reply(
-            f"Отстающих нет: четвертная не ниже {grade_below}, ФО не ниже {fo_below} %, "
-            f"посещаемость не ниже {attendance_below} %."
+            _(
+                "Отстающих нет: четвертная не ниже {grade}, ФО не ниже {fo} %, посещаемость не ниже {attendance} %."
+            ).format(grade=grade_below, fo=fo_below, attendance=attendance_below)
         )
-    return _reply(f"Отстают по вашим предметам: {len(lines)}.", lines=lines)
+    return _reply(_("Отстают по вашим предметам: {count}.").format(count=len(lines)), lines=lines)
 
 
 def no_grades(*, actor, student_ids=None, **_kwargs) -> dict:
@@ -211,11 +234,35 @@ def no_grades(*, actor, student_ids=None, **_kwargs) -> dict:
                 continue
             if any((lesson.pk, sid) in context.grades for lesson in context.lessons):
                 continue
-            lines.append(f"{_name(student)} — {title}: {counted(len(present), LESSONS)}, оценок нет")
-    window = counted(days, ("день", "дня", "дней"))
+            lines.append(
+                tn(
+                    len(present),
+                    "{student} — {course}: {n} урок, оценок нет|"
+                    "{student} — {course}: {n} урока, оценок нет|"
+                    "{student} — {course}: {n} уроков, оценок нет",
+                    student=_name(student),
+                    course=title,
+                )
+            )
     if not lines:
-        return _reply(f"За последние {window} у всех, кто был на уроках, есть оценки.")
-    return _reply(f"Без оценок за последние {window}: {len(lines)}.", lines=lines)
+        return _reply(
+            tn(
+                days,
+                "За последние {n} день у всех, кто был на уроках, есть оценки.|"
+                "За последние {n} дня у всех, кто был на уроках, есть оценки.|"
+                "За последние {n} дней у всех, кто был на уроках, есть оценки.",
+            )
+        )
+    return _reply(
+        tn(
+            days,
+            "Без оценок за последние {n} день: {count}.|"
+            "Без оценок за последние {n} дня: {count}.|"
+            "Без оценок за последние {n} дней: {count}.",
+            count=len(lines),
+        ),
+        lines=lines,
+    )
 
 
 def _assessments(actor) -> tuple[str, list[str]]:
@@ -230,15 +277,30 @@ def _assessments(actor) -> tuple[str, list[str]]:
         and not calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
     ]
     if not rows:
-        return f"В ближайшие {counted(ASSESSMENTS_AHEAD, ('день', 'дня', 'дней'))} СОР и СОЧ у вас нет.", []
+        none_ahead = tn(
+            ASSESSMENTS_AHEAD,
+            "В ближайшие {n} день СОР и СОЧ у вас нет.|"
+            "В ближайшие {n} дня СОР и СОЧ у вас нет.|"
+            "В ближайшие {n} дней СОР и СОЧ у вас нет.",
+        )
+        return none_ahead, []
     lines = []
     for lesson in rows:
-        top = f", максимум {lesson.max_score}" if lesson.max_score else ""
-        lines.append(
-            f"{date_with_weekday(lesson.date)}, {lesson.slot} урок — {kind_label(lesson)} · "
-            f"{lesson.course.subject.short_title.lower()} {lesson.course.cohort.name}{top}"
+        template = (
+            _("{date}, {slot} урок — {kind} · {course}, максимум {score}")
+            if lesson.max_score
+            else _("{date}, {slot} урок — {kind} · {course}")
         )
-    return f"Ближайшие СОР и СОЧ: {len(rows)}.", lines
+        lines.append(
+            template.format(
+                date=date_with_weekday(lesson.date),
+                slot=lesson.slot,
+                kind=kind_label(lesson),
+                course=f"{lesson.course.subject.short_title.lower()} {lesson.course.cohort.name}",
+                score=lesson.max_score,
+            )
+        )
+    return _("Ближайшие СОР и СОЧ: {count}.").format(count=len(rows)), lines
 
 
 def assessments(*, actor, **_kwargs) -> dict:
@@ -272,7 +334,8 @@ def facts(actor, student_ids=None) -> tuple[list[str], list[Student]]:
     ahead, works = _assessments(actor)
     out = [week, *days, ahead, *works]
     seen: list[Student] = []
-    for course in own_courses(actor):
+    # строки фактов уходят в модель, а не на экран
+    for course in own_courses(actor):  # i18n-skip: факты для промпта модели
         context = course_context(course, start, end, scale, quarter=quarter)
         title = f"{course.subject.title} {course.cohort.name}"
         for sid in context.student_ids:

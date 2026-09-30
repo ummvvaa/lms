@@ -16,12 +16,14 @@ import uuid
 from typing import Any
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from core.domains import domain_of_role
+from core.phrasing import tn
 from suggestions.llm import Attachment, LLMUnavailable, complete, image_from_bytes, is_available
 from suggestions.models import SuggestionSource
 
-UNIVERSITY_SCHEMA = {
+UNIVERSITY_SCHEMA = {  # i18n-skip: схема ответа модели
     "type": "object",
     "properties": {
         "name": {"type": "string", "description": "Официальное название вуза"},
@@ -58,25 +60,29 @@ UNIVERSITY_SCHEMA = {
     "required": ["name"],
 }
 
-UNIVERSITY_RULES = """Ты помогаешь завести карточку вуза в справочник школы.
+UNIVERSITY_RULES = (  # i18n-skip: промпт модели
+    """Ты помогаешь завести карточку вуза в справочник школы.
 
 Правила:
 - если чего-то не знаешь точно — оставь поле пустым, не додумывай;
 - пороги и дедлайны указывай только те, в которых уверен: их будет
   проверять человек, и выдуманное число дороже пустого поля;
 - дедлайн отдавай в формате ГГГГ-ММ-ДД."""
+)  # fmt: skip
 
 #: Добавка к правилам, когда доступен поиск. Список доменов всё равно
 #: задан в самом инструменте — это не запрет, а объяснение, зачем ссылка.
-UNIVERSITY_SEARCH_RULES = """
+UNIVERSITY_SEARCH_RULES = (  # i18n-skip: промпт модели
+    """
 Тебе доступен поиск по официальным сайтам. Пользуйся им:
 - пороги, дедлайны и требования бери со страниц приёмной комиссии;
 - к каждой программе приложи `source_url` (страницу, где это написано),
   `quote` (дословный фрагмент с числом) и `checked_at` (сегодняшняя дата);
 - без ссылки на страницу число лучше не приводить вовсе: оно не пройдёт
   проверку и будет отброшено."""
+)  # fmt: skip
 
-ACTIVITY_SCHEMA = {
+ACTIVITY_SCHEMA = {  # i18n-skip: схема ответа модели
     "type": "object",
     "properties": {
         "category": {
@@ -102,7 +108,7 @@ ACTIVITY_SCHEMA = {
     "required": ["category", "title"],
 }
 
-CERTIFICATE_SCHEMA = {
+CERTIFICATE_SCHEMA = {  # i18n-skip: схема ответа модели
     "type": "object",
     "properties": {
         "name": {"type": "string", "description": "Название соревнования или олимпиады"},
@@ -113,7 +119,7 @@ CERTIFICATE_SCHEMA = {
     "required": ["name"],
 }
 
-SCORE_SCHEMA = {
+SCORE_SCHEMA = {  # i18n-skip: схема ответа модели
     "type": "object",
     "properties": {
         "exam_type": {"type": "string", "enum": ["IELTS", "TOEFL", "SAT", "ACT"]},
@@ -130,12 +136,14 @@ SCORE_SCHEMA = {
     "required": ["exam_type"],
 }
 
-IMAGE_RULES = """Ты читаешь то, что на картинке, и ничего не добавляешь от себя.
+IMAGE_RULES = (  # i18n-skip: промпт модели
+    """Ты читаешь то, что на картинке, и ничего не добавляешь от себя.
 
 Правила:
 - пиши только то, что видно; нечитаемое поле оставляй пустым;
 - если не уверен в цифре, снижай `confidence` — человек проверит;
 - ничего не переводи и не «исправляй»: как написано, так и передавай."""
+)  # fmt: skip
 
 
 class NeedsModel(Exception):
@@ -145,8 +153,10 @@ class NeedsModel(Exception):
 def _guard_model() -> None:
     if not is_available():
         raise NeedsModel(
-            "Для распознавания нужна подключённая модель. Сейчас она недоступна — "
-            "заведите запись руками или попросите администратора проверить ключ и лимит расходов"
+            _(
+                "Для распознавания нужна подключённая модель. Сейчас она недоступна — "
+                "заведите запись руками или попросите администратора проверить ключ и лимит расходов"
+            )
         )
 
 
@@ -171,7 +181,7 @@ def parse_university(*, text: str, actor, role: str) -> dict:
     rules = UNIVERSITY_RULES + (UNIVERSITY_SEARCH_RULES if search else "")
 
     try:
-        response = complete(
+        response = complete(  # i18n-skip: промпт модели
             system=rules,
             user=f"Вуз: {text.strip()}\n\nСобери карточку: название, страну, сайт, программы и их требования.",
             purpose="parse_university",
@@ -182,12 +192,15 @@ def parse_university(*, text: str, actor, role: str) -> dict:
             search=search,
         )
     except LLMUnavailable as error:
-        raise NeedsModel(f"Модель не ответила: {error}") from error
+        raise NeedsModel(_("Модель не ответила: {error}").format(error=error)) from error
 
     payload = response.parsed or {}
     name = (payload.get("name") or "").strip()
     if not name:
-        return {"ok": False, "detail": "Не удалось понять, о каком вузе речь. Попробуйте полное название или ссылку"}
+        return {
+            "ok": False,
+            "detail": _("Не удалось понять, о каком вузе речь. Попробуйте полное название или ссылку"),
+        }
 
     dropped = _drop_foreign_sources(payload)
     rows = _university_rows(payload, source=text.strip())
@@ -200,14 +213,26 @@ def parse_university(*, text: str, actor, role: str) -> dict:
         rows=rows,
         source_ref=text.strip()[:250],
     )
-    detail = (
-        f"Карточка «{name}» разобрана. Записи заведутся неподтверждёнными: "
-        f"сверьте пороги и дедлайны с сайтом вуза перед тем, как снимать плашку"
-    )
+    sentences = [
+        _(
+            "Карточка «{name}» разобрана. Записи заведутся неподтверждёнными: "
+            "сверьте пороги и дедлайны с сайтом вуза перед тем, как снимать плашку"
+        ).format(name=name)
+    ]
     if response.searches:
-        detail += f". Модель сходила на официальные сайты ({response.searches} запроса) — ссылки видны в строках"
+        sentences.append(
+            tn(
+                response.searches,
+                "Модель сходила на официальные сайты ({n} запрос) — ссылки видны в строках|"
+                "Модель сходила на официальные сайты ({n} запроса) — ссылки видны в строках|"
+                "Модель сходила на официальные сайты ({n} запросов) — ссылки видны в строках",
+            )
+        )
     if dropped:
-        detail += f". Источники вне списка официальных сайтов отброшены: {', '.join(dropped[:3])}"
+        sentences.append(
+            _("Источники вне списка официальных сайтов отброшены: {urls}").format(urls=", ".join(dropped[:3]))
+        )
+    detail = ". ".join(sentences)
 
     return {
         "ok": True,
@@ -303,7 +328,7 @@ def _university_rows(payload: dict, *, source: str) -> list[dict[str, Any]]:
         page = (program.get("source_url") or "").strip()
         quote = (program.get("quote") or "").strip()
         checked = (program.get("checked_at") or "").strip()
-        reference = f"{page} · сверено {checked}" if page and checked else page
+        reference = f"{page} · сверено {checked}" if page and checked else page  # i18n-skip: сохраняется в базе
         add("universities.Program", program_key, "university", f"@{uni_key}", 0.8)
         add("universities.Program", program_key, "name", program.get("name"), 0.8)
         add("universities.Program", program_key, "level", program.get("level") or "bachelor")
@@ -369,7 +394,7 @@ def parse_activity(*, text: str, student_id: int, actor, role: str) -> dict:
     _guard_model()
     subjects = _known_subjects()
     try:
-        response = complete(
+        response = complete(  # i18n-skip: промпт модели
             system=(
                 "Ты разбираешь описание внеучебной активности ученика.\n"
                 "Правила: опирайся только на текст; предмет выбирай из списка школы, "
@@ -386,12 +411,12 @@ def parse_activity(*, text: str, student_id: int, actor, role: str) -> dict:
             max_tokens=700,
         )
     except LLMUnavailable as error:
-        raise NeedsModel(f"Модель не ответила: {error}") from error
+        raise NeedsModel(_("Модель не ответила: {error}").format(error=error)) from error
 
     payload = response.parsed or {}
     title = (payload.get("title") or "").strip()
     if not title:
-        return {"ok": False, "detail": "Не удалось понять, что это за активность — опишите подробнее"}
+        return {"ok": False, "detail": _("Не удалось понять, что это за активность — опишите подробнее")}
 
     key = uuid.uuid4().hex[:12]
     rows = [
@@ -463,7 +488,7 @@ def parse_activity(*, text: str, student_id: int, actor, role: str) -> dict:
         "rows": len(rows) - len(rejected),
         "strength": (payload.get("strength") or "").strip(),
         "missing": (payload.get("missing") or "").strip(),
-        "detail": f"Активность «{title}» разобрана — проверьте и примените",
+        "detail": _("Активность «{title}» разобрана — проверьте и примените").format(title=title),
     }
 
 
@@ -494,7 +519,7 @@ def parse_certificate(*, payload: bytes, media_type: str, student_id: int, actor
     from suggestions.engine import create_suggestion
 
     _guard_model()
-    parsed = _read_image(
+    parsed = _read_image(  # i18n-skip: промпт модели
         payload=payload,
         media_type=media_type,
         schema=CERTIFICATE_SCHEMA,
@@ -505,7 +530,7 @@ def parse_certificate(*, payload: bytes, media_type: str, student_id: int, actor
     )
     name = (parsed.get("name") or "").strip()
     if not name:
-        return {"ok": False, "detail": "На картинке не удалось прочитать название — попробуйте снимок почётче"}
+        return {"ok": False, "detail": _("На картинке не удалось прочитать название — попробуйте снимок почётче")}
 
     confidence = float(parsed.get("confidence") or 0.5)
     key = uuid.uuid4().hex[:12]
@@ -517,7 +542,7 @@ def parse_certificate(*, payload: bytes, media_type: str, student_id: int, actor
             "value": name,
             "new_object_key": key,
             "confidence": confidence,
-            "source_quote": "распознано с изображения",
+            "source_quote": "распознано с изображения",  # i18n-skip: сохраняется в строке предложения
         },
         {
             "student": student_id,
@@ -548,13 +573,13 @@ def parse_certificate(*, payload: bytes, media_type: str, student_id: int, actor
         source_type="image",
         command="parse_certificate",
         rows=rows,
-        source_ref="фото грамоты",
+        source_ref="фото грамоты",  # i18n-skip: источник сохраняется в базе
     )
     return {
         "ok": True,
         "suggestion": suggestion.pk,
         "rows": len(rows) - len(rejected),
-        "detail": f"С грамоты прочитано: «{name}». Проверьте и примените",
+        "detail": _("С грамоты прочитано: «{name}». Проверьте и примените").format(name=name),
     }
 
 
@@ -563,7 +588,7 @@ def parse_score_screenshot(*, payload: bytes, media_type: str, student_id: int, 
     from suggestions.engine import create_suggestion
 
     _guard_model()
-    parsed = _read_image(
+    parsed = _read_image(  # i18n-skip: промпт модели
         payload=payload,
         media_type=media_type,
         schema=SCORE_SCHEMA,
@@ -574,7 +599,7 @@ def parse_score_screenshot(*, payload: bytes, media_type: str, student_id: int, 
     )
     exam = (parsed.get("exam_type") or "").strip()
     if not exam:
-        return {"ok": False, "detail": "На картинке не видно, что это за экзамен — заведите попытку руками"}
+        return {"ok": False, "detail": _("На картинке не видно, что это за экзамен — заведите попытку руками")}
 
     confidence = float(parsed.get("confidence") or 0.5)
     key = uuid.uuid4().hex[:12]
@@ -586,7 +611,7 @@ def parse_score_screenshot(*, payload: bytes, media_type: str, student_id: int, 
             "value": exam,
             "new_object_key": key,
             "confidence": confidence,
-            "source_quote": "распознано со скриншота",
+            "source_quote": "распознано со скриншота",  # i18n-skip: сохраняется в строке предложения
         },
         {
             "student": student_id,
@@ -633,15 +658,15 @@ def parse_score_screenshot(*, payload: bytes, media_type: str, student_id: int, 
         source_type="image",
         command="parse_certificate",
         rows=rows,
-        source_ref="скриншот с баллами",
+        source_ref="скриншот с баллами",  # i18n-skip: источник сохраняется в базе
     )
     return {
         "ok": True,
         "suggestion": suggestion.pk,
         "rows": len(rows) - len(rejected),
-        "detail": (
-            f"Со скриншота прочитан {exam}. Балл попадёт в карточку только после того, как вы примените предложение"
-        ),
+        "detail": _(
+            "Со скриншота прочитан {exam}. Балл попадёт в карточку только после того, как вы примените предложение"
+        ).format(exam=exam),
     }
 
 
@@ -659,5 +684,5 @@ def _read_image(*, payload: bytes, media_type: str, schema: dict, purpose: str, 
             max_tokens=700,
         )
     except LLMUnavailable as error:
-        raise NeedsModel(f"Модель не ответила: {error}") from error
+        raise NeedsModel(_("Модель не ответила: {error}").format(error=error)) from error
     return response.parsed or {}

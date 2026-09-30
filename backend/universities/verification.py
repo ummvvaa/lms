@@ -9,17 +9,20 @@
 from __future__ import annotations
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
 from core.audit import record_change
 from core.domains import DOMAINS, Source
 from universities.models import AdmissionRequirement, AdmissionRound, Program, University
 
-#: Что можно подтвердить: ключ запроса → модель и человеческое название.
+#: Что можно подтвердить: ключ запроса → модель и отказ «не нашли» целой
+#: фразой: падеж названия в каждом языке свой, склеивать нельзя.
 VERIFIABLE = {
-    "university": (University, "вуз"),
-    "program": (Program, "программу"),
-    "requirement": (AdmissionRequirement, "требования"),
-    "round": (AdmissionRound, "раунд"),
+    "university": (University, gettext_lazy("Не нашли вуз с номером {pk}")),
+    "program": (Program, gettext_lazy("Не нашли программу с номером {pk}")),
+    "requirement": (AdmissionRequirement, gettext_lazy("Не нашли требования с номером {pk}")),
+    "round": (AdmissionRound, gettext_lazy("Не нашли раунд с номером {pk}")),
 }
 
 #: Роль, которой можно снимать признак.
@@ -59,11 +62,11 @@ def _mark(instance, *, verified: bool, actor) -> bool:
 def set_verified(kind: str, pk: int, *, verified: bool, actor) -> dict:
     """Подтвердить запись справочника (или вернуть плашку обратно)."""
     if kind not in VERIFIABLE:
-        raise NotVerifiable(f"Подтверждать «{kind}» система не умеет")
-    model, title = VERIFIABLE[kind]
+        raise NotVerifiable(_("Подтверждать «{kind}» система не умеет").format(kind=kind))
+    model, not_found = VERIFIABLE[kind]
     instance = model.objects.filter(pk=pk).first()
     if instance is None:
-        raise LookupError(f"Не нашли {title} с номером {pk}")
+        raise LookupError(str(not_found).format(pk=pk))
 
     changed = 1 if _mark(instance, verified=verified, actor=actor) else 0
     # у вуза сверяется вся его часть справочника разом: программы,
@@ -84,9 +87,9 @@ def set_verified(kind: str, pk: int, *, verified: bool, actor) -> dict:
         "changed": changed,
         "verification_note": instance.verification_note,
         "detail": (
-            f"Подтверждено, плашка снята. Затронуто записей: {changed}"
+            _("Подтверждено, плашка снята. Затронуто записей: {count}").format(count=changed)
             if verified
-            else f"Признак «не подтверждено» возвращён. Затронуто записей: {changed}"
+            else _("Признак «не подтверждено» возвращён. Затронуто записей: {count}").format(count=changed)
         ),
     }
 

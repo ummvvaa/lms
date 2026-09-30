@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from django.conf import settings
+from django.utils.translation import gettext_lazy
 
 from students.models import Student
 
@@ -147,11 +148,11 @@ def _sport_value(student: Student) -> float | None:
 
 #: Порядок важен только для читаемости — вклад задаётся весами.
 CALCULATORS = (
-    ("exam", "Экзамены", _exam_value),
-    ("admission", "Поступление", _admission_value),
-    ("talent", "Портфолио", _talent_value),
-    ("behavior", "Учебная дисциплина", _behavior_value),
-    ("sport", "Спорт", _sport_value),
+    ("exam", gettext_lazy("Экзамены"), _exam_value),
+    ("admission", gettext_lazy("Поступление"), _admission_value),
+    ("talent", gettext_lazy("Портфолио"), _talent_value),
+    ("behavior", gettext_lazy("Учебная дисциплина"), _behavior_value),
+    ("sport", gettext_lazy("Спорт"), _sport_value),
 )
 
 
@@ -166,7 +167,9 @@ def compute(student: Student) -> Readiness:
     raw: list[tuple[str, str, float]] = []
     skipped: list[tuple[str, str]] = []
     missing_weight = 0.0
-    for code, title, calc in CALCULATORS:
+    for code, lazy_title, calc in CALCULATORS:
+        # подпись — на языке ответа: дальше она уходит строкой в JSON и в промпты
+        title = str(lazy_title)
         value = calc(student)
         if value is None:
             missing_weight += weights.get(code, 0.0)

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext, gettext_lazy
 
 from core.archivable import Archivable
 from materials.storage import private_storage
@@ -24,15 +25,15 @@ from students.models import Student
 class SourceKind(models.TextChoices):
     """Что это за материал — обязательный выбор при загрузке."""
 
-    OWN_SOLUTION = "own_solution", "Моё решение"
-    OWN_ANALYSIS = "own_analysis", "Мой разбор"
-    THIRD_PARTY = "third_party", "Чужой материал"
+    OWN_SOLUTION = "own_solution", gettext_lazy("Моё решение")
+    OWN_ANALYSIS = "own_analysis", gettext_lazy("Мой разбор")
+    THIRD_PARTY = "third_party", gettext_lazy("Чужой материал")
 
 
 class MaterialStatus(models.TextChoices):
-    PENDING = "pending", "Ждёт проверки"
-    APPROVED = "approved", "Одобрен"
-    REJECTED = "rejected", "Отклонён"
+    PENDING = "pending", gettext_lazy("Ждёт проверки")
+    APPROVED = "approved", gettext_lazy("Одобрен")
+    REJECTED = "rejected", gettext_lazy("Отклонён")
 
 
 class MaterialRequest(Archivable):
@@ -44,27 +45,27 @@ class MaterialRequest(Archivable):
     """
 
     class Status(models.TextChoices):
-        OPEN = "open", "Открыт"
-        CLOSED = "closed", "Закрыт"
+        OPEN = "open", gettext_lazy("Открыт")
+        CLOSED = "closed", gettext_lazy("Закрыт")
 
     author = models.ForeignKey(
-        Student, verbose_name="Кто просит", related_name="material_requests", on_delete=models.CASCADE
+        Student, verbose_name=gettext_lazy("Кто просит"), related_name="material_requests", on_delete=models.CASCADE
     )
     subject = models.ForeignKey(
         "directories.OlympiadSubject",
-        verbose_name="Предмет",
+        verbose_name=gettext_lazy("Предмет"),
         related_name="material_requests",
         on_delete=models.PROTECT,
     )
-    topic = models.CharField("Тема", max_length=200)
-    text = models.TextField("Что именно нужно", blank=True)
-    status = models.CharField("Статус", max_length=8, choices=Status.choices, default=Status.OPEN)
-    closed_at = models.DateTimeField("Закрыт", null=True, blank=True)
-    created_at = models.DateTimeField("Создан", auto_now_add=True)
+    topic = models.CharField(gettext_lazy("Тема"), max_length=200)
+    text = models.TextField(gettext_lazy("Что именно нужно"), blank=True)
+    status = models.CharField(gettext_lazy("Статус"), max_length=8, choices=Status.choices, default=Status.OPEN)
+    closed_at = models.DateTimeField(gettext_lazy("Закрыт"), null=True, blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Создан"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Запрос материала"
-        verbose_name_plural = "Запросы материалов"
+        verbose_name = gettext_lazy("Запрос материала")
+        verbose_name_plural = gettext_lazy("Запросы материалов")
         ordering = ("-created_at",)
         indexes = [models.Index(fields=("status", "-created_at"))]
 
@@ -79,11 +80,16 @@ class StudyMaterial(Archivable):
     #: талантов карточки ученика нет, а раздел ведёт он, и свои разборы
     #: он кладёт туда же
     author = models.ForeignKey(
-        Student, verbose_name="Автор", related_name="materials", on_delete=models.CASCADE, null=True, blank=True
+        Student,
+        verbose_name=gettext_lazy("Автор"),
+        related_name="materials",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
     staff_author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Автор-сотрудник",
+        verbose_name=gettext_lazy("Автор-сотрудник"),
         related_name="uploaded_materials",
         on_delete=models.SET_NULL,
         null=True,
@@ -91,22 +97,24 @@ class StudyMaterial(Archivable):
     )
     subject = models.ForeignKey(
         "directories.OlympiadSubject",
-        verbose_name="Предмет",
+        verbose_name=gettext_lazy("Предмет"),
         related_name="materials",
         on_delete=models.PROTECT,
     )
-    topic = models.CharField("Тема", max_length=200)
-    title = models.CharField("Название", max_length=250)
-    description = models.TextField("Описание", blank=True)
-    source_kind = models.CharField("Тип источника", max_length=16, choices=SourceKind.choices)
+    topic = models.CharField(gettext_lazy("Тема"), max_length=200)
+    title = models.CharField(gettext_lazy("Название"), max_length=250)
+    description = models.TextField(gettext_lazy("Описание"), blank=True)
+    source_kind = models.CharField(gettext_lazy("Тип источника"), max_length=16, choices=SourceKind.choices)
     #: «подтверждаю, что имею право это публиковать» — без галочки
     #: материал не заводится, и Арман видит ответ при проверке
-    rights_confirmed = models.BooleanField("Право на публикацию подтверждено", default=False)
-    status = models.CharField("Статус", max_length=10, choices=MaterialStatus.choices, default=MaterialStatus.PENDING)
-    reject_reason = models.TextField("Причина отклонения", blank=True)
+    rights_confirmed = models.BooleanField(gettext_lazy("Право на публикацию подтверждено"), default=False)
+    status = models.CharField(
+        gettext_lazy("Статус"), max_length=10, choices=MaterialStatus.choices, default=MaterialStatus.PENDING
+    )
+    reject_reason = models.TextField(gettext_lazy("Причина отклонения"), blank=True)
     request = models.ForeignKey(
         MaterialRequest,
-        verbose_name="Закрывает запрос",
+        verbose_name=gettext_lazy("Закрывает запрос"),
         related_name="materials",
         on_delete=models.SET_NULL,
         null=True,
@@ -114,18 +122,18 @@ class StudyMaterial(Archivable):
     )
     #: счётчик «было полезно». Публичного рейтинга авторов нет и не будет:
     #: ценность в материале, а не в соревновании между детьми
-    helpful_count = models.PositiveIntegerField("Отметок «было полезно»", default=0)
+    helpful_count = models.PositiveIntegerField(gettext_lazy("Отметок «было полезно»"), default=0)
     reviewed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто проверил",
+        verbose_name=gettext_lazy("Кто проверил"),
         related_name="reviewed_materials",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    reviewed_at = models.DateTimeField("Когда проверен", null=True, blank=True)
-    created_at = models.DateTimeField("Загружен", auto_now_add=True)
-    updated_at = models.DateTimeField("Обновлён", auto_now=True)
+    reviewed_at = models.DateTimeField(gettext_lazy("Когда проверен"), null=True, blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Загружен"), auto_now_add=True)
+    updated_at = models.DateTimeField(gettext_lazy("Обновлён"), auto_now=True)
 
     @property
     def author_title(self) -> str:
@@ -137,8 +145,8 @@ class StudyMaterial(Archivable):
         return "—"
 
     class Meta:
-        verbose_name = "Материал"
-        verbose_name_plural = "Материалы"
+        verbose_name = gettext_lazy("Материал")
+        verbose_name_plural = gettext_lazy("Материалы")
         ordering = ("-created_at",)
         indexes = [
             models.Index(fields=("status", "-created_at")),
@@ -170,18 +178,20 @@ class MaterialFile(models.Model):
     прямой ссылкой скачать нельзя (`materials.views.download`).
     """
 
-    material = models.ForeignKey(StudyMaterial, verbose_name="Материал", related_name="files", on_delete=models.CASCADE)
-    file = models.FileField("Файл", upload_to=material_upload_to, storage=private_storage, max_length=300)
-    original_name = models.CharField("Имя файла", max_length=250)
-    content_type = models.CharField("Тип содержимого", max_length=100)
-    extension = models.CharField("Расширение", max_length=10)
-    size = models.PositiveIntegerField("Размер, байт")
-    checksum = models.CharField("Контрольная сумма", max_length=64)
-    created_at = models.DateTimeField("Загружен", auto_now_add=True)
+    material = models.ForeignKey(
+        StudyMaterial, verbose_name=gettext_lazy("Материал"), related_name="files", on_delete=models.CASCADE
+    )
+    file = models.FileField(gettext_lazy("Файл"), upload_to=material_upload_to, storage=private_storage, max_length=300)
+    original_name = models.CharField(gettext_lazy("Имя файла"), max_length=250)
+    content_type = models.CharField(gettext_lazy("Тип содержимого"), max_length=100)
+    extension = models.CharField(gettext_lazy("Расширение"), max_length=10)
+    size = models.PositiveIntegerField(gettext_lazy("Размер, байт"))
+    checksum = models.CharField(gettext_lazy("Контрольная сумма"), max_length=64)
+    created_at = models.DateTimeField(gettext_lazy("Загружен"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Файл материала"
-        verbose_name_plural = "Файлы материалов"
+        verbose_name = gettext_lazy("Файл материала")
+        verbose_name_plural = gettext_lazy("Файлы материалов")
         ordering = ("id",)
 
     def __str__(self) -> str:
@@ -192,14 +202,16 @@ class MaterialHelpful(models.Model):
     """«Было полезно». Один голос от ученика на материал."""
 
     material = models.ForeignKey(
-        StudyMaterial, verbose_name="Материал", related_name="helpful_marks", on_delete=models.CASCADE
+        StudyMaterial, verbose_name=gettext_lazy("Материал"), related_name="helpful_marks", on_delete=models.CASCADE
     )
-    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="helpful_marks", on_delete=models.CASCADE)
-    created_at = models.DateTimeField("Когда", auto_now_add=True)
+    student = models.ForeignKey(
+        Student, verbose_name=gettext_lazy("Ученик"), related_name="helpful_marks", on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField(gettext_lazy("Когда"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Отметка «было полезно»"
-        verbose_name_plural = "Отметки «было полезно»"
+        verbose_name = gettext_lazy("Отметка «было полезно»")
+        verbose_name_plural = gettext_lazy("Отметки «было полезно»")
         constraints = [
             models.UniqueConstraint(fields=("material", "student"), name="uniq_helpful_per_student"),
         ]
@@ -216,17 +228,20 @@ class MaterialComment(Archivable):
     """
 
     material = models.ForeignKey(
-        StudyMaterial, verbose_name="Материал", related_name="comments", on_delete=models.CASCADE
+        StudyMaterial, verbose_name=gettext_lazy("Материал"), related_name="comments", on_delete=models.CASCADE
     )
     author = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name="Автор", related_name="material_comments", on_delete=models.CASCADE
+        settings.AUTH_USER_MODEL,
+        verbose_name=gettext_lazy("Автор"),
+        related_name="material_comments",
+        on_delete=models.CASCADE,
     )
-    text = models.TextField("Текст")
-    created_at = models.DateTimeField("Когда", auto_now_add=True)
+    text = models.TextField(gettext_lazy("Текст"))
+    created_at = models.DateTimeField(gettext_lazy("Когда"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Комментарий к материалу"
-        verbose_name_plural = "Комментарии к материалам"
+        verbose_name = gettext_lazy("Комментарий к материалу")
+        verbose_name_plural = gettext_lazy("Комментарии к материалам")
         ordering = ("created_at", "id")
         indexes = [models.Index(fields=("material", "created_at"))]
 
@@ -238,12 +253,12 @@ class MaterialReport(models.Model):
     """Жалоба на материал или комментарий. Уходит Арману."""
 
     class Status(models.TextChoices):
-        OPEN = "open", "Ждёт разбора"
-        RESOLVED = "resolved", "Разобрана"
+        OPEN = "open", gettext_lazy("Ждёт разбора")
+        RESOLVED = "resolved", gettext_lazy("Разобрана")
 
     material = models.ForeignKey(
         StudyMaterial,
-        verbose_name="Материал",
+        verbose_name=gettext_lazy("Материал"),
         related_name="reports",
         on_delete=models.CASCADE,
         null=True,
@@ -251,7 +266,7 @@ class MaterialReport(models.Model):
     )
     comment = models.ForeignKey(
         MaterialComment,
-        verbose_name="Комментарий",
+        verbose_name=gettext_lazy("Комментарий"),
         related_name="reports",
         on_delete=models.CASCADE,
         null=True,
@@ -259,19 +274,19 @@ class MaterialReport(models.Model):
     )
     reporter = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто пожаловался",
+        verbose_name=gettext_lazy("Кто пожаловался"),
         related_name="material_reports",
         on_delete=models.CASCADE,
     )
-    reason = models.TextField("В чём дело")
-    status = models.CharField("Статус", max_length=10, choices=Status.choices, default=Status.OPEN)
-    resolution = models.TextField("Что сделали", blank=True)
-    created_at = models.DateTimeField("Когда", auto_now_add=True)
-    resolved_at = models.DateTimeField("Разобрана", null=True, blank=True)
+    reason = models.TextField(gettext_lazy("В чём дело"))
+    status = models.CharField(gettext_lazy("Статус"), max_length=10, choices=Status.choices, default=Status.OPEN)
+    resolution = models.TextField(gettext_lazy("Что сделали"), blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Когда"), auto_now_add=True)
+    resolved_at = models.DateTimeField(gettext_lazy("Разобрана"), null=True, blank=True)
 
     class Meta:
-        verbose_name = "Жалоба"
-        verbose_name_plural = "Жалобы"
+        verbose_name = gettext_lazy("Жалоба")
+        verbose_name_plural = gettext_lazy("Жалобы")
         ordering = ("-created_at",)
         constraints = [
             models.CheckConstraint(
@@ -281,7 +296,7 @@ class MaterialReport(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"Жалоба #{self.pk}"
+        return gettext("Жалоба #{number}").format(number=self.pk)
 
 
 class MaterialCollection(models.Model):
@@ -291,11 +306,11 @@ class MaterialCollection(models.Model):
     подборка это маршрут, а не куча.
     """
 
-    name = models.CharField("Название", max_length=200)
-    description = models.TextField("Описание", blank=True)
+    name = models.CharField(gettext_lazy("Название"), max_length=200)
+    description = models.TextField(gettext_lazy("Описание"), blank=True)
     subject = models.ForeignKey(
         "directories.OlympiadSubject",
-        verbose_name="Предмет",
+        verbose_name=gettext_lazy("Предмет"),
         related_name="collections",
         on_delete=models.PROTECT,
         null=True,
@@ -303,17 +318,17 @@ class MaterialCollection(models.Model):
     )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто собрал",
+        verbose_name=gettext_lazy("Кто собрал"),
         related_name="material_collections",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    created_at = models.DateTimeField("Создана", auto_now_add=True)
+    created_at = models.DateTimeField(gettext_lazy("Создана"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Подборка материалов"
-        verbose_name_plural = "Подборки материалов"
+        verbose_name = gettext_lazy("Подборка материалов")
+        verbose_name_plural = gettext_lazy("Подборки материалов")
         ordering = ("name",)
 
     def __str__(self) -> str:
@@ -324,16 +339,16 @@ class CollectionItem(models.Model):
     """Материал внутри подборки со своим порядком."""
 
     collection = models.ForeignKey(
-        MaterialCollection, verbose_name="Подборка", related_name="items", on_delete=models.CASCADE
+        MaterialCollection, verbose_name=gettext_lazy("Подборка"), related_name="items", on_delete=models.CASCADE
     )
     material = models.ForeignKey(
-        StudyMaterial, verbose_name="Материал", related_name="in_collections", on_delete=models.CASCADE
+        StudyMaterial, verbose_name=gettext_lazy("Материал"), related_name="in_collections", on_delete=models.CASCADE
     )
-    position = models.PositiveSmallIntegerField("Порядок", default=100)
+    position = models.PositiveSmallIntegerField(gettext_lazy("Порядок"), default=100)
 
     class Meta:
-        verbose_name = "Материал в подборке"
-        verbose_name_plural = "Материалы в подборках"
+        verbose_name = gettext_lazy("Материал в подборке")
+        verbose_name_plural = gettext_lazy("Материалы в подборках")
         ordering = ("position", "id")
         constraints = [
             models.UniqueConstraint(fields=("collection", "material"), name="uniq_material_per_collection"),
@@ -353,22 +368,22 @@ class ResourceCategory(models.Model):
     и новая категория не должна означать выкат.
     """
 
-    code = models.SlugField("Код", max_length=40, unique=True)
-    name = models.CharField("Название", max_length=120)
-    description = models.CharField("Описание", max_length=250, blank=True)
+    code = models.SlugField(gettext_lazy("Код"), max_length=40, unique=True)
+    name = models.CharField(gettext_lazy("Название"), max_length=120)
+    description = models.CharField(gettext_lazy("Описание"), max_length=250, blank=True)
     #: смысловой цвет полосы карточки — имя токена, а не число (дизайн-система)
     accent = models.CharField(
-        "Цвет полосы",
+        gettext_lazy("Цвет полосы"),
         max_length=16,
         blank=True,
         help_text="brand, teal, indigo, ok, warn — токен из дизайн-системы",
     )
-    order = models.PositiveSmallIntegerField("Порядок", default=100)
-    is_active = models.BooleanField("Показывать", default=True)
+    order = models.PositiveSmallIntegerField(gettext_lazy("Порядок"), default=100)
+    is_active = models.BooleanField(gettext_lazy("Показывать"), default=True)
 
     class Meta:
-        verbose_name = "Категория материалов"
-        verbose_name_plural = "Категории материалов"
+        verbose_name = gettext_lazy("Категория материалов")
+        verbose_name_plural = gettext_lazy("Категории материалов")
         ordering = ("order", "name")
 
     def __str__(self) -> str:
@@ -384,32 +399,32 @@ class Resource(models.Model):
     директоров, каждый по своей теме, и в строке видно, кто написал.
     """
 
-    title = models.CharField("Заголовок", max_length=200)
+    title = models.CharField(gettext_lazy("Заголовок"), max_length=200)
     category = models.ForeignKey(
-        ResourceCategory, verbose_name="Категория", related_name="resources", on_delete=models.PROTECT
+        ResourceCategory, verbose_name=gettext_lazy("Категория"), related_name="resources", on_delete=models.PROTECT
     )
-    summary = models.CharField("Короткое описание", max_length=300, blank=True)
-    body = models.TextField("Текст", blank=True)
-    reading_minutes = models.PositiveSmallIntegerField("Время чтения, минут", default=5)
+    summary = models.CharField(gettext_lazy("Короткое описание"), max_length=300, blank=True)
+    body = models.TextField(gettext_lazy("Текст"), blank=True)
+    reading_minutes = models.PositiveSmallIntegerField(gettext_lazy("Время чтения, минут"), default=5)
     #: метки строкой через запятую — как требуемые предметы у требований вуза
-    tags = models.CharField("Метки", max_length=250, blank=True, help_text="Через запятую")
-    is_featured = models.BooleanField("Рекомендуем", default=False)
-    is_published = models.BooleanField("Показывать ученикам", default=True)
+    tags = models.CharField(gettext_lazy("Метки"), max_length=250, blank=True, help_text="Через запятую")
+    is_featured = models.BooleanField(gettext_lazy("Рекомендуем"), default=False)
+    is_published = models.BooleanField(gettext_lazy("Показывать ученикам"), default=True)
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Автор",
+        verbose_name=gettext_lazy("Автор"),
         related_name="resources",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    published_on = models.DateField("Дата публикации", null=True, blank=True)
-    created_at = models.DateTimeField("Создан", auto_now_add=True)
-    updated_at = models.DateTimeField("Обновлён", auto_now=True)
+    published_on = models.DateField(gettext_lazy("Дата публикации"), null=True, blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Создан"), auto_now_add=True)
+    updated_at = models.DateTimeField(gettext_lazy("Обновлён"), auto_now=True)
 
     class Meta:
-        verbose_name = "Материал раздела «Ресурсы»"
-        verbose_name_plural = "Материалы раздела «Ресурсы»"
+        verbose_name = gettext_lazy("Материал раздела «Ресурсы»")
+        verbose_name_plural = gettext_lazy("Материалы раздела «Ресурсы»")
         ordering = ("-is_featured", "-published_on", "-created_at")
         indexes = [models.Index(fields=("category", "is_published"))]
 
@@ -428,15 +443,19 @@ class ResourceRead(models.Model):
     награждать, иначе выгоднее отметить всё подряд (инвариант №12).
     """
 
-    resource = models.ForeignKey(Resource, verbose_name="Материал", related_name="reads", on_delete=models.CASCADE)
-    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="resource_reads", on_delete=models.CASCADE)
-    created_at = models.DateTimeField("Когда", auto_now_add=True)
+    resource = models.ForeignKey(
+        Resource, verbose_name=gettext_lazy("Материал"), related_name="reads", on_delete=models.CASCADE
+    )
+    student = models.ForeignKey(
+        Student, verbose_name=gettext_lazy("Ученик"), related_name="resource_reads", on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField(gettext_lazy("Когда"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Прочитанный материал"
-        verbose_name_plural = "Прочитанные материалы"
+        verbose_name = gettext_lazy("Прочитанный материал")
+        verbose_name_plural = gettext_lazy("Прочитанные материалы")
         ordering = ("-created_at",)
         constraints = [models.UniqueConstraint(fields=("resource", "student"), name="uniq_resource_read")]
 
     def __str__(self) -> str:
-        return f"{self.student} прочитал «{self.resource}»"
+        return gettext("{student} прочитал «{resource}»").format(student=self.student, resource=self.resource)

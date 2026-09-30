@@ -16,7 +16,9 @@ import datetime as dt
 
 from django.conf import settings
 from django.db import IntegrityError
+from django.utils.translation import gettext_noop
 
+from core.i18n import language_of, render
 from core.models import Notification
 from roadmap.models import Task, TaskCategory, TaskPriority, TaskStatus
 from students.models import ExamGoal
@@ -49,15 +51,21 @@ def create_registration_tasks(today: dt.date | None = None) -> int:
         .select_related("exam", "student")
     )
     for goal in goals:
+        # задача ложится ученику, а заводит её фоновый прогон: текст — на языке ученика
+        lang = language_of(goal.student.user)
         try:
             Task.objects.create(
                 student=goal.student,
-                title=f"Зарегистрироваться на экзамен {goal.exam.name}",
+                title=render(lang, "Зарегистрироваться на экзамен {exam}", exam=goal.exam.name),
                 category=TaskCategory.TEST,
                 priority=TaskPriority.HIGH,
                 status=TaskStatus.TODO,
-                description=f"Экзамен {goal.exam.name} назначен на {goal.exam_date:%d.%m.%Y} — "
-                "проверьте регистрацию заранее",
+                description=render(
+                    lang,
+                    "Экзамен {exam} назначен на {date} — проверьте регистрацию заранее",
+                    exam=goal.exam.name,
+                    date=f"{goal.exam_date:%d.%m.%Y}",
+                ),
                 exam_goal=goal,
             )
             created += 1
@@ -89,15 +97,19 @@ def create_scholarship_tasks(today: dt.date | None = None) -> int:
         .select_related("scholarship", "student")
     )
     for row in rows:
+        lang = language_of(row.student.user)
         try:
             Task.objects.create(
                 student=row.student,
-                title=f"Подать на стипендию {row.scholarship.name}",
+                title=render(lang, "Подать на стипендию {name}", name=row.scholarship.name),
                 category=TaskCategory.FINANCE,
                 priority=TaskPriority.HIGH,
                 status=TaskStatus.TODO,
-                description=f"Дедлайн подачи — {row.scholarship.deadline:%d.%m.%Y}. "
-                "Срок берётся из справочника: сдвинется там — сдвинется здесь",
+                description=render(
+                    lang,
+                    "Дедлайн подачи — {date}. Срок берётся из справочника: сдвинется там — сдвинется здесь",
+                    date=f"{row.scholarship.deadline:%d.%m.%Y}",
+                ),
                 scholarship=row.scholarship,
             )
             created += 1
@@ -115,7 +127,6 @@ def _notify_once(user, *, kind: str, template: str, link: str, **params) -> bool
     """
     from django.utils import timezone
 
-    from core.i18n import language_of, render
     from materials.services import notify
 
     if user is None:
@@ -141,17 +152,20 @@ def send_event_reminders(today: dt.date | None = None) -> int:
         sent += _notify_once(
             goal.student.user,
             kind=Notification.Kind.EVENT_REMINDER,
-            template="Экзамен {exam} через {days} дней — {date}",
+            template=gettext_noop(
+                "Экзамен {exam} через {n} день — {date}|Экзамен {exam} через {n} дня — {date}|"
+                "Экзамен {exam} через {n} дней — {date}"
+            ),
             link="/calendar",
             exam=goal.exam.name,
-            days=settings.REMIND_EXAM_DAYS,
+            n=settings.REMIND_EXAM_DAYS,
             date=f"{goal.exam_date:%d.%m.%Y}",
         )
     for goal in ExamGoal.objects.filter(registration_date=exam_day).select_related("exam", "student__user"):
         sent += _notify_once(
             goal.student.user,
             kind=Notification.Kind.EVENT_REMINDER,
-            template="Регистрация на {exam} закрывается {date}",
+            template=gettext_noop("Регистрация на {exam} закрывается {date}"),
             link="/calendar",
             exam=goal.exam.name,
             date=f"{goal.registration_date:%d.%m.%Y}",
@@ -165,7 +179,7 @@ def send_event_reminders(today: dt.date | None = None) -> int:
         sent += _notify_once(
             row.student.user,
             kind=Notification.Kind.EVENT_REMINDER,
-            template="Дедлайн подачи в {university} — {date}",
+            template=gettext_noop("Дедлайн подачи в {university} — {date}"),
             link="/universities",
             university=row.program.university.name,
             date=f"{row.admission_round.deadline:%d.%m.%Y}",
@@ -179,7 +193,7 @@ def send_event_reminders(today: dt.date | None = None) -> int:
         sent += _notify_once(
             row.student.user,
             kind=Notification.Kind.EVENT_REMINDER,
-            template="Дедлайн стипендии {name} — {date}",
+            template=gettext_noop("Дедлайн стипендии {name} — {date}"),
             link="/scholarships",
             name=row.scholarship.name,
             date=f"{row.scholarship.deadline:%d.%m.%Y}",
@@ -195,7 +209,7 @@ def send_event_reminders(today: dt.date | None = None) -> int:
         sent += _notify_once(
             task.student.user,
             kind=Notification.Kind.EVENT_REMINDER,
-            template="Срок задачи «{title}» — {date}",
+            template=gettext_noop("Срок задачи «{title}» — {date}"),
             link="/roadmap",
             title=task.title,
             date=f"{task.due_date:%d.%m.%Y}",
@@ -211,7 +225,7 @@ def send_event_reminders(today: dt.date | None = None) -> int:
             sent += _notify_once(
                 task.student.user,
                 kind=Notification.Kind.EVENT_REMINDER,
-                template="Срок задачи «{title}» — {date}",
+                template=gettext_noop("Срок задачи «{title}» — {date}"),
                 link="/roadmap",
                 title=task.title,
                 date=f"{task.effective_due_date:%d.%m.%Y}",

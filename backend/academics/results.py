@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 
 from django.db import transaction
+from django.utils.translation import gettext as _
 
 from academics import cache
 from academics.calendar import SchoolCalendar, today
@@ -535,7 +536,7 @@ def set_finals(course: Course, quarter: Quarter, rows: list[dict], *, actor, sca
 
     role = getattr(actor, "role", "")
     if quarter.is_closed and role == ROLE_TEACHER:
-        raise ResultRefused("Приём итогов закрыт: изменить итог может только Кымбат или администратор")
+        raise ResultRefused(_("Приём итогов закрыт: изменить итог может только Кымбат или администратор"))
     context = course_context(course, quarter.starts, quarter.ends, scale, quarter=quarter)
     written = 0
     for raw in rows:
@@ -560,9 +561,9 @@ def set_finals(course: Course, quarter: Quarter, rows: list[dict], *, actor, sca
                 written += 1
             continue
         if grade < 2 or grade > 5:
-            raise ResultRefused("Итог — от 2 до 5")
+            raise ResultRefused(_("Итог — от 2 до 5"))
         if computed is not None and grade != computed and not reason:
-            raise ResultRefused("Итог отличается от расчёта: напишите причину")
+            raise ResultRefused(_("Итог отличается от расчёта: напишите причину"))
         if existing is None:
             existing = QuarterResult.objects.create(
                 course=course,

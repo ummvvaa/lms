@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from django.db import models
+from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 from core.audit import apply_changes, model_label
@@ -231,4 +232,4 @@ class ReadOnlyDomainSerializer(DomainModelSerializer):
     """Чужой домен: видно, но не редактируется."""
 
     def update(self, instance, validated_data):  # pragma: no cover — запись запрещена
-        raise serializers.ValidationError("Этот домен ведёт другой директор")
+        raise serializers.ValidationError(_("Этот домен ведёт другой директор"))

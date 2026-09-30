@@ -13,6 +13,10 @@ import hashlib
 from dataclasses import dataclass
 
 from django.conf import settings
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
+
+from core.phrasing import tn
 
 #: Сигнатуры разрешённых форматов: первые байты → (тип, расширение).
 #: JPEG и PNG начинаются жёстко, PDF — с «%PDF-».
@@ -22,7 +26,7 @@ SIGNATURES: tuple[tuple[bytes, str, str], ...] = (
     (b"\x89PNG\r\n\x1a\n", "image/png", ".png"),
 )
 
-HUMAN_FORMATS = "PDF, JPG или PNG"
+HUMAN_FORMATS = gettext_lazy("PDF, JPG или PNG")
 
 
 class FileRejected(ValueError):
@@ -52,10 +56,14 @@ def limits() -> dict:
     return {
         "max_file_mb": int(getattr(settings, "MATERIAL_MAX_FILE_MB", 15)),
         "max_files": max_files(),
-        "formats": HUMAN_FORMATS,
-        "hint": (
-            f"{HUMAN_FORMATS}, до {int(getattr(settings, 'MATERIAL_MAX_FILE_MB', 15))} МБ на файл, "
-            f"не больше {max_files()} файлов в материале"
+        "formats": str(HUMAN_FORMATS),
+        "hint": tn(
+            max_files(),
+            "{formats}, до {size} МБ на файл, не больше {n} файла в материале|"
+            "{formats}, до {size} МБ на файл, не больше {n} файлов в материале|"
+            "{formats}, до {size} МБ на файл, не больше {n} файлов в материале",
+            formats=HUMAN_FORMATS,
+            size=int(getattr(settings, "MATERIAL_MAX_FILE_MB", 15)),
         ),
     }
 
@@ -68,12 +76,12 @@ def inspect(upload) -> Inspected:
     """Прочитать файл и убедиться, что он такой, каким назвался."""
     size = getattr(upload, "size", 0) or 0
     if size == 0:
-        raise FileRejected(f"Файл «{upload.name}» пустой — проверьте, что выгрузилось")
+        raise FileRejected(_("Файл «{name}» пустой — проверьте, что выгрузилось").format(name=upload.name))
     if size > max_file_bytes():
         raise FileRejected(
-            f"Файл «{upload.name}» весит {_megabytes(size)} МБ, "
-            f"а можно до {int(getattr(settings, 'MATERIAL_MAX_FILE_MB', 15))} МБ. "
-            f"Сожмите его или разбейте на части"
+            _("Файл «{name}» весит {size} МБ, а можно до {limit} МБ. Сожмите его или разбейте на части").format(
+                name=upload.name, size=_megabytes(size), limit=int(getattr(settings, "MATERIAL_MAX_FILE_MB", 15))
+            )
         )
 
     digest = hashlib.sha256()
@@ -90,8 +98,10 @@ def inspect(upload) -> Inspected:
             return Inspected(content_type=content_type, extension=extension, size=size, checksum=digest.hexdigest())
 
     raise FileRejected(
-        f"«{upload.name}» не похож на {HUMAN_FORMATS}: имя файла ни о чём не говорит, "
-        f"а внутри оказалось что-то другое. Пересохраните файл в нужном формате"
+        _(
+            "«{name}» не похож на {formats}: имя файла ни о чём не говорит, "
+            "а внутри оказалось что-то другое. Пересохраните файл в нужном формате"
+        ).format(name=upload.name, formats=HUMAN_FORMATS)
     )
 
 
@@ -100,6 +110,15 @@ def check_count(existing: int, adding: int) -> None:
     total = existing + adding
     if total > max_files():
         raise FileRejected(
-            f"В материале уже {existing} файлов, добавляете ещё {adding} — "
-            f"вместе больше {max_files()}. Уберите лишние или заведите второй материал"
+            tn(
+                existing,
+                "В материале уже {n} файл, добавляете ещё {adding} — вместе больше {limit}. "
+                "Уберите лишние или заведите второй материал|"
+                "В материале уже {n} файла, добавляете ещё {adding} — вместе больше {limit}. "
+                "Уберите лишние или заведите второй материал|"
+                "В материале уже {n} файлов, добавляете ещё {adding} — вместе больше {limit}. "
+                "Уберите лишние или заведите второй материал",
+                adding=adding,
+                limit=max_files(),
+            )
         )

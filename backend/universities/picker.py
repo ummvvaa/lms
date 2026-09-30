@@ -15,6 +15,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from django.utils.translation import gettext as _
+
+from core.phrasing import listing
 from students.models import Student
 from suggestions.llm import LLMUnavailable, complete, is_available
 from suggestions.name_matching import normalize, stem
@@ -27,18 +30,19 @@ TOP_N = 6
 #: Сколько программ отдаём модели. Больше — лишний контекст и лишние деньги.
 CANDIDATES = 40
 
-SYSTEM = """Ты подбираешь ученику программы из справочника школы.
+SYSTEM = (  # i18n-skip: промпт модели ИИ, язык ответа настраивается отдельно
+    "Ты подбираешь ученику программы из справочника школы.\n"
+    "\n"
+    "Правила, нарушать нельзя:\n"
+    "- выбирай ТОЛЬКО из переданного списка программ и ссылайся на них по полю id;\n"
+    "- ничего не добавляй от себя: вуза, которого нет в списке, не существует;\n"
+    "- не обещай вероятность поступления и не употребляй слова «шанс», «прогноз»,\n"
+    "  «вероятность» — есть только соответствие требованиям в процентах;\n"
+    "- по каждой позиции скажи: почему подходит, чего не хватает, какой раунд ближайший;\n"
+    "- пиши по-русски, коротко и по делу.\n"
+)
 
-Правила, нарушать нельзя:
-- выбирай ТОЛЬКО из переданного списка программ и ссылайся на них по полю id;
-- ничего не добавляй от себя: вуза, которого нет в списке, не существует;
-- не обещай вероятность поступления и не употребляй слова «шанс», «прогноз»,
-  «вероятность» — есть только соответствие требованиям в процентах;
-- по каждой позиции скажи: почему подходит, чего не хватает, какой раунд ближайший;
-- пиши по-русски, коротко и по делу.
-"""
-
-RESULT_SCHEMA = {
+RESULT_SCHEMA = {  # i18n-skip: схема ответа для модели ИИ, людям не показывается
     "type": "object",
     "properties": {
         "picks": {
@@ -59,7 +63,7 @@ RESULT_SCHEMA = {
 }
 
 #: Слова, которых в подборке быть не должно (инвариант №11).
-FORBIDDEN = re.compile(r"шанс|вероятност|прогноз", re.IGNORECASE)
+FORBIDDEN = re.compile(r"шанс|вероятност|прогноз", re.IGNORECASE)  # i18n-skip: регулярка по ответу модели
 
 
 @dataclass
@@ -105,7 +109,7 @@ def _next_round(card: dict) -> dict | None:
 #: Страны, о которых спрашивают ученики. Это справочник слов, а не вузов:
 #: он нужен, чтобы отличить «нет такой страны в нашем справочнике»
 #: от «в запросе вообще не было страны» (инвариант №10).
-COUNTRY_WORDS = (
+COUNTRY_WORDS = (  # i18n-skip: словарь для распознавания запроса ученика
     "Австралия",
     "Австрия",
     "Азербайджан",
@@ -147,7 +151,7 @@ COUNTRY_WORDS = (
 
 #: Как ученики называют специальности по-русски. Таблица перевода, не выдумка:
 #: сами программы по-прежнему берутся только из справочника.
-MAJOR_WORDS = {
+MAJOR_WORDS = {  # i18n-skip: словарь для распознавания запроса ученика
     "экономика": "Economics",
     "экономику": "Economics",
     "финансы": "Economics",
@@ -252,10 +256,10 @@ def _catalog_for(student: Student, filters: CatalogFilters) -> list[dict]:
 def _offline_reason(card: dict) -> tuple[str, str]:
     """Почему подходит и чего не хватает — словами движка соответствия."""
     if not card["has_requirements"]:
-        return ("Требования этой программы ещё не заведены в справочнике", "")
+        return (_("Требования этой программы ещё не заведены в справочнике"), "")
     if card["is_open"]:
-        return ("Вы проходите по всем заведённым требованиям", "")
-    return (f"Соответствие требованиям {card['percent']}%", card["summary"])
+        return (_("Вы проходите по всем заведённым требованиям"), "")
+    return (_("Соответствие требованиям {percent}%").format(percent=card["percent"]), card["summary"])
 
 
 def pick(*, student: Student, text: str, actor=None) -> PickResult:
@@ -271,13 +275,19 @@ def pick(*, student: Student, text: str, actor=None) -> PickResult:
 
     if not cards:
         # честный отказ вместо выдумки: справочник по этому запросу пуст
-        asked = missing or " и ".join(x for x in (filters.country, filters.major) if x) or text.strip()
+        asked = missing or listing([x for x in (filters.country, filters.major) if x]) or text.strip()
         fallback = _catalog_for(student, CatalogFilters())
-        result.note = f"В справочнике школы нет программ по запросу «{asked}». " + (
-            "Вот что в нём есть — попросите директора по поступлению добавить нужные вузы."
+        result.note = (
+            _(
+                "В справочнике школы нет программ по запросу «{asked}». Вот что в нём есть — "
+                "попросите директора по поступлению добавить нужные вузы."
+            )
             if fallback
-            else "Справочник вузов ещё не наполнен — обратитесь к директору по поступлению."
-        )
+            else _(
+                "В справочнике школы нет программ по запросу «{asked}». Справочник вузов ещё не наполнен — "
+                "обратитесь к директору по поступлению."
+            )
+        ).format(asked=asked)
         result.picks = [Picked(card=card, why=_offline_reason(card)[0]) for card in fallback[:TOP_N]]
         result.offline = not is_available()
         return result
@@ -286,13 +296,13 @@ def pick(*, student: Student, text: str, actor=None) -> PickResult:
 
     if not is_available():
         result.offline = True
-        result.note = "Подобрано фильтрами и движком соответствия: модель не подключена."
+        result.note = _("Подобрано фильтрами и движком соответствия: модель не подключена.")
         for card in cards[:TOP_N]:
             why, missing = _offline_reason(card)
             result.picks.append(Picked(card=card, why=why, missing=missing))
         return result
 
-    listing = "\n".join(
+    catalog_lines = "\n".join(  # i18n-skip: список программ для промпта модели
         f"- id={card['program']}: {card['university_name']} ({card['country']}) — {card['program_name']}; "
         f"соответствие {card['percent']}%; {card['summary']}"
         for card in cards[:CANDIDATES]
@@ -300,12 +310,12 @@ def pick(*, student: Student, text: str, actor=None) -> PickResult:
     profile = _profile_line(student)
 
     try:
-        response = complete(
+        response = complete(  # i18n-skip: запрос к модели ИИ
             system=SYSTEM,
             user=(
                 f"Запрос ученика: {text.strip()}\n\n"
                 f"Профиль: {profile}\n\n"
-                f"Программы справочника (выбирать только отсюда):\n{listing}"
+                f"Программы справочника (выбирать только отсюда):\n{catalog_lines}"
             ),
             purpose="university_pick",
             actor=actor,
@@ -347,7 +357,7 @@ def pick_offline(*, student: Student, text: str, cards: list[dict] | None = None
 
     result = PickResult(
         offline=True,
-        note="Подобрано фильтрами и движком соответствия: модель недоступна.",
+        note=_("Подобрано фильтрами и движком соответствия: модель недоступна."),
         filters={"country": filters.country, "major": filters.major},
     )
     for card in cards[:TOP_N]:
@@ -361,12 +371,15 @@ def _clean(text: str) -> str:
     if not text:
         return ""
     if FORBIDDEN.search(text):
-        return FORBIDDEN.sub("соответствие требованиям", text)
+        return FORBIDDEN.sub("соответствие требованиям", text)  # i18n-skip: правка внутри ответа модели
     return text
 
 
-def _profile_line(student: Student) -> str:
-    """Ровно те поля, что нужны задаче: профиль целиком в модель не уходит."""
+def _profile_line(student: Student) -> str:  # i18n-skip: промпт модели ИИ
+    """Ровно те поля, что нужны задаче: профиль целиком в модель не уходит.
+
+    Строка идёт в промпт модели, поэтому не переводится.
+    """
     exam = getattr(student, "exam", None)
     admission = getattr(student, "admission", None)
     parts = []

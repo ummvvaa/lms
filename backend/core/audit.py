@@ -12,6 +12,7 @@ from typing import Any
 
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import models
+from django.utils.translation import gettext as _
 
 from core.domains import ROLE_CURATOR, Source, can_upload_files, domain_of_field, spec_of_field
 from core.labels import field_title
@@ -30,7 +31,7 @@ def to_text(value: Any) -> str:
     if value is None:
         return ""
     if isinstance(value, bool):
-        return "да" if value else "нет"
+        return "да" if value else "нет"  # i18n-skip: значение журнала, по нему же откат читает булево обратно
     if isinstance(value, models.Model):
         # запись справочника пишем названием, а не ключом: журнал читает
         # человек, и «Футбол» ему говорит больше, чем «3». По названию же
@@ -49,8 +50,8 @@ class ValueRejected(ValueError):
 #: именно так, и обратный путь — откат импорта, применение предложения —
 #: обязан эти слова понимать: иначе значение уходит в базу, а вернуться
 #: оттуда не может.
-TRUE_WORDS = {"да", "true", "yes", "1", "+", "есть", "y"}
-FALSE_WORDS = {"нет", "false", "no", "0", "-", "n", ""}
+TRUE_WORDS = {"да", "иә", "true", "yes", "1", "+", "есть", "бар", "y"}  # i18n-skip: разбор ввода и журнала
+FALSE_WORDS = {"нет", "жоқ", "false", "no", "0", "-", "n", ""}  # i18n-skip: разбор ввода и журнала
 
 
 def to_bool(value: Any) -> bool | None:
@@ -76,7 +77,7 @@ def coerce(instance: Any, field_name: str, value: Any) -> Any:
     try:
         field = instance._meta.get_field(field_name)
     except FieldDoesNotExist as error:
-        raise ValueRejected("Такого поля у этой записи нет — выберите колонку из списка") from error
+        raise ValueRejected(_("Такого поля у этой записи нет — выберите колонку из списка")) from error
     if field.is_relation:
         # ссылка на справочник: «Футбол» из файла — это запись SportType,
         # а не строка. Неизвестное название отклоняется с подсказкой
@@ -92,12 +93,14 @@ def coerce(instance: Any, field_name: str, value: Any) -> Any:
     if isinstance(field, models.BooleanField):
         flag = to_bool(value)
         if flag is None:
-            raise ValueRejected(f"«{value}» не подходит для поля «{title}»: нужно «да» или «нет»")
+            raise ValueRejected(
+                _("«{value}» не подходит для поля «{field}»: нужно «да» или «нет»").format(value=value, field=title)
+            )
         return flag
     try:
         field.to_python(value)
     except (ValidationError, TypeError, ValueError) as error:
-        raise ValueRejected(f"«{value}» не подходит для поля «{title}»") from error
+        raise ValueRejected(_("«{value}» не подходит для поля «{field}»").format(value=value, field=title)) from error
     check_bounds(instance, field_name, value, title=str(title))
     return normalize(instance, field_name, value)
 
@@ -128,12 +131,16 @@ def check_bounds(instance: Any, field_name: str, value: Any, *, title: str = "")
             except (TypeError, ValueError):
                 number = None
             if number is not None and number > float(scale.maximum):
-                edge = f"максимальный балл — {_short(float(scale.maximum))}"
+                edge = _("максимальный балл — {number}").format(number=_short(float(scale.maximum)))
             elif number is not None and number < float(scale.minimum):
-                edge = f"минимальный балл — {_short(float(scale.minimum))}"
+                edge = _("минимальный балл — {number}").format(number=_short(float(scale.minimum)))
             else:
-                edge = f"шаг шкалы — {_short(float(scale.step))}"
-            raise ValueRejected(f"«{shown}»: указано {value}, {edge} (шкала {scale.hint}). Проверьте значение")
+                edge = _("шаг шкалы — {number}").format(number=_short(float(scale.step)))
+            raise ValueRejected(
+                _("«{field}»: указано {value}, {limit} (шкала {scale}). Проверьте значение").format(
+                    field=shown, value=value, limit=edge, scale=scale.hint
+                )
+            )
         return
     if spec is None or (spec.minimum is None and spec.maximum is None):
         return
@@ -143,9 +150,14 @@ def check_bounds(instance: Any, field_name: str, value: Any, *, title: str = "")
         return
     title = title or spec.title
     if spec.maximum is not None and number > spec.maximum:
-        raise ValueRejected(f"«{title}»: указано {value}, {_limit(spec, spec.maximum, top=True)}. Проверьте значение")
+        raise ValueRejected(_out_of_range(title, value, _limit(spec, spec.maximum, top=True)))
     if spec.minimum is not None and number < spec.minimum:
-        raise ValueRejected(f"«{title}»: указано {value}, {_limit(spec, spec.minimum, top=False)}. Проверьте значение")
+        raise ValueRejected(_out_of_range(title, value, _limit(spec, spec.minimum, top=False)))
+
+
+def _out_of_range(title, value, limit: str) -> str:
+    """«IELTS»: указано 12, максимальный балл — 9. Проверьте значение»."""
+    return _("«{field}»: указано {value}, {limit}. Проверьте значение").format(field=title, value=value, limit=limit)
 
 
 def _limit(spec, bound: float, *, top: bool) -> str:
@@ -155,13 +167,17 @@ def _limit(spec, bound: float, *, top: bool) -> str:
     читается как ошибка перевода.
     """
     number = _short(bound)
-    if spec.unit == "балл":
-        return f"{'максимальный' if top else 'минимальный'} балл — {number}"
-    if spec.unit == "%":
-        return f"{'максимум' if top else 'минимум'} — {number}%"
-    if spec.unit:
-        return f"{'максимум' if top else 'минимум'} — {number} {spec.unit}"
-    return f"{'максимум' if top else 'минимум'} — {number}"
+    if spec.unit == "балл":  # i18n-skip: сравнение с единицей из реестра доменов
+        text = _("максимальный балл — {number}") if top else _("минимальный балл — {number}")
+    elif spec.unit == "%":
+        text = _("максимум — {number}%") if top else _("минимум — {number}%")
+    elif spec.unit == "ч":  # i18n-skip: сравнение с единицей из реестра доменов
+        text = _("максимум — {number} ч") if top else _("минимум — {number} ч")
+    elif spec.unit:
+        text = _("максимум — {number} {unit}") if top else _("минимум — {number} {unit}")
+    else:
+        text = _("максимум — {number}") if top else _("минимум — {number}")
+    return text.format(number=number, unit=spec.unit)
 
 
 def _short(number: float) -> str:

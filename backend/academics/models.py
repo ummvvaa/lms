@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext, gettext_lazy, pgettext_lazy
 
 from core.archivable import Archivable
 from students.models import GroupLanguage
@@ -24,30 +25,30 @@ class Scheme(models.TextChoices):
     """Схема оценивания предмета."""
 
     #: ФО, СОР, СОЧ и итог четверти — обычный предмет
-    KZ = "kz", "ФО, СОР и СОЧ, итог за четверть"
+    KZ = "kz", gettext_lazy("ФО, СОР и СОЧ, итог за четверть")
     #: только ФО, в табель не идёт — курсы подготовки (IELTS, SAT)
-    FO = "fo", "Только ФО, в табель не идёт"
+    FO = "fo", gettext_lazy("Только ФО, в табель не идёт")
 
 
 class Subject(models.Model):
     """Предмет: название, короткое название, схема и максимумы по умолчанию."""
 
-    code = models.SlugField("Код", max_length=32, unique=True)
-    title = models.CharField("Название", max_length=100)
+    code = models.SlugField(gettext_lazy("Код"), max_length=32, unique=True)
+    title = models.CharField(gettext_lazy("Название"), max_length=100)
     #: название в отчёте родителям на казахском; пусто — берётся `title`
-    title_kk = models.CharField("Название на казахском", max_length=100, blank=True)
-    short_title = models.CharField("Короткое название", max_length=32)
-    scheme = models.CharField("Схема оценивания", max_length=2, choices=Scheme.choices, default=Scheme.KZ)
-    sor_max = models.PositiveSmallIntegerField("Максимум СОР по умолчанию", default=15)
-    soch_max = models.PositiveSmallIntegerField("Максимум СОЧ по умолчанию", default=25)
-    order = models.PositiveSmallIntegerField("Порядок", default=100)
-    is_active = models.BooleanField("Ведётся", default=True)
+    title_kk = models.CharField(gettext_lazy("Название на казахском"), max_length=100, blank=True)
+    short_title = models.CharField(gettext_lazy("Короткое название"), max_length=32)
+    scheme = models.CharField(gettext_lazy("Схема оценивания"), max_length=2, choices=Scheme.choices, default=Scheme.KZ)
+    sor_max = models.PositiveSmallIntegerField(gettext_lazy("Максимум СОР по умолчанию"), default=15)
+    soch_max = models.PositiveSmallIntegerField(gettext_lazy("Максимум СОЧ по умолчанию"), default=25)
+    order = models.PositiveSmallIntegerField(gettext_lazy("Порядок"), default=100)
+    is_active = models.BooleanField(gettext_lazy("Ведётся"), default=True)
     #: посев для разработки — вычищается `purge_fictional`
-    is_fictional = models.BooleanField("Вымышленный", default=False)
+    is_fictional = models.BooleanField(gettext_lazy("Вымышленный"), default=False)
 
     class Meta:
-        verbose_name = "Предмет"
-        verbose_name_plural = "Предметы"
+        verbose_name = gettext_lazy("Предмет")
+        verbose_name_plural = gettext_lazy("Предметы")
         ordering = ("order", "title")
 
     def __str__(self) -> str:
@@ -59,17 +60,19 @@ class TeacherProfile(models.Model):
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
-        verbose_name="Учётная запись",
+        verbose_name=gettext_lazy("Учётная запись"),
         related_name="teacher_profile",
         on_delete=models.CASCADE,
     )
-    subjects = models.ManyToManyField(Subject, verbose_name="Предметы", related_name="teachers", blank=True)
-    room = models.CharField("Кабинет", max_length=40, blank=True)
-    is_fictional = models.BooleanField("Вымышленный", default=False)
+    subjects = models.ManyToManyField(
+        Subject, verbose_name=gettext_lazy("Предметы"), related_name="teachers", blank=True
+    )
+    room = models.CharField(gettext_lazy("Кабинет"), max_length=40, blank=True)
+    is_fictional = models.BooleanField(gettext_lazy("Вымышленный"), default=False)
 
     class Meta:
-        verbose_name = "Профиль учителя"
-        verbose_name_plural = "Профили учителей"
+        verbose_name = gettext_lazy("Профиль учителя")
+        verbose_name_plural = gettext_lazy("Профили учителей")
 
     def __str__(self) -> str:
         return str(self.user)
@@ -81,15 +84,15 @@ class TeacherProfile(models.Model):
 class AcademicYear(models.Model):
     """Учебный год: четверти, каникулы, праздники, звонки, шкала — всё на него."""
 
-    title = models.CharField("Название", max_length=20)
-    starts = models.DateField("Начало")
-    ends = models.DateField("Конец")
-    is_current = models.BooleanField("Текущий", default=False)
-    is_fictional = models.BooleanField("Вымышленный", default=False)
+    title = models.CharField(gettext_lazy("Название"), max_length=20)
+    starts = models.DateField(gettext_lazy("Начало"))
+    ends = models.DateField(gettext_lazy("Конец"))
+    is_current = models.BooleanField(gettext_lazy("Текущий"), default=False)
+    is_fictional = models.BooleanField(gettext_lazy("Вымышленный"), default=False)
 
     class Meta:
-        verbose_name = "Учебный год"
-        verbose_name_plural = "Учебные годы"
+        verbose_name = gettext_lazy("Учебный год")
+        verbose_name_plural = gettext_lazy("Учебные годы")
         ordering = ("-starts",)
         constraints = [
             models.UniqueConstraint(
@@ -105,16 +108,16 @@ class Quarter(models.Model):
     """Четверть. Закрытая четверть: итоги правят только Кымбат и администратор."""
 
     year = models.ForeignKey(
-        AcademicYear, verbose_name="Учебный год", related_name="quarters", on_delete=models.CASCADE
+        AcademicYear, verbose_name=gettext_lazy("Учебный год"), related_name="quarters", on_delete=models.CASCADE
     )
-    number = models.PositiveSmallIntegerField("Номер")
-    title = models.CharField("Название", max_length=40)
-    starts = models.DateField("Начало")
-    ends = models.DateField("Конец")
-    closed_at = models.DateTimeField("Итоги закрыты", null=True, blank=True)
+    number = models.PositiveSmallIntegerField(gettext_lazy("Номер"))
+    title = models.CharField(gettext_lazy("Название"), max_length=40)
+    starts = models.DateField(gettext_lazy("Начало"))
+    ends = models.DateField(gettext_lazy("Конец"))
+    closed_at = models.DateTimeField(gettext_lazy("Итоги закрыты"), null=True, blank=True)
     closed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто закрыл",
+        verbose_name=gettext_lazy("Кто закрыл"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
@@ -122,8 +125,8 @@ class Quarter(models.Model):
     )
 
     class Meta:
-        verbose_name = "Четверть"
-        verbose_name_plural = "Четверти"
+        verbose_name = gettext_lazy("Четверть")
+        verbose_name_plural = gettext_lazy("Четверти")
         ordering = ("year", "number")
         constraints = [models.UniqueConstraint(fields=("year", "number"), name="unique_quarter_number")]
 
@@ -138,14 +141,16 @@ class Quarter(models.Model):
 class Break(models.Model):
     """Каникулы: уроки в эти дни не заводятся."""
 
-    year = models.ForeignKey(AcademicYear, verbose_name="Учебный год", related_name="breaks", on_delete=models.CASCADE)
-    title = models.CharField("Название", max_length=60)
-    starts = models.DateField("Начало")
-    ends = models.DateField("Конец")
+    year = models.ForeignKey(
+        AcademicYear, verbose_name=gettext_lazy("Учебный год"), related_name="breaks", on_delete=models.CASCADE
+    )
+    title = models.CharField(gettext_lazy("Название"), max_length=60)
+    starts = models.DateField(gettext_lazy("Начало"))
+    ends = models.DateField(gettext_lazy("Конец"))
 
     class Meta:
-        verbose_name = "Каникулы"
-        verbose_name_plural = "Каникулы"
+        verbose_name = gettext_lazy("Каникулы")
+        verbose_name_plural = gettext_lazy("Каникулы")
         ordering = ("starts",)
 
     def __str__(self) -> str:
@@ -156,14 +161,14 @@ class Holiday(models.Model):
     """Праздник: один день без уроков."""
 
     year = models.ForeignKey(
-        AcademicYear, verbose_name="Учебный год", related_name="holidays", on_delete=models.CASCADE
+        AcademicYear, verbose_name=gettext_lazy("Учебный год"), related_name="holidays", on_delete=models.CASCADE
     )
-    date = models.DateField("Дата")
-    title = models.CharField("Название", max_length=80)
+    date = models.DateField(gettext_lazy("Дата"))
+    title = models.CharField(gettext_lazy("Название"), max_length=80)
 
     class Meta:
-        verbose_name = "Праздник"
-        verbose_name_plural = "Праздники"
+        verbose_name = gettext_lazy("Праздник")
+        verbose_name_plural = gettext_lazy("Праздники")
         ordering = ("date",)
         constraints = [models.UniqueConstraint(fields=("year", "date"), name="unique_holiday_date")]
 
@@ -182,17 +187,17 @@ class BellSchedule(models.Model):
     """
 
     year = models.ForeignKey(
-        AcademicYear, verbose_name="Учебный год", related_name="bell_schedules", on_delete=models.CASCADE
+        AcademicYear, verbose_name=gettext_lazy("Учебный год"), related_name="bell_schedules", on_delete=models.CASCADE
     )
-    title = models.CharField("Название", max_length=60)
-    is_default = models.BooleanField("Общее по умолчанию", default=False)
+    title = models.CharField(gettext_lazy("Название"), max_length=60)
+    is_default = models.BooleanField(gettext_lazy("Общее по умолчанию"), default=False)
     groups = models.ManyToManyField(
-        "students.StudyGroup", verbose_name="Группы", related_name="bell_schedules", blank=True
+        "students.StudyGroup", verbose_name=gettext_lazy("Группы"), related_name="bell_schedules", blank=True
     )
 
     class Meta:
-        verbose_name = "Расписание звонков"
-        verbose_name_plural = "Расписания звонков"
+        verbose_name = gettext_lazy("Расписание звонков")
+        verbose_name_plural = gettext_lazy("Расписания звонков")
         ordering = ("year", "-is_default", "title")
         constraints = [
             models.UniqueConstraint(
@@ -212,47 +217,51 @@ class Bell(models.Model):
     у звонка совпадает с годом его расписания.
     """
 
-    year = models.ForeignKey(AcademicYear, verbose_name="Учебный год", related_name="bells", on_delete=models.CASCADE)
+    year = models.ForeignKey(
+        AcademicYear, verbose_name=gettext_lazy("Учебный год"), related_name="bells", on_delete=models.CASCADE
+    )
     schedule = models.ForeignKey(
         BellSchedule,
-        verbose_name="Расписание звонков",
+        verbose_name=gettext_lazy("Расписание звонков"),
         related_name="bells",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
     )
-    number = models.PositiveSmallIntegerField("Урок")
-    starts = models.TimeField("Начало")
-    ends = models.TimeField("Конец")
+    number = models.PositiveSmallIntegerField(gettext_lazy("Урок"))
+    starts = models.TimeField(gettext_lazy("Начало"))
+    ends = models.TimeField(gettext_lazy("Конец"))
 
     class Meta:
-        verbose_name = "Звонок"
-        verbose_name_plural = "Звонки"
+        verbose_name = pgettext_lazy("lesson bell", "Звонок")
+        verbose_name_plural = gettext_lazy("Звонки")
         ordering = ("year", "number")
         constraints = [models.UniqueConstraint(fields=("schedule", "number"), name="unique_bell_in_schedule")]
 
     def __str__(self) -> str:
-        return f"{self.number} урок {self.starts:%H:%M}–{self.ends:%H:%M}"
+        return gettext("{number} урок {starts}–{ends}").format(
+            number=self.number, starts=f"{self.starts:%H:%M}", ends=f"{self.ends:%H:%M}"
+        )
 
 
 class GradingScale(models.Model):
     """Шкала: веса ФО, СОР, СОЧ, пороги оценок и окно правки учителя."""
 
     year = models.OneToOneField(
-        AcademicYear, verbose_name="Учебный год", related_name="scale", on_delete=models.CASCADE
+        AcademicYear, verbose_name=gettext_lazy("Учебный год"), related_name="scale", on_delete=models.CASCADE
     )
-    weight_fo = models.PositiveSmallIntegerField("Вес ФО, %", default=25)
-    weight_sor = models.PositiveSmallIntegerField("Вес СОР, %", default=25)
-    weight_soch = models.PositiveSmallIntegerField("Вес СОЧ, %", default=50)
-    threshold_5 = models.PositiveSmallIntegerField("Пятёрка от, %", default=85)
-    threshold_4 = models.PositiveSmallIntegerField("Четвёрка от, %", default=65)
-    threshold_3 = models.PositiveSmallIntegerField("Тройка от, %", default=40)
-    fo_max = models.PositiveSmallIntegerField("Максимум ФО", default=10)
-    edit_days = models.PositiveSmallIntegerField("Учитель правит оценку, дней", default=7)
+    weight_fo = models.PositiveSmallIntegerField(gettext_lazy("Вес ФО, %"), default=25)
+    weight_sor = models.PositiveSmallIntegerField(gettext_lazy("Вес СОР, %"), default=25)
+    weight_soch = models.PositiveSmallIntegerField(gettext_lazy("Вес СОЧ, %"), default=50)
+    threshold_5 = models.PositiveSmallIntegerField(gettext_lazy("Пятёрка от, %"), default=85)
+    threshold_4 = models.PositiveSmallIntegerField(gettext_lazy("Четвёрка от, %"), default=65)
+    threshold_3 = models.PositiveSmallIntegerField(gettext_lazy("Тройка от, %"), default=40)
+    fo_max = models.PositiveSmallIntegerField(gettext_lazy("Максимум ФО"), default=10)
+    edit_days = models.PositiveSmallIntegerField(gettext_lazy("Учитель правит оценку, дней"), default=7)
 
     class Meta:
-        verbose_name = "Шкала оценивания"
-        verbose_name_plural = "Шкалы оценивания"
+        verbose_name = gettext_lazy("Шкала оценивания")
+        verbose_name_plural = gettext_lazy("Шкалы оценивания")
 
     def __str__(self) -> str:
         return f"{self.weight_fo}/{self.weight_sor}/{self.weight_soch} · {self.year}"
@@ -261,41 +270,41 @@ class GradingScale(models.Model):
 class ReportCadence(models.TextChoices):
     """Когда собираются отчёты родителям."""
 
-    MONTH = "month", "Последняя пятница месяца и после четверти"
-    QUARTER = "quarter", "Только после закрытия четверти"
+    MONTH = "month", gettext_lazy("Последняя пятница месяца и после четверти")
+    QUARTER = "quarter", gettext_lazy("Только после закрытия четверти")
 
 
 class ReportSettings(models.Model):
     """Настройки отчётов родителям: когда собирать и какие разделы входят."""
 
     year = models.OneToOneField(
-        AcademicYear, verbose_name="Учебный год", related_name="report_settings", on_delete=models.CASCADE
+        AcademicYear, verbose_name=gettext_lazy("Учебный год"), related_name="report_settings", on_delete=models.CASCADE
     )
     cadence = models.CharField(
-        "Когда собирать", max_length=8, choices=ReportCadence.choices, default=ReportCadence.MONTH
+        gettext_lazy("Когда собирать"), max_length=8, choices=ReportCadence.choices, default=ReportCadence.MONTH
     )
-    section_attendance = models.BooleanField("Посещаемость по урокам", default=True)
-    section_grades = models.BooleanField("Оценки по предметам", default=True)
-    section_exams = models.BooleanField("Экзамены и вузы", default=True)
-    section_documents = models.BooleanField("Документы для поступления", default=True)
-    section_curator = models.BooleanField("Слово куратора", default=True)
-    section_discipline = models.BooleanField("Замечания по дисциплине", default=False)
+    section_attendance = models.BooleanField(gettext_lazy("Посещаемость по урокам"), default=True)
+    section_grades = models.BooleanField(gettext_lazy("Оценки по предметам"), default=True)
+    section_exams = models.BooleanField(gettext_lazy("Экзамены и вузы"), default=True)
+    section_documents = models.BooleanField(gettext_lazy("Документы для поступления"), default=True)
+    section_curator = models.BooleanField(gettext_lazy("Слово куратора"), default=True)
+    section_discipline = models.BooleanField(gettext_lazy("Замечания по дисциплине"), default=False)
 
     class Meta:
-        verbose_name = "Настройки отчётов"
-        verbose_name_plural = "Настройки отчётов"
+        verbose_name = gettext_lazy("Настройки отчётов")
+        verbose_name_plural = gettext_lazy("Настройки отчётов")
 
     def __str__(self) -> str:
-        return f"Отчёты · {self.year}"
+        return gettext("Отчёты · {year}").format(year=self.year)
 
 
 # --- Составы ----------------------------------------------------------------
 
 
 class CohortKind(models.TextChoices):
-    GROUP = "group", "Вся группа"
-    SUBGROUP = "subgroup", "Подгруппа"
-    STREAM = "stream", "Поток"
+    GROUP = "group", gettext_lazy("Вся группа")
+    SUBGROUP = "subgroup", gettext_lazy("Подгруппа")
+    STREAM = "stream", gettext_lazy("Поток")
 
 
 class Cohort(Archivable):
@@ -311,10 +320,10 @@ class Cohort(Archivable):
     группы — для звонков и видимости куратору — это группы потока.
     """
 
-    kind = models.CharField("Вид", max_length=8, choices=CohortKind.choices)
+    kind = models.CharField(gettext_lazy("Вид"), max_length=8, choices=CohortKind.choices)
     group = models.ForeignKey(
         "students.StudyGroup",
-        verbose_name="Группа",
+        verbose_name=gettext_lazy("Группа"),
         related_name="cohorts",
         on_delete=models.CASCADE,
         null=True,
@@ -322,32 +331,32 @@ class Cohort(Archivable):
     )
     subject = models.ForeignKey(
         Subject,
-        verbose_name="Предмет подгруппы",
+        verbose_name=gettext_lazy("Предмет подгруппы"),
         related_name="subgroups",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
     )
-    number = models.PositiveSmallIntegerField("Номер подгруппы", null=True, blank=True)
-    name = models.CharField("Название", max_length=120)
-    short_name = models.CharField("Короткое название", max_length=60, blank=True)
-    rule = models.CharField("Как делили", max_length=60, blank=True)
+    number = models.PositiveSmallIntegerField(gettext_lazy("Номер подгруппы"), null=True, blank=True)
+    name = models.CharField(gettext_lazy("Название"), max_length=120)
+    short_name = models.CharField(gettext_lazy("Короткое название"), max_length=60, blank=True)
+    rule = models.CharField(gettext_lazy("Как делили"), max_length=60, blank=True)
     stream = models.ForeignKey(
         "self",
-        verbose_name="Поток подгруппы",
+        verbose_name=gettext_lazy("Поток подгруппы"),
         related_name="inner_subgroups",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         limit_choices_to={"kind": "stream"},
     )
-    room = models.CharField("Основной кабинет", max_length=40, blank=True)
-    is_fictional = models.BooleanField("Вымышленный", default=False)
-    created_at = models.DateTimeField("Создан", auto_now_add=True)
+    room = models.CharField(gettext_lazy("Основной кабинет"), max_length=40, blank=True)
+    is_fictional = models.BooleanField(gettext_lazy("Вымышленный"), default=False)
+    created_at = models.DateTimeField(gettext_lazy("Создан"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Состав"
-        verbose_name_plural = "Составы"
+        verbose_name = gettext_lazy("Состав")
+        verbose_name_plural = gettext_lazy("Составы")
         ordering = ("kind", "name")
         constraints = [
             models.UniqueConstraint(
@@ -364,36 +373,47 @@ class Cohort(Archivable):
 class CohortMembership(models.Model):
     """Ученик в подгруппе с даты по дату. Пустое `until` — состоит."""
 
-    cohort = models.ForeignKey(Cohort, verbose_name="Состав", related_name="memberships", on_delete=models.CASCADE)
-    student = models.ForeignKey(
-        "students.Student", verbose_name="Ученик", related_name="cohort_memberships", on_delete=models.CASCADE
+    cohort = models.ForeignKey(
+        Cohort, verbose_name=gettext_lazy("Состав"), related_name="memberships", on_delete=models.CASCADE
     )
-    since = models.DateField("С")
-    until = models.DateField("По", null=True, blank=True)
+    student = models.ForeignKey(
+        "students.Student",
+        verbose_name=gettext_lazy("Ученик"),
+        related_name="cohort_memberships",
+        on_delete=models.CASCADE,
+    )
+    since = models.DateField(gettext_lazy("С"))
+    until = models.DateField(gettext_lazy("По"), null=True, blank=True)
 
     class Meta:
-        verbose_name = "Членство в подгруппе"
-        verbose_name_plural = "Членства в подгруппах"
+        verbose_name = gettext_lazy("Членство в подгруппе")
+        verbose_name_plural = gettext_lazy("Членства в подгруппах")
         ordering = ("cohort", "student")
         indexes = [models.Index(fields=("student", "until"))]
 
     def __str__(self) -> str:
-        return f"{self.student} в {self.cohort} с {self.since}"
+        return gettext("{student} в {cohort} с {since}").format(
+            student=self.student, cohort=self.cohort, since=self.since
+        )
 
 
 class StreamPart(models.Model):
     """Часть потока: группа или подгруппа."""
 
-    stream = models.ForeignKey(Cohort, verbose_name="Поток", related_name="parts", on_delete=models.CASCADE)
-    part = models.ForeignKey(Cohort, verbose_name="Часть", related_name="in_streams", on_delete=models.CASCADE)
+    stream = models.ForeignKey(
+        Cohort, verbose_name=gettext_lazy("Поток"), related_name="parts", on_delete=models.CASCADE
+    )
+    part = models.ForeignKey(
+        Cohort, verbose_name=gettext_lazy("Часть"), related_name="in_streams", on_delete=models.CASCADE
+    )
 
     class Meta:
-        verbose_name = "Часть потока"
-        verbose_name_plural = "Части потоков"
+        verbose_name = gettext_lazy("Часть потока")
+        verbose_name_plural = gettext_lazy("Части потоков")
         constraints = [models.UniqueConstraint(fields=("stream", "part"), name="unique_stream_part")]
 
     def __str__(self) -> str:
-        return f"{self.part} в {self.stream}"
+        return gettext("{part} в {stream}").format(part=self.part, stream=self.stream)
 
 
 # --- Журналы и уроки --------------------------------------------------------
@@ -406,7 +426,7 @@ class ReportRole(models.TextChoices):
     ведут разные учителя (решение владельца, 30.09.2026).
     """
 
-    NONE = "", "нет"
+    NONE = "", gettext_lazy("нет")
     EEP = "eep", "GE / EEP"
     SAT_VERBAL = "sat_verbal", "SAT Verbal"
     SAT_MATH = "sat_math", "SAT Math"
@@ -420,24 +440,32 @@ class Course(Archivable):
     стоит в расписании, а отмечает его администратор, пока учителя не назначат.
     """
 
-    subject = models.ForeignKey(Subject, verbose_name="Предмет", related_name="courses", on_delete=models.PROTECT)
+    subject = models.ForeignKey(
+        Subject, verbose_name=gettext_lazy("Предмет"), related_name="courses", on_delete=models.PROTECT
+    )
     teacher = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Учитель",
+        verbose_name=gettext_lazy("Учитель"),
         related_name="courses",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
     )
-    cohort = models.ForeignKey(Cohort, verbose_name="Состав", related_name="courses", on_delete=models.CASCADE)
-    report_role = models.CharField(
-        "Раздел отчёта родителям", max_length=12, choices=ReportRole.choices, default=ReportRole.NONE, blank=True
+    cohort = models.ForeignKey(
+        Cohort, verbose_name=gettext_lazy("Состав"), related_name="courses", on_delete=models.CASCADE
     )
-    created_at = models.DateTimeField("Создан", auto_now_add=True)
+    report_role = models.CharField(
+        gettext_lazy("Раздел отчёта родителям"),
+        max_length=12,
+        choices=ReportRole.choices,
+        default=ReportRole.NONE,
+        blank=True,
+    )
+    created_at = models.DateTimeField(gettext_lazy("Создан"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Журнал"
-        verbose_name_plural = "Журналы"
+        verbose_name = gettext_lazy("Журнал")
+        verbose_name_plural = gettext_lazy("Журналы")
         ordering = ("subject__order", "cohort__name")
         constraints = [
             models.UniqueConstraint(
@@ -456,41 +484,45 @@ class Course(Archivable):
 class LessonSeries(models.Model):
     """Еженедельный урок: день недели, номер, кабинет, с даты по дату."""
 
-    course = models.ForeignKey(Course, verbose_name="Журнал", related_name="series", on_delete=models.CASCADE)
-    weekday = models.PositiveSmallIntegerField("День недели")
-    slot = models.PositiveSmallIntegerField("Номер урока")
-    room = models.CharField("Кабинет", max_length=40, blank=True)
-    starts = models.DateField("С")
-    ends = models.DateField("По")
+    course = models.ForeignKey(
+        Course, verbose_name=gettext_lazy("Журнал"), related_name="series", on_delete=models.CASCADE
+    )
+    weekday = models.PositiveSmallIntegerField(gettext_lazy("День недели"))
+    slot = models.PositiveSmallIntegerField(gettext_lazy("Номер урока"))
+    room = models.CharField(gettext_lazy("Кабинет"), max_length=40, blank=True)
+    starts = models.DateField(gettext_lazy("С"))
+    ends = models.DateField(gettext_lazy("По"))
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто завёл",
+        verbose_name=gettext_lazy("Кто завёл"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    created_at = models.DateTimeField("Заведена", auto_now_add=True)
+    created_at = models.DateTimeField(gettext_lazy("Заведена"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Серия уроков"
-        verbose_name_plural = "Серии уроков"
+        verbose_name = gettext_lazy("Серия уроков")
+        verbose_name_plural = gettext_lazy("Серии уроков")
         ordering = ("weekday", "slot")
 
     def __str__(self) -> str:
-        return f"{self.course} · день {self.weekday}, {self.slot} урок"
+        return gettext("{course} · день {weekday}, {slot} урок").format(
+            course=self.course, weekday=self.weekday, slot=self.slot
+        )
 
 
 class LessonStatus(models.TextChoices):
-    PLANNED = "planned", "По плану"
-    CANCELLED = "cancelled", "Отменён"
-    MOVED = "moved", "Перенесён"
+    PLANNED = "planned", gettext_lazy("По плану")
+    CANCELLED = "cancelled", gettext_lazy("Отменён")
+    MOVED = "moved", gettext_lazy("Перенесён")
 
 
 class LessonKind(models.TextChoices):
-    FO = "fo", "ФО"
-    SOR = "sor", "СОР"
-    SOCH = "soch", "СОЧ"
+    FO = "fo", gettext_lazy("ФО")
+    SOR = "sor", gettext_lazy("СОР")
+    SOCH = "soch", gettext_lazy("СОЧ")
 
 
 class Lesson(Archivable):
@@ -500,17 +532,24 @@ class Lesson(Archivable):
     вместе с ними (каскад `Archivable`) и возвращается оттуда.
     """
 
-    course = models.ForeignKey(Course, verbose_name="Журнал", related_name="lessons", on_delete=models.CASCADE)
-    series = models.ForeignKey(
-        LessonSeries, verbose_name="Серия", related_name="lessons", on_delete=models.SET_NULL, null=True, blank=True
+    course = models.ForeignKey(
+        Course, verbose_name=gettext_lazy("Журнал"), related_name="lessons", on_delete=models.CASCADE
     )
-    date = models.DateField("Дата")
-    slot = models.PositiveSmallIntegerField("Номер урока")
-    room = models.CharField("Кабинет", max_length=40, blank=True)
+    series = models.ForeignKey(
+        LessonSeries,
+        verbose_name=gettext_lazy("Серия"),
+        related_name="lessons",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    date = models.DateField(gettext_lazy("Дата"))
+    slot = models.PositiveSmallIntegerField(gettext_lazy("Номер урока"))
+    room = models.CharField(gettext_lazy("Кабинет"), max_length=40, blank=True)
     #: пусто — учитель не назначен (см. `Course`)
     teacher = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Учитель",
+        verbose_name=gettext_lazy("Учитель"),
         related_name="lessons",
         on_delete=models.PROTECT,
         null=True,
@@ -518,47 +557,51 @@ class Lesson(Archivable):
     )
     substitute = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Замена",
+        verbose_name=gettext_lazy("Замена"),
         related_name="substituted_lessons",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    status = models.CharField("Статус", max_length=10, choices=LessonStatus.choices, default=LessonStatus.PLANNED)
-    reason = models.CharField("Причина", max_length=200, blank=True)
-    moved_from_date = models.DateField("Перенесён с даты", null=True, blank=True)
-    moved_from_slot = models.PositiveSmallIntegerField("Перенесён с урока", null=True, blank=True)
-    topic = models.CharField("Тема", max_length=200, blank=True)
-    homework = models.TextField("Домашнее задание", blank=True)
-    kind = models.CharField("Вид оценивания", max_length=4, choices=LessonKind.choices, default=LessonKind.FO)
-    number = models.PositiveSmallIntegerField("Номер СОР или СОЧ", null=True, blank=True)
-    max_score = models.PositiveSmallIntegerField("Максимум баллов", null=True, blank=True)
-    note = models.CharField("Примечание", max_length=120, blank=True)
-    marked_at = models.DateTimeField("Посещаемость сохранена", null=True, blank=True)
+    status = models.CharField(
+        gettext_lazy("Статус"), max_length=10, choices=LessonStatus.choices, default=LessonStatus.PLANNED
+    )
+    reason = models.CharField(gettext_lazy("Причина"), max_length=200, blank=True)
+    moved_from_date = models.DateField(gettext_lazy("Перенесён с даты"), null=True, blank=True)
+    moved_from_slot = models.PositiveSmallIntegerField(gettext_lazy("Перенесён с урока"), null=True, blank=True)
+    topic = models.CharField(gettext_lazy("Тема"), max_length=200, blank=True)
+    homework = models.TextField(gettext_lazy("Домашнее задание"), blank=True)
+    kind = models.CharField(
+        gettext_lazy("Вид оценивания"), max_length=4, choices=LessonKind.choices, default=LessonKind.FO
+    )
+    number = models.PositiveSmallIntegerField(gettext_lazy("Номер СОР или СОЧ"), null=True, blank=True)
+    max_score = models.PositiveSmallIntegerField(gettext_lazy("Максимум баллов"), null=True, blank=True)
+    note = models.CharField(gettext_lazy("Примечание"), max_length=120, blank=True)
+    marked_at = models.DateTimeField(gettext_lazy("Посещаемость сохранена"), null=True, blank=True)
     marked_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто отметил",
+        verbose_name=gettext_lazy("Кто отметил"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
     #: напоминание о неотмеченном уроке ушло — второго не будет
-    reminded_at = models.DateTimeField("Напоминание ушло", null=True, blank=True)
+    reminded_at = models.DateTimeField(gettext_lazy("Напоминание ушло"), null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто завёл",
+        verbose_name=gettext_lazy("Кто завёл"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    created_at = models.DateTimeField("Заведён", auto_now_add=True)
-    updated_at = models.DateTimeField("Изменён", auto_now=True)
+    created_at = models.DateTimeField(gettext_lazy("Заведён"), auto_now_add=True)
+    updated_at = models.DateTimeField(gettext_lazy("Изменён"), auto_now=True)
 
     class Meta:
-        verbose_name = "Урок"
-        verbose_name_plural = "Уроки"
+        verbose_name = gettext_lazy("Урок")
+        verbose_name_plural = gettext_lazy("Уроки")
         ordering = ("date", "slot", "id")
         indexes = [
             models.Index(fields=("date", "slot")),
@@ -567,7 +610,9 @@ class Lesson(Archivable):
         ]
 
     def __str__(self) -> str:
-        return f"{self.course} · {self.date:%d.%m.%Y}, {self.slot} урок"
+        return gettext("{course} · {date}, {slot} урок").format(
+            course=self.course, date=f"{self.date:%d.%m.%Y}", slot=self.slot
+        )
 
     @property
     def actual_teacher_id(self) -> int | None:
@@ -586,35 +631,40 @@ class Lesson(Archivable):
 class Mark(models.TextChoices):
     """Отметка посещаемости. Присутствие — отсутствие строки."""
 
-    ABSENT = "absent", "Не был"
-    LATE = "late", "Опоздал"
+    ABSENT = "absent", gettext_lazy("Не был")
+    LATE = "late", gettext_lazy("Опоздал")
 
 
 class Attendance(Archivable):
     """Отметка ученика на уроке. «У» не хранится: её даёт уважительная причина."""
 
-    lesson = models.ForeignKey(Lesson, verbose_name="Урок", related_name="attendance", on_delete=models.CASCADE)
-    student = models.ForeignKey(
-        "students.Student", verbose_name="Ученик", related_name="lesson_attendance", on_delete=models.CASCADE
+    lesson = models.ForeignKey(
+        Lesson, verbose_name=gettext_lazy("Урок"), related_name="attendance", on_delete=models.CASCADE
     )
-    mark = models.CharField("Отметка", max_length=6, choices=Mark.choices)
+    student = models.ForeignKey(
+        "students.Student",
+        verbose_name=gettext_lazy("Ученик"),
+        related_name="lesson_attendance",
+        on_delete=models.CASCADE,
+    )
+    mark = models.CharField(gettext_lazy("Отметка"), max_length=6, choices=Mark.choices)
     #: когда пришёл опоздавший — по Алматы; у опозданий до 30.09.2026 пусто:
     #: такое опоздание считается присутствием целиком, «время не указано»
-    arrived_at = models.TimeField("Пришёл в", null=True, blank=True)
+    arrived_at = models.TimeField(gettext_lazy("Пришёл в"), null=True, blank=True)
     noted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто отметил",
+        verbose_name=gettext_lazy("Кто отметил"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    created_at = models.DateTimeField("Отмечен", auto_now_add=True)
-    updated_at = models.DateTimeField("Изменён", auto_now=True)
+    created_at = models.DateTimeField(gettext_lazy("Отмечен"), auto_now_add=True)
+    updated_at = models.DateTimeField(gettext_lazy("Изменён"), auto_now=True)
 
     class Meta:
-        verbose_name = "Отметка посещаемости"
-        verbose_name_plural = "Отметки посещаемости"
+        verbose_name = gettext_lazy("Отметка посещаемости")
+        verbose_name_plural = gettext_lazy("Отметки посещаемости")
         constraints = [models.UniqueConstraint(fields=("lesson", "student"), name="unique_lesson_attendance")]
         indexes = [models.Index(fields=("student", "lesson"))]
 
@@ -623,10 +673,10 @@ class Attendance(Archivable):
 
 
 class ExcuseDocument(models.TextChoices):
-    CERTIFICATE = "certificate", "Справка"
-    PARENTS = "parents", "Заявление родителей"
-    ORDER = "order", "Приказ школы"
-    OTHER = "other", "Другое"
+    CERTIFICATE = "certificate", gettext_lazy("Справка")
+    PARENTS = "parents", gettext_lazy("Заявление родителей")
+    ORDER = "order", gettext_lazy("Приказ школы")
+    OTHER = "other", gettext_lazy("Другое")
 
 
 def excuse_upload_to(instance: Excuse, filename: str) -> str:
@@ -646,29 +696,31 @@ class Excuse(Archivable):
     """
 
     student = models.ForeignKey(
-        "students.Student", verbose_name="Ученик", related_name="excuses", on_delete=models.CASCADE
+        "students.Student", verbose_name=gettext_lazy("Ученик"), related_name="excuses", on_delete=models.CASCADE
     )
-    starts = models.DateField("С")
-    ends = models.DateField("По")
-    reason = models.CharField("Причина", max_length=200)
+    starts = models.DateField(gettext_lazy("С"))
+    ends = models.DateField(gettext_lazy("По"))
+    reason = models.CharField(gettext_lazy("Причина"), max_length=200)
     document = models.CharField(
-        "Вид документа", max_length=12, choices=ExcuseDocument.choices, default=ExcuseDocument.OTHER
+        gettext_lazy("Вид документа"), max_length=12, choices=ExcuseDocument.choices, default=ExcuseDocument.OTHER
     )
-    file = models.FileField("Файл", upload_to=excuse_upload_to, storage=_private_storage, max_length=300, blank=True)
+    file = models.FileField(
+        gettext_lazy("Файл"), upload_to=excuse_upload_to, storage=_private_storage, max_length=300, blank=True
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто оформил",
+        verbose_name=gettext_lazy("Кто оформил"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    created_by_title = models.CharField("Автор на момент удаления", max_length=250, blank=True)
-    created_at = models.DateTimeField("Оформлена", auto_now_add=True)
+    created_by_title = models.CharField(gettext_lazy("Автор на момент удаления"), max_length=250, blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Оформлена"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Уважительная причина"
-        verbose_name_plural = "Уважительные причины"
+        verbose_name = gettext_lazy("Уважительная причина")
+        verbose_name_plural = gettext_lazy("Уважительные причины")
         ordering = ("-starts", "-id")
         constraints = [
             models.CheckConstraint(condition=models.Q(ends__gte=models.F("starts")), name="excuse_ends_after_starts")
@@ -682,26 +734,28 @@ class Excuse(Archivable):
 class Grade(Archivable):
     """Оценка ученика за урок: ФО от 1 до 10, СОР и СОЧ — баллы из максимума."""
 
-    lesson = models.ForeignKey(Lesson, verbose_name="Урок", related_name="grades", on_delete=models.CASCADE)
-    student = models.ForeignKey(
-        "students.Student", verbose_name="Ученик", related_name="grades", on_delete=models.CASCADE
+    lesson = models.ForeignKey(
+        Lesson, verbose_name=gettext_lazy("Урок"), related_name="grades", on_delete=models.CASCADE
     )
-    value = models.PositiveSmallIntegerField("Балл")
-    comment = models.CharField("Комментарий", max_length=300, blank=True)
+    student = models.ForeignKey(
+        "students.Student", verbose_name=gettext_lazy("Ученик"), related_name="grades", on_delete=models.CASCADE
+    )
+    value = models.PositiveSmallIntegerField(gettext_lazy("Балл"))
+    comment = models.CharField(gettext_lazy("Комментарий"), max_length=300, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто поставил",
+        verbose_name=gettext_lazy("Кто поставил"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    created_at = models.DateTimeField("Поставлена", auto_now_add=True)
-    updated_at = models.DateTimeField("Изменена", auto_now=True)
+    created_at = models.DateTimeField(gettext_lazy("Поставлена"), auto_now_add=True)
+    updated_at = models.DateTimeField(gettext_lazy("Изменена"), auto_now=True)
 
     class Meta:
-        verbose_name = "Оценка"
-        verbose_name_plural = "Оценки"
+        verbose_name = gettext_lazy("Оценка")
+        verbose_name_plural = gettext_lazy("Оценки")
         constraints = [models.UniqueConstraint(fields=("lesson", "student"), name="unique_lesson_grade")]
         indexes = [models.Index(fields=("student", "lesson"))]
 
@@ -712,27 +766,36 @@ class Grade(Archivable):
 class QuarterResult(models.Model):
     """Итог четверти по журналу: выставленная оценка и расчётный процент."""
 
-    course = models.ForeignKey(Course, verbose_name="Журнал", related_name="results", on_delete=models.CASCADE)
-    student = models.ForeignKey(
-        "students.Student", verbose_name="Ученик", related_name="quarter_results", on_delete=models.CASCADE
+    course = models.ForeignKey(
+        Course, verbose_name=gettext_lazy("Журнал"), related_name="results", on_delete=models.CASCADE
     )
-    quarter = models.ForeignKey(Quarter, verbose_name="Четверть", related_name="results", on_delete=models.CASCADE)
-    grade = models.PositiveSmallIntegerField("Итог")
-    computed_percent = models.DecimalField("Расчётный процент", max_digits=5, decimal_places=1, null=True, blank=True)
-    reason = models.CharField("Причина отличия от расчёта", max_length=200, blank=True)
+    student = models.ForeignKey(
+        "students.Student",
+        verbose_name=gettext_lazy("Ученик"),
+        related_name="quarter_results",
+        on_delete=models.CASCADE,
+    )
+    quarter = models.ForeignKey(
+        Quarter, verbose_name=gettext_lazy("Четверть"), related_name="results", on_delete=models.CASCADE
+    )
+    grade = models.PositiveSmallIntegerField(gettext_lazy("Итог"))
+    computed_percent = models.DecimalField(
+        gettext_lazy("Расчётный процент"), max_digits=5, decimal_places=1, null=True, blank=True
+    )
+    reason = models.CharField(gettext_lazy("Причина отличия от расчёта"), max_length=200, blank=True)
     set_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто выставил",
+        verbose_name=gettext_lazy("Кто выставил"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    set_at = models.DateTimeField("Выставлен", auto_now=True)
+    set_at = models.DateTimeField(gettext_lazy("Выставлен"), auto_now=True)
 
     class Meta:
-        verbose_name = "Итог четверти"
-        verbose_name_plural = "Итоги четверти"
+        verbose_name = gettext_lazy("Итог четверти")
+        verbose_name_plural = gettext_lazy("Итоги четверти")
         constraints = [models.UniqueConstraint(fields=("course", "student", "quarter"), name="unique_quarter_result")]
 
     def __str__(self) -> str:
@@ -740,36 +803,43 @@ class QuarterResult(models.Model):
 
 
 class RequestStatus(models.TextChoices):
-    PENDING = "pending", "Ждёт"
-    APPROVED = "approved", "Одобрено"
-    REJECTED = "rejected", "Отклонено"
+    PENDING = "pending", gettext_lazy("Ждёт")
+    APPROVED = "approved", gettext_lazy("Одобрено")
+    REJECTED = "rejected", gettext_lazy("Отклонено")
 
 
 class LessonRequest(models.Model):
     """Просьба учителя о переносе урока. Решает Кымбат или администратор."""
 
     teacher = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name="Учитель", related_name="lesson_requests", on_delete=models.CASCADE
+        settings.AUTH_USER_MODEL,
+        verbose_name=gettext_lazy("Учитель"),
+        related_name="lesson_requests",
+        on_delete=models.CASCADE,
     )
-    lesson = models.ForeignKey(Lesson, verbose_name="Урок", related_name="requests", on_delete=models.CASCADE)
-    wanted = models.CharField("Куда удобно", max_length=200, blank=True)
-    reason = models.CharField("Причина", max_length=300)
-    status = models.CharField("Состояние", max_length=8, choices=RequestStatus.choices, default=RequestStatus.PENDING)
-    answer = models.CharField("Ответ", max_length=300, blank=True)
+    lesson = models.ForeignKey(
+        Lesson, verbose_name=gettext_lazy("Урок"), related_name="requests", on_delete=models.CASCADE
+    )
+    wanted = models.CharField(gettext_lazy("Куда удобно"), max_length=200, blank=True)
+    reason = models.CharField(gettext_lazy("Причина"), max_length=300)
+    status = models.CharField(
+        gettext_lazy("Состояние"), max_length=8, choices=RequestStatus.choices, default=RequestStatus.PENDING
+    )
+    answer = models.CharField(gettext_lazy("Ответ"), max_length=300, blank=True)
     decided_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто решил",
+        verbose_name=gettext_lazy("Кто решил"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    decided_at = models.DateTimeField("Решено", null=True, blank=True)
-    created_at = models.DateTimeField("Подана", auto_now_add=True)
+    decided_at = models.DateTimeField(gettext_lazy("Решено"), null=True, blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Подана"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Просьба о переносе"
-        verbose_name_plural = "Просьбы о переносе"
+        verbose_name = gettext_lazy("Просьба о переносе")
+        verbose_name_plural = gettext_lazy("Просьбы о переносе")
         ordering = ("-created_at",)
 
     def __str__(self) -> str:
@@ -780,35 +850,35 @@ class LessonRequest(models.Model):
 
 
 class ReportPeriod(models.TextChoices):
-    MONTH = "month", "Месяц"
-    QUARTER = "quarter", "Четверть"
+    MONTH = "month", gettext_lazy("Месяц")
+    QUARTER = "quarter", gettext_lazy("Четверть")
     #: «с — по» — отчёты по шаблонам школы (решение владельца, 30.09.2026)
-    CUSTOM = "custom", "Свой период"
+    CUSTOM = "custom", gettext_lazy("Свой период")
 
 
 class ReportTemplate(models.TextChoices):
     """Вид отчёта: прежний отчёт LMS и два шаблона школы."""
 
-    STANDARD = "standard", "Стандартный"
-    REVIEW = "review", "Вариант 1 · отзыв об успеваемости"
-    PROGRESS = "progress", "Вариант 2 · отчёт о прогрессе"
+    STANDARD = "standard", gettext_lazy("Стандартный")
+    REVIEW = "review", gettext_lazy("Вариант 1 · отзыв об успеваемости")
+    PROGRESS = "progress", gettext_lazy("Вариант 2 · отчёт о прогрессе")
 
 
 class DraftState(models.TextChoices):
     """Черновик текстов отчёта от ИИ."""
 
-    NONE = "", "не заказан"
-    PENDING = "pending", "пишется"
-    DONE = "done", "написан"
-    SKIPPED = "skipped", "данных нет"
-    FAILED = "failed", "ИИ недоступен"
+    NONE = "", gettext_lazy("не заказан")
+    PENDING = "pending", gettext_lazy("пишется")
+    DONE = "done", gettext_lazy("написан")
+    SKIPPED = "skipped", gettext_lazy("данных нет")
+    FAILED = "failed", gettext_lazy("ИИ недоступен")
 
 
 class ReportStatus(models.TextChoices):
-    DRAFT = "draft", "Черновик"
-    CHECKED = "checked", "Проверен"
-    EXPORTED = "exported", "Выгружен"
-    SENT = "sent", "Отправлен родителям"
+    DRAFT = "draft", gettext_lazy("Черновик")
+    CHECKED = "checked", gettext_lazy("Проверен")
+    EXPORTED = "exported", gettext_lazy("Выгружен")
+    SENT = "sent", gettext_lazy("Отправлен родителям")
 
 
 class ParentReport(Archivable):
@@ -820,67 +890,71 @@ class ParentReport(Archivable):
     """
 
     student = models.ForeignKey(
-        "students.Student", verbose_name="Ученик", related_name="parent_reports", on_delete=models.CASCADE
+        "students.Student", verbose_name=gettext_lazy("Ученик"), related_name="parent_reports", on_delete=models.CASCADE
     )
-    period_kind = models.CharField("Период", max_length=8, choices=ReportPeriod.choices)
-    period_start = models.DateField("Начало периода")
-    period_end = models.DateField("Конец периода")
-    title = models.CharField("Название периода", max_length=60)
-    status = models.CharField("Статус", max_length=8, choices=ReportStatus.choices, default=ReportStatus.DRAFT)
+    period_kind = models.CharField(gettext_lazy("Период"), max_length=8, choices=ReportPeriod.choices)
+    period_start = models.DateField(gettext_lazy("Начало периода"))
+    period_end = models.DateField(gettext_lazy("Конец периода"))
+    title = models.CharField(gettext_lazy("Название периода"), max_length=60)
+    status = models.CharField(
+        gettext_lazy("Статус"), max_length=8, choices=ReportStatus.choices, default=ReportStatus.DRAFT
+    )
     template = models.CharField(
-        "Вид отчёта", max_length=10, choices=ReportTemplate.choices, default=ReportTemplate.STANDARD
+        gettext_lazy("Вид отчёта"), max_length=10, choices=ReportTemplate.choices, default=ReportTemplate.STANDARD
     )
     #: язык отчёта: по умолчанию — язык группы
-    language = models.CharField("Язык", max_length=2, choices=GroupLanguage.choices, default=GroupLanguage.RU)
-    built_at = models.DateTimeField("Собран")
-    fingerprint = models.CharField("Отпечаток данных", max_length=64, blank=True)
-    curator_word = models.TextField("Слово куратора", blank=True)
+    language = models.CharField(
+        gettext_lazy("Язык"), max_length=2, choices=GroupLanguage.choices, default=GroupLanguage.RU
+    )
+    built_at = models.DateTimeField(gettext_lazy("Собран"))
+    fingerprint = models.CharField(gettext_lazy("Отпечаток данных"), max_length=64, blank=True)
+    curator_word = models.TextField(gettext_lazy("Слово куратора"), blank=True)
     #: кто и когда написал слово — видно в отчёте (решение владельца, 27.09.2026)
     word_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто написал слово",
+        verbose_name=gettext_lazy("Кто написал слово"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    word_at = models.DateTimeField("Слово написано", null=True, blank=True)
+    word_at = models.DateTimeField(gettext_lazy("Слово написано"), null=True, blank=True)
     # тексты отчётов по шаблонам школы: черновик пишет ИИ, правит куратор
-    mock_comment = models.TextField("Комментарий по пробнику", blank=True)
-    character = models.TextField("Характеристика", blank=True)
-    summary = models.TextField("Итоги и рекомендации", blank=True)
+    mock_comment = models.TextField(gettext_lazy("Комментарий по Mock Test"), blank=True)
+    character = models.TextField(gettext_lazy("Характеристика"), blank=True)
+    summary = models.TextField(gettext_lazy("Итоги и рекомендации"), blank=True)
     draft_state = models.CharField(
-        "Черновик ИИ", max_length=8, choices=DraftState.choices, default=DraftState.NONE, blank=True
+        gettext_lazy("Черновик ИИ"), max_length=8, choices=DraftState.choices, default=DraftState.NONE, blank=True
     )
-    draft_note = models.CharField("Почему черновика нет", max_length=250, blank=True)
-    drafted_at = models.DateTimeField("Черновик написан", null=True, blank=True)
+    draft_note = models.CharField(gettext_lazy("Почему черновика нет"), max_length=250, blank=True)
+    drafted_at = models.DateTimeField(gettext_lazy("Черновик написан"), null=True, blank=True)
     #: тексты правил человек после черновика ИИ — «Обновить данные» не
     #: переписывает их без вопроса «Перезаписать мои правки?» (30.09.2026)
-    texts_edited_at = models.DateTimeField("Тексты правил человек", null=True, blank=True)
-    checked_at = models.DateTimeField("Проверен", null=True, blank=True)
+    texts_edited_at = models.DateTimeField(gettext_lazy("Тексты правил человек"), null=True, blank=True)
+    checked_at = models.DateTimeField(gettext_lazy("Проверен"), null=True, blank=True)
     checked_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто проверил",
+        verbose_name=gettext_lazy("Кто проверил"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    exported_at = models.DateTimeField("Выгружен", null=True, blank=True)
-    sent_at = models.DateTimeField("Отправлен родителям", null=True, blank=True)
+    exported_at = models.DateTimeField(gettext_lazy("Выгружен"), null=True, blank=True)
+    sent_at = models.DateTimeField(gettext_lazy("Отправлен родителям"), null=True, blank=True)
     sent_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто отправил",
+        verbose_name=gettext_lazy("Кто отправил"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    created_at = models.DateTimeField("Создан", auto_now_add=True)
+    created_at = models.DateTimeField(gettext_lazy("Создан"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Отчёт родителям"
-        verbose_name_plural = "Отчёты родителям"
+        verbose_name = gettext_lazy("Отчёт родителям")
+        verbose_name_plural = gettext_lazy("Отчёты родителям")
         ordering = ("-period_start", "student__last_name", "student__first_name")
         constraints = [
             models.UniqueConstraint(
@@ -891,36 +965,38 @@ class ParentReport(Archivable):
         ]
 
     def __str__(self) -> str:
-        return f"{self.student} · отчёт за {self.title}"
+        return gettext("{student} · отчёт за {period}").format(student=self.student, period=self.title)
 
 
 class ReportSection(models.TextChoices):
-    ATTENDANCE = "attendance", "Посещаемость"
-    GRADES = "grades", "Оценки"
-    EXAMS = "exams", "Экзамены и вузы"
-    DOCUMENTS = "documents", "Документы"
-    DISCIPLINE = "discipline", "Дисциплина"
+    ATTENDANCE = "attendance", gettext_lazy("Посещаемость")
+    GRADES = "grades", gettext_lazy("Оценки")
+    EXAMS = "exams", gettext_lazy("Экзамены и вузы")
+    DOCUMENTS = "documents", gettext_lazy("Документы")
+    DISCIPLINE = "discipline", gettext_lazy("Дисциплина")
     # отчёты по шаблонам школы
-    IELTS = "ielts", "Пробник IELTS"
-    SAT = "sat", "Пробник SAT"
-    PROFILE = "profile", "Уровень английского и спорт"
+    IELTS = "ielts", gettext_lazy("IELTS Mock Test")
+    SAT = "sat", gettext_lazy("SAT Mock Test")
+    PROFILE = "profile", gettext_lazy("Уровень английского и спорт")
 
 
 class ReportLine(models.Model):
     """Строка снимка отчёта: раздел, подпись, значение, примечание."""
 
-    report = models.ForeignKey(ParentReport, verbose_name="Отчёт", related_name="lines", on_delete=models.CASCADE)
-    section = models.CharField("Раздел", max_length=12, choices=ReportSection.choices)
+    report = models.ForeignKey(
+        ParentReport, verbose_name=gettext_lazy("Отчёт"), related_name="lines", on_delete=models.CASCADE
+    )
+    section = models.CharField(gettext_lazy("Раздел"), max_length=12, choices=ReportSection.choices)
     #: что это за строка в шаблоне школы («days_total», «grade»); у стандартного пусто
-    code = models.CharField("Код строки", max_length=24, blank=True)
-    order = models.PositiveSmallIntegerField("Порядок", default=0)
-    title = models.CharField("Подпись", max_length=120)
-    value = models.CharField("Значение", max_length=120, blank=True)
-    note = models.CharField("Примечание", max_length=300, blank=True)
+    code = models.CharField(gettext_lazy("Код строки"), max_length=24, blank=True)
+    order = models.PositiveSmallIntegerField(gettext_lazy("Порядок"), default=0)
+    title = models.CharField(gettext_lazy("Подпись"), max_length=120)
+    value = models.CharField(gettext_lazy("Значение"), max_length=120, blank=True)
+    note = models.CharField(gettext_lazy("Примечание"), max_length=300, blank=True)
 
     class Meta:
-        verbose_name = "Строка отчёта"
-        verbose_name_plural = "Строки отчёта"
+        verbose_name = gettext_lazy("Строка отчёта")
+        verbose_name_plural = gettext_lazy("Строки отчёта")
         ordering = ("report", "section", "order", "id")
 
     def __str__(self) -> str:
@@ -932,7 +1008,7 @@ class ReviewKind(models.TextChoices):
     SAT_VERBAL = "sat_verbal", "SAT Verbal"
     SAT_MATH = "sat_math", "SAT Math"
     #: отзыв учителя другого предмета — «ФИО учителя — предмет»
-    SUBJECT = "subject", "Предмет"
+    SUBJECT = "subject", gettext_lazy("Предмет")
 
 
 class ReportReview(models.Model):
@@ -943,21 +1019,23 @@ class ReportReview(models.Model):
     и любой из них куратор может убрать.
     """
 
-    report = models.ForeignKey(ParentReport, verbose_name="Отчёт", related_name="reviews", on_delete=models.CASCADE)
-    kind = models.CharField("Вид", max_length=12, choices=ReviewKind.choices)
-    order = models.PositiveSmallIntegerField("Порядок", default=0)
-    course = models.ForeignKey(
-        Course, verbose_name="Журнал", related_name="+", on_delete=models.SET_NULL, null=True, blank=True
+    report = models.ForeignKey(
+        ParentReport, verbose_name=gettext_lazy("Отчёт"), related_name="reviews", on_delete=models.CASCADE
     )
-    teacher_name = models.CharField("Учитель", max_length=200, blank=True)
-    subject_title = models.CharField("Предмет", max_length=120, blank=True)
-    text = models.TextField("Текст", blank=True)
+    kind = models.CharField(gettext_lazy("Вид"), max_length=12, choices=ReviewKind.choices)
+    order = models.PositiveSmallIntegerField(gettext_lazy("Порядок"), default=0)
+    course = models.ForeignKey(
+        Course, verbose_name=gettext_lazy("Журнал"), related_name="+", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    teacher_name = models.CharField(gettext_lazy("Учитель"), max_length=200, blank=True)
+    subject_title = models.CharField(gettext_lazy("Предмет"), max_length=120, blank=True)
+    text = models.TextField(gettext_lazy("Текст"), blank=True)
     #: текст написал ИИ и человек его ещё не менял
-    by_ai = models.BooleanField("Черновик ИИ", default=False)
+    by_ai = models.BooleanField(gettext_lazy("Черновик ИИ"), default=False)
 
     class Meta:
-        verbose_name = "Отзыв в отчёте"
-        verbose_name_plural = "Отзывы в отчёте"
+        verbose_name = gettext_lazy("Отзыв в отчёте")
+        verbose_name_plural = gettext_lazy("Отзывы в отчёте")
         ordering = ("report", "order", "id")
 
     def __str__(self) -> str:
@@ -985,25 +1063,27 @@ class EnglishLevel(models.Model):
     """
 
     student = models.ForeignKey(
-        "students.Student", verbose_name="Ученик", related_name="english_levels", on_delete=models.CASCADE
+        "students.Student", verbose_name=gettext_lazy("Ученик"), related_name="english_levels", on_delete=models.CASCADE
     )
-    level = models.CharField("Уровень", max_length=2, choices=CefrLevel.choices)
-    since = models.DateField("С")
+    level = models.CharField(gettext_lazy("Уровень"), max_length=2, choices=CefrLevel.choices)
+    since = models.DateField(gettext_lazy("С"))
     set_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто внёс",
+        verbose_name=gettext_lazy("Кто внёс"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    created_at = models.DateTimeField("Внесён", auto_now_add=True)
+    created_at = models.DateTimeField(gettext_lazy("Внесён"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Уровень английского"
-        verbose_name_plural = "Уровни английского"
+        verbose_name = gettext_lazy("Уровень английского")
+        verbose_name_plural = gettext_lazy("Уровни английского")
         ordering = ("student", "-since", "-id")
         constraints = [models.UniqueConstraint(fields=("student", "since"), name="one_english_level_per_day")]
 
     def __str__(self) -> str:
-        return f"{self.student} · {self.level} с {self.since:%d.%m.%Y}"
+        return gettext("{student} · {level} с {since}").format(
+            student=self.student, level=self.level, since=f"{self.since:%d.%m.%Y}"
+        )

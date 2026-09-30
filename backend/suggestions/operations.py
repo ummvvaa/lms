@@ -22,16 +22,20 @@ from itertools import pairwise
 from typing import Any
 
 from django.db.models import Count
-from django.utils import timezone
+from django.utils import timezone, translation
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
 from core.domains import ROLE_TITLES, domain_of_role
+from core.i18n import language_of
 from core.labels import field_title, value_title
-from core.phrasing import counted, days_left, listing, people
+from core.phrasing import days_left, listing, people, tn
 from students.models import Student
 from suggestions.llm import LLMUnavailable, complete
 from suggestions.models import SuggestionSource
 
-RULES = """Ты помощник директора частной школы, готовящей учеников к поступлению.
+RULES = (  # i18n-skip: промпт модели
+    """Ты помощник директора частной школы, готовящей учеников к поступлению.
 
 Правила, нарушать нельзя:
 - опирайся ТОЛЬКО на переданные факты, ничего не добавляй от себя;
@@ -42,6 +46,7 @@ RULES = """Ты помощник директора частной школы, �
 - пиши по-русски, коротко и по делу, без канцелярита и без общих слов;
 - учеников называй по номерам, которые переданы: имена подставит система.
 """
+)  # fmt: skip
 
 
 @dataclass
@@ -65,12 +70,12 @@ class Outcome:
             "rows": self.rows,
             # без подписи — ответ правил, до модели дело не дошло: спрашивать
             # было не о чем. «Модель не ответила» здесь была бы неправдой
-            "detail": self.detail or (NOT_ASKED if self.offline else ""),
+            "detail": self.detail or (str(NOT_ASKED) if self.offline else ""),
         }
 
 
 #: операция ответила сама, модель не звали: данных для вопроса нет
-NOT_ASKED = "Модель не спрашивали: данных для вопроса нет"
+NOT_ASKED = gettext_lazy("Модель не спрашивали: данных для вопроса нет")
 
 
 def offline_reason(error: Exception | str | None = None) -> str:
@@ -83,13 +88,14 @@ def offline_reason(error: Exception | str | None = None) -> str:
     from suggestions.llm import is_configured
 
     if not is_configured():
-        return "Собрано правилами: модель не подключена"
+        return _("Собрано правилами: модель не подключена")
     why = str(error or "").strip()
     if not why:
-        return "Собрано правилами: модель не ответила"
-    if why.startswith("модель"):
-        return f"Собрано правилами: {why}"
-    return f"Собрано правилами: модель не ответила — {why}"
+        return _("Собрано правилами: модель не ответила")
+    # причина из `llm.empty_reason` уже называет модель — второй раз не повторяем
+    if why.startswith(_("модель вернула пустой ответ")) or why == _("модель отказалась отвечать"):
+        return _("Собрано правилами: {reason}").format(reason=why)
+    return _("Собрано правилами: модель не ответила — {reason}").format(reason=why)
 
 
 # --- Обезличивание --------------------------------------------------------
@@ -107,7 +113,7 @@ class Roster:
         self.number_of: dict[int, int] = {s.pk: i + 1 for i, s in enumerate(students)}
 
     def label(self, student: Student) -> str:
-        return f"ученик {self.number_of[student.pk]}"
+        return f"ученик {self.number_of[student.pk]}"  # i18n-skip: номер ученика для промпта модели
 
     def restore(self, text: str) -> str:
         """Вернуть имена на место: «ученик 3» → «Ахметова Алия».
@@ -121,7 +127,7 @@ class Roster:
             student = self.by_number.get(int(match.group(1)))
             return student.full_name if student else match.group(0)
 
-        return re.sub(r"[Уу]ченик[а-яё]{0,3}\s+(\d+)", swap, text)
+        return re.sub(r"[Уу]ченик[а-яё]{0,3}\s+(\d+)", swap, text)  # i18n-skip: регулярное выражение
 
 
 # --- Факты для операций ---------------------------------------------------
@@ -131,7 +137,7 @@ def _exam_facts(student: Student) -> dict:
     profile = getattr(student, "exam", None)
     if profile is None:
         return {}
-    return {
+    return {  # i18n-skip: факты для промпта модели
         "IELTS сейчас": str(profile.ielts_current or "нет данных"),
         "IELTS цель": str(profile.ielts_target or "не задана"),
         "SAT сейчас": str(profile.sat_current or "нет данных"),
@@ -204,7 +210,7 @@ def explain_list(*, student_ids: list[int], actor, role: str) -> Outcome:
     """Что общего у этих учеников, с чего начать, кто в приоритете."""
     students = _students_of(student_ids, actor=actor, role=role)
     if not students:
-        return Outcome(text="В списке никого нет — снимите фильтры или отметьте учеников", offline=True)
+        return Outcome(text=_("В списке никого нет — снимите фильтры или отметьте учеников"), offline=True)
 
     domain = domain_of_role(role)
     code = domain.code if domain else "exam"
@@ -214,13 +220,13 @@ def explain_list(*, student_ids: list[int], actor, role: str) -> Outcome:
     for student in students:
         pairs = _domain_facts(student, code)
         readiness = _readiness_of(student)
-        facts.append(
+        facts.append(  # i18n-skip: факты для промпта модели
             f"{roster.label(student)}: {', '.join(f'{k} — {v}' for k, v in pairs.items()) or 'данных нет'}"
             f"; готовность {readiness}%"
         )
 
     offline = _offline_list_summary(students, code, roster)
-    text = _ask(
+    text = _ask(  # i18n-skip: промпт модели
         purpose="explain_list",
         actor=actor,
         role=role,
@@ -247,9 +253,9 @@ def _offline_list_summary(students, code: str, roster: Roster) -> str:
     lowest = scored[:3]
     average = round(sum(_readiness_of(s) for s in students) / len(students))
     lines = [
-        f"В списке {people(len(students))}, средняя готовность — {average}%.",
-        "Ниже всех: " + listing([f"{s.full_name} ({_readiness_of(s)}%)" for s in lowest]) + ".",
-        "С них и стоит начать: у остальных запас больше.",
+        _("В списке {people}, средняя готовность — {average}%.").format(people=people(len(students)), average=average),
+        _("Ниже всех: {students}.").format(students=listing([f"{s.full_name} ({_readiness_of(s)}%)" for s in lowest])),
+        _("С них и стоит начать: у остальных запас больше."),
     ]
     return " ".join(lines)
 
@@ -267,7 +273,7 @@ def week_changes(*, actor, role: str, days: int = 7, student_ids: list[int] | No
 
     domain = domain_of_role(role)
     if domain is None:
-        return Outcome(text="У вашей роли нет своего домена — сводку собирать не из чего", offline=True)
+        return Outcome(text=_("У вашей роли нет своего домена — сводку собирать не из чего"), offline=True)
 
     since = timezone.now() - timedelta(days=days)
     entries = AuditLog.objects.filter(domain_code=domain.code, created_at__gte=since)
@@ -279,22 +285,38 @@ def week_changes(*, actor, role: str, days: int = 7, student_ids: list[int] | No
         .order_by("-n")[:10]
     )
     facts = [
-        f"{field_title(row['model_label'], row['field_name'])}: правок {row['n']} у {row['people']} учеников"
+        tn(
+            row["people"],
+            "{field}: правок {count} у {n} ученика|{field}: правок {count} у {n} учеников|"
+            "{field}: правок {count} у {n} учеников",
+            field=field_title(row["model_label"], row["field_name"]),
+            count=row["n"],
+        )
         for row in grouped
     ]
 
     if not facts:
         return Outcome(
-            text=f"За {counted(days, ('день', 'дня', 'дней'))} в домене «{domain.title}» ничего не менялось",
+            text=tn(
+                days,
+                "За {n} день в домене «{domain}» ничего не менялось|"
+                "За {n} дня в домене «{domain}» ничего не менялось|"
+                "За {n} дней в домене «{domain}» ничего не менялось",
+                domain=domain.title,
+            ),
             offline=True,
         )
 
-    offline = (
-        f"За {counted(days, ('день', 'дня', 'дней'))} в домене «{domain.title}» правок: {entries.count()}. "
-        + listing(facts)
-        + "."
+    offline = tn(
+        days,
+        "За {n} день в домене «{domain}» правок: {count}. {changes}.|"
+        "За {n} дня в домене «{domain}» правок: {count}. {changes}.|"
+        "За {n} дней в домене «{domain}» правок: {count}. {changes}.",
+        domain=domain.title,
+        count=entries.count(),
+        changes=listing(facts),
     )
-    answer = _ask(
+    answer = _ask(  # i18n-skip: промпт модели
         purpose="week_changes",
         actor=actor,
         role=role,
@@ -316,7 +338,7 @@ def focus_today(*, actor, role: str, limit: int = 5, student_ids: list[int] | No
     domain = domain_of_role(role)
     students = _students_of(student_ids, actor=actor, role=role)
     if not students:
-        return Outcome(text="Учеников в базе нет — заводит их администратор", offline=True)
+        return Outcome(text=_("Учеников в базе нет — заводит их администратор"), offline=True)
 
     ranked = sorted(students, key=_readiness_of)[:limit]
     roster = Roster(ranked)
@@ -324,7 +346,7 @@ def focus_today(*, actor, role: str, limit: int = 5, student_ids: list[int] | No
     reasons = [_focus_reason(student) for student in ranked]
     offline_lines = [f"{student.full_name} — {reason}" for student, reason in zip(ranked, reasons, strict=True)]
 
-    answer = _ask(
+    answer = _ask(  # i18n-skip: промпт модели
         purpose="focus_today",
         actor=actor,
         role=role,
@@ -353,11 +375,11 @@ def _focus_reason(student: Student) -> str:
     from core.readiness import compute
 
     result = compute(student)
-    weakest = result.weakest.title if result.weakest else "готовность"
+    weakest = str(result.weakest.title) if result.weakest else _("готовность")
     overdue = student.tasks.filter(status__in=("todo", "in_progress"), due_date__lt=timezone.localdate()).count()
-    parts = [f"слабее всего — {weakest.lower()}"]
+    parts = [_("слабее всего — {part}").format(part=weakest.lower())]
     if overdue:
-        parts.append(f"просрочено задач: {overdue}")
+        parts.append(_("просрочено задач: {count}").format(count=overdue))
     return ", ".join(parts)
 
 
@@ -373,12 +395,12 @@ def bulk_tasks(*, student_ids: list[int], wish: str, actor, role: str) -> Outcom
 
     students = _students_of(student_ids, actor=actor, role=role)
     if not students:
-        return Outcome(text="Никто не выделен — отметьте учеников в таблице", offline=True)
+        return Outcome(text=_("Никто не выделен — отметьте учеников в таблице"), offline=True)
     if not wish.strip():
-        return Outcome(text="Опишите словами, что нужно сделать", offline=True)
+        return Outcome(text=_("Опишите словами, что нужно сделать"), offline=True)
 
     default_title = wish.strip()[:200]
-    answer = _ask(
+    answer = _ask(  # i18n-skip: промпт и схема ответа модели
         purpose="bulk_tasks",
         actor=actor,
         role=role,
@@ -434,13 +456,15 @@ def bulk_tasks(*, student_ids: list[int], wish: str, actor, role: str) -> Outcom
         source_ref=wish.strip()[:250],
     )
     return Outcome(
-        text=f"Задача «{title}» со сроком {due.strftime('%d.%m.%Y')} предложена для {people(len(students))}",
+        text=_("Задача «{title}» со сроком {date} предложена для {people}").format(
+            title=title, date=due.strftime("%d.%m.%Y"), people=people(len(students))
+        ),
         offline=answer.offline,
         suggestion=suggestion.pk,
         rows=len(rows) - len(rejected),
         detail=". ".join(
             part
-            for part in (answer.detail, "Предложение готово — откройте предпросмотр и примените то, с чем согласны")
+            for part in (answer.detail, _("Предложение готово — откройте предпросмотр и примените то, с чем согласны"))
             if part
         ),
     )
@@ -453,13 +477,13 @@ def prep_plan(*, student_id: int, actor, role: str) -> Outcome:
     """От текущего балла к целевому: часы, темы по секциям, дата мока."""
     student = _one_of(student_id, actor=actor, role=role, related=("exam",))
     if student is None:
-        return Outcome(text="Ученик не найден", offline=True)
+        return Outcome(text=_("Ученик не найден"), offline=True)
 
     facts = _exam_facts(student)
     weak = _weak_topics(student)
     offline = _offline_prep_plan(student, facts, weak)
 
-    answer = _ask(
+    answer = _ask(  # i18n-skip: промпт модели
         purpose="prep_plan",
         actor=actor,
         role=role,
@@ -489,23 +513,33 @@ def _weak_topics(student: Student) -> list[str]:
 
 def _offline_prep_plan(student: Student, facts: dict, weak: list[str]) -> str:
     profile = getattr(student, "exam", None)
-    lines = ["План собран правилами: модель не подключена."]
+    lines = [_("План собран правилами: модель не подключена.")]
     if profile and profile.ielts_current and profile.ielts_target:
         gap = float(profile.ielts_target) - float(profile.ielts_current)
         weeks = max(4, int(gap / 0.5) * 6)
         lines.append(
-            f"До цели по IELTS осталось {gap:.1f} балла. При {profile.hours_per_week or 6} часах в неделю "
-            f"на это уходит около {counted(weeks, ('недели', 'недель', 'недель'))}."
+            tn(
+                weeks,
+                "До цели по IELTS осталось {gap} балла. При {hours} часах в неделю на это уходит около {n} недели.|"
+                "До цели по IELTS осталось {gap} балла. При {hours} часах в неделю на это уходит около {n} недель.|"
+                "До цели по IELTS осталось {gap} балла. При {hours} часах в неделю на это уходит около {n} недель.",
+                gap=f"{gap:.1f}",
+                hours=profile.hours_per_week or 6,
+            )
         )
     if weak:
-        lines.append("Слабые темы по последним разборам: " + listing(weak) + ".")
+        lines.append(_("Слабые темы по последним разборам: {topics}.").format(topics=listing(weak)))
     else:
-        lines.append("Разборов моков ещё не было — начните с пробного экзамена, он покажет слабые темы.")
+        lines.append(_("Разборов онлайн Mock Test ещё не было — начните с него: он покажет слабые темы."))
     if profile and profile.next_mock_date:
-        lines.append(f"Следующий пробный назначен на {profile.next_mock_date.strftime('%d.%m.%Y')}.")
+        lines.append(
+            _("Следующий Mock Test назначен на {date}.").format(date=profile.next_mock_date.strftime("%d.%m.%Y"))
+        )
     else:
         suggested = timezone.localdate() + timedelta(days=21)
-        lines.append(f"Следующий пробный стоит назначить примерно на {suggested.strftime('%d.%m.%Y')}.")
+        lines.append(
+            _("Следующий Mock Test стоит назначить примерно на {date}.").format(date=suggested.strftime("%d.%m.%Y"))
+        )
     return " ".join(lines)
 
 
@@ -518,17 +552,23 @@ def gap_to_tasks(*, student_id: int, actor, role: str) -> Outcome:
 
     student = _one_of(student_id, actor=actor, role=role, related=("talent",))
     if student is None:
-        return Outcome(text="Ученик не найден", offline=True)
+        return Outcome(text=_("Ученик не найден"), offline=True)
 
     gaps = _portfolio_gaps(student)
     if not gaps:
         return Outcome(
-            text=f"У {student.full_name} портфолио закрывает все направления — новых задач не нужно", offline=True
+            text=_("У {student} портфолио закрывает все направления — новых задач не нужно").format(
+                student=student.full_name
+            ),
+            offline=True,
         )
+    # задачи читает ученик — названия на его языке, а ответ директору — на языке директора
+    with translation.override(language_of(getattr(student, "user", None))):
+        task_titles = _portfolio_gaps(student)
 
     key = uuid.uuid4().hex[:16]
     rows = []
-    for i, gap in enumerate(gaps, start=1):
+    for i, gap in enumerate(task_titles, start=1):
         row_key = f"{key}-{i}"
         due = timezone.localdate() + timedelta(days=30 * i)
         rows.append(
@@ -559,30 +599,30 @@ def gap_to_tasks(*, student_id: int, actor, role: str) -> Outcome:
         source_type=SuggestionSource.ASSISTANT,
         command="gap_to_tasks",
         rows=rows,
-        source_ref=f"пробелы портфолио: {student.full_name}",
+        source_ref=f"пробелы портфолио: {student.full_name}",  # i18n-skip: источник сохраняется в базе
     )
     return Outcome(
-        text=f"Пробелов найдено: {len(gaps)}. " + listing(gaps),
+        text=_("Пробелов найдено: {count}. {gaps}").format(count=len(gaps), gaps=listing(gaps)),
         lines=gaps,
         offline=True,
         suggestion=suggestion.pk,
         rows=len(rows),
-        detail="Задачи предложены — примените те, что считаете нужными",
+        detail=_("Задачи предложены — примените те, что считаете нужными"),
     )
 
 
 #: Что считаем направлением портфолио. Категории те же, что у активностей.
 PORTFOLIO_TRACKS = {
-    "olympiad": "Выступить на олимпиаде",
-    "research": "Сделать исследовательскую работу",
-    "leadership": "Взять лидерскую роль в проекте",
-    "volunteering": "Набрать часы волонтёрства",
+    "olympiad": gettext_lazy("Выступить на олимпиаде"),
+    "research": gettext_lazy("Сделать исследовательскую работу"),
+    "leadership": gettext_lazy("Взять лидерскую роль в проекте"),
+    "volunteering": gettext_lazy("Набрать часы волонтёрства"),
 }
 
 
 def _portfolio_gaps(student: Student) -> list[str]:
     have = set(student.activities.values_list("category", flat=True))
-    return [title for code, title in PORTFOLIO_TRACKS.items() if code not in have]
+    return [str(title) for code, title in PORTFOLIO_TRACKS.items() if code not in have]
 
 
 # --- Проверка баланса списка вузов ----------------------------------------
@@ -594,7 +634,7 @@ def check_balance(*, student_id: int, actor, role: str) -> Outcome:
 
     student = _one_of(student_id, actor=actor, role=role)
     if student is None:
-        return Outcome(text="Ученик не найден", offline=True)
+        return Outcome(text=_("Ученик не найден"), offline=True)
 
     rows = list(
         StudentUniversity.objects.filter(student=student).select_related(
@@ -602,14 +642,16 @@ def check_balance(*, student_id: int, actor, role: str) -> Outcome:
         )
     )
     if not rows:
-        return Outcome(text=f"У {student.full_name} в списке пока нет ни одной программы", offline=True)
+        return Outcome(
+            text=_("У {student} в списке пока нет ни одной программы").format(student=student.full_name), offline=True
+        )
 
     counts = {"reach": 0, "target": 0, "safety": 0}
     for row in rows:
         counts[row.tier] = counts.get(row.tier, 0) + 1
 
     problems = _balance_problems(counts, rows)
-    facts = (
+    facts = (  # i18n-skip: факты для промпта модели
         f"Программ в списке: {len(rows)} (reach {counts['reach']}, target {counts['target']}, "
         f"safety {counts['safety']}).\n"
         + "\n".join(
@@ -619,10 +661,12 @@ def check_balance(*, student_id: int, actor, role: str) -> Outcome:
         )
     )
     offline = (
-        listing(problems) + "." if problems else "Список сбалансирован: есть и запасные варианты, и дедлайны разведены."
+        listing(problems) + "."
+        if problems
+        else _("Список сбалансирован: есть и запасные варианты, и дедлайны разведены.")
     )
 
-    answer = _ask(
+    answer = _ask(  # i18n-skip: промпт модели
         purpose="check_balance",
         actor=actor,
         role=role,
@@ -638,27 +682,33 @@ def _balance_problems(counts: dict, rows: list) -> list[str]:
     problems: list[str] = []
     total = sum(counts.values())
     if counts.get("safety", 0) == 0:
-        problems.append("в списке нет ни одного запасного варианта (safety)")
+        problems.append(_("в списке нет ни одного запасного варианта (safety)"))
     if total and counts.get("reach", 0) / total > 0.6:
-        problems.append(f"перекос в сторону reach: {counts['reach']} из {total}")
+        problems.append(_("перекос в сторону reach: {count} из {total}").format(count=counts["reach"], total=total))
     if counts.get("target", 0) == 0:
-        problems.append("нет программ категории target — списку не на что опереться")
+        problems.append(_("нет программ категории target — списку не на что опереться"))
 
     dated = [row for row in rows if row.deadline]
     dated.sort(key=lambda r: r.deadline)
     for first, second in pairwise(dated):
         if (second.deadline - first.deadline).days <= 3:
             problems.append(
-                f"дедлайны {first.program.university.name} и {second.program.university.name} "
-                f"стоят вплотную ({first.deadline.strftime('%d.%m')} и {second.deadline.strftime('%d.%m')})"
+                _("дедлайны {first} и {second} стоят вплотную ({first_date} и {second_date})").format(
+                    first=first.program.university.name,
+                    second=second.program.university.name,
+                    first_date=first.deadline.strftime("%d.%m"),
+                    second_date=second.deadline.strftime("%d.%m"),
+                )
             )
             break
     soon = [row for row in dated if 0 <= (row.deadline - timezone.localdate()).days <= 14]
     if soon:
         nearest = soon[0]
         problems.append(
-            f"ближайший дедлайн — {nearest.program.university.name}, "
-            f"{days_left((nearest.deadline - timezone.localdate()).days)}"
+            _("ближайший дедлайн — {university}, {when}").format(
+                university=nearest.program.university.name,
+                when=days_left((nearest.deadline - timezone.localdate()).days),
+            )
         )
     return problems
 
@@ -702,7 +752,7 @@ def _ask(
 
     text = (response.content or "").strip()
     if not text and not response.parsed:
-        return Answer(text=fallback, offline=True, detail=offline_reason("модель вернула пустой ответ"))
+        return Answer(text=fallback, offline=True, detail=offline_reason(_("модель вернула пустой ответ")))
     return Answer(text=text or fallback, parsed=response.parsed, offline=False)
 
 

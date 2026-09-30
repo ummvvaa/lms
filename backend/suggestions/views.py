@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from celery.result import AsyncResult
+from django.utils.translation import gettext as _
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import (
@@ -63,7 +64,7 @@ from suggestions.serializers import (
 def _deny_students(request):
     """Ученик не работает с предложениями (инвариант №3 — применяет сотрудник)."""
     if request.user.role == ROLE_STUDENT:
-        return Response({"detail": "Предложения ведут сотрудники"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Предложения ведут сотрудники")}, status=status.HTTP_403_FORBIDDEN)
     return None
 
 
@@ -94,18 +95,28 @@ def _student_suggestion_guard(request, suggestion: Suggestion, action: str = "re
             # переданную владельцу строку куратор не решает: сначала вернуть себе (фаза 62)
             if suggestion.is_escalated and action in CURATOR_DECISIONS:
                 return Response(
-                    {"detail": f"Строка передана — её решает {domain.owner_name}. Верните себе, если передумали"},
+                    {
+                        "detail": _("Строка передана — её решает {owner}. Верните себе, если передумали").format(
+                            owner=domain.owner_name
+                        )
+                    },
                     status=status.HTTP_409_CONFLICT,
                 )
             if action in (*CURATOR_DECISIONS, "escalate", "unescalate") and _all_in_groups(request.user, suggestion):
                 return None
             return Response(
-                {"detail": "Куратор подтверждает и отклоняет — откат и порог остаются владельцу домена"},
+                {"detail": _("Куратор подтверждает и отклоняет — откат и порог остаются владельцу домена")},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        owner = f" — {domain.owner_name} ({domain.title})" if domain else ""
+        detail = (
+            _("Предложение ученика подтверждает владелец домена — {owner} ({domain})").format(
+                owner=domain.owner_name, domain=domain.title
+            )
+            if domain
+            else _("Предложение ученика подтверждает владелец домена")
+        )
         return Response(
-            {"detail": f"Предложение ученика подтверждает владелец домена{owner}"},
+            {"detail": detail},
             status=status.HTTP_403_FORBIDDEN,
         )
     return None
@@ -218,7 +229,7 @@ class SuggestionViewSet(
         reason = str(request.data.get("reason") or "").strip()
         if suggestion.role == ROLE_STUDENT and not reason:
             return Response(
-                {"detail": "Отклоняя, назовите причину — ученик должен понять, что поправить"},
+                {"detail": _("Отклоняя, назовите причину — ученик должен понять, что поправить")},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         with transaction.atomic():
@@ -280,7 +291,7 @@ class SuggestionViewSet(
             return denied
         suggestion = self.get_object()
         if request.user.role != ROLE_CURATOR:
-            return Response({"detail": "Передаёт куратор — владельцу домена"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("Передаёт куратор — владельцу домена")}, status=status.HTTP_403_FORBIDDEN)
         denied = _student_suggestion_guard(request, suggestion, "escalate")
         if denied:
             return denied
@@ -324,7 +335,7 @@ class SuggestionViewSet(
         suggestion = self.get_object()
         # администратор дописывает строку только за домен предложения (фаза 35)
         if not can_write_for(request.user.role, suggestion.domain_code, data["model"], data["field"]):
-            return Response({"detail": "Поле чужого домена"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("Поле чужого домена")}, status=status.HTTP_403_FORBIDDEN)
         instance = apps.get_model(data["model"]).objects.filter(student_id=data["student"]).first()
         change = SuggestionChange.objects.create(
             suggestion=suggestion,
@@ -366,10 +377,10 @@ def propose(request):
     отбиваются здесь, на сервере, а не прячутся в интерфейсе.
     """
     if request.user.role != ROLE_STUDENT:
-        return Response({"detail": "Данные о себе вносит ученик"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Данные о себе вносит ученик")}, status=status.HTTP_403_FORBIDDEN)
     student = getattr(request.user, "student", None)
     if student is None:
-        return Response({"detail": "У этой записи нет карточки ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("У этой записи нет карточки ученика")}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = ProposeSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -394,7 +405,7 @@ def my_proposals(request):
     from suggestions.student_queue import mine_payload
 
     if request.user.role != ROLE_STUDENT:
-        return Response({"detail": "Это кабинет ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Это кабинет ученика")}, status=status.HTTP_403_FORBIDDEN)
     return Response({"results": mine_payload(request.user)})
 
 
@@ -443,7 +454,7 @@ def students_queue_confirm(request):
     user = request.user
     if user.role != ROLE_CURATOR and domain_of_role(user.role) is None:
         return Response(
-            {"detail": "Предложение ученика подтверждает владелец домена"}, status=status.HTTP_403_FORBIDDEN
+            {"detail": _("Предложение ученика подтверждает владелец домена")}, status=status.HTTP_403_FORBIDDEN
         )
 
     confirmed, results, skipped = 0, [], []
@@ -493,7 +504,7 @@ def paste(request):
     jobs.start(
         user=request.user,
         kind="paste",
-        title="Разбор вставленного текста",
+        title=_("Разбор вставленного текста"),
         task_id=task.id,
         retry_task="suggestions.parse_paste",
         retry_payload=kwargs,
@@ -514,13 +525,13 @@ def _acting_domain(request, requested: str = ""):
     if own is not None:
         return own.code, None
     if not can_upload_files(request.user.role):
-        return None, Response({"detail": "У роли нет домена"}, status=status.HTTP_403_FORBIDDEN)
+        return None, Response({"detail": _("У роли нет домена")}, status=status.HTTP_403_FORBIDDEN)
     code = (requested or "").strip()
     if code in DOMAINS:
         return code, None
     titles = ", ".join(f"«{d.title}»" for d in DOMAINS.values())
     return None, Response(
-        {"detail": f"Сначала выберите домен, чьи данные вы вставляете: {titles}"},
+        {"detail": _("Сначала выберите домен, чьи данные вы вставляете: {domains}").format(domains=titles)},
         status=status.HTTP_400_BAD_REQUEST,
     )
 
@@ -538,7 +549,7 @@ def upload(request):
         return denied
     if not can_upload_files(request.user.role):
         return Response(
-            {"detail": "Файлы загружает администратор. Вставьте текст — разбор тот же"},
+            {"detail": _("Файлы загружает администратор. Вставьте текст — разбор тот же")},
             status=status.HTTP_403_FORBIDDEN,
         )
     domain_code, problem = _acting_domain(request, str(request.data.get("domain") or ""))
@@ -547,7 +558,7 @@ def upload(request):
 
     uploaded = request.FILES.get("file")
     if uploaded is None:
-        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Файл не приложен")}, status=status.HTTP_400_BAD_REQUEST)
 
     raw = uploaded.read()
     content = raw.decode("utf-8-sig", errors="replace") if isinstance(raw, bytes) else str(raw)
@@ -562,7 +573,7 @@ def upload(request):
     jobs.start(
         user=request.user,
         kind="parse_file",
-        title=f"Разбор файла «{uploaded.name}»",
+        title=_("Разбор файла «{name}»").format(name=uploaded.name),
         task_id=task.id,
         retry_task="suggestions.parse_file",
         retry_payload=kwargs,
@@ -584,7 +595,7 @@ def task_status(request, task_id: str):
     from core.models import BackgroundJob
 
     if not BackgroundJob.objects.filter(task_id=task_id, owner=request.user).exists():
-        return Response({"detail": "Задача не найдена"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Задача не найдена")}, status=status.HTTP_404_NOT_FOUND)
     result = AsyncResult(task_id)
     payload: dict = {"id": task_id, "state": result.state}
     if result.state == "PROGRESS":
@@ -608,10 +619,10 @@ def explain_match(request):
     if request.user.role == ROLE_STUDENT:
         own = getattr(request.user, "student", None)
         if own is None or own.pk != student_id:
-            return Response({"detail": "Доступен только свой профиль"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("Доступен только свой профиль")}, status=status.HTTP_403_FORBIDDEN)
     elif not sees_student(request.user, student_id):
         # сотрудник с границей видимости (куратор) — только свои ученики, чужой — 404
-        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Ученик не найден")}, status=status.HTTP_404_NOT_FOUND)
 
     kwargs = {
         "student_id": student_id,
@@ -622,7 +633,7 @@ def explain_match(request):
     jobs.start(
         user=request.user,
         kind="explain_match",
-        title="Объяснение соответствия",
+        title=_("Объяснение соответствия"),
         task_id=task.id,
         retry_task="suggestions.explain_match",
         retry_payload=kwargs,
@@ -642,20 +653,20 @@ def essay_questions(request):
 
     essay = Essay.objects.filter(pk=serializer.validated_data["essay"]).first()
     if essay is None:
-        return Response({"detail": "Эссе не найдено"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Эссе не найдено")}, status=status.HTTP_404_NOT_FOUND)
     if request.user.role == ROLE_STUDENT:
         own = getattr(request.user, "student", None)
         if own is None or essay.student_id != own.pk:
-            return Response({"detail": "Чужое эссе"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("Чужое эссе")}, status=status.HTTP_403_FORBIDDEN)
     elif not sees_student(request.user, essay.student_id):
-        return Response({"detail": "Эссе не найдено"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Эссе не найдено")}, status=status.HTTP_404_NOT_FOUND)
 
     kwargs = {"essay_id": essay.pk, "prompt": serializer.validated_data["prompt"], "actor_id": request.user.pk}
     task = background.essay_questions.delay(**kwargs)
     jobs.start(
         user=request.user,
         kind="essay_questions",
-        title=f"Вопросы по эссе «{essay.title}»",
+        title=_("Вопросы по эссе «{essay}»").format(essay=essay.title),
         task_id=task.id,
         link="/essays",
         retry_task="suggestions.essay_questions",
@@ -679,7 +690,7 @@ def _llm_guard(request):
     if denied:
         return denied
     if domain_of_role(request.user.role) is None:
-        return Response({"detail": "У вашей роли нет домена"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("У вашей роли нет домена")}, status=status.HTTP_403_FORBIDDEN)
     try:
         check_available()
     except BudgetExceeded as error:
@@ -710,9 +721,9 @@ def run_operation(request):
     payload.is_valid(raise_exception=True)
     code = payload.validated_data["code"]
     if command_registry.get(code) is None:
-        return Response({"detail": "Такой команды нет"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Такой команды нет")}, status=status.HTTP_400_BAD_REQUEST)
     if request.user.role not in (command_registry.get(code).roles or ()):
-        return Response({"detail": "Эта команда не для вашей роли"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Эта команда не для вашей роли")}, status=status.HTTP_403_FORBIDDEN)
 
     kwargs = {
         "code": code,
@@ -724,7 +735,7 @@ def run_operation(request):
     jobs.start(
         user=request.user,
         kind="operation",
-        title=command_registry.get(code).title,
+        title=str(command_registry.get(code).title),
         task_id=task.id,
         retry_task="suggestions.run_operation",
         retry_payload=kwargs,
@@ -749,7 +760,7 @@ def parse_university(request):
     jobs.start(
         user=request.user,
         kind="parse_university",
-        title=f"Разбор вуза «{payload.validated_data['text'][:60]}»",
+        title=_("Разбор вуза «{query}»").format(query=payload.validated_data["text"][:60]),
         task_id=task.id,
         retry_task="suggestions.parse_university",
         retry_payload=kwargs,
@@ -768,7 +779,9 @@ def verify_requirements(request):
     не меняет — расхождение уходит предложением.
     """
     if request.user.role not in (DOMAINS["admission"].role, ROLE_ADMIN):
-        return Response({"detail": "Справочник вузов ведёт директор по поступлению"}, status=status.HTTP_403_FORBIDDEN)
+        return Response(
+            {"detail": _("Справочник вузов ведёт директор по поступлению")}, status=status.HTTP_403_FORBIDDEN
+        )
     guard = _llm_guard(request)
     if guard:
         return guard
@@ -784,7 +797,7 @@ def verify_requirements(request):
     jobs.start(
         user=request.user,
         kind="verify_requirements",
-        title="Сверка требований с сайтом вуза",
+        title=_("Сверка требований с сайтом вуза"),
         task_id=task.id,
         link="/directory",
         retry_task="suggestions.verify_requirements",
@@ -807,7 +820,7 @@ def parse_activity(request):
     payload.is_valid(raise_exception=True)
     # о чужом ученике предложение не собирается: граница — `core.scope`
     if not sees_student(request.user, payload.validated_data["student"]):
-        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Ученик не найден")}, status=status.HTTP_404_NOT_FOUND)
     kwargs = {
         "text": payload.validated_data["text"],
         "student_id": payload.validated_data["student"],
@@ -818,7 +831,7 @@ def parse_activity(request):
     jobs.start(
         user=request.user,
         kind="parse_activity",
-        title="Разбор описания активности",
+        title=_("Разбор описания активности"),
         task_id=task.id,
         retry_task="suggestions.parse_activity",
         retry_payload=kwargs,
@@ -840,7 +853,7 @@ def parse_image(request):
     payload = ParseImageSerializer(data=request.data)
     payload.is_valid(raise_exception=True)
     if not sees_student(request.user, payload.validated_data["student"]):
-        return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Ученик не найден")}, status=status.HTTP_404_NOT_FOUND)
     uploaded = payload.validated_data["file"]
 
     from materials.files import FileRejected, inspect
@@ -850,7 +863,7 @@ def parse_image(request):
     except FileRejected as error:
         return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
     if not info.content_type.startswith("image/"):
-        return Response({"detail": "Нужна картинка: JPG или PNG"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Нужна картинка: JPG или PNG")}, status=status.HTTP_400_BAD_REQUEST)
 
     from suggestions.llm import InvalidImage, image_from_bytes
 
@@ -874,7 +887,7 @@ def parse_image(request):
     jobs.start(
         user=request.user,
         kind="parse_image",
-        title="Распознавание изображения",
+        title=_("Распознавание изображения"),
         task_id=task.id,
         link=f"/students/{payload.validated_data['student']}",
     )
@@ -887,7 +900,7 @@ def parse_image(request):
 def llm_spend(request):
     """Экран расходов на модель. Ведёт его администратор."""
     if request.user.role != ROLE_ADMIN:
-        return Response({"detail": "Расходы на модель ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Расходы на модель ведёт администратор")}, status=status.HTTP_403_FORBIDDEN)
     days = int(request.query_params.get("days", 30))
     return Response(budget_report(days=max(1, min(days, 365))))
 
@@ -940,7 +953,7 @@ def assistant_thread_detail(request, pk: int):
     """Сообщения одного диалога. Чужой диалог — 404, а не 403."""
     thread = _own_thread(request, pk)
     if thread is None:
-        return Response({"detail": "Диалог не найден"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Диалог не найден")}, status=status.HTTP_404_NOT_FOUND)
     return Response(
         {
             "thread": AssistantThreadSerializer(thread).data,
@@ -971,7 +984,7 @@ def assistant_ask(request):
     if data.get("thread"):
         thread = _own_thread(request, data["thread"])
         if thread is None:
-            return Response({"detail": "Диалог не найден"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": _("Диалог не найден")}, status=status.HTTP_404_NOT_FOUND)
     if thread is None:
         thread = AssistantThread.objects.create(user=request.user)
 

@@ -209,7 +209,7 @@ def test_no_mock_in_period_is_a_note_for_the_curator(pupils, calendar, year):
     mock_attempt(pupils["aliya"], "IELTS", days(-90), total_score=6)
     report = build(pupils["aliya"], ReportTemplate.PROGRESS, calendar)
     assert not any(line.section == ReportSection.IELTS for line in report.lines.all())
-    assert any("Пробников" in gap for gap in school_reports.gaps(report))
+    assert any("Mock Test" in gap for gap in school_reports.gaps(report))
 
 
 def test_variant_one_takes_level_on_period_end_and_sport(pupils, calendar, year):

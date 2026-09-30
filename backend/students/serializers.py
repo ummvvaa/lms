@@ -6,6 +6,7 @@ read-only, внутренние ярлыки не попадают в ответ
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 from core.domains import Source
@@ -147,7 +148,7 @@ class ExamAttemptSerializer(DomainModelSerializer):
                 continue
             scale = scale_of(exam_type, section=name in SECTION_FIELDS)
             if scale is not None and not scale.holds(value):
-                problems[name] = f"Шкала {exam_type} — {scale.hint}"
+                problems[name] = _("Шкала {exam} — {hint}").format(exam=exam_type, hint=scale.hint)
         if problems:
             raise serializers.ValidationError(problems)
         return attrs
@@ -243,7 +244,7 @@ class ParentContactSerializer(DomainModelSerializer):
         email = attrs.get("email", getattr(self.instance, "email", "") or "")
         if not str(phone).strip() and not str(email).strip():
             raise serializers.ValidationError(
-                {"phone": "Укажите телефон или почту — иначе связаться по этому контакту нечем"}
+                {"phone": _("Укажите телефон или почту — иначе связаться по этому контакту нечем")}
             )
         return attrs
 
@@ -290,7 +291,7 @@ class StudyGroupSerializer(serializers.ModelSerializer):
         existing = query.first()
         if existing is None:
             return value
-        raise serializers.ValidationError(f"Группа «{existing.code}» уже заведена")
+        raise serializers.ValidationError(_("Группа «{group}» уже заведена").format(group=existing.code))
 
 
 class StudentWriteSerializer(serializers.ModelSerializer):
@@ -317,12 +318,12 @@ class StudentWriteSerializer(serializers.ModelSerializer):
             return ""
         user = User.objects.filter(login__iexact=value, role="student").first()
         if user is None:
-            raise serializers.ValidationError(f"Учётной записи ученика с логином «{value}» нет")
+            raise serializers.ValidationError(_("Учётной записи ученика с логином «{login}» нет").format(login=value))
         taken = Student.all_objects.filter(user=user)
         if self.instance is not None:
             taken = taken.exclude(pk=self.instance.pk)
         if taken.exists():
-            raise serializers.ValidationError(f"Логин «{value}» уже связан с другой карточкой")
+            raise serializers.ValidationError(_("Логин «{login}» уже связан с другой карточкой").format(login=value))
         return value
 
     def _bind(self, student: Student, login: str) -> Student:
@@ -356,11 +357,17 @@ class StudentWriteSerializer(serializers.ModelSerializer):
             query = query.exclude(pk=self.instance.pk)
         existing = query.first()
         if existing is not None:
-            where = "в архиве" if existing.is_archived else "в списке"
-            raise serializers.ValidationError(
-                f"Ученик с такой почтой уже есть {where}: {existing.full_name}. "
-                "Возьмите другую почту или верните запись из архива."
-            )
+            if existing.is_archived:
+                text = _(
+                    "Ученик с такой почтой уже есть в архиве: {name}. "
+                    "Возьмите другую почту или верните запись из архива."
+                )
+            else:
+                text = _(
+                    "Ученик с такой почтой уже есть в списке: {name}. "
+                    "Возьмите другую почту или верните запись из архива."
+                )
+            raise serializers.ValidationError(text.format(name=existing.full_name))
         return value
 
 
@@ -555,7 +562,7 @@ class AuditEntrySerializer(serializers.Serializer):
         if obj.actor_id:
             return obj.actor.full_name or obj.actor.email
         # автора уже нет (одноразовая запись прогона убрана) — подпись-снимок
-        return obj.actor_title or "система"
+        return obj.actor_title or _("система")
 
 
 class ImportPreviewRequestSerializer(serializers.Serializer):
@@ -662,9 +669,9 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
         doc_type = attrs.get("doc_type")
         expires = attrs.get("expires_at")
         if doc_type and doc_type not in EXPIRING_TYPES and expires:
-            raise serializers.ValidationError({"expires_at": "У этого типа документа срока действия нет"})
+            raise serializers.ValidationError({"expires_at": _("У этого типа документа срока действия нет")})
         if expires and expires < timezone.localdate():
-            raise serializers.ValidationError({"expires_at": "Срок действия уже прошёл — такой документ не примут"})
+            raise serializers.ValidationError({"expires_at": _("Срок действия уже прошёл — такой документ не примут")})
         return attrs
 
     def get_entered_by_curator(self, row) -> bool:

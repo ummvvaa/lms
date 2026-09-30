@@ -23,7 +23,9 @@ import json
 import logging
 
 from django.utils import timezone
+from django.utils.translation import gettext_noop
 
+from core.i18n import language_of, translate
 from core.models import BackgroundJob, Notification
 
 log = logging.getLogger(__name__)
@@ -104,7 +106,8 @@ def fail(task_id: str, error: str) -> None:
     if job is None:
         return
     job.status = BackgroundJob.Status.FAILED
-    job.error = (error or "Операция не завершилась")[:300]
+    # в фоне активного языка нет: запасной текст — на языке владельца операции
+    job.error = (error or translate(language_of(job.owner), "Операция не завершилась"))[:300]
     job.finished_at = timezone.now()
     job.save(update_fields=["status", "error", "finished_at", "updated_at"])
     _notify(job, done=False)
@@ -121,7 +124,8 @@ def _notify(job: BackgroundJob, *, done: bool) -> None:
             notify(
                 job.owner,
                 kind=Notification.Kind.JOB_DONE,
-                template="{title} — готово",
+                # переводит `notify` — на язык получателя
+                template=gettext_noop("{title} — готово"),
                 link=job.link or "/dashboard",
                 title=job.title,
             )
@@ -129,7 +133,7 @@ def _notify(job: BackgroundJob, *, done: bool) -> None:
             notify(
                 job.owner,
                 kind=Notification.Kind.JOB_FAILED,
-                template="{title} — не получилось: {error}",
+                template=gettext_noop("{title} — не получилось: {error}"),
                 link=job.link or "/dashboard",
                 title=job.title,
                 error=job.error,

@@ -38,6 +38,10 @@ import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
+from django.utils import translation
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
+
 # --- Типы значений ------------------------------------------------------------
 
 TEXT = "text"
@@ -51,15 +55,15 @@ PASSWORD = "password"
 NAME = "name"
 
 KIND_TITLES: dict[str, str] = {
-    TEXT: "текст",
-    PHONE: "телефон",
-    EMAIL: "почта",
-    DATE: "дата",
-    SCORE: "балл по шкале экзамена",
-    GPA: "число 0–5",
-    LINK: "ссылка",
-    PASSWORD: "пароль",
-    NAME: "ФИО",
+    TEXT: gettext_lazy("текст"),
+    PHONE: gettext_lazy("телефон"),
+    EMAIL: gettext_lazy("почта"),
+    DATE: gettext_lazy("дата"),
+    SCORE: gettext_lazy("балл по шкале экзамена"),
+    GPA: gettext_lazy("число 0–5"),
+    LINK: gettext_lazy("ссылка"),
+    PASSWORD: gettext_lazy("пароль"),
+    NAME: gettext_lazy("ФИО"),
 }
 
 # --- Куда ложится ---------------------------------------------------------------
@@ -72,12 +76,12 @@ CREDENTIAL = "credential"  # хранилище паролей
 MATCH = "match"  # сопоставление с учеником, никуда не пишется
 
 TARGET_TITLES: dict[str, str] = {
-    PROFILE: "профиль поступления",
-    EXAM_PROFILE: "профиль экзаменов",
-    ATTEMPT: "попытка экзамена",
-    DOCUMENT: "документ-ссылка",
-    CREDENTIAL: "хранилище паролей",
-    MATCH: "сопоставление с учеником",
+    PROFILE: gettext_lazy("профиль поступления"),
+    EXAM_PROFILE: gettext_lazy("профиль экзаменов"),
+    ATTEMPT: gettext_lazy("попытка экзамена"),
+    DOCUMENT: gettext_lazy("документ-ссылка"),
+    CREDENTIAL: gettext_lazy("хранилище паролей"),
+    MATCH: gettext_lazy("сопоставление с учеником"),
 }
 
 #: Домены, в которые таблица поступления пишет **сверх своих**, от имени
@@ -91,7 +95,10 @@ class ColumnSpec:
     """Одна колонка таблицы: как найти, как разобрать, куда положить."""
 
     key: str
+    #: заголовок колонки: он же заголовок шаблона и выгрузки — на языке
+    #: того, кто выгружает; распознаётся на всех трёх (`header_variants`)
     title: str
+    #: старые написания школы для распознавания — по-русски, без перевода
     aliases: tuple[str, ...]
     kind: str
     domain: str
@@ -117,7 +124,7 @@ class ColumnSpec:
     def destination(self) -> str:
         """Куда ложится — словами для отчёта и документации."""
         if self.target in (PROFILE, EXAM_PROFILE):
-            return f"{TARGET_TITLES[self.target]}, поле «{self.field}»"
+            return _("{target}, поле «{field}»").format(target=TARGET_TITLES[self.target], field=self.field)
         if self.target == ATTEMPT:
             return f"{TARGET_TITLES[self.target]} {self.exam}-{self.slot}"
         if self.target == DOCUMENT:
@@ -128,12 +135,20 @@ class ColumnSpec:
 
 
 #: Все колонки таблицы Асем — в порядке поиска по заголовкам
-COLUMNS: tuple[ColumnSpec, ...] = (
-    ColumnSpec("name", "ФИО", ("фио", "ф.и.о", "ученик", "студент"), NAME, "", MATCH, required=True),
-    ColumnSpec("phone", "Номер телефона", ("номер телефона", "телефон"), PHONE, "admission", PROFILE, "student_phone"),
+COLUMNS: tuple[ColumnSpec, ...] = (  # i18n-skip: синонимы заголовков школы — для распознавания, без перевода
+    ColumnSpec("name", gettext_lazy("ФИО"), ("фио", "ф.и.о", "ученик", "студент"), NAME, "", MATCH, required=True),
+    ColumnSpec(
+        "phone",
+        gettext_lazy("Номер телефона"),
+        ("номер телефона", "телефон"),
+        PHONE,
+        "admission",
+        PROFILE,
+        "student_phone",
+    ),
     ColumnSpec(
         "common_app_email",
-        "Электронный адрес Common App",
+        gettext_lazy("Электронный адрес Common App"),
         ("электронный адрес common app", "почта common app", "common app email"),
         EMAIL,
         "admission",
@@ -142,7 +157,7 @@ COLUMNS: tuple[ColumnSpec, ...] = (
     ),
     ColumnSpec(
         "common_app_password",
-        "Пароль от Common App",
+        gettext_lazy("Пароль от Common App"),
         ("пароль от common app", "пароль common app"),
         PASSWORD,
         "admission",
@@ -151,7 +166,7 @@ COLUMNS: tuple[ColumnSpec, ...] = (
     ),
     ColumnSpec(
         "email_password",
-        "Пароль от эл. адреса",
+        gettext_lazy("Пароль от эл. адреса"),
         ("пароль от эл", "пароль от почт", "пароль эл"),
         PASSWORD,
         "admission",
@@ -161,7 +176,7 @@ COLUMNS: tuple[ColumnSpec, ...] = (
     # личная почта ученика — текст в карточке, с логином не связана (фаза 71)
     ColumnSpec(
         "email",
-        "Электронный адрес",
+        gettext_lazy("Электронный адрес"),
         ("электронный адрес", "почта", "email", "e-mail"),
         EMAIL,
         "admission",
@@ -170,7 +185,7 @@ COLUMNS: tuple[ColumnSpec, ...] = (
     ),
     ColumnSpec(
         "drive_folder",
-        "Ссылка на папку студента",
+        gettext_lazy("Ссылка на папку студента"),
         ("папку студента", "папка студента", "гугл драйв", "drive"),
         LINK,
         "admission",
@@ -179,7 +194,7 @@ COLUMNS: tuple[ColumnSpec, ...] = (
     ),
     ColumnSpec(
         "passport_link",
-        "Ссылка на паспорт",
+        gettext_lazy("Ссылка на паспорт"),
         ("ссылка на паспорт", "паспорт ссылка"),
         LINK,
         "documents",
@@ -190,23 +205,31 @@ COLUMNS: tuple[ColumnSpec, ...] = (
     # может не быть, а срок есть (фаза 71)
     ColumnSpec(
         "passport_expiry",
-        "Срок годности паспорта",
+        gettext_lazy("Срок годности паспорта"),
         ("срок годности паспорта", "срок паспорта", "годност"),
         DATE,
         "admission",
         PROFILE,
         "passport_expires_at",
     ),
-    ColumnSpec("gpa", "Средний GPA", ("средний gpa", "gpa", "средний балл"), GPA, "exam", EXAM_PROFILE, "gpa"),
-    ColumnSpec("ielts_1", "IELTS-1", ("ielts-1", "ielts 1"), SCORE, "exam", ATTEMPT, exam="IELTS", slot=1),
-    ColumnSpec("ielts_2", "IELTS-2", ("ielts-2", "ielts 2"), SCORE, "exam", ATTEMPT, exam="IELTS", slot=2),
-    ColumnSpec("ielts_3", "IELTS-3", ("ielts-3", "ielts 3"), SCORE, "exam", ATTEMPT, exam="IELTS", slot=3),
-    ColumnSpec("sat_1", "SAT-1", ("sat-1", "sat 1"), SCORE, "exam", ATTEMPT, exam="SAT", slot=1),
-    ColumnSpec("sat_2", "SAT-2", ("sat-2", "sat 2"), SCORE, "exam", ATTEMPT, exam="SAT", slot=2),
-    ColumnSpec("sat_3", "SAT-3", ("sat-3", "sat 3"), SCORE, "exam", ATTEMPT, exam="SAT", slot=3),
+    ColumnSpec(
+        "gpa", gettext_lazy("Средний GPA"), ("средний gpa", "gpa", "средний балл"), GPA, "exam", EXAM_PROFILE, "gpa"
+    ),
+    ColumnSpec(
+        "ielts_1", gettext_lazy("IELTS-1"), ("ielts-1", "ielts 1"), SCORE, "exam", ATTEMPT, exam="IELTS", slot=1
+    ),
+    ColumnSpec(
+        "ielts_2", gettext_lazy("IELTS-2"), ("ielts-2", "ielts 2"), SCORE, "exam", ATTEMPT, exam="IELTS", slot=2
+    ),
+    ColumnSpec(
+        "ielts_3", gettext_lazy("IELTS-3"), ("ielts-3", "ielts 3"), SCORE, "exam", ATTEMPT, exam="IELTS", slot=3
+    ),
+    ColumnSpec("sat_1", gettext_lazy("SAT-1"), ("sat-1", "sat 1"), SCORE, "exam", ATTEMPT, exam="SAT", slot=1),
+    ColumnSpec("sat_2", gettext_lazy("SAT-2"), ("sat-2", "sat 2"), SCORE, "exam", ATTEMPT, exam="SAT", slot=2),
+    ColumnSpec("sat_3", gettext_lazy("SAT-3"), ("sat-3", "sat 3"), SCORE, "exam", ATTEMPT, exam="SAT", slot=3),
     ColumnSpec(
         "transcript_link",
-        "Ссылка на табель",
+        gettext_lazy("Ссылка на табель"),
         ("ссылка на табел", "табел"),
         LINK,
         "documents",
@@ -215,7 +238,7 @@ COLUMNS: tuple[ColumnSpec, ...] = (
     ),
     ColumnSpec(
         "recommendation_link",
-        "Ссылка на рек. письмо",
+        gettext_lazy("Ссылка на рек. письмо"),
         ("рек. письмо", "рекоменд"),
         LINK,
         "documents",
@@ -257,21 +280,52 @@ def _header_key(title: str) -> str:
     return _text(title).lower()
 
 
+def title_variants(title) -> list[str]:
+    """Заголовок на всех языках интерфейса: русский исходник и его переводы.
+
+    Выгрузка пишет заголовки на языке того, кто выгружает, и файл,
+    выгруженный на казахском, должен загружаться обратно. Поэтому
+    распознавание сверяет заголовок файла с каждым переводом, а не
+    только с тем, на котором говорит загружающий.
+    """
+    from core.i18n import INTERFACE_LANGUAGES, translate
+
+    # ленивая строка на русском — это её исходник: русского каталога нет
+    with translation.override("ru"):
+        source = str(title)
+    out: list[str] = []
+    for lang in INTERFACE_LANGUAGES:
+        text = translate(lang, source) if lang != "ru" else source
+        if text and text not in out:
+            out.append(text)
+    return out
+
+
+def header_variants(title) -> set[str]:
+    """Нормализованные написания заголовка на трёх языках — для сравнения с файлом."""
+    return {key for key in (_header_key(text) for text in title_variants(title)) if key}
+
+
 def read_columns(header: list[str]) -> dict[str, int]:
     """Сопоставить заголовки листа с колонками реестра.
 
     Один заголовок достаётся одной колонке: иначе «Электронный адрес»
     подошёл бы и личной почте, и почте Common App. Порядок — порядок
     реестра, и он это столкновение и разводит.
+
+    Колонка узнаётся по старым написаниям школы (`aliases`) и по своему
+    заголовку на любом из трёх языков: файл, выгруженный шаблоном на
+    казахском или английском, читается так же, как русский.
     """
     taken: set[int] = set()
     found: dict[str, int] = {}
     keys = [_header_key(title) for title in header]
     for spec in COLUMNS:
+        names = (*spec.aliases, *sorted(header_variants(spec.title)))
         for index, key in enumerate(keys):
             if index in taken or not key:
                 continue
-            if any(alias in key for alias in spec.aliases):
+            if any(name in key for name in names):
                 found[spec.key] = index
                 taken.add(index)
                 break
@@ -336,9 +390,9 @@ def writable_domains(user) -> set[str]:
 #: писать на такой адрес бессмысленно, а чинить его импортом мы не вправе.
 #: Сверяется домен целиком — «gmail.com» не должен ловиться на «gmail.co»
 EMAIL_SUSPECTS: dict[str, str] = {
-    "gmail.ru": "домен «gmail.ru» — у Gmail такого нет, вероятно «gmail.com»",
-    "gmail.co": "домен «gmail.co» — похоже на обрезанный «gmail.com»",
-    "mail.ru.com": "домен «mail.ru.com» — вероятно «mail.ru»",
+    "gmail.ru": gettext_lazy("домен «gmail.ru» — у Gmail такого нет, вероятно «gmail.com»"),
+    "gmail.co": gettext_lazy("домен «gmail.co» — похоже на обрезанный «gmail.com»"),
+    "mail.ru.com": gettext_lazy("домен «mail.ru.com» — вероятно «mail.ru»"),
 }
 
 
@@ -373,14 +427,14 @@ def parse_email(raw) -> tuple[str, str]:
     if not text:
         return "", ""
     if text.startswith("@"):
-        return text, "адрес начинается с «@» — перед ним потерялось имя ящика"
+        return text, _("адрес начинается с «@» — перед ним потерялось имя ящика")
     low = text.lower()
     if "@" not in low or "." not in low.split("@")[-1]:
-        return text, "не похоже на адрес почты"
+        return text, _("не похоже на адрес почты")
     domain = low.rsplit("@", 1)[-1]
     if domain.endswith(".con"):
-        return text, "домен оканчивается на «.con» — похоже на опечатку в «.com»"
-    return text, EMAIL_SUSPECTS.get(domain, "")
+        return text, _("домен оканчивается на «.con» — похоже на опечатку в «.com»")
+    return text, str(EMAIL_SUSPECTS.get(domain, ""))
 
 
 def parse_date(raw) -> tuple[dt.date | None, str]:
@@ -397,7 +451,7 @@ def parse_date(raw) -> tuple[dt.date | None, str]:
             return dt.datetime.strptime(text, pattern).date(), ""
         except ValueError:
             continue
-    return None, f"записано словами: «{text[:60]}» — дату впишите руками"
+    return None, _("записано словами: «{text}» — дату впишите руками").format(text=text[:60])
 
 
 def parse_score(raw, exam: str) -> tuple[Decimal | None, str]:
@@ -410,12 +464,14 @@ def parse_score(raw, exam: str) -> tuple[Decimal | None, str]:
     try:
         value = Decimal(text.replace(",", "."))
     except (InvalidOperation, ValueError):
-        return None, f"в ячейке {exam} не балл, а текст: «{text[:60]}»"
+        return None, _("в ячейке {exam} не балл, а текст: «{text}»").format(exam=exam, text=text[:60])
     scale = scale_of(exam)
     if scale is None:
-        return None, f"шкала {exam} неизвестна"
+        return None, _("шкала {exam} неизвестна").format(exam=exam)
     if not scale.holds(value):
-        return None, f"{exam} {value} не по шкале: от {scale.minimum} до {scale.maximum} шагом {scale.step}"
+        return None, _("{exam} {value} не по шкале: от {minimum} до {maximum} шагом {step}").format(
+            exam=exam, value=value, minimum=scale.minimum, maximum=scale.maximum, step=scale.step
+        )
     return value, ""
 
 
@@ -427,9 +483,9 @@ def parse_gpa(raw) -> tuple[Decimal | None, str]:
     try:
         value = Decimal(text.replace(",", "."))
     except (InvalidOperation, ValueError):
-        return None, f"в ячейке GPA не число, а текст: «{text[:60]}»"
+        return None, _("в ячейке GPA не число, а текст: «{text}»").format(text=text[:60])
     if not (Decimal("0") <= value <= Decimal("5")):
-        return None, f"GPA {value} вне шкалы 0–5"
+        return None, _("GPA {value} вне шкалы 0–5").format(value=value)
     return value, ""
 
 
@@ -439,7 +495,7 @@ def parse_link(raw) -> tuple[str, str]:
     if not text:
         return "", ""
     if not text.lower().startswith(("http://", "https://")):
-        return "", f"ссылка не похожа на адрес: «{text[:60]}»"
+        return "", _("ссылка не похожа на адрес: «{text}»").format(text=text[:60])
     return text, ""
 
 
@@ -456,14 +512,14 @@ def parse_cell(spec: ColumnSpec, raw) -> tuple[object, str, bool]:
             return None, "", False
         phone = parse_phone(text)
         if phone is None:
-            return None, f"телефон «{text[:40]}» не разбирается", True
+            return None, _("телефон «{text}» не разбирается").format(text=text[:40]), True
         return phone, "", False
     if spec.kind == EMAIL:
         value, warning = parse_email(raw)
-        return value or None, f"{spec.title}: {warning}" if warning else "", False
+        return value or None, _column_warning(spec.title, warning), False
     if spec.kind == DATE:
         value, warning = parse_date(raw)
-        return value, f"{spec.title.lower()}: {warning}" if warning else "", False
+        return value, _column_warning(str(spec.title).lower(), warning), False
     if spec.kind == SCORE:
         value, warning = parse_score(raw, spec.exam)
         return value, warning, False
@@ -472,11 +528,18 @@ def parse_cell(spec: ColumnSpec, raw) -> tuple[object, str, bool]:
         return value, warning, False
     if spec.kind == LINK:
         value, warning = parse_link(raw)
-        return value or None, f"{spec.title}: {warning}" if warning else "", False
+        return value or None, _column_warning(spec.title, warning), False
     if spec.kind in (PASSWORD, TEXT, NAME):
         text = _text(raw)
         return text or None, "", False
-    return None, f"{spec.title}: тип «{spec.kind}» реестр разбирать не умеет", False
+    return None, _("{column}: тип «{kind}» реестр разбирать не умеет").format(column=spec.title, kind=spec.kind), False
+
+
+def _column_warning(column, warning: str) -> str:
+    """«Колонка: что не так» — предупреждение с названием колонки; нет предупреждения — пусто."""
+    if not warning:
+        return ""
+    return _("{column}: {warning}").format(column=column, warning=warning)
 
 
 # --- Для документации ----------------------------------------------------------
@@ -489,12 +552,12 @@ def as_rows() -> list[dict]:
     """
     return [
         {
-            "title": spec.title,
+            "title": str(spec.title),
             "aliases": ", ".join(f"«{alias}»" for alias in spec.aliases),
             "domain": spec.domain_title,
-            "kind": KIND_TITLES[spec.kind],
+            "kind": str(KIND_TITLES[spec.kind]),
             "destination": spec.destination,
-            "required": "да" if spec.required else "нет",
+            "required": _("да") if spec.required else _("нет"),
         }
         for spec in COLUMNS
     ]

@@ -12,8 +12,11 @@ import random
 from dataclasses import dataclass
 
 from django.db import transaction
-from django.utils import timezone
+from django.utils import timezone, translation
+from django.utils.translation import gettext as _
 
+from core.i18n import language_of, render
+from core.phrasing import tn
 from prep.models import (
     OPEN_TYPES,
     MockExam,
@@ -107,7 +110,7 @@ def start_practice(
     """Собрать тренировку. Вопросы берутся из банка, а не выдумываются."""
     pool = list(practice_pool(exam_type=exam_type, section=section, difficulty=difficulty, topic=topic))
     if not pool:
-        raise PrepError("В банке нет заданий по этим параметрам — попросите академического директора их добавить")
+        raise PrepError(_("В банке нет заданий по этим параметрам — попросите академического директора их добавить"))
 
     session = PracticeSession.objects.create(
         student=student, exam_type=exam_type, section=section, difficulty=difficulty
@@ -226,11 +229,11 @@ def answer_question(
     есть и ждёт проверки. Верность у него не считается вовсе.
     """
     if session.status != SessionStatus.RUNNING:
-        raise PrepError("Эта сессия уже завершена")
+        raise PrepError(_("Эта сессия уже завершена"))
 
     row = session.answers.filter(pk=answer_id).select_related("question").first()
     if row is None:
-        raise PrepError("Такого вопроса в сессии нет")
+        raise PrepError(_("Такого вопроса в сессии нет"))
 
     if row.question.is_open:
         row.text = (text or "").strip()
@@ -242,7 +245,7 @@ def answer_question(
     if option_id is not None:
         option = QuestionOption.objects.filter(pk=option_id, question=row.question).first()
         if option is None:
-            raise PrepError("Этот вариант не относится к заданию")
+            raise PrepError(_("Этот вариант не относится к заданию"))
 
     row.chosen = option
     row.is_correct = bool(option and option.is_correct)
@@ -278,13 +281,14 @@ def weak_topics(session: PracticeSession) -> list[dict]:
 def recommendation(session: PracticeSession, weak: list[dict]) -> str:
     """Что подтянуть. Одно действие, а не список из десяти пунктов."""
     if session.total == 0:
-        return "Сессия пустая — заданий не было."
+        return _("Сессия пустая — заданий не было.")
     if not weak:
-        return f"Ошибок почти нет: {session.correct} из {session.total}. Можно брать сложность выше."
+        return _("Ошибок почти нет: {correct} из {total}. Можно брать сложность выше.").format(
+            correct=session.correct, total=session.total
+        )
     first = weak[0]
-    return (
-        f"Слабее всего идёт тема «{first['topic']}»: {first['correct']} из {first['total']}. "
-        "С неё и начните следующую тренировку."
+    return _("Слабее всего идёт тема «{topic}»: {correct} из {total}. С неё и начните следующую тренировку.").format(
+        topic=first["topic"], correct=first["correct"], total=first["total"]
     )
 
 
@@ -324,8 +328,14 @@ def _award_for_practice(session: PracticeSession) -> None:
         kind=XPKind.EXERCISE_SOLVED,
         object_label="prep.PracticeSession",
         object_id=str(session.pk),
-        note=f"Тренировка: {answered} заданий",
+        note=_practice_note(session.student, answered),
     )
+
+
+def _practice_note(student: Student, answered: int) -> str:
+    """Пометка в истории XP ученика — на его языке, а не на языке запроса."""
+    with translation.override(language_of(getattr(student, "user", None))):
+        return tn(answered, "Тренировка: {n} задание|Тренировка: {n} задания|Тренировка: {n} заданий")
 
 
 # --- пробные экзамены -----------------------------------------------------
@@ -344,7 +354,7 @@ class MockShortage:
 def start_mock(student: Student, mock: MockExam) -> tuple[MockRun, list[MockShortage]]:
     """Собрать мок из банка по описанию секций."""
     if not mock.is_active:
-        raise PrepError("Этот пробный экзамен сейчас недоступен")
+        raise PrepError(_("Этот Mock Test онлайн сейчас недоступен"))
 
     session = PracticeSession.objects.create(student=student, exam_type=mock.exam_type)
     shortages: list[MockShortage] = []
@@ -361,7 +371,7 @@ def start_mock(student: Student, mock: MockExam) -> tuple[MockRun, list[MockShor
 
     if picked == 0:
         session.delete()
-        raise PrepError("В банке нет заданий для этого мока — попросите академического директора их добавить")
+        raise PrepError(_("В банке нет заданий для этого Mock Test — попросите академического директора их добавить"))
 
     run = MockRun.objects.create(student=student, mock=mock, session=session)
     return run, shortages
@@ -433,7 +443,7 @@ def finish_mock(run: MockRun, *, seconds: int = 0) -> dict:
             "score": float(run.exam_attempt.total_score) if run.exam_attempt else None,
             "attempt": run.exam_attempt_id,
             "counted_in_profile": run.counted_in_profile,
-            "note": "Балл платформенного мока не меняет текущий балл в профиле — его сверит академический директор.",
+            "note": _("Балл онлайн Mock Test не меняет текущий балл в профиле — его сверит академический директор."),
         }
     )
     return payload
@@ -446,8 +456,10 @@ def _tasks_from_weak_topics(run: MockRun, weak: list[dict]) -> None:
     """
     from roadmap.models import Task, TaskCategory, TaskPriority
 
+    # задача остаётся у ученика — текст на его языке, а не на языке запроса
+    lang = language_of(getattr(run.student, "user", None))
     for row in weak[:3]:
-        title = f"Подтянуть тему «{row['topic']}» ({run.mock.exam_type})"
+        title = render(lang, "Подтянуть тему «{topic}» ({exam})", topic=row["topic"], exam=run.mock.exam_type)
         if Task.objects.filter(student=run.student, title=title).exists():
             continue
         Task.objects.create(
@@ -455,7 +467,13 @@ def _tasks_from_weak_topics(run: MockRun, weak: list[dict]) -> None:
             title=title,
             category=TaskCategory.TEST,
             priority=TaskPriority.HIGH if row["percent"] < 40 else TaskPriority.MEDIUM,
-            description=(f"На пробном «{run.mock.title}» по этой теме верно {row['correct']} из {row['total']}."),
+            description=render(
+                lang,
+                "В Mock Test онлайн «{mock}» по этой теме верно {correct} из {total}.",
+                mock=run.mock.title,
+                correct=row["correct"],
+                total=row["total"],
+            ),
         )
 
 

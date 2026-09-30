@@ -21,6 +21,8 @@ import datetime as dt
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from django.utils.translation import gettext as _
+
 from academics.calendar import today
 from academics.models import (
     Course,
@@ -214,8 +216,15 @@ def sport_of(student: Student) -> str:
     return profile.sport_type.name
 
 
-def build_lines(student: Student, *, template: str, language: str, start: dt.date, end: dt.date) -> list[dict]:
-    """Строки снимка отчёта по шаблону школы."""
+def build_lines(  # i18n-skip: подписи снимка хранятся в базе и входят в его отпечаток
+    student: Student, *, template: str, language: str, start: dt.date, end: dt.date
+) -> list[dict]:
+    """Строки снимка отчёта по шаблону школы.
+
+    Подписи строк — данные снимка на русском: от языка того, кто собрал отчёт,
+    они не зависят (иначе отпечаток менялся бы от сборщика), экран переводит
+    их сам; в файл отчёта идут не подписи, а значения по кодам строк.
+    """
     lines: list[dict] = []
 
     def add(section: str, code: str, title: str, value: str, note: str = "") -> None:
@@ -267,17 +276,17 @@ def gaps(report: ParentReport) -> list[str]:
     lines = list(report.lines.all())
     by_code = {line.code: line for line in lines}
     if not by_code.get(DAYS_TOTAL) or by_code[DAYS_TOTAL].value == "0":
-        out.append("За период нет ни одного отмеченного урока — посещаемость по нулям")
+        out.append(_("За период нет ни одного отмеченного урока — посещаемость по нулям"))
     empty = [line.title for line in lines if line.code == GRADE and not line.value]
     if empty:
-        out.append("Нет оценок ФО за период: " + ", ".join(empty))
+        out.append(_("Нет оценок ФО за период: {subjects}").format(subjects=", ".join(empty)))
     if report.template == ReportTemplate.REVIEW:
         if not by_code.get(ENGLISH_LEVEL) or not by_code[ENGLISH_LEVEL].value:
-            out.append("Уровень английского не внесён — его вносят учитель GE/EEP, Кымбат или куратор")
+            out.append(_("Уровень английского не внесён — его вносят учитель GE/EEP, Кымбат или куратор"))
         if not by_code.get(SPORT) or not by_code[SPORT].value:
-            out.append("Спортивное направление не внесено — раздел «Спорт» в карточке ученика")
+            out.append(_("Спортивное направление не внесено — раздел «Спорт» в карточке ученика"))
     elif not any(line.section in (ReportSection.IELTS, ReportSection.SAT) for line in lines):
-        out.append("Пробников IELTS и SAT за период нет — блок пробника в отчёт не попадёт")
+        out.append(_("IELTS Mock Test и SAT Mock Test за период нет — блок Mock Test в отчёт не попадёт"))
     return out
 
 

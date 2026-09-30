@@ -15,6 +15,7 @@ from __future__ import annotations
 import datetime as dt
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from academics import calendar as school_calendar
 from academics import marks as marking
@@ -23,7 +24,7 @@ from academics.calendar import date_with_weekday, scale_of, today
 from academics.models import Grade, LessonKind, LessonStatus
 from academics.payloads import kind_label, lesson_dict
 from academics.results import student_attendance, student_summary
-from core.phrasing import counted, plural
+from core.phrasing import plural, tn
 from students.models import Activity, Competition, Student
 
 #: сколько дней вперёд смотрит «Скоро»
@@ -34,7 +35,7 @@ RECENT_ROWS = 3
 
 
 def _quarter_words(quarter) -> str:
-    return f"за {quarter.number} четверть" if quarter is not None else "за учебный год"
+    return _("за {number} четверть").format(number=quarter.number) if quarter is not None else _("за учебный год")
 
 
 def _average(student: Student, start: dt.date, end: dt.date, scale, quarter) -> float | None:
@@ -54,9 +55,9 @@ def _assessments(student: Student, start: dt.date, end: dt.date, calendar) -> li
 
 def _when(day: dt.date, current: dt.date, slot: int | None = None) -> str:
     if day == current:
-        return f"сегодня, {slot} урок" if slot else "сегодня"
+        return _("сегодня, {slot} урок").format(slot=slot) if slot else _("сегодня")
     if day == current + dt.timedelta(days=1):
-        return "завтра"
+        return _("завтра")
     return date_with_weekday(day)
 
 
@@ -90,25 +91,29 @@ def home_payload(student: Student) -> dict:
     kpis = [
         {
             "code": "average",
-            "title": "Средний балл",
+            "title": _("Средний балл"),
             "value": f"{average:.1f}".replace(".", ",") if average is not None else "",
-            "note": _quarter_words(quarter) if average is not None else "оценок за четверть пока нет",
+            "note": _quarter_words(quarter) if average is not None else _("оценок за четверть пока нет"),
             "tone": "",
         },
         {
             "code": "attendance",
-            "title": "Посещаемость",
+            "title": _("Посещаемость"),
             "value": f"{attendance.pct}%" if attendance.pct is not None else "",
             "note": (
-                f"{counted(missed, ('пропуск', 'пропуска', 'пропусков'))} {_quarter_words(quarter)}"
+                tn(
+                    missed,
+                    "{n} пропуск {period}|{n} пропуска {period}|{n} пропусков {period}",
+                    period=_quarter_words(quarter),
+                )
                 if attendance.total
-                else "уроков в четверти пока не было"
+                else _("уроков в четверти пока не было")
             ),
             "tone": "",
         },
         {
             "code": "sor",
-            "title": "Ближайший СОР",
+            "title": _("Ближайший СОР"),
             "value": (
                 f"{nearest_sor.date.day} {school_calendar.MONTHS_GENITIVE[nearest_sor.date.month - 1][:3]}"
                 if nearest_sor
@@ -117,15 +122,18 @@ def home_payload(student: Student) -> dict:
             "note": (
                 f"{nearest_sor.course.subject.title} — {kind_label(nearest_sor)}"
                 if nearest_sor
-                else f"в ближайшие {SOON_DAYS} дней СОР нет"
+                else tn(
+                    SOON_DAYS,
+                    "в ближайший {n} день СОР нет|в ближайшие {n} дня СОР нет|в ближайшие {n} дней СОР нет",
+                )
             ),
             "tone": "warn" if nearest_sor else "",
         },
         {
             "code": "achievements",
-            "title": "Достижения",
+            "title": _("Достижения"),
             "value": str(achievements),
-            "note": "олимпиады и спорт за учебный год",
+            "note": _("олимпиады и спорт за учебный год"),
             "tone": "",
         },
     ]
@@ -161,7 +169,7 @@ def home_payload(student: Student) -> dict:
             "title": f"{lesson.course.subject.title} — {kind_label(lesson)}",
             "when": _when(lesson.date, current, lesson.slot),
             "kind": lesson.kind,
-            "kind_label": "СОЧ" if lesson.kind == LessonKind.SOCH else "СОР",
+            "kind_label": _("СОЧ") if lesson.kind == LessonKind.SOCH else _("СОР"),
             "link": "/calendar",
         }
         for lesson in upcoming
@@ -174,7 +182,7 @@ def home_payload(student: Student) -> dict:
                 "title": row.title,
                 "when": _when(row.date, current),
                 "kind": "olympiad",
-                "kind_label": "олимпиада",
+                "kind_label": _("олимпиада"),
                 "link": "/olympiads",
             }
         )
@@ -185,7 +193,7 @@ def home_payload(student: Student) -> dict:
                 "title": row.name,
                 "when": _when(row.date, current),
                 "kind": "competition",
-                "kind_label": "соревнование",
+                "kind_label": _("соревнование"),
                 "link": "/sport",
             }
         )
@@ -207,10 +215,12 @@ def home_payload(student: Student) -> dict:
         soon.append(
             {
                 "date": due.date(),
-                "title": f"{row.lesson.course.subject.title} — сдать ДЗ до {due:%H:%M}",
+                "title": _("{subject} — сдать ДЗ до {time}").format(
+                    subject=row.lesson.course.subject.title, time=f"{due:%H:%M}"
+                ),
                 "when": _when(due.date(), current),
                 "kind": "homework",
-                "kind_label": "ДЗ",
+                "kind_label": _("ДЗ"),
                 "link": f"/homework/{row.pk}",
             }
         )
@@ -229,7 +239,7 @@ def home_payload(student: Student) -> dict:
         maximum = scale.fo_max if lesson.kind == LessonKind.FO else lesson.max_score
         detail = kind_label(lesson)
         if lesson.kind != LessonKind.FO and maximum:
-            detail = f"{detail} · {row.value} из {maximum}"
+            detail = _("{kind} · {value} из {maximum}").format(kind=detail, value=row.value, maximum=maximum)
         recent.append(
             {
                 "id": row.pk,
@@ -250,7 +260,7 @@ def home_payload(student: Student) -> dict:
             {
                 "id": f"hw{row.pk}",
                 "subject": row.assignment.lesson.course.subject.title,
-                "detail": "ДЗ",
+                "detail": _("ДЗ"),
                 "value": row.grade,
                 "mark": _mark_of(row.grade, LessonKind.FO, scale.fo_max, scale),
                 "_date": row.assignment.lesson.date,
@@ -262,7 +272,9 @@ def home_payload(student: Student) -> dict:
     return {
         "date_words": date_with_weekday(current),
         "quarter": (
-            f"{quarter.number} четверть, неделя {max(1, (current - quarter.starts).days // 7 + 1)}"
+            _("{quarter} четверть, неделя {week}").format(
+                quarter=quarter.number, week=max(1, (current - quarter.starts).days // 7 + 1)
+            )
             if quarter is not None and quarter.starts <= current <= quarter.ends
             else ""
         ),
@@ -270,8 +282,8 @@ def home_payload(student: Student) -> dict:
         "lessons": lessons,
         "soon": soon[:SOON_ROWS],
         "recent": recent,
-        "lessons_empty": "сегодня уроков нет" if not lessons else "",
-        "achievements_words": plural(achievements, ("достижение", "достижения", "достижений")),
+        "lessons_empty": _("сегодня уроков нет") if not lessons else "",
+        "achievements_words": plural(achievements, "достижение|достижения|достижений"),
     }
 
 

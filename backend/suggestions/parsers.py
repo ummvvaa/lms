@@ -18,7 +18,7 @@ LINE = re.compile(
     r"^\s*(?P<name>[^\d:—–\-|\t]+?)\s*[-—–:|\t]+\s*(?P<rest>.+?)\s*$",
     re.UNICODE,
 )
-IELTS = re.compile(r"(?:ielts|айлтс)?\s*\b([4-9](?:[.,]\d)?)\b", re.IGNORECASE)
+IELTS = re.compile(r"(?:ielts|айлтс)?\s*\b([4-9](?:[.,]\d)?)\b", re.IGNORECASE)  # i18n-skip: регулярное выражение
 SAT = re.compile(r"(?:sat)?\s*\b(\d{3,4})\b", re.IGNORECASE)
 
 
@@ -79,13 +79,16 @@ FIELD_MODELS = {
 }
 
 
-SECOND_PASS_RULES = """Ты разбираешь кусок переписки, где сотрудники школы пишут баллы учеников.
+SECOND_PASS_RULES = (  # i18n-skip: промпт модели
+    """Ты разбираешь кусок переписки, где сотрудники школы пишут баллы учеников.
 
 Правила:
 - бери только те строки, где есть и имя, и число; остальное пропускай;
 - ничего не выдумывай: если балла нет, строки быть не должно;
 - IELTS — от 0 до 9, SAT — от 400 до 1600, посещаемость — проценты; выполнение ДЗ не берётся — оно считается из сдач;
 - имена передавай так, как они написаны в тексте."""
+)  # fmt: skip
+
 
 SECOND_PASS_SCHEMA = {
     "type": "object",
@@ -128,7 +131,7 @@ def second_pass(text: str, *, handled: set[str], actor=None, role: str = "") -> 
     try:
         response = complete(
             system=SECOND_PASS_RULES,
-            user="Строки, которые не разобрались:\n" + "\n".join(left[:60]),
+            user="Строки, которые не разобрались:\n" + "\n".join(left[:60]),  # i18n-skip: промпт модели
             purpose="paste_second_pass",
             actor=actor,
             role=role,

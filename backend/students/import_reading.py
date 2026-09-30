@@ -29,7 +29,11 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
+
 from core.domains import DOMAINS, PROFILE_MODELS, iter_field_specs, spec_of_field
+from students.import_registry import title_variants
 
 #: Сколько строк-образцов уходит в модель. Трёх хватает, чтобы понять
 #: формат колонки, и мало, чтобы это стоило денег.
@@ -39,7 +43,7 @@ SAMPLE_ROWS = 3
 STUDENT_KEY = "student"
 
 #: Как называют колонку с почтой в школьных списках.
-STUDENT_HINTS = ("почта", "email", "e-mail", "мейл", "логин", "фио", "ученик", "student")
+STUDENT_HINTS = ("почта", "email", "e-mail", "мейл", "логин", "фио", "ученик", "student")  # i18n-skip: синонимы
 
 #: Сколько подозрительных строк называем поимённо. Дальше — числом:
 #: список на сто номеров никто не читает.
@@ -133,7 +137,7 @@ def catalogue(domain_code: str) -> list[dict[str, str]]:
 
 
 def _domain_of_target(target: str) -> str:
-    label, _, name = target.rpartition(".")
+    label, _dot, name = target.rpartition(".")
     for domain in DOMAINS.values():
         for model in domain.models:
             if model.label == label and any(f.name == name for f in model.fields):
@@ -145,7 +149,9 @@ def _domain_of_target(target: str) -> str:
 
 
 def _normalize(text: str) -> str:
-    return re.sub(r"[^a-zа-яё0-9]+", " ", (text or "").lower()).strip()
+    # казахские буквы — часть слова: заголовок из выгрузки на казахском
+    # не должен рассыпаться на обрывки
+    return re.sub(r"[^a-zа-яёәғқңөұүһі0-9]+", " ", (text or "").lower()).strip()  # i18n-skip: регулярное выражение
 
 
 def _tokens(text: str) -> set[str]:
@@ -159,12 +165,18 @@ def _score(column_title: str, label: str) -> float:
     «Минимальный балл IELTS» пересекаются подстрокой, но значат разное,
     и такая ошибка кладёт чужие числа в чужую колонку.
     """
-    left, right = _tokens(column_title), _tokens(label)
-    if not left or not right:
-        return 0.0
-    if left == right:
-        return 1.0
-    return len(left & right) / len(left | right)
+    left = _tokens(column_title)
+    best = 0.0
+    # подпись поля сверяется на всех трёх языках: файл, выгруженный
+    # на казахском или английском, узнаётся так же, как русский
+    for variant in title_variants(label):
+        right = _tokens(variant)
+        if not left or not right:
+            continue
+        if left == right:
+            return 1.0
+        best = max(best, len(left & right) / len(left | right))
+    return best
 
 
 #: Ниже этого совпадение считаем случайным. Половина общих слов — это
@@ -200,7 +212,7 @@ def rules_mapping(header: list[str], domain_code: str) -> list[Column]:
 
         if any(hint in low for hint in STUDENT_HINTS):
             column.target = STUDENT_KEY
-            column.field_title = "ученик — по этой колонке ищем карточку"
+            column.field_title = _("ученик — по этой колонке ищем карточку")
             columns.append(column)
             continue
 
@@ -239,9 +251,9 @@ def rules_mapping(header: list[str], domain_code: str) -> list[Column]:
 # --- Проверки значений: считает код, а не модель ---------------------------
 
 DATE_FORMATS = (
-    (re.compile(r"^\d{4}-\d{2}-\d{2}$"), "ГГГГ-ММ-ДД"),
-    (re.compile(r"^\d{2}\.\d{2}\.\d{4}$"), "ДД.ММ.ГГГГ"),
-    (re.compile(r"^\d{2}/\d{2}/\d{4}$"), "ДД/ММ/ГГГГ"),
+    (re.compile(r"^\d{4}-\d{2}-\d{2}$"), gettext_lazy("ГГГГ-ММ-ДД")),
+    (re.compile(r"^\d{2}\.\d{2}\.\d{4}$"), gettext_lazy("ДД.ММ.ГГГГ")),
+    (re.compile(r"^\d{2}/\d{2}/\d{4}$"), gettext_lazy("ДД/ММ/ГГГГ")),
 )
 
 
@@ -263,7 +275,7 @@ def inspect(columns: list[Column], rows: list[list[str]]) -> list[dict[str, Any]
     for column in columns:
         if not column.target or column.target == STUDENT_KEY:
             continue
-        label, _, name = column.target.rpartition(".")
+        label, _dot, name = column.target.rpartition(".")
         try:
             spec = spec_of_field(label, name)
         except Exception:  # поля могло не оказаться — тогда просто не проверяем
@@ -289,7 +301,7 @@ def inspect(columns: list[Column], rows: list[list[str]]) -> list[dict[str, Any]
 
             for pattern, title in DATE_FORMATS:
                 if pattern.match(raw):
-                    formats[title] = formats.get(title, 0) + 1
+                    formats[str(title)] = formats.get(str(title), 0) + 1
                     break
 
         if out_of_range:
@@ -300,9 +312,8 @@ def inspect(columns: list[Column], rows: list[list[str]]) -> list[dict[str, Any]
                     "field_title": spec.title,
                     "rows": out_of_range[:MAX_NAMED_ROWS],
                     "count": len(out_of_range),
-                    "text": (
-                        f"«{column.title}»: значение вне допустимого ({spec.range_hint}) "
-                        f"в {_rows_phrase(out_of_range)}"
+                    "text": _("«{column}»: значение вне допустимого ({range}) в {rows}").format(
+                        column=column.title, range=spec.range_hint, rows=_rows_phrase(out_of_range)
                     ),
                 }
             )
@@ -314,7 +325,9 @@ def inspect(columns: list[Column], rows: list[list[str]]) -> list[dict[str, Any]
                     "field_title": spec.title,
                     "rows": empty[:MAX_NAMED_ROWS],
                     "count": len(empty),
-                    "text": f"«{column.title}»: пусто в {_rows_phrase(empty)} — эти строки не изменятся",
+                    "text": _("«{column}»: пусто в {rows} — эти строки не изменятся").format(
+                        column=column.title, rows=_rows_phrase(empty)
+                    ),
                 }
             )
         if len(formats) > 1:
@@ -326,7 +339,9 @@ def inspect(columns: list[Column], rows: list[list[str]]) -> list[dict[str, Any]
                     "field_title": spec.title,
                     "rows": [],
                     "count": len(formats),
-                    "text": f"«{column.title}»: в одном столбце разные форматы дат ({names}) — проверьте файл",
+                    "text": _("«{column}»: в одном столбце разные форматы дат ({formats}) — проверьте файл").format(
+                        column=column.title, formats=names
+                    ),
                 }
             )
 
@@ -339,19 +354,27 @@ def inspect(columns: list[Column], rows: list[list[str]]) -> list[dict[str, Any]
                 "field_title": "",
                 "rows": duplicates[:MAX_NAMED_ROWS],
                 "count": len(duplicates),
-                "text": f"Один и тот же ученик встречается дважды: {_rows_phrase(duplicates)}",
+                "text": _("Один и тот же ученик встречается дважды: {rows}").format(rows=_rows_phrase(duplicates)),
             }
         )
     return warnings
 
 
 def _rows_phrase(numbers: list[int]) -> str:
-    """«строках 12, 30 и 41» или «строке 12» — по-русски, не списком."""
+    """«строках 12, 30 и 41» или «строке 12» — фразой, не списком.
+
+    Стоит после «в»: «пусто в строках 12 и 30». Перечисление с союзом
+    языка — `listing`, хвост «и ещё 3» — одной строкой перевода.
+    """
+    from core.phrasing import listing
+
     named = [str(number) for number in numbers[:MAX_NAMED_ROWS]]
-    tail = f" и ещё {len(numbers) - MAX_NAMED_ROWS}" if len(numbers) > MAX_NAMED_ROWS else ""
+    rest = len(numbers) - MAX_NAMED_ROWS
+    if rest > 0:
+        return _("строках {rows} и ещё {rest}").format(rows=", ".join(named), rest=rest)
     if len(named) == 1:
-        return f"строке {named[0]}{tail}"
-    return "строках " + ", ".join(named[:-1]) + " и " + named[-1] + tail
+        return _("строке {row}").format(row=named[0])
+    return _("строках {rows}").format(rows=listing(named))
 
 
 def _duplicate_rows(columns: list[Column], rows: list[list[str]]) -> list[int]:
@@ -427,7 +450,7 @@ def _columns_from_mapping(header: list[str], mapping: dict[str, str], domain_cod
         target = (mapping.get(title) or "").strip()
         if target == STUDENT_KEY:
             column.target = STUDENT_KEY
-            column.field_title = "ученик — по этой колонке ищем карточку"
+            column.field_title = _("ученик — по этой колонке ищем карточку")
         elif target in own:
             column.target = target
             column.field_title = own[target]["title"]
@@ -444,28 +467,39 @@ def _columns_from_mapping(header: list[str], mapping: dict[str, str], domain_cod
 
 
 def _facts(reading: Reading) -> str:
-    """Факты для модели — те же, что лягут в сухой текст правилами."""
-    lines = [f"Строк в файле: {reading.total_rows}."]
+    """Факты для модели — те же, что лягут в сухой текст правилами.
+
+    Без модели этот текст и есть объяснение на экране, поэтому он на языке
+    того, кто загружает файл.
+    """
+    lines = [_("Строк в файле: {count}.").format(count=reading.total_rows)]
     loaded = [c for c in reading.columns if c.target and c.target != STUDENT_KEY]
     if loaded:
-        lines.append("Загружу: " + ", ".join(f"«{c.title}» → {c.field_title}" for c in loaded) + ".")
+        pairs = ", ".join(f"«{c.title}» → {c.field_title}" for c in loaded)
+        lines.append(_("Загружу: {columns}.").format(columns=pairs))
     foreign = [c for c in reading.columns if c.skip_reason == "foreign_domain"]
     for column in foreign:
         lines.append(
-            f"Колонку «{column.title}» пропущу: поле «{column.field_title}» ведёт домен «{column.foreign_domain}»."
+            _("Колонку «{column}» пропущу: поле «{field}» ведёт домен «{domain}».").format(
+                column=column.title, field=column.field_title, domain=column.foreign_domain
+            )
         )
     unknown = [c for c in reading.columns if c.skip_reason == "unknown"]
     if unknown:
-        lines.append("Не распознал колонки: " + ", ".join(f"«{c.title}»" for c in unknown) + ".")
-    lines.append(f"Привяжется к существующим ученикам строк: {reading.matched}.")
+        names = ", ".join(f"«{c.title}»" for c in unknown)
+        lines.append(_("Не распознал колонки: {columns}.").format(columns=names))
+    lines.append(_("Привяжется к существующим ученикам строк: {count}.").format(count=reading.matched))
     if reading.unmatched:
-        lines.append(f"Не нашлись в базе: {len(reading.unmatched)}.")
+        lines.append(_("Не нашлись в базе: {count}.").format(count=len(reading.unmatched)))
     for warning in reading.warnings:
         lines.append(warning["text"] + ".")
     return "\n".join(lines)
 
 
-RULES = """Ты объясняешь директору школы, что произойдёт при загрузке файла.
+# скобки держат пометку стража на первой строке оператора
+# fmt: off
+RULES = (  # i18n-skip: промпт модели, язык ответа ИИ настраивается отдельно
+    """Ты объясняешь директору школы, что произойдёт при загрузке файла.
 
 Тебе передают посчитанные факты. Пересказать их надо так, как сказал бы
 коллега: тремя-пятью предложениями, без списков и без канцелярита.
@@ -476,6 +510,8 @@ RULES = """Ты объясняешь директору школы, что пр�
   в файл проверять;
 - не обещай, что данные верные: ты видишь три строки из файла, а не весь;
 - ничего не советуй применять или не применять — решает человек."""
+)
+# fmt: on
 
 
 def _explain(reading: Reading, *, actor=None, rows: list[list[str]]) -> tuple[str, bool, str]:
@@ -487,7 +523,7 @@ def _explain(reading: Reading, *, actor=None, rows: list[list[str]]) -> tuple[st
     try:
         answer = complete(
             system=RULES,
-            user=f"Факты:\n{facts}\n\nОбразцы строк (имена заменены номерами):\n{sample}",
+            user=f"Факты:\n{facts}\n\nОбразцы строк (имена заменены номерами):\n{sample}",  # i18n-skip: промпт модели
             purpose="import_reading",
             actor=actor,
             role=getattr(actor, "role", "") if actor is not None else "",
@@ -520,7 +556,7 @@ def _sample_for_model(reading: Reading, rows: list[list[str]]) -> str:
         cells = []
         for index, value in enumerate(row):
             if key is not None and index == key.index:
-                cells.append(f"ученик {number}")
+                cells.append(f"ученик {number}")  # i18n-skip: образец для модели, человеку не показывается
             else:
                 cells.append(str(value))
         lines.append("; ".join(cells))
@@ -544,7 +580,7 @@ def _ask_model_for_mapping(columns: list[Column], rows: list[list[str]], domain_
     if not fields:
         return columns
 
-    schema = {
+    schema = {  # i18n-skip: схема ответа модели
         "type": "object",
         "properties": {
             "columns": {
@@ -565,7 +601,7 @@ def _ask_model_for_mapping(columns: list[Column], rows: list[list[str]], domain_
     unknown_text = "\n".join(f"«{column.title}»" for column in unknown)
 
     try:
-        answer = complete(
+        answer = complete(  # i18n-skip: промпт модели, язык ответа ИИ настраивается отдельно
             system=(
                 "Ты сопоставляешь колонки школьного файла с полями системы.\n"
                 "Правила: выбирай только из переданного списка полей; если подходящего "

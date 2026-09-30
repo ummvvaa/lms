@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from academics.models import (
     Course,
@@ -34,15 +35,20 @@ from academics.models import (
     ReviewKind,
 )
 from academics.school_reports import subject_title
+from core.i18n import language_of, render, translate
 from students.models import GroupLanguage
 
 log = logging.getLogger(__name__)
 
 NAME = "{name}"
 
-LANGUAGE_WORDS = {GroupLanguage.KK: "казахском", GroupLanguage.RU: "русском"}
+#: язык текста в запросе модели — язык отчёта, а не того, кто собирал
+LANGUAGE_WORDS = {GroupLanguage.KK: "казахском", GroupLanguage.RU: "русском"}  # i18n-skip: промпт ИИ
 
-SYSTEM = """Ты помогаешь куратору школы написать отчёт родителям об ученике.
+# скобки держат пометку стража на первой строке оператора
+# fmt: off
+SYSTEM = (  # i18n-skip: промпт ИИ, язык ответа задаётся в самом запросе
+    """Ты помогаешь куратору школы написать отчёт родителям об ученике.
 Пиши так, как написал бы живой учитель или куратор в письме родителям.
 
 Откуда брать:
@@ -155,12 +161,14 @@ Reading те жақсы шыққан. Writing бөлімі әзірге әлсі
 
 Если комментариев учителей нет совсем, а посещаемость есть — одна фраза
 о посещаемости, и всё; предметы не перечисляй."""
+)
+# fmt: on
 
 #: фразы, которых в тексте для родителей быть не должно: служебные слова,
 #: объяснение подсчёта и рассказ о пустых данных. Предложение с такой
 #: фразой убирается целиком — модель просили так не писать, а родитель не
 #: должен прочесть «пікір берілмеген» (30.09.2026)
-FORBIDDEN = (
+FORBIDDEN = (  # i18n-skip: регулярные выражения для фильтра текста ИИ
     # рассказ о том, чего нет
     r"\bнет (ни )?(данных|комментари\w*|оценок|пробник\w*|информаци\w*|сведений)",
     r"\bданн\w*(\s+\S+){0,2}\s+нет\b",
@@ -206,9 +214,9 @@ def clean(text: str) -> str:
     в именительном: «у Мирас». Предлог уходит вместе с именем — «В IELTS
     Mock Test сильнее всего вышел Listening» остаётся грамотным.
     """
-    text = re.sub(r"\s(?:у|для|к|от)\s\{name\}", "", text or "", flags=re.IGNORECASE)
+    text = re.sub(r"\s(?:у|для|к|от)\s\{name\}", "", text or "", flags=re.IGNORECASE)  # i18n-skip: регулярное выражение
     text = re.sub(r"(\d+(?:[.,]\d+)?)\s*/\s*10\b", r"\1", text)
-    text = re.sub(r"\s+из\s+10\b", "", text)
+    text = re.sub(r"\s+из\s+10\b", "", text)  # i18n-skip: регулярное выражение
     kept = [part for part in _SENTENCES.split(text.strip()) if part and not _FORBIDDEN.search(part)]
     return " ".join(kept).strip()
 
@@ -328,7 +336,7 @@ def collect(report: ParentReport) -> Facts:
     return Facts(courses=list(facts.values()), attendance=attendance, ielts=ielts, sat=sat, level=level)
 
 
-def prompt(report: ParentReport, facts: Facts) -> str:
+def prompt(report: ParentReport, facts: Facts) -> str:  # i18n-skip: промпт ИИ, язык ответа задаётся в самом запросе
     """Запрос модели: данные без имени, фамилии, группы и дат периода.
 
     Посещаемость — днями, без процента «по минутам»: процент тянул модель
@@ -388,7 +396,7 @@ def prompt(report: ParentReport, facts: Facts) -> str:
     return "\n".join(out)
 
 
-FIELD_WORDS = {
+FIELD_WORDS = {  # i18n-skip: промпт ИИ, язык ответа задаётся в самом запросе
     "eep": "отзыв по английскому (GE/EEP) — пересказ комментариев учителя журналов раздела «GE / EEP»; "
     "уровень английского можно назвать словами; без своих советов",
     "sat_verbal": "отзыв по SAT Verbal — пересказ комментариев учителя журналов раздела «SAT Verbal», "
@@ -437,10 +445,14 @@ def draft(report: ParentReport, *, actor=None, overwrite: bool = False) -> Paren
     from suggestions.llm import LLMUnavailable, complete
 
     if report.template == ReportTemplate.STANDARD:
-        raise DraftRefused("У стандартного отчёта черновика нет")
+        raise DraftRefused(_("У стандартного отчёта черновика нет"))
+    # пометка черновика пишется в очереди, где языка запроса нет: на языке того,
+    # кто попросил черновик; сборка по расписанию — на русском
+    language = language_of(actor)
     facts = collect(report)
     if facts.empty:
-        _state(report, DraftState.SKIPPED, "За период нет ни оценок, ни отметок, ни пробников — писать не из чего")
+        note = translate(language, "За период нет ни оценок, ни отметок, ни Mock Test — писать не из чего")
+        _state(report, DraftState.SKIPPED, note)
         return report
     wants = wanted(report, facts)
     try:
@@ -454,7 +466,8 @@ def draft(report: ParentReport, *, actor=None, overwrite: bool = False) -> Paren
             max_tokens=2500,
         )
     except LLMUnavailable as error:
-        _state(report, DraftState.FAILED, (str(error) or "ИИ недоступен")[:200] + " — тексты пишет куратор")
+        reason = (str(error) or translate(language, "ИИ недоступен"))[:200]
+        _state(report, DraftState.FAILED, render(language, "{reason} — тексты пишет куратор", reason=reason))
         return report
     parsed = answer.parsed if isinstance(answer.parsed, dict) else {}
     first = report.student.first_name.strip()
@@ -508,9 +521,10 @@ def draft(report: ParentReport, *, actor=None, overwrite: bool = False) -> Paren
                 "texts_edited_at",
             ]
         )
+    from academics.reports import event_text
     from core.audit import record_event
 
-    record_event(student=report.student, code="report_drafted", text=f"за {report.title}", actor=actor, source="ai")
+    record_event(student=report.student, code="report_drafted", text=event_text(report), actor=actor, source="ai")
     return report
 
 

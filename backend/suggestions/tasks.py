@@ -6,11 +6,33 @@
 
 from __future__ import annotations
 
+import functools
 import logging
 
 from celery import shared_task
+from django.utils import translation
+from django.utils.translation import gettext as _
 
 log = logging.getLogger(__name__)
+
+
+def in_actor_language(func):
+    """Задача говорит на языке того, кто её запустил.
+
+    В фоне активного языка нет: этапы плашки, ошибки и ответ операции
+    без этого ушли бы по-русски любому. Язык — `language_of` автора запуска.
+    """
+
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        from accounts.models import User
+        from core.i18n import language_of
+
+        actor = User.objects.filter(pk=kwargs.get("actor_id")).first() if kwargs.get("actor_id") else None
+        with translation.override(language_of(actor)):
+            return func(self, *args, **kwargs)
+
+    return wrapper
 
 
 def progress(task, stage: str) -> None:
@@ -30,6 +52,7 @@ def progress(task, stage: str) -> None:
 
 
 @shared_task(bind=True, name="suggestions.parse_paste")
+@in_actor_language
 def parse_paste(self, *, text: str, actor_id: int, role: str, domain_code: str, command: str = "paste_as_is") -> dict:
     """Разобрать вставленный текст и собрать предложение."""
     from accounts.models import User
@@ -37,11 +60,11 @@ def parse_paste(self, *, text: str, actor_id: int, role: str, domain_code: str, 
     from suggestions.parsers import rows_for_suggestion
 
     actor = User.objects.filter(pk=actor_id).first()
-    progress(self, "Разбираю текст")
+    progress(self, _("Разбираю текст"))
     # правила разбирают знакомые строки, модель добирает остальное
     rows, ambiguities = rows_for_suggestion(text, actor=actor, role=role)
 
-    progress(self, "Собираю предложение")
+    progress(self, _("Собираю предложение"))
     suggestion, rejected = create_suggestion(
         author=actor,
         role=role,
@@ -49,7 +72,7 @@ def parse_paste(self, *, text: str, actor_id: int, role: str, domain_code: str, 
         source_type="paste",
         command=command,
         rows=rows,
-        source_ref="вставленный текст",
+        source_ref="вставленный текст",  # i18n-skip: источник сохраняется в базе как данные
     )
 
     return {
@@ -61,24 +84,27 @@ def parse_paste(self, *, text: str, actor_id: int, role: str, domain_code: str, 
 
 
 @shared_task(bind=True, name="suggestions.parse_file")
+@in_actor_language
 def parse_file(self, *, content: str, filename: str, actor_id: int, role: str, domain_code: str) -> dict:
     """Разобрать загруженный файл тем же путём, что и вставленный текст."""
-    progress(self, f"Читаю {filename}")
+    progress(self, _("Читаю {filename}").format(filename=filename))
     return parse_paste(text=content, actor_id=actor_id, role=role, domain_code=domain_code, command="upload_file")
 
 
 @shared_task(bind=True, name="suggestions.explain_match")
+@in_actor_language
 def explain_match(self, *, student_id: int, program_id: int, actor_id: int) -> dict:
     """Объяснить человеческим языком, чего не хватает ученику."""
     from accounts.models import User
     from suggestions.explain import explain_student_program
 
     actor = User.objects.filter(pk=actor_id).first()
-    progress(self, "Сверяю с требованиями")
+    progress(self, _("Сверяю с требованиями"))
     return explain_student_program(student_id=student_id, program_id=program_id, actor=actor)
 
 
 @shared_task(bind=True, name="suggestions.essay_questions")
+@in_actor_language
 def essay_questions(self, *, essay_id: int, prompt: str, actor_id: int) -> dict:
     """Вопросы ученику по эссе. Текст не пишется и не переписывается."""
     from accounts.models import User
@@ -101,12 +127,13 @@ def _actor(actor_id: int):
 
 
 @shared_task(bind=True, name="suggestions.run_operation")
+@in_actor_language
 def run_operation(self, *, code: str, actor_id: int, role: str, payload: dict) -> dict:
     """Одна операция уровня управления по её коду."""
     from suggestions import operations
 
     actor = _actor(actor_id)
-    progress(self, "Собираю данные")
+    progress(self, _("Собираю данные"))
 
     handlers = {
         "explain_list": lambda: operations.explain_list(
@@ -123,19 +150,20 @@ def run_operation(self, *, code: str, actor_id: int, role: str, payload: dict) -
     }
     handler = handlers.get(code)
     if handler is None:
-        return {"ok": False, "detail": "Такой операции нет"}
+        return {"ok": False, "detail": _("Такой операции нет")}
 
-    progress(self, "Собираю ответ")
+    progress(self, _("Собираю ответ"))
     return handler().as_dict()
 
 
 @shared_task(bind=True, name="suggestions.parse_university")
+@in_actor_language
 def parse_university(self, *, text: str, actor_id: int, role: str) -> dict:
     """Разобрать вуз по названию или ссылке."""
     from suggestions.extraction import NeedsModel
     from suggestions.extraction import parse_university as run
 
-    progress(self, "Собираю карточку вуза")
+    progress(self, _("Собираю карточку вуза"))
     try:
         return run(text=text, actor=_actor(actor_id), role=role)
     except NeedsModel as error:
@@ -143,12 +171,13 @@ def parse_university(self, *, text: str, actor_id: int, role: str) -> dict:
 
 
 @shared_task(bind=True, name="suggestions.verify_requirements")
+@in_actor_language
 def verify_requirements(self, *, program_id: int, actor_id: int, role: str) -> dict:
     """Сверить требования программы с официальным сайтом вуза."""
     from suggestions.verify_requirements import CannotVerify
     from suggestions.verify_requirements import verify as run
 
-    progress(self, "Читаю официальный сайт")
+    progress(self, _("Читаю официальный сайт"))
     try:
         return run(program_id=program_id, actor=_actor(actor_id), role=role)
     except CannotVerify as error:
@@ -156,12 +185,13 @@ def verify_requirements(self, *, program_id: int, actor_id: int, role: str) -> d
 
 
 @shared_task(bind=True, name="suggestions.parse_activity")
+@in_actor_language
 def parse_activity(self, *, text: str, student_id: int, actor_id: int, role: str) -> dict:
     """Разобрать описание активности."""
     from suggestions.extraction import NeedsModel
     from suggestions.extraction import parse_activity as run
 
-    progress(self, "Разбираю описание")
+    progress(self, _("Разбираю описание"))
     try:
         return run(text=text, student_id=student_id, actor=_actor(actor_id), role=role)
     except NeedsModel as error:
@@ -169,12 +199,13 @@ def parse_activity(self, *, text: str, student_id: int, actor_id: int, role: str
 
 
 @shared_task(bind=True, name="suggestions.parse_image")
+@in_actor_language
 def parse_image(self, *, payload: bytes, media_type: str, kind: str, student_id: int, actor_id: int, role: str) -> dict:
     """Фото грамоты или скриншот с баллами."""
     from suggestions.extraction import NeedsModel, parse_certificate, parse_score_screenshot
     from suggestions.llm import InvalidImage
 
-    progress(self, "Читаю изображение")
+    progress(self, _("Читаю изображение"))
     run = parse_certificate if kind == "certificate" else parse_score_screenshot
     try:
         return run(payload=payload, media_type=media_type, student_id=student_id, actor=_actor(actor_id), role=role)

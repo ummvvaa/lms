@@ -19,6 +19,7 @@ import datetime as dt
 
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from drf_spectacular.utils import extend_schema
 from rest_framework import status as http
 from rest_framework.decorators import api_view, permission_classes
@@ -41,7 +42,7 @@ HOME_QUEUE, HOME_TASKS, HOME_JOURNAL = 5, 4, 5
 def _deny(request):
     """Кабинет куратора — только куратору. Директор ходит своим кабинетом."""
     if request.user.role != ROLE_CURATOR:
-        return Response({"detail": "Это кабинет куратора"}, status=http.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Это кабинет куратора")}, status=http.HTTP_403_FORBIDDEN)
     return None
 
 
@@ -63,7 +64,7 @@ def _picked(request) -> str:
 def _file_group(request) -> str:
     """Выбор группы для имени файла выгрузки."""
     picked = _picked(request)
-    return "все-группы" if picked == ALL_GROUPS else picked
+    return _("все-группы") if picked == ALL_GROUPS else picked
 
 
 def _students(request):
@@ -157,7 +158,7 @@ def _journal(students, limit: int = HOME_JOURNAL) -> list[dict]:
         out.append(
             {
                 "id": row.pk,
-                "who": (who.full_name or who.email) if who else (row.actor_title or "система"),
+                "who": (who.full_name or who.email) if who else (row.actor_title or _("система")),
                 "acting_for_title": acting_for_phrase(row.acting_for),
                 "what": field_title(row.model_label, row.field_name),
                 "value": value_title(row.model_label, row.field_name, row.new_value) or row.new_value,
@@ -193,8 +194,8 @@ def overview(request):
     return Response(
         {
             "role": ROLE_CURATOR,
-            "title": "Кабинет куратора",
-            "owner": (request.user.full_name or request.user.email) + " · куратор",
+            "title": _("Кабинет куратора"),
+            "owner": _("{name} · куратор").format(name=request.user.full_name or request.user.email),
             "groups": _group_rows(request.user),
             "group": _picked(request),
             "students_total": students.count(),
@@ -204,24 +205,30 @@ def overview(request):
             # не собраны, истекает срок (фаза 62). «Пробника не было» и «просроченные
             # задачи» остаются в корзинах и на экране задач
             "numbers": [
-                {"code": "queue", "label": "ждут подтверждения", "value": len(queue), "tone": "brand", "to": "/queue"},
+                {
+                    "code": "queue",
+                    "label": _("ждут подтверждения"),
+                    "value": len(queue),
+                    "tone": "brand",
+                    "to": "/queue",
+                },
                 {
                     "code": "nogoal",
-                    "label": "без цели по экзаменам",
+                    "label": _("без цели по экзаменам"),
                     "value": by_code.get("nogoal", 0),
                     "tone": "warn",
                     "to": "/students?bucket=nogoal",
                 },
                 {
                     "code": "docs",
-                    "label": "документы не собраны",
+                    "label": _("документы не собраны"),
                     "value": by_code.get("docs", 0),
                     "tone": "risk",
                     "to": "/documents?f=missing",
                 },
                 {
                     "code": "expiring",
-                    "label": "истекает срок документа",
+                    "label": _("истекает срок документа"),
                     "value": sum(1 for row in state.values() if row["documents_expiring"]),
                     "tone": "indigo",
                     "to": "/documents?f=expiring",
@@ -287,24 +294,26 @@ def students_export(request):
         def read(row):
             current = row[current_key]
             target = row[target_key]
-            return f"{current if current is not None else '—'} → {target if target is not None else 'нет цели'}"
+            shown_current = current if current is not None else "—"
+            shown_target = target if target is not None else _("нет цели")
+            return f"{shown_current} → {shown_target}"
 
         return read
 
     columns = (
-        Column("Ученик", lambda row: row["full_name"], 30),
-        Column("Группа", lambda row: row["group"], 12),
+        Column(_("Ученик"), lambda row: row["full_name"], 30),
+        Column(_("Группа"), lambda row: row["group"], 12),
         Column("IELTS", pair("ielts_current", "ielts_target"), 16),
         Column("SAT", pair("sat_current", "sat_target"), 16),
-        Column("Последний пробник", lambda row: row["last_mock_date"], 20),
-        Column("Документы", lambda row: f"{row['documents_collected']} / {row['documents_total']}", 14),
-        Column("Статус", lambda row: row["status_title"], 18),
+        Column(_("Последний Mock Test"), lambda row: row["last_mock_date"], 20),
+        Column(_("Документы"), lambda row: f"{row['documents_collected']} / {row['documents_total']}", 14),
+        Column(_("Статус"), lambda row: row["status_title"], 18),
     )
     stamp = timezone.localdate().strftime("%Y-%m-%d")
     code = _file_group(request)
     return workbook_response(
-        filename=f"ученики-{code}-{stamp}.xlsx",
-        sheet="Ученики",
+        filename=_("ученики-{group}-{date}.xlsx").format(group=code, date=stamp),
+        sheet=_("Ученики"),
         columns=columns,
         rows=rows,
         request=request,
@@ -322,7 +331,7 @@ def _own_student(request, pk: int) -> Student:
         .first()
     )
     if student is None:
-        raise NotFound("Ученика нет в ваших группах")
+        raise NotFound(_("Ученика нет в ваших группах"))
     return student
 
 
@@ -366,7 +375,7 @@ def student_card(request, pk: int):
             "score": float(row.total_score) if row.total_score is not None else None,
             "source": row.source,
             "source_title": row.get_source_display(),
-            # чей это пробник и кто его залил — видно у каждой строки (фаза 63)
+            # чей это Mock Test и кто его залил — видно у каждой строки (фаза 63)
             "sections": _sections(row) if row.exam_type == ExamType.IELTS else {},
             "mock_import": row.mock_import_id,
             "teacher": row.mock_import.teacher if row.mock_import_id else "",
@@ -557,7 +566,7 @@ def tasks(request):
 
     title = str(request.data.get("title") or "").strip()
     if not title:
-        return Response({"detail": "Напишите, что сделать"}, status=http.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Напишите, что сделать")}, status=http.HTTP_400_BAD_REQUEST)
 
     due_raw = str(request.data.get("due_date") or "").strip()
     due = None
@@ -565,7 +574,7 @@ def tasks(request):
         try:
             due = dt.date.fromisoformat(due_raw)
         except ValueError:
-            return Response({"detail": "Срок непонятен — нужна дата"}, status=http.HTTP_400_BAD_REQUEST)
+            return Response({"detail": _("Срок непонятен — нужна дата")}, status=http.HTTP_400_BAD_REQUEST)
 
     group_code = str(request.data.get("group") or "").strip()
     if group_code:
@@ -576,7 +585,7 @@ def tasks(request):
     targets = list(targets)
     if not targets:
         return Response(
-            {"detail": "Некому ставить задачу — проверьте ученика или группу"}, status=http.HTTP_404_NOT_FOUND
+            {"detail": _("Некому ставить задачу — проверьте ученика или группу")}, status=http.HTTP_404_NOT_FOUND
         )
 
     made = assign_to_students(
@@ -603,12 +612,12 @@ def task_status(request, pk: int):
 
     task = Task.objects.filter(pk=pk, student__in=_students(request)).select_related("student__group").first()
     if task is None:
-        raise NotFound("Задачи нет в ваших группах")
+        raise NotFound(_("Задачи нет в ваших группах"))
 
     wanted = str(request.data.get("status") or "").strip()
     allowed = {TaskStatus.DONE, TaskStatus.CANCELLED, TaskStatus.TODO}
     if wanted not in allowed:
-        return Response({"detail": "Задачу можно закрыть, отменить или вернуть"}, status=http.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Задачу можно закрыть, отменить или вернуть")}, status=http.HTTP_400_BAD_REQUEST)
     return Response(_task_row(complete(task, status=wanted, actor=request.user)))
 
 
@@ -627,7 +636,7 @@ def profile(request):
         {
             "full_name": request.user.full_name,
             "email": request.user.email,
-            "role_title": "Куратор",
+            "role_title": _("Куратор"),
             "groups": _group_rows(request.user),
             "confirms": [DOMAINS[code].title for code in CURATOR_CONFIRM_DOMAINS if code in DOMAINS],
             # дисциплину куратор ведёт сам по своим группам (фаза 66)
@@ -707,24 +716,28 @@ def documents_export(request):
 
     _students_all, rows = _documents_rows(request)
     titles = {
-        "none": "нет",
-        "pending": "ждёт",
-        "confirmed": "подтверждён",
-        "rejected": "отклонён",
-        "expiring": "истекает",
+        "none": _("нет"),
+        "pending": _("ждёт"),
+        "confirmed": _("подтверждён"),
+        "rejected": _("отклонён"),
+        "expiring": _("истекает"),
     }
 
     def cell(index: int):
         return lambda row: titles.get(row["cells"][index]["state"], "")
 
-    columns = [Column("Ученик", lambda row: row["full_name"], 30), Column("Группа", lambda row: row["group"], 12)]
+    columns = [Column(_("Ученик"), lambda row: row["full_name"], 30), Column(_("Группа"), lambda row: row["group"], 12)]
     for index, code in enumerate(REQUIRED_DOCUMENTS):
         columns.append(Column(DocumentType(code).label, cell(index), 18))
-    columns.append(Column("Собрано", lambda row: f"{row['collected']} / {row['total']}", 12))
+    columns.append(Column(_("Собрано"), lambda row: f"{row['collected']} / {row['total']}", 12))
     stamp = timezone.localdate().strftime("%Y-%m-%d")
     code = _file_group(request)
     return workbook_response(
-        filename=f"документы-{code}-{stamp}.xlsx", sheet="Документы", columns=columns, rows=rows, request=request
+        filename=_("документы-{group}-{date}.xlsx").format(group=code, date=stamp),
+        sheet=_("Документы"),
+        columns=columns,
+        rows=rows,
+        request=request,
     )
 
 
@@ -747,7 +760,7 @@ def documents_remind(request):
     if picked:
         students = students.filter(pk=picked)
         if not students.exists():
-            raise NotFound("Ученика нет в ваших группах")
+            raise NotFound(_("Ученика нет в ваших группах"))
     made = documents.remind(students, actor=request.user)
     return Response({"created": len(made), "students": made, "group": picked_group})
 
@@ -766,7 +779,7 @@ def document_revoke(request, pk: int):
 
     row = StudentDocument.objects.filter(pk=pk, student__in=_students(request)).select_related("student").first()
     if row is None:
-        raise NotFound("Документа нет в ваших группах")
+        raise NotFound(_("Документа нет в ваших группах"))
     try:
         documents.revoke(row, actor=request.user)
     except ValueError as error:
@@ -796,9 +809,12 @@ def parent_call(request, pk: int):
             student=student,
             author=request.user,
             author_role=request.user.role,
-            text=f"Звонок родителям: {text}",
+            # текст заметки хранится в базе и читается как данные — не переводится
+            text=f"Звонок родителям: {text}",  # i18n-skip: текст заметки в базе
         )
-    record_event(student=student, code="parent_call", text=text or "без записи", actor=request.user)
+    record_event(
+        student=student, code="parent_call", text=text or "без записи", actor=request.user  # i18n-skip: запись журнала
+    )
     return Response({"noted": bool(text)})
 
 
@@ -852,7 +868,7 @@ def _journal_rows(request, limit: int = 300) -> list[dict]:
         {
             "id": row.pk,
             "at": row.created_at,
-            "who": (row.actor.full_name or row.actor.email) if row.actor else (row.actor_title or "система"),
+            "who": (row.actor.full_name or row.actor.email) if row.actor else (row.actor_title or _("система")),
             "role": ROLE_TITLES.get(row.actor_role, ""),
             # правка администратора в чужом домене помечена сразу (фаза 68)
             "acting_for_title": acting_for_phrase(row.acting_for),
@@ -888,19 +904,19 @@ def journal_export(request):
     from core.exports import Column, workbook_response
 
     columns = (
-        Column("Когда", lambda row: row["at"], 20),
-        Column("Кто", lambda row: row["who"], 24),
-        Column("Роль", lambda row: row["role"], 18),
-        Column("Ученик", lambda row: row["student"], 28),
-        Column("Группа", lambda row: row["group"], 10),
-        Column("Что", lambda row: row["what"], 28),
-        Column("Было", lambda row: row["was"], 20),
-        Column("Стало", lambda row: row["now"], 28),
+        Column(_("Когда"), lambda row: row["at"], 20),
+        Column(_("Кто"), lambda row: row["who"], 24),
+        Column(_("Роль"), lambda row: row["role"], 18),
+        Column(_("Ученик"), lambda row: row["student"], 28),
+        Column(_("Группа"), lambda row: row["group"], 10),
+        Column(_("Что"), lambda row: row["what"], 28),
+        Column(_("Было"), lambda row: row["was"], 20),
+        Column(_("Стало"), lambda row: row["now"], 28),
     )
     stamp = timezone.localdate().strftime("%Y-%m-%d")
     return workbook_response(
-        filename=f"журнал-{stamp}.xlsx",
-        sheet="Журнал",
+        filename=_("журнал-{date}.xlsx").format(date=stamp),
+        sheet=_("Журнал"),
         columns=columns,
         rows=_journal_rows(request, limit=2000),
         request=request,

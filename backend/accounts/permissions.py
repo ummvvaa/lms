@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext, gettext_lazy, gettext_noop
 from rest_framework import permissions
 
 from accounts.models import Role
@@ -10,7 +11,7 @@ from accounts.models import Role
 class IsAdmin(permissions.BasePermission):
     """Роль `admin` — техническая: люди и справочники, но не доменные поля."""
 
-    message = "Управление пользователями доступно администратору"
+    message = gettext_lazy("Управление пользователями доступно администратору")
 
     def has_permission(self, request, view) -> bool:
         user = request.user
@@ -48,7 +49,7 @@ class MustChangePasswordMiddleware:
                 from django.http import JsonResponse
 
                 return JsonResponse(
-                    {"detail": "Сначала смените пароль", "code": "password_change_required"},
+                    {"detail": gettext("Сначала смените пароль"), "code": "password_change_required"},
                     status=403,
                 )
         return self.get_response(request)
@@ -299,7 +300,11 @@ CURATOR_SESSION_ROUTES = frozenset(
     }
 )
 
-CURATOR_GATE_MESSAGE = "Этот раздел куратору не открыт: у него карточки учеников своих групп и очередь подтверждений"
+#: Причины и отказы шлюзов — обычные строки (`gettext_noop`): тесты ищут их
+#: в ответе как подстроку, а переводит шлюз в момент ответа
+CURATOR_GATE_MESSAGE = gettext_noop(
+    "Этот раздел куратору не открыт: у него карточки учеников своих групп и очередь подтверждений"
+)
 
 
 def curator_may(url_name: str | None, method: str) -> bool:
@@ -326,13 +331,17 @@ def curator_may(url_name: str | None, method: str) -> bool:
 #:
 #: Страж `test_every_api_route_is_either_open_or_closed_to_the_admin`
 #: требует: маршрут, отвечающий администратору 403, обязан быть здесь.
-CURATOR_CABINET = "кабинет куратора — у администратора карточка ученика целиком, таблица и очередь"
-STUDENT_CABINET = "кабинет ученика — экран роли, а не данные"
-STUDENT_ENTERS = "первичные данные вносит ученик — администратор подтверждает и правит, но не вносит за него"
+CURATOR_CABINET = gettext_noop("кабинет куратора — у администратора карточка ученика целиком, таблица и очередь")
+STUDENT_CABINET = gettext_noop("кабинет ученика — экран роли, а не данные")
+STUDENT_ENTERS = gettext_noop(
+    "первичные данные вносит ученик — администратор подтверждает и правит, но не вносит за него"
+)
 
-TEACHER_CABINET = "кабинет учителя — экран роли: у администратора расписание и журналы целиком"
+TEACHER_CABINET = gettext_noop("кабинет учителя — экран роли: у администратора расписание и журналы целиком")
 
-DAY_MARKING_CLOSED = "отметка дня закрыта — посещаемость ведётся по урокам, причину за период оформляет куратор"
+DAY_MARKING_CLOSED = gettext_noop(
+    "отметка дня закрыта — посещаемость ведётся по урокам, причину за период оформляет куратор"
+)
 
 ADMIN_CLOSED_ROUTES: dict[str, str] = {
     # кабинет учителя: «Сегодня», список своих журналов, профиль, ученик глазами учителя
@@ -403,7 +412,7 @@ ADMIN_CLOSED_WRITES: dict[str, str] = {
     "essay-list": STUDENT_ENTERS,
 }
 
-ADMIN_GATE_MESSAGE = "Этот маршрут администратору закрыт"
+ADMIN_GATE_MESSAGE = gettext_noop("Этот маршрут администратору закрыт")
 
 
 def admin_refusal(url_name: str | None, method: str) -> str:
@@ -442,7 +451,7 @@ class AdminGateMiddleware:
             reason = admin_refusal(name, request.method)
             if reason:
                 return JsonResponse(
-                    {"detail": f"{ADMIN_GATE_MESSAGE}: {reason}"},
+                    {"detail": f"{gettext(ADMIN_GATE_MESSAGE)}: {gettext(reason)}"},
                     status=403,
                     json_dumps_params={"ensure_ascii": False},
                 )
@@ -573,7 +582,9 @@ class TeacherGateMiddleware:
             except Resolver404:
                 name = None
             if not teacher_may(name, request.method):
-                return JsonResponse({"detail": "Не найдено"}, status=404, json_dumps_params={"ensure_ascii": False})
+                return JsonResponse(
+                    {"detail": gettext("Не найдено")}, status=404, json_dumps_params={"ensure_ascii": False}
+                )
         return self.get_response(request)
 
 
@@ -613,7 +624,9 @@ class StudentParallelGateMiddleware:
                 if section is not None:
                     return JsonResponse(
                         {
-                            "detail": f"Раздел «{section.title}» ведётся только у 11 параллели",
+                            "detail": gettext("Раздел «{section}» ведётся только у 11 параллели").format(
+                                section=section.title
+                            ),
                             "code": "parallel_closed",
                         },
                         status=403,
@@ -651,9 +664,11 @@ class CuratorGateMiddleware:
             except Resolver404:
                 name = None
             if name in CURATOR_HIDDEN_ROUTES:
-                return JsonResponse({"detail": "Не найдено"}, status=404, json_dumps_params={"ensure_ascii": False})
+                return JsonResponse(
+                    {"detail": gettext("Не найдено")}, status=404, json_dumps_params={"ensure_ascii": False}
+                )
             if not curator_may(name, request.method):
                 return JsonResponse(
-                    {"detail": CURATOR_GATE_MESSAGE}, status=403, json_dumps_params={"ensure_ascii": False}
+                    {"detail": gettext(CURATOR_GATE_MESSAGE)}, status=403, json_dumps_params={"ensure_ascii": False}
                 )
         return self.get_response(request)

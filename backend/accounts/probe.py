@@ -14,6 +14,8 @@
 списком, приглашённые), уходит той же уборкой.
 """
 
+# i18n-skip-file: одноразовые записи прогона — имена и подпись в журнале хранятся как данные
+
 from __future__ import annotations
 
 from django.db import transaction

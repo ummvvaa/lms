@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext, gettext_lazy
 
 from core.archivable import Archivable
 
@@ -27,33 +28,35 @@ from core.archivable import Archivable
 class LatePolicy(models.TextChoices):
     """Что делать со сдачей после срока — учитель выбирает на каждое задание."""
 
-    ACCEPT = "accept", "Принимать с пометкой «с опозданием»"
-    CLOSE = "close", "Закрыть сдачу"
+    ACCEPT = "accept", gettext_lazy("Принимать с пометкой «с опозданием»")
+    CLOSE = "close", gettext_lazy("Закрыть сдачу")
 
 
 class Assignment(Archivable):
     """Задание урока со сдачей в LMS и/или файлами учителя."""
 
     lesson = models.ForeignKey(
-        "academics.Lesson", verbose_name="Урок", related_name="assignments", on_delete=models.CASCADE
+        "academics.Lesson", verbose_name=gettext_lazy("Урок"), related_name="assignments", on_delete=models.CASCADE
     )
-    requires_submission = models.BooleanField("Нужна сдача в LMS", default=False)
-    due_at = models.DateTimeField("Срок сдачи", null=True, blank=True)
-    late_policy = models.CharField("После срока", max_length=8, choices=LatePolicy.choices, default=LatePolicy.ACCEPT)
+    requires_submission = models.BooleanField(gettext_lazy("Нужна сдача в LMS"), default=False)
+    due_at = models.DateTimeField(gettext_lazy("Срок сдачи"), null=True, blank=True)
+    late_policy = models.CharField(
+        gettext_lazy("После срока"), max_length=8, choices=LatePolicy.choices, default=LatePolicy.ACCEPT
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто задал",
+        verbose_name=gettext_lazy("Кто задал"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    created_at = models.DateTimeField("Задано", auto_now_add=True)
-    updated_at = models.DateTimeField("Изменено", auto_now=True)
+    created_at = models.DateTimeField(gettext_lazy("Задано"), auto_now_add=True)
+    updated_at = models.DateTimeField(gettext_lazy("Изменено"), auto_now=True)
 
     class Meta:
-        verbose_name = "Задание со сдачей"
-        verbose_name_plural = "Задания со сдачей"
+        verbose_name = gettext_lazy("Задание со сдачей")
+        verbose_name_plural = gettext_lazy("Задания со сдачей")
         ordering = ("-due_at", "-id")
         constraints = [
             models.UniqueConstraint(
@@ -63,43 +66,43 @@ class Assignment(Archivable):
         indexes = [models.Index(fields=("requires_submission", "due_at"))]
 
     def __str__(self) -> str:
-        return f"ДЗ · {self.lesson}"
+        return gettext("ДЗ · {lesson}").format(lesson=self.lesson)
 
 
 class Submission(Archivable):
     """Сдача ученика: черновик, сдано, проверено."""
 
     assignment = models.ForeignKey(
-        Assignment, verbose_name="Задание", related_name="submissions", on_delete=models.CASCADE
+        Assignment, verbose_name=gettext_lazy("Задание"), related_name="submissions", on_delete=models.CASCADE
     )
     student = models.ForeignKey(
-        "students.Student", verbose_name="Ученик", related_name="submissions", on_delete=models.CASCADE
+        "students.Student", verbose_name=gettext_lazy("Ученик"), related_name="submissions", on_delete=models.CASCADE
     )
-    text = models.TextField("Текст ответа", blank=True)
-    link = models.URLField("Ссылка", max_length=500, blank=True)
-    comment = models.TextField("Комментарий учителю", blank=True)
+    text = models.TextField(gettext_lazy("Текст ответа"), blank=True)
+    link = models.URLField(gettext_lazy("Ссылка"), max_length=500, blank=True)
+    comment = models.TextField(gettext_lazy("Комментарий учителю"), blank=True)
     #: пусто — черновик: файлы грузятся, но «Сдать» ещё не нажато
-    submitted_at = models.DateTimeField("Сдано", null=True, blank=True)
+    submitted_at = models.DateTimeField(gettext_lazy("Сдано"), null=True, blank=True)
     #: на сколько минут позже срока сдано; вовремя — пусто
-    late_minutes = models.PositiveIntegerField("Опоздание, мин", null=True, blank=True)
-    checked_at = models.DateTimeField("Проверено", null=True, blank=True)
+    late_minutes = models.PositiveIntegerField(gettext_lazy("Опоздание, мин"), null=True, blank=True)
+    checked_at = models.DateTimeField(gettext_lazy("Проверено"), null=True, blank=True)
     checked_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто проверил",
+        verbose_name=gettext_lazy("Кто проверил"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
     #: 1–10; проверено без оценки — пусто при заполненном `checked_at`
-    grade = models.PositiveSmallIntegerField("Оценка", null=True, blank=True)
-    teacher_comment = models.TextField("Комментарий учителя", blank=True)
-    created_at = models.DateTimeField("Создано", auto_now_add=True)
-    updated_at = models.DateTimeField("Изменено", auto_now=True)
+    grade = models.PositiveSmallIntegerField(gettext_lazy("Оценка"), null=True, blank=True)
+    teacher_comment = models.TextField(gettext_lazy("Комментарий учителя"), blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Создано"), auto_now_add=True)
+    updated_at = models.DateTimeField(gettext_lazy("Изменено"), auto_now=True)
 
     class Meta:
-        verbose_name = "Сдача ДЗ"
-        verbose_name_plural = "Сдачи ДЗ"
+        verbose_name = gettext_lazy("Сдача ДЗ")
+        verbose_name_plural = gettext_lazy("Сдачи ДЗ")
         ordering = ("assignment", "student")
         constraints = [
             models.UniqueConstraint(
@@ -130,51 +133,63 @@ class FileKind(models.TextChoices):
     """Как файл показывать в LMS: PDF и фото — постранично, звук и видео — плеером."""
 
     PDF = "pdf", "PDF"
-    IMAGE = "image", "Фото"
-    AUDIO = "audio", "Аудио"
-    VIDEO = "video", "Видео"
-    OTHER = "other", "Файл"
+    IMAGE = "image", gettext_lazy("Фото")
+    AUDIO = "audio", gettext_lazy("Аудио")
+    VIDEO = "video", gettext_lazy("Видео")
+    OTHER = "other", gettext_lazy("Файл")
 
 
 class FileState(models.TextChoices):
-    UPLOADING = "uploading", "Загружается"
-    READY = "ready", "Загружен"
+    UPLOADING = "uploading", gettext_lazy("Загружается")
+    READY = "ready", gettext_lazy("Загружен")
 
 
 class HomeworkFile(Archivable):
     """Файл учителя к заданию или файл ученика в сдаче — ровно одно из двух."""
 
     assignment = models.ForeignKey(
-        Assignment, verbose_name="Задание", related_name="files", on_delete=models.CASCADE, null=True, blank=True
+        Assignment,
+        verbose_name=gettext_lazy("Задание"),
+        related_name="files",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
     submission = models.ForeignKey(
-        Submission, verbose_name="Сдача", related_name="files", on_delete=models.CASCADE, null=True, blank=True
+        Submission,
+        verbose_name=gettext_lazy("Сдача"),
+        related_name="files",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
     #: путь объекта в хранилище — без имени файла человека, его знает только база
-    key = models.CharField("Ключ в хранилище", max_length=300, unique=True)
-    name = models.CharField("Имя файла", max_length=250)
-    content_type = models.CharField("Тип", max_length=120, blank=True)
-    kind = models.CharField("Вид", max_length=8, choices=FileKind.choices, default=FileKind.OTHER)
-    size = models.BigIntegerField("Размер, байт", default=0)
+    key = models.CharField(gettext_lazy("Ключ в хранилище"), max_length=300, unique=True)
+    name = models.CharField(gettext_lazy("Имя файла"), max_length=250)
+    content_type = models.CharField(gettext_lazy("Тип"), max_length=120, blank=True)
+    kind = models.CharField(gettext_lazy("Вид"), max_length=8, choices=FileKind.choices, default=FileKind.OTHER)
+    size = models.BigIntegerField(gettext_lazy("Размер, байт"), default=0)
     #: PDF, склеенный из снимков: сколько было фото
-    photos = models.PositiveSmallIntegerField("Из фото", null=True, blank=True)
-    state = models.CharField("Состояние", max_length=10, choices=FileState.choices, default=FileState.UPLOADING)
+    photos = models.PositiveSmallIntegerField(gettext_lazy("Из фото"), null=True, blank=True)
+    state = models.CharField(
+        gettext_lazy("Состояние"), max_length=10, choices=FileState.choices, default=FileState.UPLOADING
+    )
     #: номер загрузки по частям в хранилище; у загрузки одним куском пусто
-    upload_id = models.CharField("Загрузка по частям", max_length=200, blank=True)
+    upload_id = models.CharField(gettext_lazy("Загрузка по частям"), max_length=200, blank=True)
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто загрузил",
+        verbose_name=gettext_lazy("Кто загрузил"),
         related_name="+",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    order = models.PositiveSmallIntegerField("Порядок", default=0)
-    created_at = models.DateTimeField("Загружен", auto_now_add=True)
+    order = models.PositiveSmallIntegerField(gettext_lazy("Порядок"), default=0)
+    created_at = models.DateTimeField(gettext_lazy("Загружен"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Файл ДЗ"
-        verbose_name_plural = "Файлы ДЗ"
+        verbose_name = gettext_lazy("Файл ДЗ")
+        verbose_name_plural = gettext_lazy("Файлы ДЗ")
         ordering = ("order", "id")
         constraints = [
             models.CheckConstraint(

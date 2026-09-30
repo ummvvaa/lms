@@ -1,9 +1,11 @@
-"""Перевод серверных текстов: письма и уведомления.
+"""Язык сервера: чей язык и как перевести строку на язык получателя.
 
-Язык живёт в профиле получателя (`User.language`), русский — исходный.
-Ключ словаря — русский текст как он написан в коде; подстановки вида
-`{title}` остаются в шаблоне и заполняются после перевода. Нет перевода —
-уходит русский текст, система не падает.
+Переводы — Django gettext: исходная строка в коде русская, переводы
+`locale/kk` и `locale/en` (`makemessages` → `.po` → `compilemessages` → `.mo`).
+Язык ответа на запрос включает `core.language.LanguageMiddleware`; письма и
+уведомления переводятся на язык получателя (`language_of(user)`) через
+`render`/`translate`. Подстановки `{title}` остаются в шаблоне и заполняются
+после перевода. Нет перевода — уходит русский текст, система не падает.
 
 Три языка открыты (решение владельца, 30.09.2026); казахский вычитывает
 человек по выгрузке `manage.py i18n_export`.
@@ -13,6 +15,8 @@
 """
 
 from __future__ import annotations
+
+from django.utils import translation
 
 #: Языки, которые предлагаются в выборе: добавить язык сюда — значит включить
 #: его и в интерфейсе, и в письмах
@@ -33,143 +37,28 @@ def offered_languages() -> list[dict]:
     return [{"value": code, "label": labels.get(code, code)} for code in INTERFACE_LANGUAGES]
 
 
-#: Переводы серверных шаблонов. Термины (IELTS, Common App) не переводятся.
-SERVER_TEXTS: dict[str, dict[str, str]] = {
-    "kk": {
-        # учебная часть: уведомления об уроках и отчётах
-        "{text}": "{text}",
-        "Не отмечен урок: {lesson}, {when}": "Сабақ белгіленбеген: {lesson}, {when}",
-        "Куратор напоминает: не отмечен урок {lesson}, {when}": (
-            "Куратор еске салады: {lesson} сабағы белгіленбеген, {when}"
-        ),
-        "Просьба о переносе: {teacher} — {lesson}, {when}": ("Ауыстыру туралы өтініш: {teacher} — {lesson}, {when}"),
-        "Просьба о переносе {lesson} одобрена: {answer}": "{lesson} сабағын ауыстыру өтініші мақұлданды: {answer}",
-        "Просьба о переносе {lesson} отклонена: {answer}": "{lesson} сабағын ауыстыру өтініші қабылданбады: {answer}",
-        "Отчёты родителям за {period} собраны: {count} ждут проверки": (
-            "{period} кезеңіне ата-аналарға есептер жиналды: {count} тексеруді күтуде"
-        ),
-        # письма одноразовых ссылок
-        "вход в платформу": "платформаға кіру",
-        "доступ в платформу": "платформаға қолжетімділік",
-        "сброс пароля": "құпиясөзді қалпына келтіру",
-        "Ссылка для входа действует до {until}:": "Кіру сілтемесі {until} дейін жарамды:",
-        "Ссылка для установки пароля действует до {until}:": ("Құпиясөзді орнату сілтемесі {until} дейін жарамды:"),
-        "Ссылка для смены пароля действует до {until}:": ("Құпиясөзді өзгерту сілтемесі {until} дейін жарамды:"),
-        # уведомления
-        "{who} загрузил материал «{title}» — ждёт проверки": ("{who} «{title}» материалын жүктеді — тексеруді күтуде"),
-        "Ваш материал «{title}» одобрен и появился в библиотеке": (
-            "Сіздің «{title}» материалыңыз мақұлданып, кітапханада пайда болды"
-        ),
-        "По вашему запросу «{topic}» появился материал «{title}»": (
-            "Сіздің «{topic}» сұранысыңыз бойынша «{title}» материалы пайда болды"
-        ),
-        "Материал «{title}» не прошёл проверку: {reason}": ("«{title}» материалы тексеруден өтпеді: {reason}"),
-        "{who} оставил вопрос под вашим материалом «{title}»": (
-            "{who} сіздің «{title}» материалыңыздың астына сұрақ қалдырды"
-        ),
-        "{who} оставил вопрос под материалом «{title}»": ("{who} «{title}» материалының астына сұрақ қалдырды"),
-        "Жалоба на {what} под «{title}»: {reason}": "«{title}» астындағы {what} туралы шағым: {reason}",
-        "комментарий": "пікірге",
-        "материал": "материалға",
-        # письмо с временным паролем (фаза 29)
-        "Вам открыт доступ в платформу школы.": "Сізге мектеп платформасына қолжетімділік ашылды.",
-        "Адрес": "Мекенжай",
-        "Логин": "Логин",
-        "Временный пароль": "Уақытша құпиясөз",
-        "При первом входе система попросит придумать свой пароль — это обязательно.": (
-            "Алғаш кіргенде жүйе өз құпиясөзіңізді ойлап табуды сұрайды — бұл міндетті."
-        ),
-        "После смены временный пароль перестанет работать.": ("Ауыстырғаннан кейін уақытша құпиясөз жұмыс істемейді."),
-        "Войти по нему нужно до {until}.": "Онымен {until} дейін кіру керек.",
-        # кабинет куратора (фаза 62): уведомления по очереди и документам
-        "{who} {verb}: {what} · {student} — ответ на переданное": (
-            "{who} {verb}: {what} · {student} — тапсырылғанға жауап"
-        ),
-        "{who} {verb}: {what} · {student} — из вашей очереди": "{who} {verb}: {what} · {student} — сіздің кезегіңізден",
-        "Куратор {curator} передал: {what} · {student}. «{comment}»": (
-            "Куратор {curator} тапсырды: {what} · {student}. «{comment}»"
-        ),
-        "Куратор {curator} передал вопрос по {student}: «{comment}»": (
-            "Куратор {curator} {student} бойынша сұрақ тапсырды: «{comment}»"
-        ),
-        "{student} перезагрузил документ «{doc}» после отклонения": (
-            "{student} қабылданбағаннан кейін «{doc}» құжатын қайта жүктеді"
-        ),
-        "Через {days} дней истекает срок документа «{doc}» у {student}": (
-            "{days} күннен кейін {student} «{doc}» құжатының мерзімі бітеді"
-        ),
-    },
-    "en": {
-        # academics: lesson and report notifications
-        "{text}": "{text}",
-        "Не отмечен урок: {lesson}, {when}": "Lesson not marked: {lesson}, {when}",
-        "Куратор напоминает: не отмечен урок {lesson}, {when}": (
-            "Curator reminder: lesson {lesson} is not marked, {when}"
-        ),
-        "Просьба о переносе: {teacher} — {lesson}, {when}": ("Reschedule request: {teacher} — {lesson}, {when}"),
-        "Просьба о переносе {lesson} одобрена: {answer}": "Reschedule request for {lesson} approved: {answer}",
-        "Просьба о переносе {lesson} отклонена: {answer}": "Reschedule request for {lesson} declined: {answer}",
-        "Отчёты родителям за {period} собраны: {count} ждут проверки": (
-            "Parent reports for {period} are ready: {count} await review"
-        ),
-        "вход в платформу": "platform sign-in",
-        "доступ в платформу": "platform access",
-        "сброс пароля": "password reset",
-        "Ссылка для входа действует до {until}:": "The sign-in link is valid until {until}:",
-        "Ссылка для установки пароля действует до {until}:": ("The password setup link is valid until {until}:"),
-        "Ссылка для смены пароля действует до {until}:": ("The password change link is valid until {until}:"),
-        "{who} загрузил материал «{title}» — ждёт проверки": (
-            "{who} uploaded the material “{title}” — awaiting review"
-        ),
-        "Ваш материал «{title}» одобрен и появился в библиотеке": (
-            "Your material “{title}” was approved and appeared in the library"
-        ),
-        "По вашему запросу «{topic}» появился материал «{title}»": ("Your request “{topic}” got a material: “{title}”"),
-        "Материал «{title}» не прошёл проверку: {reason}": ("The material “{title}” did not pass review: {reason}"),
-        "{who} оставил вопрос под вашим материалом «{title}»": ("{who} left a question under your material “{title}”"),
-        "{who} оставил вопрос под материалом «{title}»": ("{who} left a question under the material “{title}”"),
-        "Жалоба на {what} под «{title}»: {reason}": "A complaint about a {what} under “{title}”: {reason}",
-        "комментарий": "comment",
-        "материал": "material",
-        # письмо с временным паролем (фаза 29)
-        "Вам открыт доступ в платформу школы.": "You have been given access to the school platform.",
-        "Адрес": "Address",
-        "Логин": "Login",
-        "Временный пароль": "Temporary password",
-        "При первом входе система попросит придумать свой пароль — это обязательно.": (
-            "At the first sign-in the system will ask you to choose your own password — this is required."
-        ),
-        "После смены временный пароль перестанет работать.": ("Once changed, the temporary password stops working."),
-        "Войти по нему нужно до {until}.": "You need to sign in with it by {until}.",
-        # кабинет куратора (фаза 62): уведомления по очереди и документам
-        "{who} {verb}: {what} · {student} — ответ на переданное": (
-            "{who} {verb}: {what} · {student} — reply to what you handed over"
-        ),
-        "{who} {verb}: {what} · {student} — из вашей очереди": "{who} {verb}: {what} · {student} — from your queue",
-        "Куратор {curator} передал: {what} · {student}. «{comment}»": (
-            "Curator {curator} handed over: {what} · {student}. “{comment}”"
-        ),
-        "Куратор {curator} передал вопрос по {student}: «{comment}»": (
-            "Curator {curator} handed over a question about {student}: “{comment}”"
-        ),
-        "{student} перезагрузил документ «{doc}» после отклонения": (
-            "{student} re-uploaded the document “{doc}” after it was rejected"
-        ),
-        "Через {days} дней истекает срок документа «{doc}» у {student}": (
-            "The document “{doc}” of {student} expires in {days} days"
-        ),
-    },
-}
-
-
 def translate(lang: str, text: str) -> str:
-    """Перевод по исходному русскому тексту. Нет перевода — исходный текст."""
-    return SERVER_TEXTS.get(lang, {}).get(text, text)
+    """Перевод по исходному русскому тексту на язык `lang`. Нет перевода — исходный текст.
+
+    Письмо и уведомление переводятся на языке получателя, а не того, кто
+    сделал запрос: поэтому язык передаётся явно, а не берётся активным.
+    """
+    with translation.override(lang):
+        return translation.gettext(text)
 
 
 def render(lang: str, template: str, **params: object) -> str:
-    """Перевести шаблон и подставить значения."""
+    """Перевести шаблон на язык `lang` и подставить значения `{имя}`.
+
+    Шаблон с формами числа через черту («… {n} день|… {n} дня|… {n} дней»)
+    выбирает форму по `n` — по правилам языка получателя.
+    """
     text = translate(lang, template)
+    if "|" in text and "n" in params:
+        from core.phrasing import _form
+
+        with translation.override(lang):
+            text = _form(int(params["n"]), text)
     if params:
         text = text.format(**params)
     return text

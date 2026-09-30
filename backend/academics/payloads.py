@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import datetime as dt
 
+from django.utils.translation import gettext_lazy
+
 from academics.calendar import WEEKDAYS_FULL, WEEKDAYS_SHORT, SchoolCalendar, bell_text, date_words, lesson_groups
 from academics.cohorts import group_ids_of, kind_title, member_ids
 from academics.marks import kind_label
@@ -101,7 +103,11 @@ def course_dict(course: Course) -> dict:
     }
 
 
-STATUS_WORDS = {LessonStatus.PLANNED: "по плану", LessonStatus.CANCELLED: "отменён", LessonStatus.MOVED: "перенесён"}
+STATUS_WORDS = {
+    LessonStatus.PLANNED: gettext_lazy("по плану"),
+    LessonStatus.CANCELLED: gettext_lazy("отменён"),
+    LessonStatus.MOVED: gettext_lazy("перенесён"),
+}
 
 
 def lesson_dict(lesson: Lesson, calendar: SchoolCalendar, *, students: int | None = None) -> dict:
@@ -135,7 +141,7 @@ def lesson_dict(lesson: Lesson, calendar: SchoolCalendar, *, students: int | Non
         "substitute": person(lesson.substitute),
         "actual_teacher": person(lesson.substitute or lesson.teacher),
         "status": lesson.status,
-        "status_title": STATUS_WORDS.get(lesson.status, lesson.status),
+        "status_title": str(STATUS_WORDS.get(lesson.status, lesson.status)),
         "is_live": lesson.is_live,
         "reason": lesson.reason,
         "moved_from_date": lesson.moved_from_date,

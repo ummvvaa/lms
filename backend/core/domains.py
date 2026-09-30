@@ -15,6 +15,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 
+from django.utils.translation import gettext, gettext_lazy, gettext_noop
+
 
 class Source:
     """Источник изменения доменного поля — пишется в AuditLog (инвариант №9)."""
@@ -31,12 +33,12 @@ class Source:
     STUDENT_PROPOSAL = "student_proposal"
 
     CHOICES = (
-        (MANUAL, "Руками"),
-        (IMPORT, "Импорт"),
-        (AI, "ИИ"),
-        (SYNC, "Фоновая сверка"),
-        (STUDENT_ONBOARDING, "Анкета ученика"),
-        (STUDENT_PROPOSAL, "Предложил ученик"),
+        (MANUAL, gettext_lazy("Руками")),
+        (IMPORT, gettext_lazy("Импорт")),
+        (AI, gettext_lazy("ИИ")),
+        (SYNC, gettext_lazy("Фоновая сверка")),
+        (STUDENT_ONBOARDING, gettext_lazy("Анкета ученика")),
+        (STUDENT_PROPOSAL, gettext_lazy("Предложил ученик")),
     )
 
 
@@ -60,7 +62,9 @@ class Scale:
     @property
     def hint(self) -> str:
         """«от 0 до 9 с шагом 0.5» — для отказа словами."""
-        return f"от {_plain(self.minimum)} до {_plain(self.maximum)} с шагом {_plain(self.step)}"
+        return gettext("от {minimum} до {maximum} с шагом {step}").format(
+            minimum=_plain(self.minimum), maximum=_plain(self.maximum), step=_plain(self.step)
+        )
 
 
 def _plain(number: Decimal) -> str:
@@ -114,6 +118,41 @@ def scale_for(instance, field_name: str) -> Scale | None:
     return scale_of(exam, section=field_name in SECTION_FIELDS)
 
 
+#: Единицы полей — коды, а не слова: по ним `range_hint` выбирает фразу,
+#: а `core.audit` — как назвать границу. Человеку единица показывается
+#: только внутри переведённой фразы
+UNIT_SCORE = "балл"  # i18n-skip: код единицы, сравнивается в core.audit
+UNIT_HOURS = "ч"  # i18n-skip: код единицы, человеку показывается фразой range_hint
+UNIT_PERCENT = "%"
+
+#: Подсказка о границах поля — фраза целиком по единице: в казахском
+#: число и единица стоят по-своему, склеивать их нельзя
+_RANGE_BOTH: dict[str, str] = {
+    UNIT_SCORE: gettext_noop("от {minimum} до {maximum} баллов"),
+    UNIT_PERCENT: gettext_noop("от {minimum} до {maximum}%"),
+    UNIT_HOURS: gettext_noop("от {minimum} до {maximum} часов"),
+    "": gettext_noop("от {minimum} до {maximum}"),
+}
+_RANGE_MAX: dict[str, str] = {
+    UNIT_SCORE: gettext_noop("не больше {maximum} баллов"),
+    UNIT_PERCENT: gettext_noop("не больше {maximum}%"),
+    UNIT_HOURS: gettext_noop("не больше {maximum} часов"),
+    "": gettext_noop("не больше {maximum}"),
+}
+_RANGE_MIN: dict[str, str] = {
+    UNIT_SCORE: gettext_noop("не меньше {minimum} баллов"),
+    UNIT_PERCENT: gettext_noop("не меньше {minimum}%"),
+    UNIT_HOURS: gettext_noop("не меньше {minimum} часов"),
+    "": gettext_noop("не меньше {minimum}"),
+}
+#: единица вне таблиц выше — подставляется словом, как пришла
+_RANGE_ANY_UNIT = (
+    gettext_noop("от {minimum} до {maximum} {unit}"),
+    gettext_noop("не больше {maximum} {unit}"),
+    gettext_noop("не меньше {minimum} {unit}"),
+)
+
+
 @dataclass(frozen=True)
 class FieldSpec:
     """Одно редактируемое поле домена.
@@ -122,12 +161,17 @@ class FieldSpec:
     `short` — то же для узких мест: заголовка колонки, чипа, строки журнала.
     Технического имени (`ielts_current`) человек не видит нигде: ни один
     экран не собирает подпись из имени переменной (инвариант №2).
+
+    В реестре подписи лежат исходной русской строкой (`title_ru`, `short_ru`,
+    помечены `gettext_noop`), а `title` и `short` переводят их в момент
+    чтения — на язык запроса. Готовая строка, а не ленивая: подписи уходят
+    в `join`, в XLSX и в JSON, куда ленивая строка не годится.
     """
 
     name: str
-    title: str
+    title_ru: str
     #: короткая подпись для узких мест; пусто — берётся `title`
-    short: str = ""
+    short_ru: str = ""
     #: внутренний ярлык — не отдаётся роли `student` (инвариант №7)
     internal_label: bool = False
     #: ученик вправе предложить значение этого поля про себя (фаза 37).
@@ -151,6 +195,16 @@ class FieldSpec:
     card: str = "main"
 
     @property
+    def title(self) -> str:
+        """Подпись поля на языке запроса."""
+        return gettext(self.title_ru)
+
+    @property
+    def short(self) -> str:
+        """Короткая подпись на языке запроса; пусто — её не задали."""
+        return gettext(self.short_ru) if self.short_ru else ""
+
+    @property
     def short_title(self) -> str:
         """Короткая подпись; если её не задали — обычная."""
         return self.short or self.title
@@ -164,12 +218,18 @@ class FieldSpec:
         """
         if self.minimum is None and self.maximum is None:
             return ""
-        tail = {"балл": " баллов", "%": "%", "ч": " часов"}.get(self.unit, f" {self.unit}" if self.unit else "")
         if self.minimum is not None and self.maximum is not None:
-            return f"от {_number(self.minimum)} до {_number(self.maximum)}{tail}"
-        if self.maximum is not None:
-            return f"не больше {_number(self.maximum)}{tail}"
-        return f"не меньше {_number(self.minimum)}{tail}"
+            table, fallback = _RANGE_BOTH, _RANGE_ANY_UNIT[0]
+        elif self.maximum is not None:
+            table, fallback = _RANGE_MAX, _RANGE_ANY_UNIT[1]
+        else:
+            table, fallback = _RANGE_MIN, _RANGE_ANY_UNIT[2]
+        template = table.get(self.unit, fallback)
+        return gettext(template).format(
+            minimum=_number(self.minimum) if self.minimum is not None else "",
+            maximum=_number(self.maximum) if self.maximum is not None else "",
+            unit=self.unit,
+        )
 
 
 def _number(value: float) -> str:
@@ -194,13 +254,29 @@ class ModelSpec:
 
 @dataclass(frozen=True)
 class Domain:
-    """Домен: роль-владелец и её модели."""
+    """Домен: роль-владелец и её модели.
+
+    Название домена и имя владельца лежат исходной русской строкой
+    (`title_ru`, `owner_ru`), а `title` и `owner_name` переводят их при
+    чтении — как подписи полей в `FieldSpec`. Имя тоже переводится:
+    по-английски его пишут латиницей (глоссарий, «Имена»).
+    """
 
     code: str
-    title: str
+    title_ru: str
     role: str
-    owner_name: str
+    owner_ru: str
     models: tuple[ModelSpec, ...] = field(default_factory=tuple)
+
+    @property
+    def title(self) -> str:
+        """Название домена на языке запроса."""
+        return gettext(self.title_ru)
+
+    @property
+    def owner_name(self) -> str:
+        """Имя владельца домена на языке запроса."""
+        return gettext(self.owner_ru)
 
     def model(self, label: str) -> ModelSpec | None:
         for m in self.models:
@@ -220,17 +296,33 @@ ROLE_CURATOR = "curator"
 #: своих составов, ведёт посещаемость и оценки своих уроков (`academics`)
 ROLE_TEACHER = "teacher"
 
-ROLE_TITLES = {
-    ROLE_STUDENT: "Ученик",
-    "director_behavior": "Директор школы — профиль и дисциплина",
-    "director_admission": "Директор по поступлению",
-    "director_exam": "Академический директор",
-    "director_talent": "Директор талантов",
-    "director_sport": "Директор спорта",
-    ROLE_CURATOR: "Куратор",
-    ROLE_TEACHER: "Учитель",
-    ROLE_ADMIN: "Администратор",
-}
+
+class _Titles(dict):
+    """Подписи ролей: значения — ленивые строки перевода.
+
+    `ROLE_TITLES[код]` отдаёт ленивую строку — для объявлений на уровне
+    класса (`accounts.models.User.Role`), где языка запроса ещё нет.
+    `ROLE_TITLES.get(код)` отдаёт готовую строку на языке запроса: её
+    склеивают через `join`, пишут в XLSX и в JSON, куда ленивая не годится.
+    """
+
+    def get(self, key, default=None):
+        return str(self[key]) if key in self else default
+
+
+ROLE_TITLES = _Titles(
+    {
+        ROLE_STUDENT: gettext_lazy("Ученик"),
+        "director_behavior": gettext_lazy("Директор школы — профиль и дисциплина"),
+        "director_admission": gettext_lazy("Директор по поступлению"),
+        "director_exam": gettext_lazy("Академический директор"),
+        "director_talent": gettext_lazy("Директор талантов"),
+        "director_sport": gettext_lazy("Директор спорта"),
+        ROLE_CURATOR: gettext_lazy("Куратор"),
+        ROLE_TEACHER: gettext_lazy("Учитель"),
+        ROLE_ADMIN: gettext_lazy("Администратор"),
+    }
+)
 
 
 # --- Пять доменов -------------------------------------------------------
@@ -238,9 +330,9 @@ ROLE_TITLES = {
 DOMAINS: dict[str, Domain] = {
     "behavior": Domain(
         code="behavior",
-        title="Профиль и дисциплина",
+        title_ru=gettext_noop("Профиль и дисциплина"),
         role="director_behavior",
-        owner_name="Салтанат",
+        owner_ru=gettext_noop("Салтанат"),
         models=(
             ModelSpec(
                 label="students.BehaviorProfile",
@@ -248,19 +340,35 @@ DOMAINS: dict[str, Domain] = {
                 fields=(
                     FieldSpec(
                         "attendance_percent",
-                        "Посещаемость занятий",
-                        short="Посещаемость",
+                        gettext_noop("Посещаемость занятий"),
+                        short_ru=gettext_noop("Посещаемость"),
                         minimum=0,
                         maximum=100,
-                        unit="%",
+                        unit=UNIT_PERCENT,
                     ),
-                    FieldSpec("remarks_count", "Замечания за поведение", short="Замечания", minimum=0, maximum=500),
+                    FieldSpec(
+                        "remarks_count",
+                        gettext_noop("Замечания за поведение"),
+                        short_ru=gettext_noop("Замечания"),
+                        minimum=0,
+                        maximum=500,
+                    ),
                     # «Выполнение ДЗ, %» не вносится руками с 30.09.2026: считается
                     # из сдач ДЗ (`homework.services.completion`)
-                    FieldSpec("status", "Статус по дисциплине", short="Статус", internal_label=True),
+                    FieldSpec(
+                        "status",
+                        gettext_noop("Статус по дисциплине"),
+                        short_ru=gettext_noop("Статус"),
+                        internal_label=True,
+                    ),
                     # комментарий пишут о ученике, а не для него — как заметки
                     # куратора, ученику он не показывается (инвариант №7)
-                    FieldSpec("comment", "Комментарий куратора", short="Комментарий", internal_label=True),
+                    FieldSpec(
+                        "comment",
+                        gettext_noop("Комментарий куратора"),
+                        short_ru=gettext_noop("Комментарий"),
+                        internal_label=True,
+                    ),
                 ),
             ),
             # контакты родителей: несколько на ученика, поэтому строками
@@ -271,35 +379,53 @@ DOMAINS: dict[str, Domain] = {
             ModelSpec(
                 label="engagement.CallRule",
                 fields=(
-                    FieldSpec("code", "Код правила обзвона", short="Код"),
-                    FieldSpec("condition", "Условие для звонка", short="Условие"),
-                    FieldSpec("reason", "Причина одной фразой", short="Причина"),
-                    FieldSpec("urgency", "Срочность звонка", short="Срочность"),
-                    FieldSpec("threshold", "Порог срабатывания", short="Порог", minimum=0, maximum=100000),
-                    FieldSpec("order", "Порядок в списке", short="Порядок", minimum=0, maximum=999),
-                    FieldSpec("is_active", "Показывать правило", short="Показывать"),
+                    FieldSpec("code", gettext_noop("Код правила обзвона"), short_ru=gettext_noop("Код")),
+                    FieldSpec("condition", gettext_noop("Условие для звонка"), short_ru=gettext_noop("Условие")),
+                    FieldSpec("reason", gettext_noop("Причина одной фразой"), short_ru=gettext_noop("Причина")),
+                    FieldSpec("urgency", gettext_noop("Срочность звонка"), short_ru=gettext_noop("Срочность")),
+                    FieldSpec(
+                        "threshold",
+                        gettext_noop("Порог срабатывания"),
+                        short_ru=gettext_noop("Порог"),
+                        minimum=0,
+                        maximum=100000,
+                    ),
+                    FieldSpec(
+                        "order",
+                        gettext_noop("Порядок в списке"),
+                        short_ru=gettext_noop("Порядок"),
+                        minimum=0,
+                        maximum=999,
+                    ),
+                    FieldSpec("is_active", gettext_noop("Показывать правило"), short_ru=gettext_noop("Показывать")),
                 ),
             ),
             ModelSpec(
                 label="students.ParentContact",
                 student_path="student",
                 fields=(
-                    FieldSpec("full_name", "ФИО родителя или опекуна", short="ФИО"),
-                    FieldSpec("relation", "Кем приходится ученику", short="Кем приходится"),
-                    FieldSpec("phone", "Телефон для связи", short="Телефон"),
-                    FieldSpec("email", "Почта для связи", short="Почта"),
-                    FieldSpec("preferred_channel", "Предпочтительный способ связи", short="Как связываться"),
-                    FieldSpec("note", "Примечание о контакте", short="Примечание"),
-                    FieldSpec("is_primary", "Основной контакт", short="Основной"),
+                    FieldSpec("full_name", gettext_noop("ФИО родителя или опекуна"), short_ru=gettext_noop("ФИО")),
+                    FieldSpec(
+                        "relation", gettext_noop("Кем приходится ученику"), short_ru=gettext_noop("Кем приходится")
+                    ),
+                    FieldSpec("phone", gettext_noop("Телефон для связи"), short_ru=gettext_noop("Телефон")),
+                    FieldSpec("email", gettext_noop("Почта для связи"), short_ru=gettext_noop("Почта")),
+                    FieldSpec(
+                        "preferred_channel",
+                        gettext_noop("Предпочтительный способ связи"),
+                        short_ru=gettext_noop("Как связываться"),
+                    ),
+                    FieldSpec("note", gettext_noop("Примечание о контакте"), short_ru=gettext_noop("Примечание")),
+                    FieldSpec("is_primary", gettext_noop("Основной контакт"), short_ru=gettext_noop("Основной")),
                 ),
             ),
         ),
     ),
     "admission": Domain(
         code="admission",
-        title="Поступление",
+        title_ru=gettext_noop("Поступление"),
         role="director_admission",
-        owner_name="Асем",
+        owner_ru=gettext_noop("Асем"),
         models=(
             ModelSpec(
                 label="students.AdmissionProfile",
@@ -311,20 +437,20 @@ DOMAINS: dict[str, Domain] = {
                     # моделей, а здесь — только поля профиля поступления
                     FieldSpec(
                         "student_phone",
-                        "Телефон ученика",
-                        short="Телефон",
+                        gettext_noop("Телефон ученика"),
+                        short_ru=gettext_noop("Телефон"),
                         student_proposable=True,
                     ),
                     FieldSpec(
                         "common_app_email",
-                        "Почта Common App",
-                        short="Почта Common App",
+                        gettext_noop("Почта Common App"),
+                        short_ru=gettext_noop("Почта Common App"),
                         student_proposable=True,
                     ),
                     FieldSpec(
                         "drive_folder_url",
-                        "Папка на Диске",
-                        short="Папка на Диске",
+                        gettext_noop("Папка на Диске"),
+                        short_ru=gettext_noop("Папка на Диске"),
                         student_proposable=True,
                     ),
                     # личная почта и срок паспорта — колонки таблицы Асем (фаза 71):
@@ -332,14 +458,14 @@ DOMAINS: dict[str, Domain] = {
                     # чтобы не теряться, когда ссылки на паспорт в таблице нет
                     FieldSpec(
                         "personal_email",
-                        "Электронный адрес",
-                        short="Личная почта",
+                        gettext_noop("Электронный адрес"),
+                        short_ru=gettext_noop("Личная почта"),
                         student_proposable=True,
                     ),
                     FieldSpec(
                         "passport_expires_at",
-                        "Срок годности паспорта",
-                        short="Срок паспорта",
+                        gettext_noop("Срок годности паспорта"),
+                        short_ru=gettext_noop("Срок паспорта"),
                         student_proposable=True,
                     ),
                     # цели ученика: в таблице Асем таких колонок нет, и
@@ -347,93 +473,166 @@ DOMAINS: dict[str, Domain] = {
                     # поступления» убрана. Поля остаются: их спрашивает
                     # анкета первого входа, а читают подбор вузов,
                     # стипендии, профтест и резюме портфолио
-                    FieldSpec("target_country", "Целевая страна", short="Страна", student_proposable=True, card="none"),
+                    FieldSpec(
+                        "target_country",
+                        gettext_noop("Целевая страна"),
+                        short_ru=gettext_noop("Страна"),
+                        student_proposable=True,
+                        card="none",
+                    ),
                     FieldSpec(
                         "target_major",
-                        "Целевая специальность",
-                        short="Специальность",
+                        gettext_noop("Целевая специальность"),
+                        short_ru=gettext_noop("Специальность"),
                         student_proposable=True,
                         card="none",
                     ),
                     FieldSpec(
                         "target_level",
-                        "Уровень обучения цели",
-                        short="Уровень",
+                        gettext_noop("Уровень обучения цели"),
+                        short_ru=gettext_noop("Уровень"),
                         student_proposable=True,
                         card="none",
                     ),
                     # служебные признаки — в таблице и фильтрах, в карточке нет:
                     # готовность и дашборд Асем их читают, а человеку в карточке
                     # они ничего не говорят. Импорт проставляет их по паролю
-                    FieldSpec("has_common_app", "Аккаунт Common App заведён", short="Common App", card="none"),
-                    FieldSpec("has_application_account", "Кабинет подачи заведён", short="Кабинет подачи", card="none"),
-                    FieldSpec("status", "Статус по поступлению", short="Статус", internal_label=True, card="none"),
+                    FieldSpec(
+                        "has_common_app", gettext_noop("Аккаунт Common App заведён"), short_ru="Common App", card="none"
+                    ),
+                    FieldSpec(
+                        "has_application_account",
+                        gettext_noop("Кабинет подачи заведён"),
+                        short_ru=gettext_noop("Кабинет подачи"),
+                        card="none",
+                    ),
+                    FieldSpec(
+                        "status",
+                        gettext_noop("Статус по поступлению"),
+                        short_ru=gettext_noop("Статус"),
+                        internal_label=True,
+                        card="none",
+                    ),
                 ),
             ),
             ModelSpec(
                 label="universities.StudentUniversity",
                 student_path="student",
                 fields=(
-                    FieldSpec("program", "Программа в списке ученика", short="Программа"),
-                    FieldSpec("admission_round", "Раунд подачи", short="Раунд"),
-                    FieldSpec("tier", "Категория вуза в списке", short="Категория"),
-                    FieldSpec("application_status", "Статус заявки", short="Заявка"),
-                    FieldSpec("note", "Примечание к вузу", short="Примечание"),
+                    FieldSpec(
+                        "program", gettext_noop("Программа в списке ученика"), short_ru=gettext_noop("Программа")
+                    ),
+                    FieldSpec("admission_round", gettext_noop("Раунд подачи"), short_ru=gettext_noop("Раунд")),
+                    FieldSpec("tier", gettext_noop("Категория вуза в списке"), short_ru=gettext_noop("Категория")),
+                    FieldSpec("application_status", gettext_noop("Статус заявки"), short_ru=gettext_noop("Заявка")),
+                    FieldSpec("note", gettext_noop("Примечание к вузу"), short_ru=gettext_noop("Примечание")),
                 ),
             ),
             ModelSpec(
                 label="universities.University",
                 fields=(
-                    FieldSpec("name", "Название вуза", short="Вуз"),
-                    FieldSpec("country", "Страна вуза", short="Страна"),
-                    FieldSpec("website", "Сайт вуза", short="Сайт"),
-                    FieldSpec("domain", "Домен сайта для сверки", short="Домен сайта"),
-                    FieldSpec("world_rank", "Место в мировом рейтинге", short="Рейтинг", minimum=1, maximum=5000),
-                    FieldSpec("data_source", "Откуда запись", short="Источник"),
-                    FieldSpec("is_verified", "Данные подтверждены", short="Подтверждено"),
+                    FieldSpec("name", gettext_noop("Название вуза"), short_ru=gettext_noop("Вуз")),
+                    FieldSpec("country", gettext_noop("Страна вуза"), short_ru=gettext_noop("Страна")),
+                    FieldSpec("website", gettext_noop("Сайт вуза"), short_ru=gettext_noop("Сайт")),
+                    FieldSpec("domain", gettext_noop("Домен сайта для сверки"), short_ru=gettext_noop("Домен сайта")),
+                    FieldSpec(
+                        "world_rank",
+                        gettext_noop("Место в мировом рейтинге"),
+                        short_ru=gettext_noop("Рейтинг"),
+                        minimum=1,
+                        maximum=5000,
+                    ),
+                    FieldSpec("data_source", gettext_noop("Откуда запись"), short_ru=gettext_noop("Источник")),
+                    FieldSpec(
+                        "is_verified", gettext_noop("Данные подтверждены"), short_ru=gettext_noop("Подтверждено")
+                    ),
                 ),
             ),
             ModelSpec(
                 label="universities.Program",
                 fields=(
-                    FieldSpec("university", "Вуз программы", short="Вуз"),
-                    FieldSpec("name", "Название программы", short="Программа"),
-                    FieldSpec("level", "Уровень обучения", short="Уровень"),
-                    FieldSpec("data_source", "Откуда запись", short="Источник"),
-                    FieldSpec("is_verified", "Данные подтверждены", short="Подтверждено"),
+                    FieldSpec("university", gettext_noop("Вуз программы"), short_ru=gettext_noop("Вуз")),
+                    FieldSpec("name", gettext_noop("Название программы"), short_ru=gettext_noop("Программа")),
+                    FieldSpec("level", gettext_noop("Уровень обучения"), short_ru=gettext_noop("Уровень")),
+                    FieldSpec("data_source", gettext_noop("Откуда запись"), short_ru=gettext_noop("Источник")),
+                    FieldSpec(
+                        "is_verified", gettext_noop("Данные подтверждены"), short_ru=gettext_noop("Подтверждено")
+                    ),
                 ),
             ),
             ModelSpec(
                 label="universities.AdmissionRound",
                 fields=(
-                    FieldSpec("program", "Программа раунда", short="Программа"),
-                    FieldSpec("round_type", "Тип раунда подачи", short="Раунд"),
-                    FieldSpec("deadline", "Дедлайн подачи", short="Дедлайн"),
-                    FieldSpec("source_url", "Ссылка на источник", short="Источник"),
-                    FieldSpec("checked_at", "Дата последней сверки", short="Сверено"),
-                    FieldSpec("data_source", "Откуда запись", short="Источник"),
-                    FieldSpec("is_verified", "Данные подтверждены", short="Подтверждено"),
+                    FieldSpec("program", gettext_noop("Программа раунда"), short_ru=gettext_noop("Программа")),
+                    FieldSpec("round_type", gettext_noop("Тип раунда подачи"), short_ru=gettext_noop("Раунд")),
+                    FieldSpec("deadline", gettext_noop("Дедлайн подачи"), short_ru=gettext_noop("Дедлайн")),
+                    FieldSpec("source_url", gettext_noop("Ссылка на источник"), short_ru=gettext_noop("Источник")),
+                    FieldSpec("checked_at", gettext_noop("Дата последней сверки"), short_ru=gettext_noop("Сверено")),
+                    FieldSpec("data_source", gettext_noop("Откуда запись"), short_ru=gettext_noop("Источник")),
+                    FieldSpec(
+                        "is_verified", gettext_noop("Данные подтверждены"), short_ru=gettext_noop("Подтверждено")
+                    ),
                 ),
             ),
             ModelSpec(
                 label="universities.AdmissionRequirement",
                 fields=(
-                    FieldSpec("program", "Программа требований", short="Программа"),
-                    FieldSpec("min_gpa", "Минимальный GPA", short="GPA", minimum=0, maximum=5),
-                    FieldSpec("min_ielts", "Минимальный балл IELTS", short="IELTS", minimum=0, maximum=9, unit="балл"),
+                    FieldSpec("program", gettext_noop("Программа требований"), short_ru=gettext_noop("Программа")),
+                    FieldSpec("min_gpa", gettext_noop("Минимальный GPA"), short_ru="GPA", minimum=0, maximum=5),
                     FieldSpec(
-                        "min_toefl", "Минимальный балл TOEFL", short="TOEFL", minimum=0, maximum=120, unit="балл"
+                        "min_ielts",
+                        gettext_noop("Минимальный балл IELTS"),
+                        short_ru="IELTS",
+                        minimum=0,
+                        maximum=9,
+                        unit=UNIT_SCORE,
                     ),
-                    FieldSpec("min_sat", "Минимальный балл SAT", short="SAT", minimum=400, maximum=1600, unit="балл"),
-                    FieldSpec("min_act", "Минимальный балл ACT", short="ACT", minimum=1, maximum=36, unit="балл"),
-                    FieldSpec("required_subjects", "Требуемые предметы", short="Предметы"),
-                    FieldSpec("portfolio_required", "Портфолио обязательно", short="Портфолио"),
-                    FieldSpec("portfolio_note", "Что требуют от портфолио", short="Условия портфолио"),
-                    FieldSpec("notes", "Примечания к требованиям", short="Примечания"),
-                    FieldSpec("source_url", "Ссылка на источник", short="Источник"),
-                    FieldSpec("checked_at", "Дата актуализации требований", short="Актуально на"),
-                    FieldSpec("data_source", "Откуда запись", short="Источник"),
-                    FieldSpec("is_verified", "Данные подтверждены", short="Подтверждено"),
+                    FieldSpec(
+                        "min_toefl",
+                        gettext_noop("Минимальный балл TOEFL"),
+                        short_ru="TOEFL",
+                        minimum=0,
+                        maximum=120,
+                        unit=UNIT_SCORE,
+                    ),
+                    FieldSpec(
+                        "min_sat",
+                        gettext_noop("Минимальный балл SAT"),
+                        short_ru="SAT",
+                        minimum=400,
+                        maximum=1600,
+                        unit=UNIT_SCORE,
+                    ),
+                    FieldSpec(
+                        "min_act",
+                        gettext_noop("Минимальный балл ACT"),
+                        short_ru="ACT",
+                        minimum=1,
+                        maximum=36,
+                        unit=UNIT_SCORE,
+                    ),
+                    FieldSpec(
+                        "required_subjects", gettext_noop("Требуемые предметы"), short_ru=gettext_noop("Предметы")
+                    ),
+                    FieldSpec(
+                        "portfolio_required", gettext_noop("Портфолио обязательно"), short_ru=gettext_noop("Портфолио")
+                    ),
+                    FieldSpec(
+                        "portfolio_note",
+                        gettext_noop("Что требуют от портфолио"),
+                        short_ru=gettext_noop("Условия портфолио"),
+                    ),
+                    FieldSpec("notes", gettext_noop("Примечания к требованиям"), short_ru=gettext_noop("Примечания")),
+                    FieldSpec("source_url", gettext_noop("Ссылка на источник"), short_ru=gettext_noop("Источник")),
+                    FieldSpec(
+                        "checked_at",
+                        gettext_noop("Дата актуализации требований"),
+                        short_ru=gettext_noop("Актуально на"),
+                    ),
+                    FieldSpec("data_source", gettext_noop("Откуда запись"), short_ru=gettext_noop("Источник")),
+                    FieldSpec(
+                        "is_verified", gettext_noop("Данные подтверждены"), short_ru=gettext_noop("Подтверждено")
+                    ),
                 ),
             ),
             # стипендии и гранты (фаза 44): справочник домена «Поступление».
@@ -441,25 +640,47 @@ DOMAINS: dict[str, Domain] = {
             ModelSpec(
                 label="universities.Scholarship",
                 fields=(
-                    FieldSpec("name", "Название стипендии", short="Стипендия"),
-                    FieldSpec("organizer", "Организатор стипендии", short="Организатор"),
-                    FieldSpec("country", "Страна стипендии", short="Страна"),
-                    FieldSpec("level", "Уровень обучения", short="Уровень"),
-                    FieldSpec("funding_type", "Тип финансирования", short="Финансирование"),
-                    FieldSpec("amount_min", "Сумма финансирования от", short="Сумма от", minimum=0),
-                    FieldSpec("amount_max", "Сумма финансирования до", short="Сумма до", minimum=0),
-                    FieldSpec("currency", "Валюта суммы", short="Валюта"),
-                    FieldSpec("for_international", "Основание: для иностранцев", short="Иностранцам"),
-                    FieldSpec("for_merit", "Основание: за заслуги", short="За заслуги"),
-                    FieldSpec("for_need", "Основание: по нужде", short="По нужде"),
-                    FieldSpec("deadline", "Дедлайн подачи на стипендию", short="Дедлайн"),
-                    FieldSpec("url", "Ссылка на страницу стипендии", short="Ссылка"),
-                    FieldSpec("requirements", "Требования стипендии", short="Требования"),
-                    FieldSpec("description", "Описание стипендии", short="Описание"),
-                    FieldSpec("university", "Вуз стипендии", short="Вуз"),
-                    FieldSpec("is_active", "Показывать в каталоге", short="В каталоге"),
-                    FieldSpec("data_source", "Откуда запись", short="Источник"),
-                    FieldSpec("is_verified", "Данные подтверждены", short="Подтверждено"),
+                    FieldSpec("name", gettext_noop("Название стипендии"), short_ru=gettext_noop("Стипендия")),
+                    FieldSpec("organizer", gettext_noop("Организатор стипендии"), short_ru=gettext_noop("Организатор")),
+                    FieldSpec("country", gettext_noop("Страна стипендии"), short_ru=gettext_noop("Страна")),
+                    FieldSpec("level", gettext_noop("Уровень обучения"), short_ru=gettext_noop("Уровень")),
+                    FieldSpec(
+                        "funding_type", gettext_noop("Тип финансирования"), short_ru=gettext_noop("Финансирование")
+                    ),
+                    FieldSpec(
+                        "amount_min",
+                        gettext_noop("Сумма финансирования от"),
+                        short_ru=gettext_noop("Сумма от"),
+                        minimum=0,
+                    ),
+                    FieldSpec(
+                        "amount_max",
+                        gettext_noop("Сумма финансирования до"),
+                        short_ru=gettext_noop("Сумма до"),
+                        minimum=0,
+                    ),
+                    FieldSpec("currency", gettext_noop("Валюта суммы"), short_ru=gettext_noop("Валюта")),
+                    FieldSpec(
+                        "for_international",
+                        gettext_noop("Основание: для иностранцев"),
+                        short_ru=gettext_noop("Иностранцам"),
+                    ),
+                    FieldSpec("for_merit", gettext_noop("Основание: за заслуги"), short_ru=gettext_noop("За заслуги")),
+                    FieldSpec("for_need", gettext_noop("Основание: по нужде"), short_ru=gettext_noop("По нужде")),
+                    FieldSpec(
+                        "deadline", gettext_noop("Дедлайн подачи на стипендию"), short_ru=gettext_noop("Дедлайн")
+                    ),
+                    FieldSpec("url", gettext_noop("Ссылка на страницу стипендии"), short_ru=gettext_noop("Ссылка")),
+                    FieldSpec(
+                        "requirements", gettext_noop("Требования стипендии"), short_ru=gettext_noop("Требования")
+                    ),
+                    FieldSpec("description", gettext_noop("Описание стипендии"), short_ru=gettext_noop("Описание")),
+                    FieldSpec("university", gettext_noop("Вуз стипендии"), short_ru=gettext_noop("Вуз")),
+                    FieldSpec("is_active", gettext_noop("Показывать в каталоге"), short_ru=gettext_noop("В каталоге")),
+                    FieldSpec("data_source", gettext_noop("Откуда запись"), short_ru=gettext_noop("Источник")),
+                    FieldSpec(
+                        "is_verified", gettext_noop("Данные подтверждены"), short_ru=gettext_noop("Подтверждено")
+                    ),
                 ),
             ),
             # вопросы профтеста — справочник домена: анкету ведёт директор
@@ -468,22 +689,28 @@ DOMAINS: dict[str, Domain] = {
             ModelSpec(
                 label="engagement.CareerQuestion",
                 fields=(
-                    FieldSpec("code", "Код вопроса", short="Код"),
-                    FieldSpec("text", "Текст вопроса анкеты", short="Вопрос"),
-                    FieldSpec("hint", "Подсказка к вопросу", short="Подсказка"),
-                    FieldSpec("kind", "Вид ответа", short="Ответ"),
-                    FieldSpec("options", "Варианты ответа", short="Варианты"),
-                    FieldSpec("order", "Порядок в анкете", short="Порядок", minimum=0, maximum=999),
-                    FieldSpec("is_active", "Показывать в анкете", short="В анкете"),
+                    FieldSpec("code", gettext_noop("Код вопроса"), short_ru=gettext_noop("Код")),
+                    FieldSpec("text", gettext_noop("Текст вопроса анкеты"), short_ru=gettext_noop("Вопрос")),
+                    FieldSpec("hint", gettext_noop("Подсказка к вопросу"), short_ru=gettext_noop("Подсказка")),
+                    FieldSpec("kind", gettext_noop("Вид ответа"), short_ru=gettext_noop("Ответ")),
+                    FieldSpec("options", gettext_noop("Варианты ответа"), short_ru=gettext_noop("Варианты")),
+                    FieldSpec(
+                        "order",
+                        gettext_noop("Порядок в анкете"),
+                        short_ru=gettext_noop("Порядок"),
+                        minimum=0,
+                        maximum=999,
+                    ),
+                    FieldSpec("is_active", gettext_noop("Показывать в анкете"), short_ru=gettext_noop("В анкете")),
                 ),
             ),
         ),
     ),
     "exam": Domain(
         code="exam",
-        title="Экзамены",
+        title_ru=gettext_noop("Экзамены"),
         role="director_exam",
-        owner_name="Кымбат",
+        owner_ru=gettext_noop("Кымбат"),
         models=(
             ModelSpec(
                 label="students.ExamProfile",
@@ -491,82 +718,97 @@ DOMAINS: dict[str, Domain] = {
                 fields=(
                     FieldSpec(
                         "ielts_current",
-                        "Текущий балл IELTS",
-                        short="IELTS",
+                        gettext_noop("Текущий балл IELTS"),
+                        short_ru="IELTS",
                         minimum=0,
                         maximum=9,
-                        unit="балл",
+                        unit=UNIT_SCORE,
                         student_proposable=True,
                     ),
                     FieldSpec(
                         "ielts_target",
-                        "Целевой балл IELTS",
-                        short="Цель IELTS",
+                        gettext_noop("Целевой балл IELTS"),
+                        short_ru=gettext_noop("Цель IELTS"),
                         minimum=0,
                         maximum=9,
-                        unit="балл",
+                        unit=UNIT_SCORE,
                         student_proposable=True,
                     ),
                     FieldSpec(
                         "sat_current",
-                        "Текущий балл SAT",
-                        short="SAT",
+                        gettext_noop("Текущий балл SAT"),
+                        short_ru="SAT",
                         minimum=400,
                         maximum=1600,
-                        unit="балл",
+                        unit=UNIT_SCORE,
                         student_proposable=True,
                     ),
                     FieldSpec(
                         "sat_target",
-                        "Целевой балл SAT",
-                        short="Цель SAT",
+                        gettext_noop("Целевой балл SAT"),
+                        short_ru=gettext_noop("Цель SAT"),
                         minimum=400,
                         maximum=1600,
-                        unit="балл",
+                        unit=UNIT_SCORE,
                         student_proposable=True,
                     ),
                     FieldSpec(
                         "hours_per_week",
-                        "Часов подготовки в неделю",
-                        short="Часов в неделю",
+                        gettext_noop("Часов подготовки в неделю"),
+                        short_ru=gettext_noop("Часов в неделю"),
                         minimum=0,
                         maximum=80,
-                        unit="ч",
+                        unit=UNIT_HOURS,
                     ),
-                    FieldSpec("teacher", "Преподаватель по подготовке", short="Преподаватель"),
+                    FieldSpec(
+                        "teacher", gettext_noop("Преподаватель по подготовке"), short_ru=gettext_noop("Преподаватель")
+                    ),
                     # GPA показывается один раз — в блоке «Поступление» (фаза 71):
                     # его читают подбор, соответствие, стипендии и готовность,
                     # а приносит таблица Асем. Поле и право остаются здесь, у Кымбат
                     FieldSpec(
                         "gpa",
-                        "Средний балл аттестата",
-                        short="GPA",
+                        gettext_noop("Средний балл аттестата"),
+                        short_ru="GPA",
                         minimum=0,
                         maximum=5,
                         student_proposable=True,
                         card="none",
                     ),
-                    FieldSpec("next_mock_date", "Дата следующего пробного экзамена", short="Следующий пробный"),
+                    FieldSpec(
+                        "next_mock_date",
+                        gettext_noop("Дата следующего Mock Test"),
+                        short_ru=gettext_noop("Следующий Mock Test"),
+                    ),
                 ),
             ),
             ModelSpec(
                 label="students.ExamAttempt",
                 student_path="student",
                 fields=(
-                    FieldSpec("exam_type", "Вид экзамена", short="Экзамен", student_proposable=True),
-                    FieldSpec("attempt_format", "Формат сдачи", short="Формат"),
-                    FieldSpec("source", "Откуда результат", short="Источник"),
-                    FieldSpec("date", "Дата сдачи", short="Дата", student_proposable=True),
+                    FieldSpec(
+                        "exam_type",
+                        gettext_noop("Вид экзамена"),
+                        short_ru=gettext_noop("Экзамен"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec("attempt_format", gettext_noop("Формат сдачи"), short_ru=gettext_noop("Формат")),
+                    FieldSpec("source", gettext_noop("Откуда результат"), short_ru=gettext_noop("Источник")),
+                    FieldSpec(
+                        "date", gettext_noop("Дата сдачи"), short_ru=gettext_noop("Дата"), student_proposable=True
+                    ),
                     # дата не указана в источнике (таблица Асем, фаза 65): снимается,
                     # когда ученик предлагает настоящую дату и её подтверждают
-                    FieldSpec("date_unknown", "Дата сдачи не указана", short="Дата уточняется"),
+                    FieldSpec(
+                        "date_unknown", gettext_noop("Дата сдачи не указана"), short_ru=gettext_noop("Дата уточняется")
+                    ),
                     FieldSpec(
                         "total_score",
-                        "Общий балл за экзамен",
-                        short="Общий балл",
+                        gettext_noop("Общий балл за экзамен"),
+                        short_ru=gettext_noop("Общий балл"),
                         minimum=0,
                         maximum=1600,
-                        unit="балл",
+                        unit=UNIT_SCORE,
                         student_proposable=True,
                     ),
                     # секции: у IELTS шкала 0–9 с шагом 0.5, у TOEFL 0–30 —
@@ -574,38 +816,52 @@ DOMAINS: dict[str, Domain] = {
                     # и проверка предложения (`students.mocks`, D4 про шкалы)
                     FieldSpec(
                         "listening",
-                        "Балл за секцию Listening",
-                        short="Listening",
+                        gettext_noop("Балл за секцию Listening"),
+                        short_ru="Listening",
                         minimum=0,
                         maximum=30,
                         student_proposable=True,
                     ),
                     FieldSpec(
                         "reading",
-                        "Балл за секцию Reading",
-                        short="Reading",
+                        gettext_noop("Балл за секцию Reading"),
+                        short_ru="Reading",
                         minimum=0,
                         maximum=30,
                         student_proposable=True,
                     ),
                     FieldSpec(
                         "writing",
-                        "Балл за секцию Writing",
-                        short="Writing",
+                        gettext_noop("Балл за секцию Writing"),
+                        short_ru="Writing",
                         minimum=0,
                         maximum=30,
                         student_proposable=True,
                     ),
                     FieldSpec(
                         "speaking",
-                        "Балл за секцию Speaking",
-                        short="Speaking",
+                        gettext_noop("Балл за секцию Speaking"),
+                        short_ru="Speaking",
                         minimum=0,
                         maximum=30,
                         student_proposable=True,
                     ),
-                    FieldSpec("math", "Балл за секцию Math", short="Math", minimum=0, maximum=800, unit="балл"),
-                    FieldSpec("verbal", "Балл за секцию Verbal", short="Verbal", minimum=0, maximum=800, unit="балл"),
+                    FieldSpec(
+                        "math",
+                        gettext_noop("Балл за секцию Math"),
+                        short_ru="Math",
+                        minimum=0,
+                        maximum=800,
+                        unit=UNIT_SCORE,
+                    ),
+                    FieldSpec(
+                        "verbal",
+                        gettext_noop("Балл за секцию Verbal"),
+                        short_ru="Verbal",
+                        minimum=0,
+                        maximum=800,
+                        unit=UNIT_SCORE,
+                    ),
                 ),
             ),
             # цели по экзаменам (фаза 39): ставит ученик предложением,
@@ -615,47 +871,82 @@ DOMAINS: dict[str, Domain] = {
                 label="students.ExamGoal",
                 student_path="student",
                 fields=(
-                    FieldSpec("exam", "Экзамен цели", short="Экзамен", student_proposable=True),
+                    FieldSpec(
+                        "exam", gettext_noop("Экзамен цели"), short_ru=gettext_noop("Экзамен"), student_proposable=True
+                    ),
                     FieldSpec(
                         "target_score",
-                        "Целевой балл экзамена",
-                        short="Цель",
+                        gettext_noop("Целевой балл экзамена"),
+                        short_ru=gettext_noop("Цель"),
                         minimum=0,
                         maximum=1600,
-                        unit="балл",
+                        unit=UNIT_SCORE,
                         student_proposable=True,
                     ),
-                    FieldSpec("exam_date", "Дата экзамена", short="Дата экзамена", student_proposable=True),
-                    FieldSpec("registration_date", "Дата регистрации", short="Регистрация", student_proposable=True),
-                    FieldSpec("note", "Примечание к цели", short="Примечание", student_proposable=True),
+                    FieldSpec(
+                        "exam_date",
+                        gettext_noop("Дата экзамена"),
+                        short_ru=gettext_noop("Дата экзамена"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "registration_date",
+                        gettext_noop("Дата регистрации"),
+                        short_ru=gettext_noop("Регистрация"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "note",
+                        gettext_noop("Примечание к цели"),
+                        short_ru=gettext_noop("Примечание"),
+                        student_proposable=True,
+                    ),
                 ),
             ),
             ModelSpec(
                 label="directories.ExamKind",
                 fields=(
-                    FieldSpec("name", "Название экзамена", short="Экзамен"),
-                    FieldSpec("min_score", "Минимум шкалы", short="Минимум"),
-                    FieldSpec("max_score", "Максимум шкалы", short="Максимум"),
-                    FieldSpec("description", "Описание экзамена", short="Описание"),
-                    FieldSpec("is_active", "Показывать в списке выбора", short="В списке"),
-                    FieldSpec("sort_order", "Порядок в списке", short="Порядок", minimum=0, maximum=999),
+                    FieldSpec("name", gettext_noop("Название экзамена"), short_ru=gettext_noop("Экзамен")),
+                    FieldSpec("min_score", gettext_noop("Минимум шкалы"), short_ru=gettext_noop("Минимум")),
+                    FieldSpec("max_score", gettext_noop("Максимум шкалы"), short_ru=gettext_noop("Максимум")),
+                    FieldSpec("description", gettext_noop("Описание экзамена"), short_ru=gettext_noop("Описание")),
+                    FieldSpec(
+                        "is_active", gettext_noop("Показывать в списке выбора"), short_ru=gettext_noop("В списке")
+                    ),
+                    FieldSpec(
+                        "sort_order",
+                        gettext_noop("Порядок в списке"),
+                        short_ru=gettext_noop("Порядок"),
+                        minimum=0,
+                        maximum=999,
+                    ),
                 ),
             ),
         ),
     ),
     "talent": Domain(
         code="talent",
-        title="Таланты",
+        title_ru=gettext_noop("Таланты"),
         role="director_talent",
-        owner_name="Арман",
+        owner_ru=gettext_noop("Арман"),
         models=(
             ModelSpec(
                 label="students.TalentProfile",
                 student_path="student",
                 fields=(
-                    FieldSpec("main_track", "Основной трек талантов", short="Трек"),
-                    FieldSpec("portfolio_status", "Статус портфолио", short="Портфолио", internal_label=True),
-                    FieldSpec("comment", "Комментарий по талантам", short="Комментарий", internal_label=True),
+                    FieldSpec("main_track", gettext_noop("Основной трек талантов"), short_ru=gettext_noop("Трек")),
+                    FieldSpec(
+                        "portfolio_status",
+                        gettext_noop("Статус портфолио"),
+                        short_ru=gettext_noop("Портфолио"),
+                        internal_label=True,
+                    ),
+                    FieldSpec(
+                        "comment",
+                        gettext_noop("Комментарий по талантам"),
+                        short_ru=gettext_noop("Комментарий"),
+                        internal_label=True,
+                    ),
                 ),
             ),
             # отбор в олимпиадную группу — решение директора талантов.
@@ -664,75 +955,181 @@ DOMAINS: dict[str, Domain] = {
             ModelSpec(
                 label="students.Student",
                 student_path="",
-                fields=(FieldSpec("in_olympiad_group", "В олимпиадной группе", short="Олимпиадник"),),
+                fields=(
+                    FieldSpec(
+                        "in_olympiad_group", gettext_noop("В олимпиадной группе"), short_ru=gettext_noop("Олимпиадник")
+                    ),
+                ),
             ),
             ModelSpec(
                 label="directories.OlympiadSubject",
                 fields=(
-                    FieldSpec("name", "Название предмета", short="Предмет"),
-                    FieldSpec("area", "Направление", short="Направление"),
-                    FieldSpec("description", "Описание предмета", short="Описание"),
-                    FieldSpec("is_active", "Показывать в списке выбора", short="В списке"),
-                    FieldSpec("sort_order", "Порядок в списке", short="Порядок", minimum=0, maximum=999),
+                    FieldSpec("name", gettext_noop("Название предмета"), short_ru=gettext_noop("Предмет")),
+                    FieldSpec("area", gettext_noop("Направление"), short_ru=gettext_noop("Направление")),
+                    FieldSpec("description", gettext_noop("Описание предмета"), short_ru=gettext_noop("Описание")),
+                    FieldSpec(
+                        "is_active", gettext_noop("Показывать в списке выбора"), short_ru=gettext_noop("В списке")
+                    ),
+                    FieldSpec(
+                        "sort_order",
+                        gettext_noop("Порядок в списке"),
+                        short_ru=gettext_noop("Порядок"),
+                        minimum=0,
+                        maximum=999,
+                    ),
                 ),
             ),
             ModelSpec(
                 label="students.Activity",
                 student_path="student",
                 fields=(
-                    FieldSpec("category", "Категория активности", short="Категория", student_proposable=True),
-                    FieldSpec("subject", "Предмет олимпиады", short="Предмет", student_proposable=True),
-                    FieldSpec("title", "Название активности", short="Активность", student_proposable=True),
-                    FieldSpec("date", "Дата активности", short="Дата", student_proposable=True),
-                    FieldSpec("description", "Описание активности", short="Описание", student_proposable=True),
-                    FieldSpec("proof_url", "Ссылка на подтверждение", short="Подтверждение", student_proposable=True),
+                    FieldSpec(
+                        "category",
+                        gettext_noop("Категория активности"),
+                        short_ru=gettext_noop("Категория"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "subject",
+                        gettext_noop("Предмет олимпиады"),
+                        short_ru=gettext_noop("Предмет"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "title",
+                        gettext_noop("Название активности"),
+                        short_ru=gettext_noop("Активность"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "date", gettext_noop("Дата активности"), short_ru=gettext_noop("Дата"), student_proposable=True
+                    ),
+                    FieldSpec(
+                        "description",
+                        gettext_noop("Описание активности"),
+                        short_ru=gettext_noop("Описание"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "proof_url",
+                        gettext_noop("Ссылка на подтверждение"),
+                        short_ru=gettext_noop("Подтверждение"),
+                        student_proposable=True,
+                    ),
                     # подтверждение — решение директора, ученик его не предлагает
-                    FieldSpec("is_confirmed", "Активность подтверждена", short="Подтверждено"),
+                    FieldSpec(
+                        "is_confirmed", gettext_noop("Активность подтверждена"), short_ru=gettext_noop("Подтверждено")
+                    ),
                 ),
             ),
         ),
     ),
     "sport": Domain(
         code="sport",
-        title="Спорт",
+        title_ru=gettext_noop("Спорт"),
         role="director_sport",
-        owner_name="Нурлыбек",
+        owner_ru=gettext_noop("Нурлыбек"),
         models=(
             ModelSpec(
                 label="students.SportProfile",
                 student_path="student",
                 fields=(
-                    FieldSpec("sport_type", "Вид спорта", short="Спорт", student_proposable=True),
-                    FieldSpec("level", "Уровень занятий спортом", short="Уровень", student_proposable=True),
-                    FieldSpec("rank", "Спортивный разряд", short="Разряд", student_proposable=True),
                     FieldSpec(
-                        "leadership_role", "Лидерская роль в команде", short="Лидерская роль", student_proposable=True
+                        "sport_type",
+                        gettext_noop("Вид спорта"),
+                        short_ru=gettext_noop("Спорт"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "level",
+                        gettext_noop("Уровень занятий спортом"),
+                        short_ru=gettext_noop("Уровень"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "rank",
+                        gettext_noop("Спортивный разряд"),
+                        short_ru=gettext_noop("Разряд"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "leadership_role",
+                        gettext_noop("Лидерская роль в команде"),
+                        short_ru=gettext_noop("Лидерская роль"),
+                        student_proposable=True,
                     ),
                 ),
             ),
             ModelSpec(
                 label="directories.SportType",
                 fields=(
-                    FieldSpec("name", "Название вида спорта", short="Вид спорта"),
-                    FieldSpec("category", "Категория вида спорта", short="Категория"),
-                    FieldSpec("description", "Описание вида спорта", short="Описание"),
-                    FieldSpec("is_active", "Показывать в списке выбора", short="В списке"),
-                    FieldSpec("sort_order", "Порядок в списке", short="Порядок", minimum=0, maximum=999),
+                    FieldSpec("name", gettext_noop("Название вида спорта"), short_ru=gettext_noop("Вид спорта")),
+                    FieldSpec("category", gettext_noop("Категория вида спорта"), short_ru=gettext_noop("Категория")),
+                    FieldSpec("description", gettext_noop("Описание вида спорта"), short_ru=gettext_noop("Описание")),
+                    FieldSpec(
+                        "is_active", gettext_noop("Показывать в списке выбора"), short_ru=gettext_noop("В списке")
+                    ),
+                    FieldSpec(
+                        "sort_order",
+                        gettext_noop("Порядок в списке"),
+                        short_ru=gettext_noop("Порядок"),
+                        minimum=0,
+                        maximum=999,
+                    ),
                 ),
             ),
             ModelSpec(
                 label="students.Competition",
                 student_path="student",
                 fields=(
-                    FieldSpec("name", "Название соревнования", short="Соревнование", student_proposable=True),
-                    FieldSpec("sport_type", "Вид спорта соревнования", short="Вид спорта", student_proposable=True),
-                    FieldSpec("level", "Уровень соревнования", short="Уровень", student_proposable=True),
-                    FieldSpec("date", "Дата соревнования", short="Дата", student_proposable=True),
-                    FieldSpec("result", "Результат выступления", short="Результат", student_proposable=True),
-                    FieldSpec("has_certificate", "Есть сертификат", short="Сертификат", student_proposable=True),
-                    FieldSpec("proof_url", "Ссылка на подтверждение", short="Подтверждение", student_proposable=True),
+                    FieldSpec(
+                        "name",
+                        gettext_noop("Название соревнования"),
+                        short_ru=gettext_noop("Соревнование"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "sport_type",
+                        gettext_noop("Вид спорта соревнования"),
+                        short_ru=gettext_noop("Вид спорта"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "level",
+                        gettext_noop("Уровень соревнования"),
+                        short_ru=gettext_noop("Уровень"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "date",
+                        gettext_noop("Дата соревнования"),
+                        short_ru=gettext_noop("Дата"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "result",
+                        gettext_noop("Результат выступления"),
+                        short_ru=gettext_noop("Результат"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "has_certificate",
+                        gettext_noop("Есть сертификат"),
+                        short_ru=gettext_noop("Сертификат"),
+                        student_proposable=True,
+                    ),
+                    FieldSpec(
+                        "proof_url",
+                        gettext_noop("Ссылка на подтверждение"),
+                        short_ru=gettext_noop("Подтверждение"),
+                        student_proposable=True,
+                    ),
                     # решение школы, а не факт об ученике: сам ученик его не предлагает
-                    FieldSpec("show_in_card", "Показывать соревнование в карточке ученика", short="В карточке"),
+                    FieldSpec(
+                        "show_in_card",
+                        gettext_noop("Показывать соревнование в карточке ученика"),
+                        short_ru=gettext_noop("В карточке"),
+                    ),
                 ),
             ),
         ),
@@ -747,23 +1144,27 @@ DOMAINS: dict[str, Domain] = {
     # подтверждения документов и их статус появятся в фазе 62
     "documents": Domain(
         code="documents",
-        title="Документы",
+        title_ru=gettext_noop("Документы"),
         role="director_admission",
-        owner_name="Асем",
+        owner_ru=gettext_noop("Асем"),
         models=(
             ModelSpec(
                 label="students.StudentDocument",
                 student_path="student",
                 fields=(
-                    FieldSpec("doc_type", "Тип документа", short="Тип"),
-                    FieldSpec("title", "Название документа", short="Название"),
-                    FieldSpec("issued_date", "Дата выдачи документа", short="Выдан"),
-                    FieldSpec("expires_at", "Документ действует до", short="Действует до"),
-                    FieldSpec("note", "Примечание к документу", short="Примечание"),
+                    FieldSpec("doc_type", gettext_noop("Тип документа"), short_ru=gettext_noop("Тип")),
+                    FieldSpec("title", gettext_noop("Название документа"), short_ru=gettext_noop("Название")),
+                    FieldSpec("issued_date", gettext_noop("Дата выдачи документа"), short_ru=gettext_noop("Выдан")),
+                    FieldSpec(
+                        "expires_at", gettext_noop("Документ действует до"), short_ru=gettext_noop("Действует до")
+                    ),
+                    FieldSpec("note", gettext_noop("Примечание к документу"), short_ru=gettext_noop("Примечание")),
                     # проверка (фаза 62): статус ставится решением по очереди, причину
                     # читает ученик. Ярлыком не помечены — ученик видит и то, и другое
-                    FieldSpec("status", "Проверка документа", short="Проверка"),
-                    FieldSpec("reject_reason", "Причина отклонения документа", short="Причина"),
+                    FieldSpec("status", gettext_noop("Проверка документа"), short_ru=gettext_noop("Проверка")),
+                    FieldSpec(
+                        "reject_reason", gettext_noop("Причина отклонения документа"), short_ru=gettext_noop("Причина")
+                    ),
                 ),
             ),
         ),
@@ -781,24 +1182,30 @@ DOMAINS: dict[str, Domain] = {
 #: ни учеников, ни очереди. Поиск владельца поля и модели блок видит
 SCHOOL_SETTINGS = Domain(
     code="settings",
-    title="Настройки школы",
+    title_ru=gettext_noop("Настройки школы"),
     role=ROLE_ADMIN,
-    owner_name="Администратор",
+    owner_ru=gettext_noop("Администратор"),
     models=(
         # условие берётся из закрытого набора, а слова и цвет школа
         # меняет без выката (фаза 49)
         ModelSpec(
             label="engagement.HomeCue",
             fields=(
-                FieldSpec("code", "Код сюжета", short="Код"),
-                FieldSpec("condition", "Условие показа сюжета", short="Условие"),
-                FieldSpec("title", "Заголовок сюжета", short="Заголовок"),
-                FieldSpec("description", "Описание сюжета", short="Описание"),
-                FieldSpec("action_label", "Подпись кнопки сюжета", short="Кнопка"),
-                FieldSpec("action_path", "Куда ведёт кнопка сюжета", short="Куда ведёт"),
-                FieldSpec("tone", "Цвет карточки сюжета", short="Цвет"),
-                FieldSpec("order", "Порядок в карусели", short="Порядок", minimum=0, maximum=999),
-                FieldSpec("is_active", "Показывать сюжет", short="Показывать"),
+                FieldSpec("code", gettext_noop("Код сюжета"), short_ru=gettext_noop("Код")),
+                FieldSpec("condition", gettext_noop("Условие показа сюжета"), short_ru=gettext_noop("Условие")),
+                FieldSpec("title", gettext_noop("Заголовок сюжета"), short_ru=gettext_noop("Заголовок")),
+                FieldSpec("description", gettext_noop("Описание сюжета"), short_ru=gettext_noop("Описание")),
+                FieldSpec("action_label", gettext_noop("Подпись кнопки сюжета"), short_ru=gettext_noop("Кнопка")),
+                FieldSpec("action_path", gettext_noop("Куда ведёт кнопка сюжета"), short_ru=gettext_noop("Куда ведёт")),
+                FieldSpec("tone", gettext_noop("Цвет карточки сюжета"), short_ru=gettext_noop("Цвет")),
+                FieldSpec(
+                    "order",
+                    gettext_noop("Порядок в карусели"),
+                    short_ru=gettext_noop("Порядок"),
+                    minimum=0,
+                    maximum=999,
+                ),
+                FieldSpec("is_active", gettext_noop("Показывать сюжет"), short_ru=gettext_noop("Показывать")),
             ),
         ),
         # бейджи учеников: условие — строка справочника, а не код. С 28.09.2026
@@ -806,14 +1213,22 @@ SCHOOL_SETTINGS = Domain(
         ModelSpec(
             label="engagement.Badge",
             fields=(
-                FieldSpec("code", "Код бейджа", short="Код"),
-                FieldSpec("name", "Название бейджа", short="Бейдж"),
-                FieldSpec("description", "Описание бейджа", short="Описание"),
-                FieldSpec("metric", "Что считает бейдж", short="Считаем"),
-                FieldSpec("threshold", "Сколько нужно для бейджа", short="Порог", minimum=1, maximum=100000),
-                FieldSpec("icon", "Иконка бейджа", short="Иконка"),
-                FieldSpec("order", "Порядок в списке", short="Порядок", minimum=0, maximum=999),
-                FieldSpec("is_active", "Показывать бейдж", short="Показывать"),
+                FieldSpec("code", gettext_noop("Код бейджа"), short_ru=gettext_noop("Код")),
+                FieldSpec("name", gettext_noop("Название бейджа"), short_ru=gettext_noop("Бейдж")),
+                FieldSpec("description", gettext_noop("Описание бейджа"), short_ru=gettext_noop("Описание")),
+                FieldSpec("metric", gettext_noop("Что считает бейдж"), short_ru=gettext_noop("Считаем")),
+                FieldSpec(
+                    "threshold",
+                    gettext_noop("Сколько нужно для бейджа"),
+                    short_ru=gettext_noop("Порог"),
+                    minimum=1,
+                    maximum=100000,
+                ),
+                FieldSpec("icon", gettext_noop("Иконка бейджа"), short_ru=gettext_noop("Иконка")),
+                FieldSpec(
+                    "order", gettext_noop("Порядок в списке"), short_ru=gettext_noop("Порядок"), minimum=0, maximum=999
+                ),
+                FieldSpec("is_active", gettext_noop("Показывать бейдж"), short_ru=gettext_noop("Показывать")),
             ),
         ),
     ),
@@ -829,68 +1244,77 @@ SCHOOL_SETTINGS = Domain(
 #: администратора «за учёбу» как за любой чужой домен
 ACADEMICS = Domain(
     code="academics",
-    title="Учёба",
+    title_ru=gettext_noop("Учёба"),
     role="director_exam",
-    owner_name="Кымбат",
+    owner_ru=gettext_noop("Кымбат"),
     models=(
         ModelSpec(
             label="academics.Lesson",
             fields=(
-                FieldSpec("date", "Дата урока", short="Дата"),
-                FieldSpec("slot", "Номер урока", short="Урок", minimum=1, maximum=12),
-                FieldSpec("room", "Кабинет урока", short="Кабинет"),
-                FieldSpec("teacher", "Учитель урока", short="Учитель"),
-                FieldSpec("substitute", "Замена учителя", short="Замена"),
-                FieldSpec("status", "Статус урока", short="Статус"),
-                FieldSpec("reason", "Причина изменения урока", short="Причина"),
-                FieldSpec("topic", "Тема урока", short="Тема"),
-                FieldSpec("homework", "Домашнее задание", short="ДЗ"),
-                FieldSpec("kind", "Вид оценивания на уроке", short="Вид"),
-                FieldSpec("number", "Номер СОР или СОЧ", short="Номер"),
-                FieldSpec("max_score", "Максимум баллов", short="Максимум"),
-                FieldSpec("marked_at", "Посещаемость сохранена", short="Отмечен"),
+                FieldSpec("date", gettext_noop("Дата урока"), short_ru=gettext_noop("Дата")),
+                FieldSpec("slot", gettext_noop("Номер урока"), short_ru=gettext_noop("Урок"), minimum=1, maximum=12),
+                FieldSpec("room", gettext_noop("Кабинет урока"), short_ru=gettext_noop("Кабинет")),
+                FieldSpec("teacher", gettext_noop("Учитель урока"), short_ru=gettext_noop("Учитель")),
+                FieldSpec("substitute", gettext_noop("Замена учителя"), short_ru=gettext_noop("Замена")),
+                FieldSpec("status", gettext_noop("Статус урока"), short_ru=gettext_noop("Статус")),
+                FieldSpec("reason", gettext_noop("Причина изменения урока"), short_ru=gettext_noop("Причина")),
+                FieldSpec("topic", gettext_noop("Тема урока"), short_ru=gettext_noop("Тема")),
+                FieldSpec("homework", gettext_noop("Домашнее задание"), short_ru=gettext_noop("ДЗ")),
+                FieldSpec("kind", gettext_noop("Вид оценивания на уроке"), short_ru=gettext_noop("Вид")),
+                FieldSpec("number", gettext_noop("Номер СОР или СОЧ"), short_ru=gettext_noop("Номер")),
+                FieldSpec("max_score", gettext_noop("Максимум баллов"), short_ru=gettext_noop("Максимум")),
+                FieldSpec("marked_at", gettext_noop("Посещаемость сохранена"), short_ru=gettext_noop("Отмечен")),
             ),
         ),
         ModelSpec(
             label="academics.Attendance",
             student_path="student",
             fields=(
-                FieldSpec("mark", "Отметка посещаемости на уроке", short="Отметка"),
-                FieldSpec("arrived_at", "Время прихода опоздавшего", short="Пришёл в"),
+                FieldSpec("mark", gettext_noop("Отметка посещаемости на уроке"), short_ru=gettext_noop("Отметка")),
+                FieldSpec("arrived_at", gettext_noop("Время прихода опоздавшего"), short_ru=gettext_noop("Пришёл в")),
             ),
         ),
         ModelSpec(
             label="academics.Grade",
             student_path="student",
             fields=(
-                FieldSpec("value", "Оценка за урок", short="Оценка", minimum=0, maximum=100, unit="балл"),
-                FieldSpec("comment", "Комментарий к оценке", short="Комментарий"),
+                FieldSpec(
+                    "value",
+                    gettext_noop("Оценка за урок"),
+                    short_ru=gettext_noop("Оценка"),
+                    minimum=0,
+                    maximum=100,
+                    unit=UNIT_SCORE,
+                ),
+                FieldSpec("comment", gettext_noop("Комментарий к оценке"), short_ru=gettext_noop("Комментарий")),
             ),
         ),
         ModelSpec(
             label="academics.QuarterResult",
             student_path="student",
             fields=(
-                FieldSpec("grade", "Итог четверти", short="Итог", minimum=2, maximum=5),
-                FieldSpec("reason", "Причина отличия итога от расчёта", short="Причина"),
+                FieldSpec("grade", gettext_noop("Итог четверти"), short_ru=gettext_noop("Итог"), minimum=2, maximum=5),
+                FieldSpec("reason", gettext_noop("Причина отличия итога от расчёта"), short_ru=gettext_noop("Причина")),
             ),
         ),
         ModelSpec(
             label="academics.Excuse",
             student_path="student",
             fields=(
-                FieldSpec("starts", "Уважительная причина с", short="С"),
-                FieldSpec("ends", "Уважительная причина по", short="По"),
-                FieldSpec("reason", "Уважительная причина", short="Причина"),
-                FieldSpec("document", "Документ уважительной причины", short="Документ"),
+                FieldSpec("starts", gettext_noop("Уважительная причина с"), short_ru=gettext_noop("С")),
+                FieldSpec("ends", gettext_noop("Уважительная причина по"), short_ru=gettext_noop("По")),
+                FieldSpec("reason", gettext_noop("Уважительная причина"), short_ru=gettext_noop("Причина")),
+                FieldSpec("document", gettext_noop("Документ уважительной причины"), short_ru=gettext_noop("Документ")),
             ),
         ),
         ModelSpec(
             label="academics.ParentReport",
             student_path="student",
             fields=(
-                FieldSpec("status", "Статус отчёта родителям", short="Статус отчёта"),
-                FieldSpec("curator_word", "Слово куратора в отчёте", short="Слово куратора"),
+                FieldSpec("status", gettext_noop("Статус отчёта родителям"), short_ru=gettext_noop("Статус отчёта")),
+                FieldSpec(
+                    "curator_word", gettext_noop("Слово куратора в отчёте"), short_ru=gettext_noop("Слово куратора")
+                ),
             ),
         ),
     ),
@@ -1070,7 +1494,7 @@ CURATOR_ENTERS_MODELS: dict[str, tuple[str, ...]] = {
 }
 
 #: Ученическое, которое куратор всё же не вносит, — с причиной
-CURATOR_DOES_NOT_ENTER: dict[tuple[str, str], str] = {
+CURATOR_DOES_NOT_ENTER: dict[tuple[str, str], str] = {  # i18n-skip: причина для разработчика, людям не показывается
     ("students.AdmissionProfile", "target_country"): "цели поступления спрашивает анкета первого входа",
     ("students.AdmissionProfile", "target_major"): "цели поступления спрашивает анкета первого входа",
     ("students.AdmissionProfile", "target_level"): "цели поступления спрашивает анкета первого входа",

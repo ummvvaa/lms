@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from django.conf import settings
+from django.utils.translation import gettext as _
 
 from universities.sync import host_of, is_allowed
 
@@ -50,7 +51,10 @@ class Source:
 
     def as_reference(self) -> str:
         """Строка-источник для предложения: ссылка и дата проверки."""
-        return f"{self.url} · сверено {self.checked_at}" if self.checked_at else self.url
+        if not self.checked_at:
+            return self.url
+        # строка источника сохраняется в предложении и показывается как данные
+        return f"{self.url} · сверено {self.checked_at}"  # i18n-skip: сохраняется в базе
 
 
 def is_allowed_url(url: str) -> bool:
@@ -119,7 +123,7 @@ def keep_allowed(sources: list[Source]) -> tuple[list[Source], list[str]]:
         if source.url and is_allowed(source.url):
             kept.append(source)
         else:
-            dropped.append(source.url or "(без ссылки)")
+            dropped.append(source.url or _("(без ссылки)"))
             log.warning("Источник вне белого списка отброшен: %s", source.url)
     return kept, dropped
 

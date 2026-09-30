@@ -25,7 +25,7 @@ class PrivateStorage(FileSystemStorage):
     """
 
     def url(self, name):
-        raise ValueError(
+        raise ValueError(  # i18n-skip: ошибка программиста, людям не показывается
             "У файла материала нет прямой ссылки: он отдаётся только через проверку прав "
             "(`/api/materials/files/<id>/`)"
         )

@@ -11,8 +11,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from django.db.models import Q, QuerySet
+from django.utils.translation import gettext_lazy
 
 #: все параллели школы по порядку
 PARALLELS: tuple[int, ...] = (8, 9, 10, 11)
@@ -92,7 +94,8 @@ class Section:
     """
 
     code: str
-    title: str
+    #: название раздела — ленивая строка перевода
+    title: Any
     parallels: frozenset[int]
     paths: tuple[str, ...] = ()
     routes: tuple[str, ...] = ()
@@ -107,35 +110,35 @@ JUNIOR = frozenset(PARALLELS) - ADMISSION_ONLY
 #: олимпиады и спорт — вкладки «Портфолио», у 8–10 — отдельные разделы.
 SECTIONS: tuple[Section, ...] = (
     # --- всем параллелям: учёба, календарь, профиль, помощник ---
-    Section("home", "Главная", ALL, paths=("/dashboard",)),
-    Section("schedule", "Расписание", ALL, paths=("/schedule",)),
-    Section("grades", "Оценки", ALL, paths=("/grades",)),
+    Section("home", gettext_lazy("Главная"), ALL, paths=("/dashboard",)),
+    Section("schedule", gettext_lazy("Расписание"), ALL, paths=("/schedule",)),
+    Section("grades", gettext_lazy("Оценки"), ALL, paths=("/grades",)),
     # сдача ДЗ в LMS — у всех параллелей (решение владельца, 30.09.2026)
     Section(
         "homework",
-        "Домашние задания",
+        gettext_lazy("Домашние задания"),
         ALL,
         paths=("/homework",),
         routes=("homework-my", "homework-my-detail", "homework-my-submit"),
     ),
-    Section("calendar", "Календарь", ALL, paths=("/calendar",)),
-    Section("profile", "Профиль", ALL, paths=("/profile",)),
+    Section("calendar", gettext_lazy("Календарь"), ALL, paths=("/calendar",)),
+    Section("profile", gettext_lazy("Профиль"), ALL, paths=("/profile",)),
     # материалы открывает ещё и отбор в олимпиадную группу (`materials.access`)
-    Section("materials", "Материалы олимпиадной группы", ALL, paths=("/materials",)),
+    Section("materials", gettext_lazy("Материалы олимпиадной группы"), ALL, paths=("/materials",)),
     # --- 8–10: олимпиады и спорт своими разделами ---
-    Section("olympiads", "Олимпиады", JUNIOR, paths=("/olympiads",)),
-    Section("sport", "Спорт", JUNIOR, paths=("/sport",)),
+    Section("olympiads", gettext_lazy("Олимпиады"), JUNIOR, paths=("/olympiads",)),
+    Section("sport", gettext_lazy("Спорт"), JUNIOR, paths=("/sport",)),
     # --- только 11: поступление ---
     Section(
         "journey",
-        "Мой путь",
+        gettext_lazy("Мой путь"),
         ADMISSION_ONLY,
         paths=("/journey", "/onboarding"),
         routes=("journey-state", "journey-locks", "onboarding-state", "onboarding-answer", "onboarding-skip"),
     ),
     Section(
         "portfolio",
-        "Портфолио",
+        gettext_lazy("Портфолио"),
         ADMISSION_ONLY,
         paths=("/my-data",),
         routes=(
@@ -154,7 +157,7 @@ SECTIONS: tuple[Section, ...] = (
     ),
     Section(
         "selection",
-        "Подбор вузов",
+        gettext_lazy("Подбор вузов"),
         ADMISSION_ONLY,
         paths=("/selection",),
         routes=(
@@ -173,7 +176,7 @@ SECTIONS: tuple[Section, ...] = (
     ),
     Section(
         "catalog",
-        "Каталог вузов",
+        gettext_lazy("Каталог вузов"),
         ADMISSION_ONLY,
         paths=("/catalog",),
         routes=(
@@ -194,17 +197,23 @@ SECTIONS: tuple[Section, ...] = (
             "requirement-detail",
         ),
     ),
-    Section("favorites", "Избранное", ADMISSION_ONLY, paths=("/favorites",), routes=("favorites", "favorite-remove")),
+    Section(
+        "favorites",
+        gettext_lazy("Избранное"),
+        ADMISSION_ONLY,
+        paths=("/favorites",),
+        routes=("favorites", "favorite-remove"),
+    ),
     Section(
         "universities",
-        "Мои вузы",
+        gettext_lazy("Мои вузы"),
         ADMISSION_ONLY,
         paths=("/universities",),
         routes=("student-university-list", "student-university-detail"),
     ),
     Section(
         "plan",
-        "План поступления",
+        gettext_lazy("План поступления"),
         ADMISSION_ONLY,
         paths=("/plan",),
         routes=(
@@ -218,7 +227,7 @@ SECTIONS: tuple[Section, ...] = (
     ),
     Section(
         "scholarships",
-        "Стипендии",
+        gettext_lazy("Стипендии"),
         ADMISSION_ONLY,
         paths=("/scholarships",),
         routes=(
@@ -232,11 +241,15 @@ SECTIONS: tuple[Section, ...] = (
         ),
     ),
     Section(
-        "career", "Профтест", ADMISSION_ONLY, paths=("/career",), routes=("career-state", "career-run", "career-agree")
+        "career",
+        gettext_lazy("Профтест"),
+        ADMISSION_ONLY,
+        paths=("/career",),
+        routes=("career-state", "career-run", "career-agree"),
     ),
     Section(
         "essays",
-        "Эссе",
+        gettext_lazy("Эссе"),
         ADMISSION_ONLY,
         paths=("/essays",),
         routes=(
@@ -262,7 +275,7 @@ SECTIONS: tuple[Section, ...] = (
     ),
     Section(
         "prep",
-        "Подготовка к экзаменам",
+        gettext_lazy("Подготовка к экзаменам"),
         ADMISSION_ONLY,
         paths=("/prep",),
         routes=(
@@ -292,7 +305,7 @@ SECTIONS: tuple[Section, ...] = (
     ),
     Section(
         "roadmap",
-        "Роадмап и задачи",
+        gettext_lazy("Роадмап и задачи"),
         ADMISSION_ONLY,
         paths=("/roadmap",),
         routes=(
@@ -309,14 +322,14 @@ SECTIONS: tuple[Section, ...] = (
     ),
     Section(
         "achievements",
-        "Достижения и XP",
+        gettext_lazy("Достижения и XP"),
         ADMISSION_ONLY,
         paths=("/achievements",),
         routes=("achievements", "game-state", "home-cues"),
     ),
     Section(
         "resources",
-        "Ресурсы школы",
+        gettext_lazy("Ресурсы школы"),
         ADMISSION_ONLY,
         paths=("/resources",),
         routes=("resource-list", "resource-detail", "resource-overview", "resource-read", "resource-category-list"),
@@ -344,7 +357,9 @@ DOMAIN_PARALLELS: dict[str, frozenset[int]] = {
 #: и видит только сотрудник.
 MOCK_PARALLELS: frozenset[int] = ALL
 #: отказ, когда у ученика без экзаменов вносят официальную попытку
-OFFICIAL_ATTEMPT_CLOSED = "У 8–10 параллели ведутся только пробники: официальных попыток и целей у них нет"
+OFFICIAL_ATTEMPT_CLOSED = gettext_lazy(
+    "У 8–10 параллели ведутся только Mock Test: официальных попыток и целей у них нет"
+)
 
 #: Что ученик 8–10 вносит о себе предложением: олимпиады и спорт.
 #: У 11 состав предложений прежний — весь реестр `domains.py`.

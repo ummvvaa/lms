@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, permissions, status, viewsets
@@ -12,6 +14,7 @@ from rest_framework.response import Response
 
 from core.deletion import ArchiveDeleteMixin, HardDeleteMixin
 from core.domains import ROLE_STUDENT
+from core.i18n import language_of, render
 from core.scope import sees_student
 from roadmap.models import (
     ApplicationPlan,
@@ -85,7 +88,7 @@ class TaskViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
         task = self.get_object()
         new_status = request.data.get("status")
         if new_status not in dict(Task._meta.get_field("status").choices):
-            return Response({"detail": "Неизвестный статус"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": _("Неизвестный статус")}, status=status.HTTP_400_BAD_REQUEST)
         return Response(TaskSerializer(complete(task, status=new_status, actor=request.user)).data)
 
     @action(detail=False, methods=["get"], url_path="my")
@@ -93,7 +96,7 @@ class TaskViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
         """Роадмап текущего ученика."""
         student = getattr(request.user, "student", None)
         if student is None:
-            return Response({"detail": "У пользователя нет карточки ученика"}, status=404)
+            return Response({"detail": _("У пользователя нет карточки ученика")}, status=404)
         tasks = self.get_queryset().filter(student=student)
         return Response(TaskSerializer(tasks, many=True).data)
 
@@ -129,7 +132,7 @@ class TaskCommentViewSet(viewsets.ModelViewSet):
         if task is not None and task.student_id not in _visible_students(self.request.user).values_list(
             "pk", flat=True
         ):
-            raise PermissionDenied("Эта задача вам не видна")
+            raise PermissionDenied(_("Эта задача вам не видна"))
         serializer.save(author=self.request.user)
 
 
@@ -151,13 +154,13 @@ class EssayViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
             if student is None:
                 from rest_framework.exceptions import PermissionDenied
 
-                raise PermissionDenied("У этой записи нет карточки ученика")
+                raise PermissionDenied(_("У этой записи нет карточки ученика"))
             serializer.save(student=student)
         else:
             if serializer.validated_data.get("student") is None:
                 from rest_framework.exceptions import ValidationError as DRFValidationError
 
-                raise DRFValidationError({"student": "Укажите ученика"})
+                raise DRFValidationError({"student": _("Укажите ученика")})
             serializer.save()
 
     @action(detail=True, methods=["post"], url_path="versions")
@@ -187,7 +190,7 @@ class EssayViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
 
         essay = self.get_object()
         if not essay.versions.exists():
-            return Response({"detail": "Сначала сохраните текст"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": _("Сначала сохраните текст")}, status=status.HTTP_400_BAD_REQUEST)
 
         essay.status = EssayStatus.REVIEW
         essay.save(update_fields=["status", "updated_at"])
@@ -218,7 +221,7 @@ class EssayCommentViewSet(viewsets.ModelViewSet):
         if essay is not None and essay.student_id not in _visible_students(self.request.user).values_list(
             "pk", flat=True
         ):
-            raise PermissionDenied("Это эссе вам не видно")
+            raise PermissionDenied(_("Это эссе вам не видно"))
         serializer.save(author=self.request.user)
 
 
@@ -228,7 +231,7 @@ class EssayCommentViewSet(viewsets.ModelViewSet):
 def generate_roadmap(request):
     """Сгенерировать задачи из шаблонов потока и дедлайнов вузов."""
     if request.user.role == ROLE_STUDENT:
-        return Response({"detail": "Роадмап генерируют сотрудники"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Роадмап генерируют сотрудники")}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = GenerateTasksSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -256,7 +259,7 @@ class PlanPermission(permissions.BasePermission):
     здесь не действует.
     """
 
-    message = "Свой план ведёт ученик"
+    message = gettext_lazy("Свой план ведёт ученик")
 
     def has_permission(self, request, view) -> bool:
         if not (request.user and request.user.is_authenticated):
@@ -304,15 +307,15 @@ class ApplicationPlanViewSet(
 
         student = getattr(request.user, "student", None)
         if student is None:
-            return Response({"detail": "План создаёт ученик"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("План создаёт ученик")}, status=status.HTTP_403_FORBIDDEN)
 
         program = Program.objects.filter(pk=request.data.get("program")).first()
         if program is None:
-            return Response({"detail": "Программа не найдена"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": _("Программа не найдена")}, status=status.HTTP_404_NOT_FOUND)
         existing = ApplicationPlan.objects.filter(student=student, program=program).first()
         if existing is not None:
             return Response(
-                {"detail": "План по этой программе уже есть", "id": existing.pk},
+                {"detail": _("План по этой программе уже есть"), "code": "plan_exists", "id": existing.pk},
                 status=status.HTTP_409_CONFLICT,
             )
 
@@ -335,7 +338,7 @@ class ApplicationPlanViewSet(
         jobs.start(
             user=request.user,
             kind="plan",
-            title=f"План по вузу «{program.university.name}»",
+            title=render(language_of(request.user), "План по вузу «{university}»", university=program.university.name),
             task_id=task.id,
             link=f"/plan/{plan.pk}",
             retry_task="roadmap.generate_plan",
@@ -349,9 +352,14 @@ class ApplicationPlanViewSet(
 
         plan = self.get_object()
         if request.user.role != ROLE_STUDENT:
-            return Response({"detail": "Свой план убирает ученик"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("Свой план убирает ученик")}, status=status.HTTP_403_FORBIDDEN)
         entry = archive(plan, actor=request.user)
-        return Response({"archived": entry.pk, "detail": f"План «{plan.program.university.name}» в архиве"})
+        return Response(
+            {
+                "archived": entry.pk,
+                "detail": _("План «{university}» в архиве").format(university=plan.program.university.name),
+            }
+        )
 
     @action(detail=True, methods=["get"])
     def preview(self, request, pk=None):
@@ -369,7 +377,7 @@ class ApplicationPlanViewSet(
         """Применить сгенерированные задачи — это делает сам ученик."""
         plan = self.get_object()
         if request.user.role != ROLE_STUDENT:
-            return Response({"detail": "Задачи плана применяет ученик"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("Задачи плана применяет ученик")}, status=status.HTTP_403_FORBIDDEN)
         from roadmap.plans import apply_plan
 
         result = apply_plan(plan, actor=request.user)
@@ -405,7 +413,7 @@ def plan_attention(request):
     from roadmap.models import ApplicationPlan
 
     if request.user.role not in (DOMAINS["admission"].role, ROLE_ADMIN):
-        return Response({"detail": "Планы учеников ведёт директор по поступлению"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Планы учеников ведёт директор по поступлению")}, status=status.HTTP_403_FORBIDDEN)
 
     today = timezone.localdate()
     soon = today + dt.timedelta(days=30)
@@ -449,7 +457,7 @@ def _keeps_essay_content(user) -> bool:
 class EssayContentPermission(permissions.BasePermission):
     """Читают все; заводит, правит и убирает директор по поступлению."""
 
-    message = "Справочники эссе ведёт директор по поступлению"
+    message = gettext_lazy("Справочники эссе ведёт директор по поступлению")
 
     def has_permission(self, request, view) -> bool:
         if not (request.user and request.user.is_authenticated):
@@ -537,7 +545,7 @@ def essay_requirements(request):
     """
     student = getattr(request.user, "student", None)
     if student is None:
-        return Response({"detail": "Это экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Это экран ученика")}, status=status.HTTP_403_FORBIDDEN)
 
     from universities.models import StudentUniversity
 
@@ -554,7 +562,7 @@ def essay_requirements(request):
                 "program": row.program.name,
                 # конкретный список эссе вуза мы не выдумываем: показываем,
                 # что известно из справочника, и советуем сверить на сайте
-                "note": note or "Список эссе уточните на сайте программы",
+                "note": note or _("Список эссе уточните на сайте программы"),
             }
         )
     return Response({"has_data": bool(needs), "requirements": needs})
@@ -567,15 +575,15 @@ def essay_assist_log(request, pk: int):
     """Переписка ученика с ИИ по эссе — видна ученику и куратору (фаза 43)."""
     essay = Essay.objects.filter(pk=pk).select_related("student").first()
     if essay is None:
-        return Response({"detail": "Эссе нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Эссе нет")}, status=status.HTTP_404_NOT_FOUND)
 
     if request.user.role == ROLE_STUDENT:
         own = getattr(request.user, "student", None)
         if own is None or essay.student_id != own.pk:
-            return Response({"detail": "Чужое эссе"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("Чужое эссе")}, status=status.HTTP_403_FORBIDDEN)
     elif not sees_student(request.user, essay.student_id):
         # куратору чужой группы эссе не показывается вовсе — 404, как везде
-        return Response({"detail": "Эссе нет"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": _("Эссе нет")}, status=status.HTTP_404_NOT_FOUND)
 
     from suggestions.models import EssayAssistLog
 

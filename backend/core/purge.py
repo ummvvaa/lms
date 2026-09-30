@@ -28,10 +28,11 @@ from typing import Any
 from django.apps import apps
 from django.db import models, transaction
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from core.audit import model_label
 from core.domains import PROFILE_MODELS
-from core.phrasing import counted
+from core.phrasing import counted, tn
 
 #: Где след автора важен: «кто подтвердил», «кто записал», «кто загрузил».
 #: Пары «поле-ссылка → поле-след». Список один на систему: снимок автора,
@@ -53,11 +54,15 @@ AUTHOR_TRAILS: tuple[tuple[str, str, str], ...] = (
 
 
 def trail(user) -> str:
-    """След удалённого автора: имя, почта и дата удаления одной строкой."""
+    """След удалённого автора: имя, почта и дата удаления одной строкой.
+
+    След пишется в базу и дальше показывается как данные — подпись автора
+    в журнале, — поэтому он не переводится.
+    """
     name = (getattr(user, "full_name", "") or "").strip()
     email = (getattr(user, "email", "") or "").strip()
-    who = f"{name} · {email}" if name and email else (name or email or "без имени")
-    return f"{who} · удалён {timezone.localdate():%d.%m.%Y}"[:250]
+    who = f"{name} · {email}" if name and email else (name or email or "без имени")  # i18n-skip: след в базе
+    return f"{who} · удалён {timezone.localdate():%d.%m.%Y}"[:250]  # i18n-skip: след автора хранится в базе
 
 
 def detach_author(user) -> dict[str, int]:
@@ -134,7 +139,7 @@ def megabytes(size: int) -> str:
     """Байты человеку: «0,4 МБ». Ноль — пусто, показывать нечего."""
     if size <= 0:
         return ""
-    return f"{size / 1024 / 1024:.1f}".replace(".", ",") + " МБ"
+    return _("{size} МБ").format(size=f"{size / 1024 / 1024:.1f}".replace(".", ","))
 
 
 def preview(instance: models.Model, *, actor=None) -> dict:
@@ -166,7 +171,7 @@ def preview(instance: models.Model, *, actor=None) -> dict:
     erased.sort(key=lambda row: -row["count"])
 
     if files_total:
-        erased.append({"title": "Файлы на диске", "count": files_total, "note": megabytes(bytes_total)})
+        erased.append({"title": _("Файлы на диске"), "count": files_total, "note": megabytes(bytes_total)})
 
     # журнал: строки не теряются ни в одном случае. У учётной записи автор
     # в них становится текстом, у остальных записей остаётся имя объекта —
@@ -176,7 +181,7 @@ def preview(instance: models.Model, *, actor=None) -> dict:
             kept.append({"title": title, "count": count})
     about = _journal_about(data)
     if about:
-        kept.append({"title": "Записи журнала об этой записи", "count": about})
+        kept.append({"title": _("Записи журнала об этой записи"), "count": about})
 
     return {
         "title": _title_of(instance),
@@ -187,7 +192,7 @@ def preview(instance: models.Model, *, actor=None) -> dict:
         "impact": impact(instance, data),
         "files": files_total,
         "bytes": bytes_total,
-        "warning": (
+        "warning": _(
             "Восстановить будет нельзя — ни из архива, ни отменой. "
             "Вернуть эти данные можно только из резервной копии базы"
         ),
@@ -245,7 +250,7 @@ def impact(instance: models.Model, data: dict | None = None) -> list[str]:
     if label == "accounts.User":
         student = getattr(instance, "student", None)
         if student is not None:
-            lines.append(f"Ученик {student.full_name} останется без входа в систему")
+            lines.append(_("Ученик {name} останется без входа в систему").format(name=student.full_name))
         lines += _curator_impact(instance)
         return lines
 
@@ -263,18 +268,22 @@ def _curator_impact(user) -> list[str]:
     if not ids:
         return []
     codes = list(StudyGroup.objects.filter(pk__in=ids).values_list("code", flat=True))
-    return [f"Группа {code} останется без куратора" for code in codes]
+    return [_("Группа {code} останется без куратора").format(code=code) for code in codes]
 
 
 def _student_impact(student) -> list[str]:
-    """Группа, пробники и очередь: где число станет меньше."""
+    """Группа, Mock Test и очередь: где число станет меньше."""
     from students.models import ExamAttempt, Student
 
     lines: list[str] = []
     if student.group_id:
         left = Student.objects.filter(group_id=student.group_id).exclude(pk=student.pk).count()
         # склонение — с сервера: «станет 1 учеников» читается как сбой
-        lines.append(f"В группе {student.group.code} станет {counted(left, ('ученик', 'ученика', 'учеников'))}")
+        lines.append(
+            _("В группе {code} станет {students}").format(
+                code=student.group.code, students=counted(left, "ученик|ученика|учеников")
+            )
+        )
 
     seen: set[int] = set()
     for attempt in ExamAttempt.all_objects.filter(student=student, mock_import__isnull=False).select_related(
@@ -285,8 +294,16 @@ def _student_impact(student) -> list[str]:
             continue
         seen.add(record.pk)
         total = ExamAttempt.all_objects.filter(mock_import=record).count()
-        left = counted(total - 1, ("результат", "результата", "результатов"))
-        lines.append(f"У пробника от {record.date:%d.%m.%Y} останется {left} из {total}")
+        lines.append(
+            tn(
+                total - 1,
+                "У Mock Test от {date} останется {n} результат из {total}"
+                "|У Mock Test от {date} останется {n} результата из {total}"
+                "|У Mock Test от {date} останется {n} результатов из {total}",
+                date=f"{record.date:%d.%m.%Y}",
+                total=total,
+            )
+        )
     return lines
 
 
@@ -365,15 +382,17 @@ def erase(instance: models.Model, *, actor=None, batch=None) -> dict:
 
 
 def _detail(numbers: dict, signed: dict[str, int], files: int) -> str:
-    parts = [f"«{numbers['title']}» удалён навсегда"]
-    total = sum(row["count"] for row in numbers["erased"] if row["title"] != "Файлы на диске")
+    # строка файлов — не записи базы; узнаётся по пометке с размером,
+    # а не по подписи: подпись переведена на язык ответа
+    total = sum(row["count"] for row in numbers["erased"] if "note" not in row)
+    parts = [_("«{title}» удалён навсегда").format(title=numbers["title"])]
     if total:
-        parts.append(f"вместе с записями: {total}")
+        parts.append(_("вместе с записями: {count}").format(count=total))
     if files:
-        parts.append(f"файлов удалено: {files}")
+        parts.append(_("файлов удалено: {count}").format(count=files))
     kept = sum(signed.values())
     if kept:
-        parts.append(f"строк журнала подписано именем: {kept}")
+        parts.append(_("строк журнала подписано именем: {count}").format(count=kept))
     return ". ".join(parts)
 
 
@@ -409,9 +428,10 @@ def _record_erasure(numbers: dict, *, actor, signed: dict[str, int], files: int)
     """
     from core.models import AuditLog
 
+    # текст записи хранится в журнале и показывается как данные — не переводится
     parts = [f"{row['title'].lower()}: {row['count']}" for row in numbers["erased"]]
-    erased = ", ".join(parts) or "без связанных записей"
-    AuditLog.objects.create(
+    erased = ", ".join(parts) or "без связанных записей"  # i18n-skip: текст записи журнала в базе
+    AuditLog.objects.create(  # i18n-skip: текст записи журнала о стирании хранится в базе
         actor=actor if getattr(actor, "pk", None) else None,
         actor_role=getattr(actor, "role", "") or "",
         model_label="core.Erasure",
@@ -443,11 +463,11 @@ def refusal_for_user(user, *, actor) -> str:
     from core.domains import ROLE_ADMIN
 
     if getattr(actor, "pk", None) == user.pk:
-        return "Себя удалить нельзя: после этого некому будет войти под вашей учётной записью"
+        return _("Себя удалить нельзя: после этого некому будет войти под вашей учётной записью")
     if user.role == ROLE_ADMIN:
         others = User.objects.filter(role=ROLE_ADMIN, is_active=True).exclude(pk=user.pk).count()
         if others == 0:
-            return (
+            return _(
                 "Это последний администратор. Удалить его нельзя: без администратора "
                 "не завести пользователей и не вернуть данные из архива"
             )

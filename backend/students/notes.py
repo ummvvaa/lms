@@ -12,6 +12,8 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy, gettext_noop
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
@@ -31,7 +33,7 @@ NOTE_WRITERS: tuple[str, ...] = (ROLE_CURATOR, "director_behavior", ROLE_ADMIN)
 
 
 class NotePermission(BasePermission):
-    message = "Заметки куратора читают куратор, академический директор и директор школы"
+    message = gettext_lazy("Заметки куратора читают куратор, академический директор и директор школы")
 
     def has_permission(self, request, view) -> bool:
         user = request.user
@@ -52,12 +54,12 @@ class CuratorNoteSerializer(serializers.ModelSerializer):
 
     def get_author_name(self, obj) -> str:
         who = obj.author
-        return (who.full_name or who.email) if who else "система"
+        return (who.full_name or who.email) if who else _("система")
 
     def validate_text(self, value: str) -> str:
         value = value.strip()
         if not value:
-            raise serializers.ValidationError("Заметка пустая")
+            raise serializers.ValidationError(_("Заметка пустая"))
         return value
 
 
@@ -80,7 +82,7 @@ class CuratorNoteViewSet(
         if not visible_students(self.request.user).filter(pk=student.pk).exists():
             from rest_framework.exceptions import NotFound
 
-            raise NotFound("Ученика нет в ваших группах")
+            raise NotFound(_("Ученика нет в ваших группах"))
         note = serializer.save(author=self.request.user, author_role=self.request.user.role)
         _tell_curator(note)
 
@@ -89,7 +91,7 @@ class CuratorNoteViewSet(
 
         note = self.get_object()
         entry = archive(note, actor=request.user)
-        return Response({"archived": entry.pk, "detail": "Заметка в архиве"}, status=status.HTTP_200_OK)
+        return Response({"archived": entry.pk, "detail": _("Заметка в архиве")}, status=status.HTTP_200_OK)
 
 
 def _tell_curator(note) -> None:
@@ -110,7 +112,7 @@ def _tell_curator(note) -> None:
     notify(
         assignment.curator,
         kind=Notification.Kind.NOTE_FOR_CURATOR,
-        template="Директор школы оставила заметку о {student}",
+        template=gettext_noop("Директор школы оставила заметку о {student}"),
         link=f"/students/{note.student_id}?tab=notes",
         student=note.student.full_name,
     )

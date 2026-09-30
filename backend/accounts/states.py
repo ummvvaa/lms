@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from django.db.models import Exists, OuterRef, Q, QuerySet
 from django.utils import timezone
+from django.utils.translation import gettext_lazy
 
 from accounts.models import LinkPurpose, MagicLinkToken, User
 
@@ -31,11 +32,11 @@ EXPIRED = "expired"
 READY = "ready"
 
 #: Подписи чипов — те же слова, что человек читает в строке таблицы
-TITLES: dict[str, str] = {
-    NO_PASSWORD: "Пароль не задан",
-    WAITING: "Ждёт смены пароля",
-    EXPIRED: "Срок истёк",
-    READY: "Пароль задан",
+TITLES: dict[str, object] = {
+    NO_PASSWORD: gettext_lazy("Пароль не задан"),
+    WAITING: gettext_lazy("Ждёт смены пароля"),
+    EXPIRED: gettext_lazy("Срок истёк"),
+    READY: gettext_lazy("Пароль задан"),
 }
 
 #: Порядок чипов на экране: от «ничего нет» к «всё хорошо»

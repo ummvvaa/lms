@@ -12,6 +12,8 @@
 from __future__ import annotations
 
 from django.conf import settings
+from django.utils.translation import get_language
+from django.utils.translation import gettext as _
 
 from core.domains import ROLE_STUDENT
 from students.models import Activity, DocumentType, Student, StudentDocument
@@ -88,7 +90,7 @@ def documents_checklist(student: Student) -> list[dict]:
                 "title": DocumentType(code).label,
                 "done": row is not None and row.status != DocumentStatus.REJECTED,
                 "state": state,
-                "state_title": DocumentStatus(row.status).label if row else "Не загружен",
+                "state_title": DocumentStatus(row.status).label if row else _("Не загружен"),
                 "reject_reason": row.reject_reason if row else "",
                 "expires_at": row.expires_at if row else None,
                 # документ-ссылка из таблицы Асем (фаза 65)
@@ -136,50 +138,50 @@ def _sections(student: Student) -> list[dict]:
     return [
         {
             "code": "profile",
-            "title": "Профиль поступления",
+            "title": _("Профиль поступления"),
             "weight": weights["profile"],
             "value": profile_filled / len(PROFILE_FIELDS),
-            "next": "Заполните цель: уровень, год, страну, специальность и бюджет",
+            "next": _("Заполните цель: уровень, страну и специальность"),
             "tab": "overview",
         },
         {
             "code": "academics",
-            "title": "Академические результаты",
+            "title": _("Академические результаты"),
             "weight": weights["academics"],
             "value": sum(academic_items) / len(academic_items),
-            "next": "Внесите баллы: GPA, IELTS и SAT",
+            "next": _("Внесите баллы: GPA, IELTS и SAT"),
             "tab": "overview",
         },
         {
             "code": "achievements",
-            "title": "Достижения",
+            "title": _("Достижения"),
             "weight": weights["achievements"],
             "value": 1.0 if achievements else 0.0,
-            "next": "Добавьте первое достижение: проект, конкурс или волонтёрство",
+            "next": _("Добавьте первое достижение: проект, конкурс или волонтёрство"),
             "tab": "achievements",
         },
         {
             "code": "olympiads",
-            "title": "Олимпиады",
+            "title": _("Олимпиады"),
             "weight": weights["olympiads"],
             "value": 1.0 if olympiads else 0.0,
-            "next": "Отметьте участие в олимпиаде — даже школьный этап считается",
+            "next": _("Отметьте участие в олимпиаде — даже школьный этап считается"),
             "tab": "olympiads",
         },
         {
             "code": "sport",
-            "title": "Спорт",
+            "title": _("Спорт"),
             "weight": weights["sport"],
             "value": 1.0 if sport_told else 0.0,
-            "next": "Укажите вид спорта и уровень занятий",
+            "next": _("Укажите вид спорта и уровень занятий"),
             "tab": "sport",
         },
         {
             "code": "documents",
-            "title": "Документы",
+            "title": _("Документы"),
             "weight": weights["documents"],
             "value": documents_done / len(checklist),
-            "next": "Загрузите недостающие документы из чек-листа",
+            "next": _("Загрузите недостающие документы из чек-листа"),
             "tab": "documents",
         },
     ]
@@ -250,7 +252,7 @@ def cv_html(student: Student) -> str:
             goal.append(esc(admission.target_major))
         if admission.target_country:
             goal.append(esc(admission.target_country))
-    section("Цель поступления", [" · ".join(goal)] if goal else [])
+    section(_("Цель поступления"), [" · ".join(goal)] if goal else [])
 
     scores = []
     if getattr(exam, "gpa", None) is not None:
@@ -259,7 +261,7 @@ def cv_html(student: Student) -> str:
         scores.append(f"IELTS — {esc(exam.ielts_current)}")
     if getattr(exam, "sat_current", None) is not None:
         scores.append(f"SAT — {esc(exam.sat_current)}")
-    section("Академические результаты", scores)
+    section(_("Академические результаты"), scores)
 
     # в CV идут все внесённые активности: запись из предложения ученика
     # уже прошла решение директора, а галочка «подтверждена» — отдельная
@@ -267,14 +269,14 @@ def cv_html(student: Student) -> str:
     # из портфолио — не должно прятать и из CV
     entered = Activity.objects.filter(student=student)
     section(
-        "Достижения",
+        _("Достижения"),
         [
             f"{esc(a.title)}" + (f" · {esc(a.date)}" if a.date else "") + f" · {esc(a.get_category_display())}"
             for a in entered.exclude(category="olympiad")[:20]
         ],
     )
     section(
-        "Олимпиады",
+        _("Олимпиады"),
         [
             f"{esc(a.title)}" + (f" · {esc(a.subject.name)}" if a.subject_id else "")
             for a in entered.filter(category="olympiad")[:20]
@@ -292,12 +294,15 @@ def cv_html(student: Student) -> str:
     # в CV — только отмеченные школой как значимые для поступления
     for row in Competition.objects.filter(student=student, show_in_card=True)[:10]:
         sport_lines.append(f"{esc(row.name)}" + (f" · {esc(row.result)}" if row.result else ""))
-    section("Спорт", sport_lines)
+    section(_("Спорт"), sport_lines)
 
-    body = "".join(rows) or "<p>Портфолио пока пустое.</p>"
-    head = f"<h1>{esc(student.full_name)}</h1>" f"<p>{esc(settings.SCHOOL_NAME)} · выпуск {student.graduation_year}</p>"
+    body = "".join(rows) or "<p>{}</p>".format(_("Портфолио пока пустое."))
+    head = f"<h1>{esc(student.full_name)}</h1>" + "<p>{}</p>".format(
+        _("{school} · выпуск {year}").format(school=esc(settings.SCHOOL_NAME), year=student.graduation_year)
+    )
+    lang = (get_language() or "ru").split("-")[0]
     return (
-        "<!doctype html><html lang='ru'><head><meta charset='utf-8'>"
+        f"<!doctype html><html lang='{lang}'><head><meta charset='utf-8'>"
         f"<title>CV — {esc(student.full_name)}</title>"
         "<style>body{font-family:Georgia,serif;max-width:720px;margin:40px auto;line-height:1.5}"
         "h1{margin-bottom:4px}h2{margin-top:24px;border-bottom:1px solid #ccc}</style>"

@@ -10,10 +10,12 @@ from __future__ import annotations
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_noop
 
 from core.i18n import language_of, render
 from core.models import Notification
-from core.phrasing import counted
+from core.phrasing import tn
 from engagement.models import XPKind
 from engagement.scoring import award
 from materials.files import check_count, inspect
@@ -48,11 +50,16 @@ def notify(recipient, *, kind: str, template: str, link: str = "", **params) -> 
     return Notification.objects.create(recipient=recipient, kind=kind, text=text, link=link)
 
 
-def notify_reviewers(*, kind: str, template: str, link: str = "", exclude=None, **params) -> None:
+def notify_reviewers(
+    *, kind: str, template: str, link: str = "", exclude=None, translated: tuple[str, ...] = ("what",), **params
+) -> None:
+    """Уведомление каждому проверяющему; подстановки из `translated` — тоже на его языке."""
     for user in reviewers():
         if exclude is not None and user.pk == exclude.pk:
             continue
-        localized = {key: render(language_of(user), value) if key == "what" else value for key, value in params.items()}
+        localized = {
+            key: render(language_of(user), value) if key in translated else value for key, value in params.items()
+        }
         notify(user, kind=kind, template=template, link=link, **localized)
 
 
@@ -84,7 +91,7 @@ def announce_upload(material: StudyMaterial) -> None:
     """Сказать проверяющим, что появился новый материал."""
     notify_reviewers(
         kind=Notification.Kind.MATERIAL_PENDING,
-        template="{who} загрузил материал «{title}» — ждёт проверки",
+        template=gettext_noop("{who} загрузил материал «{title}» — ждёт проверки"),
         who=material.author_title,
         title=material.title,
         link=f"/materials/review/{material.pk}",
@@ -116,7 +123,12 @@ def approve(material: StudyMaterial, *, actor) -> dict:
             kind=XPKind.MATERIAL_APPROVED,
             object_label="materials.StudyMaterial",
             object_id=str(material.pk),
-            note=f"Материал «{material.title}» прошёл проверку",
+            # пометка остаётся в истории XP автора — на его языке
+            note=render(
+                language_of(getattr(material.author, "user", None)),
+                "Материал «{title}» прошёл проверку",
+                title=material.title,
+            ),
         )
         if material.author_id
         else None
@@ -127,7 +139,7 @@ def approve(material: StudyMaterial, *, actor) -> dict:
         notify(
             getattr(material.author, "user", None),
             kind=Notification.Kind.MATERIAL_REVIEWED,
-            template="Ваш материал «{title}» одобрен и появился в библиотеке",
+            template=gettext_noop("Ваш материал «{title}» одобрен и появился в библиотеке"),
             title=material.title,
             link=f"/materials/{material.pk}",
         )
@@ -136,7 +148,9 @@ def approve(material: StudyMaterial, *, actor) -> dict:
         "xp": event.amount if event else 0,
         "activity": activity.pk if activity else None,
         "closed_request": closed,
-        "detail": f"«{material.title}» в библиотеке. Автору начислено XP, запись добавлена в активности",
+        "detail": _("«{title}» в библиотеке. Автору начислено XP, запись добавлена в активности").format(
+            title=material.title
+        ),
     }
 
 
@@ -146,14 +160,14 @@ def _activity_for(material: StudyMaterial) -> Activity | None:
     Второй раз ту же запись не заводим: материал могли отклонить
     и одобрить снова.
     """
-    existing = Activity.all_objects.filter(
+    existing = Activity.all_objects.filter(  # i18n-skip: запись портфолио — данные, по названию сверяется повтор
         student=material.author,
         category=ActivityCategory.PROJECT,
         title=f"Материал: {material.title}",
     ).first()
     if existing is not None:
         return existing
-    return Activity.objects.create(
+    return Activity.objects.create(  # i18n-skip: запись портфолио — данные
         student=material.author,
         category=ActivityCategory.PROJECT,
         subject=material.subject,
@@ -175,7 +189,7 @@ def _close_request(material: StudyMaterial) -> int | None:
     notify(
         getattr(request.author, "user", None),
         kind=Notification.Kind.MATERIAL_REQUEST,
-        template="По вашему запросу «{topic}» появился материал «{title}»",
+        template=gettext_noop("По вашему запросу «{topic}» появился материал «{title}»"),
         topic=request.topic,
         title=material.title,
         link=f"/materials/{material.pk}",
@@ -195,12 +209,15 @@ def reject(material: StudyMaterial, *, actor, reason: str) -> dict:
     notify(
         getattr(material.author, "user", None),
         kind=Notification.Kind.MATERIAL_REVIEWED,
-        template="Материал «{title}» не прошёл проверку: {reason}",
+        template=gettext_noop("Материал «{title}» не прошёл проверку: {reason}"),
         title=material.title,
         reason=reason,
         link=f"/materials/{material.pk}",
     )
-    return {"status": material.status, "detail": f"«{material.title}» отклонён, автор увидит причину"}
+    return {
+        "status": material.status,
+        "detail": _("«{title}» отклонён, автор увидит причину").format(title=material.title),
+    }
 
 
 # --- Полезность, комментарии, жалобы --------------------------------------
@@ -218,11 +235,11 @@ def mark_helpful(material: StudyMaterial, student) -> dict:
         MaterialHelpful.objects.filter(material=material, student=student).delete()
         StudyMaterial.objects.filter(pk=material.pk).update(helpful_count=F("helpful_count") - 1)
         material.refresh_from_db(fields=["helpful_count"])
-        return {"marked": False, "helpful_count": material.helpful_count, "detail": "Отметка снята"}
+        return {"marked": False, "helpful_count": material.helpful_count, "detail": _("Отметка снята")}
 
     StudyMaterial.objects.filter(pk=material.pk).update(helpful_count=F("helpful_count") + 1)
     material.refresh_from_db(fields=["helpful_count"])
-    return {"marked": True, "helpful_count": material.helpful_count, "detail": "Спасибо, отметили"}
+    return {"marked": True, "helpful_count": material.helpful_count, "detail": _("Спасибо, отметили")}
 
 
 def announce_comment(comment: MaterialComment) -> None:
@@ -234,14 +251,14 @@ def announce_comment(comment: MaterialComment) -> None:
         notify(
             author_user,
             kind=Notification.Kind.MATERIAL_COMMENT,
-            template="{who} оставил вопрос под вашим материалом «{title}»",
+            template=gettext_noop("{who} оставил вопрос под вашим материалом «{title}»"),
             who=who,
             title=material.title,
             link=f"/materials/{material.pk}",
         )
     notify_reviewers(
         kind=Notification.Kind.MATERIAL_COMMENT,
-        template="{who} оставил вопрос под материалом «{title}»",
+        template=gettext_noop("{who} оставил вопрос под материалом «{title}»"),
         who=who,
         title=material.title,
         link=f"/materials/{material.pk}",
@@ -252,11 +269,13 @@ def announce_comment(comment: MaterialComment) -> None:
 def announce_report(report) -> None:
     """Жалоба уходит проверяющим — разбирается человек, не система."""
     target = report.material or (report.comment.material if report.comment_id else None)
-    title = target.title if target is not None else "материал"
-    what = "комментарий" if report.comment_id else "материал"
+    # «что» и заглушка вместо названия переводятся на язык каждого проверяющего
+    title = target.title if target is not None else gettext_noop("материал")
+    what = gettext_noop("комментарий") if report.comment_id else gettext_noop("материал")
     notify_reviewers(
         kind=Notification.Kind.MATERIAL_REPORT,
-        template="Жалоба на {what} под «{title}»: {reason}",
+        template=gettext_noop("Жалоба на {what} под «{title}»: {reason}"),
+        translated=("what",) if target is not None else ("what", "title"),
         what=what,
         title=title,
         reason=report.reason[:150],
@@ -268,7 +287,7 @@ def queue_summary(pending: int, reports: int) -> str:
     """Строка над очередью проверки — числами, а не «есть новые»."""
     parts = []
     if pending:
-        parts.append(counted(pending, ("материал ждёт", "материала ждут", "материалов ждут")) + " проверки")
+        parts.append(tn(pending, "{n} материал ждёт проверки|{n} материала ждут проверки|{n} материалов ждут проверки"))
     if reports:
-        parts.append(counted(reports, ("жалоба", "жалобы", "жалоб")) + " не разобрано")
-    return "; ".join(parts) if parts else "Очередь пуста — всё разобрано"
+        parts.append(tn(reports, "{n} жалоба не разобрана|{n} жалобы не разобраны|{n} жалоб не разобрано"))
+    return "; ".join(parts) if parts else _("Очередь пуста — всё разобрано")

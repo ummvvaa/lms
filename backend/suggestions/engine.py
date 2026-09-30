@@ -18,6 +18,7 @@ from typing import Any
 from django.apps import apps
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from core.audit import ValueRejected, apply_changes, coerce, to_text
 from core.domains import (
@@ -48,18 +49,19 @@ class AlreadyResolved(Exception):
 def resolution_text(suggestion: Suggestion) -> str:
     """«Уже подтверждено: Асель Прогон (Куратор), 08.09.2026 14:02»."""
     verb = {
-        SuggestionStatus.APPLIED: "Уже подтверждено",
-        SuggestionStatus.PARTIALLY_APPLIED: "Уже подтверждено частично",
-        SuggestionStatus.REJECTED: "Уже отклонено",
-        SuggestionStatus.REVERTED: "Уже откачено",
-    }.get(suggestion.status, "Уже решено")
+        SuggestionStatus.APPLIED: _("Уже подтверждено"),
+        SuggestionStatus.PARTIALLY_APPLIED: _("Уже подтверждено частично"),
+        SuggestionStatus.REJECTED: _("Уже отклонено"),
+        SuggestionStatus.REVERTED: _("Уже откачено"),
+    }.get(suggestion.status) or _("Уже решено")
     who = suggestion.resolved_by
     name = (who.full_name or who.email) if who is not None else ""
     role = ROLE_TITLES.get(suggestion.resolved_role, "")
     when = timezone.localtime(suggestion.resolved_at).strftime("%d.%m.%Y %H:%M") if suggestion.resolved_at else ""
     parts = [name + (f" ({role})" if role else "") if name else "", when]
     tail = ", ".join(part for part in parts if part)
-    return f"{verb}: {tail}" if tail else verb
+    # «Уже подтверждено: кто (роль), когда»
+    return _("{status}: {details}").format(status=verb, details=tail) if tail else verb
 
 
 def lock_pending(pk: int) -> Suggestion:
@@ -178,7 +180,8 @@ def _create_new_objects(suggestion: Suggestion, rows: list[SuggestionChange], *,
         postponed: list = []
         for (model_label, key), group in pending:
             if not all(_may_write(suggestion, model_label, row.field_name) for row in group):
-                rejected.append({"change": group[0].pk, "reason": f"«{model_title(model_label)}» ведёт другой домен"})
+                reason = _("«{model}» ведёт другой домен").format(model=model_title(model_label))
+                rejected.append({"change": group[0].pk, "reason": reason})
                 progressed = True
                 continue
             if any(_is_pending_reference(row.new_value, made) for row in group):
@@ -187,7 +190,9 @@ def _create_new_objects(suggestion: Suggestion, rows: list[SuggestionChange], *,
 
             instance = _create_one(suggestion, model_label, group, made=made, actor=actor)
             if instance is None:
-                rejected.append({"change": group[0].pk, "reason": group[0].conflict or "Значение не подошло колонке"})
+                rejected.append(
+                    {"change": group[0].pk, "reason": group[0].conflict or _("Значение не подошло колонке")}
+                )
             else:
                 made[key] = instance
                 created += len(group)
@@ -195,7 +200,9 @@ def _create_new_objects(suggestion: Suggestion, rows: list[SuggestionChange], *,
 
         if not progressed:
             for (_label, _key), group in postponed:
-                rejected.append({"change": group[0].pk, "reason": "Не на что сослаться: связанная запись не создана"})
+                rejected.append(
+                    {"change": group[0].pk, "reason": _("Не на что сослаться: связанная запись не создана")}
+                )
             break
         pending = postponed
     return created, rejected
@@ -285,23 +292,27 @@ def apply_suggestion(suggestion: Suggestion, *, actor, change_ids: list[int] | N
             rejected.append(
                 {
                     "change": change.pk,
-                    "reason": f"«{field_title(change.model_label, change.field_name)}» ведёт другой директор",
+                    "reason": _("«{field}» ведёт другой директор").format(
+                        field=field_title(change.model_label, change.field_name)
+                    ),
                 }
             )
             continue
 
         instance = _instance_for(change)
         if instance is None:
-            rejected.append({"change": change.pk, "reason": "Запись уже удалили — применять некуда"})
+            rejected.append({"change": change.pk, "reason": _("Запись уже удалили — применять некуда")})
             continue
 
         current = to_text(getattr(instance, change.field_name, None))
         if current != change.old_value:
             # кто-то успел поправить это поле — не затираем
             title = field_title(change.model_label, change.field_name)
-            was = value_title(change.model_label, change.field_name, change.old_value) or "пусто"
-            now = value_title(change.model_label, change.field_name, current) or "пусто"
-            change.conflict = f"«{title}»: ожидали «{was}», а сейчас там «{now}» — кто-то поправил раньше вас"
+            was = value_title(change.model_label, change.field_name, change.old_value) or _("пусто")
+            now = value_title(change.model_label, change.field_name, current) or _("пусто")
+            change.conflict = _(
+                "«{field}»: ожидали «{expected}», а сейчас там «{actual}» — кто-то поправил раньше вас"
+            ).format(field=title, expected=was, actual=now)
             change.save(update_fields=["conflict"])
             conflicts.append({"change": change.pk, "expected": change.old_value, "actual": current})
             continue
@@ -353,18 +364,19 @@ def revert_suggestion(suggestion: Suggestion, *, actor) -> dict:
     for change in suggestion.changes.filter(is_applied=True):
         instance = _instance_for(change)
         if instance is None:
-            skipped.append({"change": change.pk, "reason": "Запись уже удалили — откатывать нечего"})
+            skipped.append({"change": change.pk, "reason": _("Запись уже удалили — откатывать нечего")})
             continue
 
         current = to_text(getattr(instance, change.field_name, None))
         if current != to_text(change.new_value):
             # поле уже поменяли после применения — откатывать вслепую нельзя
-            shown = value_title(change.model_label, change.field_name, current) or "пусто"
+            shown = value_title(change.model_label, change.field_name, current) or _("пусто")
             skipped.append(
                 {
                     "change": change.pk,
-                    "reason": f"«{field_title(change.model_label, change.field_name)}» правили после применения: "
-                    f"сейчас там «{shown}». Оставили как есть",
+                    "reason": _("«{field}» правили после применения: сейчас там «{actual}». Оставили как есть").format(
+                        field=field_title(change.model_label, change.field_name), actual=shown
+                    ),
                 }
             )
             continue

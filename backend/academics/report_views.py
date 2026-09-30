@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from drf_spectacular.utils import extend_schema
 from rest_framework import status as http
 from rest_framework.decorators import api_view, permission_classes
@@ -35,13 +37,13 @@ from students.models import Student, StudyGroup
 
 def _reader(request) -> Response | None:
     if not rights.reads_reports(request.user.role):
-        return _forbid("Отчёты родителям делают куратор, академический директор, директор школы и администратор")
+        return _forbid(_("Отчёты родителям делают куратор, академический директор, директор школы и администратор"))
     return None
 
 
 def _writer(request) -> Response | None:
     if not rights.writes_reports(request.user.role):
-        return _forbid("Отчёты родителям делают куратор, академический директор, директор школы и администратор")
+        return _forbid(_("Отчёты родителям делают куратор, академический директор, директор школы и администратор"))
     return None
 
 
@@ -59,21 +61,24 @@ def _curator_name(student: Student) -> str:
 
 def _summary_chip(report: ParentReport) -> dict:
     lines = [line for line in report.lines.all() if line.section == ReportSection.GRADES]
-    twos = [line.title for line in lines if line.value.endswith(" 2") or line.value == "итог 2"]
-    threes = [line for line in lines if line.value.endswith(" 3") or line.value == "итог 3"]
+    # значения снимка — данные отчёта на русском: сравнение с ними, а не перевод
+    twos = [line.title for line in lines if line.value.endswith(" 2") or line.value == "итог 2"]  # i18n-skip: данные
+    threes = [line for line in lines if line.value.endswith(" 3") or line.value == "итог 3"]  # i18n-skip: данные
     if twos:
-        return {"text": "двойка: " + ", ".join(t.lower() for t in twos)[:60], "tone": "bad"}
+        subjects = ", ".join(t.lower() for t in twos)[:60]
+        return {"text": _("двойка: {subjects}").format(subjects=subjects), "tone": "bad"}
     if threes:
-        return {"text": f"троек: {len(threes)}", "tone": "warn"}
+        return {"text": _("троек: {count}").format(count=len(threes)), "tone": "warn"}
     if lines:
-        return {"text": "без троек", "tone": "good"}
-    return {"text": "оценок мало", "tone": "neutral"}
+        return {"text": _("без троек"), "tone": "good"}
+    return {"text": _("оценок мало"), "tone": "neutral"}
 
 
 def _attendance_value(report: ParentReport) -> str:
     for line in report.lines.all():
         # «Посещаемость» — подпись снимков, собранных до переименования строки
-        if line.section == ReportSection.ATTENDANCE and line.title in (reporting.ATTENDANCE_ROW, "Посещаемость"):
+        old = "Посещаемость"  # i18n-skip: сравнение с подписью в снимке отчёта
+        if line.section == ReportSection.ATTENDANCE and line.title in (reporting.ATTENDANCE_ROW, old):
             return line.value
     return ""
 
@@ -186,7 +191,7 @@ def report_detail(report: ParentReport, user) -> dict:
     }
 
 
-LANGUAGE_SHORT = {"ru": "рус", "kk": "қаз"}
+LANGUAGE_SHORT = {"ru": gettext_lazy("рус"), "kk": gettext_lazy("қаз")}
 
 
 def period_code(template: str, language: str, kind: str, start, end) -> str:
@@ -197,7 +202,7 @@ def period_label(template: str, language: str, title: str) -> str:
     """«сентябрь 2026» у стандартного, «Вариант 2 · қаз · 02.09–18.09.2026» у шаблонов."""
     if template == ReportTemplate.STANDARD:
         return title
-    variant = "Вариант 1" if template == ReportTemplate.REVIEW else "Вариант 2"
+    variant = _("Вариант 1") if template == ReportTemplate.REVIEW else _("Вариант 2")
     return f"{variant} · {LANGUAGE_SHORT.get(language, language)} · {title}"
 
 
@@ -345,14 +350,14 @@ def reports_build(request):
     calendar = school_calendar.load()
     template = str(request.data.get("template") or ReportTemplate.STANDARD)
     if template not in ReportTemplate.values:
-        return _bad("Такого вида отчёта нет")
+        return _bad(_("Такого вида отчёта нет"))
     language = str(request.data.get("language") or "")
     if language and language not in ("ru", "kk"):
-        return _bad("Язык отчёта — русский или казахский")
+        return _bad(_("Язык отчёта — русский или казахский"))
     if template == ReportTemplate.STANDARD:
         period = _period_of(calendar, str(request.data.get("period") or ""))
         if period is None:
-            return _bad("Такой четверти нет")
+            return _bad(_("Такой четверти нет"))
     else:
         period = _custom_period(request.data.get("date_from"), request.data.get("date_to"))
         if isinstance(period, str):
@@ -411,11 +416,11 @@ def _custom_period(raw_from, raw_to):
         start = dt.date.fromisoformat(str(raw_from or ""))
         end = dt.date.fromisoformat(str(raw_to or ""))
     except ValueError:
-        return "Укажите период: дату «с» и дату «по»"
+        return _("Укажите период: дату «с» и дату «по»")
     if end < start:
-        return "Дата «по» раньше даты «с»"
+        return _("Дата «по» раньше даты «с»")
     if (end - start).days > 366:
-        return "Период длиннее года — выберите короче"
+        return _("Период длиннее года — выберите короче")
     return ReportPeriod.CUSTOM, start, end, reporting.span_title(start, end), None
 
 
@@ -455,7 +460,7 @@ def report(request, pk: int):
         if refusal:
             return refusal
         if row.status == ReportStatus.SENT:
-            return _bad("Отчёт уже отправлен родителям: тексты не меняются")
+            return _bad(_("Отчёт уже отправлен родителям: тексты не меняются"))
         if "curator_word" in request.data and reporting.set_word(
             row, actor=request.user, curator_word=str(request.data.get("curator_word") or "")
         ):
@@ -500,7 +505,7 @@ def _save_texts(report: ParentReport, data, actor) -> None:
 
         report.texts_edited_at = timezone.now()
         report.save(update_fields=["texts_edited_at"])
-        record_event(student=report.student, code="report_texts", text=f"за {report.title}", actor=actor)
+        record_event(student=report.student, code="report_texts", text=reporting.event_text(report), actor=actor)
 
 
 @extend_schema(request=None, responses={200: dict})
@@ -516,12 +521,12 @@ def report_review(request, pk: int, review_id: int):
     if row is None:
         return _not_found()
     if row.status == ReportStatus.SENT:
-        return _bad("Отчёт уже отправлен родителям: тексты не меняются")
+        return _bad(_("Отчёт уже отправлен родителям: тексты не меняются"))
     review = ReportReview.objects.filter(report=row, pk=review_id).first()
     if review is None:
         return _not_found()
     if review.kind != ReviewKind.SUBJECT:
-        return _bad("Постоянный блок не убирается — оставьте его пустым, и он не попадёт в файл")
+        return _bad(_("Постоянный блок не убирается — оставьте его пустым, и он не попадёт в файл"))
     review.delete()
     return Response(report_detail(row, request.user))
 
@@ -541,9 +546,9 @@ def report_draft(request, pk: int):
     if row is None:
         return _not_found()
     if row.template == ReportTemplate.STANDARD:
-        return _bad("У стандартного отчёта черновика нет")
+        return _bad(_("У стандартного отчёта черновика нет"))
     if row.status == ReportStatus.SENT:
-        return _bad("Отчёт уже отправлен родителям: тексты не меняются")
+        return _bad(_("Отчёт уже отправлен родителям: тексты не меняются"))
     request_draft(row, actor=request.user, overwrite=True)
     row.refresh_from_db()
     return Response(report_detail(row, request.user))
@@ -652,10 +657,10 @@ def report_switch(request, pk: int):
         return _not_found()
     template = str(request.data.get("template") or row.template)
     if template not in ReportTemplate.values:
-        return _bad("Такого вида отчёта нет")
+        return _bad(_("Такого вида отчёта нет"))
     language = str(request.data.get("language") or row.language)
     if language not in ("ru", "kk"):
-        return _bad("Язык отчёта — русский или казахский")
+        return _bad(_("Язык отчёта — русский или казахский"))
     calendar = school_calendar.load()
     quarter = None
     if template == ReportTemplate.STANDARD:
@@ -714,11 +719,11 @@ def report_pdf(request, pk: int):
         return _not_found()
     file_format = str(request.query_params.get("type") or PDF)
     if file_format not in FORMATS:
-        return _bad("Формат — PDF или Word")
+        return _bad(_("Формат — PDF или Word"))
     # выгружает куратор или Кымбат с администратором — черновик им не отдаётся
     marks = request.user.role == ROLE_CURATOR or rights.edits_schedule(request.user.role)
     if marks and row.status == ReportStatus.DRAFT:
-        return _bad("Сначала проверьте отчёт: черновик не выгружается")
+        return _bad(_("Сначала проверьте отчёт: черновик не выгружается"))
     try:
         content, name, content_type = render(row, file_format)
     except FileRefused as error:
@@ -763,7 +768,7 @@ def reports_zip(request):
         rows = _in_period(rows, period)
     rows = list(rows.order_by("student__group__code", "student__last_name"))
     if not rows:
-        return _bad("Проверенных отчётов нет: в архив входят только проверенные")
+        return _bad(_("Проверенных отчётов нет: в архив входят только проверенные"))
     for row in rows:
         reporting.mark_exported(row, actor=user)
     curators = {}
@@ -771,7 +776,7 @@ def reports_zip(request):
         if row.student.group_id and row.student.group_id not in curators:
             curators[row.student.group_id] = _curator_name(row.student)
     content = render_zip(rows, curators=curators)
-    group_code = picked.code if picked else "Все группы"
+    group_code = picked.code if picked else "Все группы"  # i18n-skip: имя архива — как имена файлов отчётов
     return file_response(
         content=content, filename=reporting.zip_name(group_code, rows[0].title), content_type="application/zip"
     )
@@ -897,14 +902,14 @@ def reports_export(request):
         return refusal
     file_format = str(request.data.get("format") or "pdf")
     if file_format not in FORMATS:
-        return _bad("Формат — PDF или Word")
+        return _bad(_("Формат — PDF или Word"))
     rows, picked = _export_rows(request)
     if rows is None:
         return _not_found()
     if not rows:
-        return _bad("Проверенных отчётов нет: в архив входят только проверенные")
+        return _bad(_("Проверенных отчётов нет: в архив входят только проверенные"))
     group_code = picked.code if picked else (rows[0].student.group.code if rows[0].student.group_id else "")
-    name = reporting.zip_name(group_code or "Все группы", rows[0].title)
+    name = reporting.zip_name(group_code or "Все группы", rows[0].title)  # i18n-skip: имя архива, как у файлов
     job = start_export(user=request.user, ids=[row.pk for row in rows], file_format=file_format, zip_name=name)
     return Response({"job": job, "total": len(rows)})
 

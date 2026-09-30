@@ -12,9 +12,10 @@ import re
 import unicodedata
 
 from django.db import models, transaction
+from django.utils.translation import gettext as _
 
 from core.archive import manager_of
-from core.phrasing import counted, listing
+from core.phrasing import listing, tn
 
 
 def _relations(instance: models.Model):
@@ -56,9 +57,12 @@ def usage_phrase(instance: models.Model) -> str:
         return ""
     parts = []
     for row in rows:
-        text = f"{row['count']} — {row['title'].lower()}"
         if row["archived"]:
-            text += f" (из них в архиве: {row['archived']})"
+            text = _("{count} — {title} (из них в архиве: {archived})").format(
+                count=row["count"], title=row["title"].lower(), archived=row["archived"]
+            )
+        else:
+            text = f"{row['count']} — {row['title'].lower()}"
         parts.append(text)
     return listing(parts)
 
@@ -72,7 +76,7 @@ def deletion_verdict(instance: models.Model) -> dict:
             "can_delete": True,
             "usage": rows,
             "usage_total": 0,
-            "message": f"«{instance.name}» нигде не используется — можно удалить насовсем",
+            "message": _("«{name}» нигде не используется — можно удалить насовсем").format(name=instance.name),
             "options": [],
         }
     kind = str(instance._meta.verbose_name).capitalize()
@@ -80,20 +84,25 @@ def deletion_verdict(instance: models.Model) -> dict:
         "can_delete": False,
         "usage": rows,
         "usage_total": total,
-        "message": (
-            f"{kind} «{instance.name}» используется: {usage_phrase(instance)}. Удалить нельзя. "
-            f"Можно скрыть запись из списка выбора или заменить её на другую"
-        ),
+        "message": _(
+            "{kind} «{name}» используется: {usage}. Удалить нельзя. "
+            "Можно скрыть запись из списка выбора или заменить её на другую"
+        ).format(kind=kind, name=instance.name, usage=usage_phrase(instance)),
         "options": [
             {
                 "action": "hide",
-                "title": "Скрыть",
-                "hint": "Запись останется в старых записях, но в списке выбора её больше не будет",
+                "title": _("Скрыть"),
+                "hint": _("Запись останется в старых записях, но в списке выбора её больше не будет"),
             },
             {
                 "action": "replace",
-                "title": "Заменить",
-                "hint": f"Перенести {counted(total, ('ссылку', 'ссылки', 'ссылок'))} на другую запись и удалить эту",
+                "title": _("Заменить"),
+                "hint": tn(
+                    total,
+                    "Перенести {n} ссылку на другую запись и удалить эту|"
+                    "Перенести {n} ссылки на другую запись и удалить эту|"
+                    "Перенести {n} ссылок на другую запись и удалить эту",
+                ),
             },
         ],
     }
@@ -107,9 +116,9 @@ def replace(instance: models.Model, target: models.Model) -> dict:
     не должен обнаружить у себя предмет, которого уже нет.
     """
     if instance.pk == target.pk:
-        raise ValueError("Заменять запись на саму себя нечем")
+        raise ValueError(_("Заменять запись на саму себя нечем"))
     if type(instance) is not type(target):
-        raise ValueError("Заменять можно только записью того же справочника")
+        raise ValueError(_("Заменять можно только записью того же справочника"))
 
     moved = 0
     for _relation, related_model, field_name in _relations(instance):
@@ -121,7 +130,9 @@ def replace(instance: models.Model, target: models.Model) -> dict:
         "moved": moved,
         "deleted": name,
         "target": target.name,
-        "detail": f"«{name}» заменена на «{target.name}», перенесено ссылок: {moved}",
+        "detail": _("«{name}» заменена на «{target}», перенесено ссылок: {moved}").format(
+            name=name, target=target.name, moved=moved
+        ),
     }
 
 
@@ -129,13 +140,13 @@ def replace(instance: models.Model, target: models.Model) -> dict:
 
 #: буквы, которые в кириллице и латинице выглядят одинаково: «Матем.»
 #: и «Матем.» могут отличаться одной такой буквой и выглядеть близнецами
-LOOKALIKE = str.maketrans("aAeEoOpPcCxXyYkKmMhHtTbB", "аАеЕоОрРсСхХуУкКмМнНтТвВ")
+LOOKALIKE = str.maketrans("aAeEoOpPcCxXyYkKmMhHtTbB", "аАеЕоОрРсСхХуУкКмМнНтТвВ")  # i18n-skip: таблица букв
 
 
 def normalized(name: str) -> str:
     """Написание без регистра, точек, дефисов и пробелов."""
     text = unicodedata.normalize("NFKC", name or "").casefold().translate(LOOKALIKE)
-    text = text.replace("ё", "е")
+    text = text.replace("ё", "е")  # i18n-skip: сравнение написаний
     return re.sub(r"[^\w]+", "", text, flags=re.UNICODE)
 
 

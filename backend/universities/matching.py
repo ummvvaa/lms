@@ -14,7 +14,10 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from django.conf import settings
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
+from core.phrasing import listing
 from core.readiness import clamp
 from students.models import Student
 from universities.models import UNVERIFIED_NOTE, AdmissionRequirement, Program
@@ -90,15 +93,17 @@ class Criterion:
     def phrase(self) -> str:
         """Человеческая формулировка по одному критерию."""
         if self.is_unknown:
-            return f"{self.title}: нет данных, нужен {self._fmt(self.threshold)}"
+            return _("{title}: нет данных, нужен {threshold}").format(
+                title=self.title, threshold=self._fmt(self.threshold)
+            )
         if self.is_met:
-            return f"{self.title}: {self._fmt(self.current)} — проходит"
-        return f"не хватает {self._fmt(self.gap)} {self.title}"
+            return _("{title}: {current} — проходит").format(title=self.title, current=self._fmt(self.current))
+        return _("не хватает {gap} {title}").format(gap=self._fmt(self.gap), title=self.title)
 
     def short_gap(self) -> str:
         """Фрагмент для сводной фразы: «0.5 IELTS»."""
         if self.is_unknown:
-            return f"данных по {self.title}"
+            return _("данных по {title}").format(title=self.title)
         if not self.countable:
             return self.title
         return f"{self._fmt(self.gap)} {self.title}"
@@ -217,7 +222,7 @@ class MatchResult:
             rows.append(
                 {
                     "code": key,
-                    "title": " или ".join(dict.fromkeys(item.title for item in items)),
+                    "title": listing(list(dict.fromkeys(item.title for item in items)), last=_("или")),
                     "weight": weights.get(key, weights.get(items[0].code, 10.0)),
                     "achievement": round(best.achievement, 3),
                     "percent": round(best.achievement * 100),
@@ -244,12 +249,11 @@ class MatchResult:
         а названия экзаменов остаются в своём регистре.
         """
         if not self.has_requirements:
-            return "Требования этой программы ещё не заведены в справочнике"
+            return _("Требования этой программы ещё не заведены в справочнике")
         if self.is_open:
-            return "Вы проходите по всем заведённым требованиям"
+            return _("Вы проходите по всем заведённым требованиям")
         parts = [c.short_gap() for c in self.unmet]
-        joined = parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " и " + parts[-1]
-        return f"Не хватает {joined}"
+        return _("Не хватает {gaps}").format(gaps=listing(parts))
 
     def as_dict(self) -> dict:
         return {
@@ -265,7 +269,7 @@ class MatchResult:
             "breakdown": self.breakdown(),
             "criteria": [c.as_dict() for c in self.criteria],
             "is_verified": self.is_verified,
-            "verification_note": "" if self.is_verified else UNVERIFIED_NOTE,
+            "verification_note": "" if self.is_verified else str(UNVERIFIED_NOTE),
         }
 
 
@@ -327,7 +331,7 @@ def build_criteria(student: Student, requirement: AdmissionRequirement) -> tuple
         criteria.append(
             Criterion(
                 "portfolio",
-                "работ в портфолио",
+                _("работ в портфолио"),
                 float(student.activities.count()),
                 1.0,
                 countable=False,
@@ -472,7 +476,11 @@ def at_goal(student: Student) -> dict:
 
 BALANCE_TARGET = {"reach": 2, "target": 3, "safety": 1}
 
-TIER_TITLES = {"reach": "reach — с запасом вверх", "target": "target — по силам", "safety": "safety — подстраховка"}
+TIER_TITLES = {
+    "reach": gettext_lazy("reach — с запасом вверх"),
+    "target": gettext_lazy("target — по силам"),
+    "safety": gettext_lazy("safety — подстраховка"),
+}
 
 
 def list_balance(student: Student) -> dict:
@@ -491,11 +499,11 @@ def list_balance(student: Student) -> dict:
     missing = [tier for tier, gap in gaps.items() if gap]
 
     if not rows:
-        advice = "Список пуст — начните с двух-трёх программ, по которым ученик проходит уже сейчас"
+        advice = _("Список пуст — начните с двух-трёх программ, по которым ученик проходит уже сейчас")
     elif not missing:
-        advice = "Список сбалансирован: есть и запас вверх, и подстраховка"
+        advice = _("Список сбалансирован: есть и запас вверх, и подстраховка")
     else:
-        parts = [f"{TIER_TITLES[tier]}: не хватает {gaps[tier]}" for tier in missing]
+        parts = [_("{tier}: не хватает {count}").format(tier=TIER_TITLES[tier], count=gaps[tier]) for tier in missing]
         advice = "; ".join(parts)
 
     return {

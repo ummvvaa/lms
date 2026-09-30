@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext
 
 from accounts.models import Identity, IdentityProvider, Role, User
 from accounts.naming import check_full_name
@@ -73,11 +74,11 @@ def link_email_identity(user: User, email: str) -> Identity:
 
     email = email.strip().lower()
     if User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
-        raise ValueError("Эта почта уже привязана к другому пользователю")
+        raise ValueError(gettext("Эта почта уже привязана к другому пользователю"))
     identity = Identity.objects.filter(provider=IdentityProvider.EMAIL_LINK, email__iexact=email).first()
     if identity is not None and identity.user_id != user.pk:
         if identity.confirmed_at is not None:
-            raise ValueError("Эта почта уже привязана к другому пользователю")
+            raise ValueError(gettext("Эта почта уже привязана к другому пользователю"))
         identity.user = user
         identity.save(update_fields=["user"])
     if identity is None:

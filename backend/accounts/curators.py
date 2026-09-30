@@ -12,6 +12,7 @@ import datetime as dt
 
 from django.db import models, transaction
 from django.utils import timezone
+from django.utils.translation import gettext
 
 from accounts.models import CuratorAssignment, Role, User
 
@@ -82,9 +83,9 @@ def assign(*, group, curator: User, since: dt.date, actor=None) -> CuratorAssign
     переписывается и не удаляется.
     """
     if curator.role != Role.CURATOR:
-        raise AssignmentRefused("Назначить можно только учётную запись с ролью «Куратор»")
+        raise AssignmentRefused(gettext("Назначить можно только учётную запись с ролью «Куратор»"))
     if not curator.is_active:
-        raise AssignmentRefused("У этой учётной записи отключён доступ — сначала включите его")
+        raise AssignmentRefused(gettext("У этой учётной записи отключён доступ — сначала включите его"))
 
     # блокируем открытую запись группы: две смены подряд не должны
     # закрыть одну и ту же запись двумя разными датами
@@ -96,9 +97,17 @@ def assign(*, group, curator: User, since: dt.date, actor=None) -> CuratorAssign
     )
     if current is not None:
         if current.curator_id == curator.pk:
-            raise AssignmentRefused(f"{curator.full_name or curator.handle} уже ведёт группу {group.code}")
+            raise AssignmentRefused(
+                gettext("{curator} уже ведёт группу {group}").format(
+                    curator=curator.full_name or curator.handle, group=group.code
+                )
+            )
         if since <= current.since:
-            raise AssignmentRefused(f"Дата смены не раньше начала действующего назначения ({current.since:%d.%m.%Y})")
+            raise AssignmentRefused(
+                gettext("Дата смены не раньше начала действующего назначения ({date})").format(
+                    date=f"{current.since:%d.%m.%Y}"
+                )
+            )
         current.until = since
         current.save(update_fields=["until"])
 

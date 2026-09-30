@@ -22,6 +22,7 @@ from dataclasses import dataclass
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from core.parallels import ADMISSION_PARALLEL, PARALLELS
 from students.models import Student, StudyGroup, YearTransfer
@@ -66,9 +67,16 @@ def preview() -> dict:
             "to": None if step.graduates else step.group.parallel + 1,
             "students": step.students,
             "title": (
-                f"{step.group.code}: выпуск, {step.students} уч. — в архив, вход закрыт"
+                _("{group}: выпуск, {count} уч. — в архив, вход закрыт").format(
+                    group=step.group.code, count=step.students
+                )
                 if step.graduates
-                else f"{step.group.code}: {step.group.parallel} → {step.group.parallel + 1}, {step.students} уч."
+                else _("{group}: {parallel} → {next_parallel}, {count} уч.").format(
+                    group=step.group.code,
+                    parallel=step.group.parallel,
+                    next_parallel=step.group.parallel + 1,
+                    count=step.students,
+                )
             ),
         }
         for step in steps
@@ -82,7 +90,9 @@ def preview() -> dict:
             {
                 "at": done.done_at,
                 "by": done.actor_title,
-                "detail": f"Перевод за {year} уже выполнен {done.done_at:%d.%m.%Y} — повторить его нельзя",
+                "detail": _("Перевод за {year} уже выполнен {date} — повторить его нельзя").format(
+                    year=year, date=f"{done.done_at:%d.%m.%Y}"
+                ),
             }
             if done
             else None
@@ -96,8 +106,14 @@ def preview() -> dict:
         # подтверждение осмысленным вводом: набрать число затронутых — значит прочитать его
         "confirm": str(moved + graduated),
         "detail": (
-            f"Перевод за {year}: переходят {moved} уч., выпускаются {graduated} уч."
-            + (f" Учеников без группы — {without_group}: перевод их не трогает." if without_group else "")
+            _("Перевод за {year}: переходят {moved} уч., выпускаются {graduated} уч.").format(
+                year=year, moved=moved, graduated=graduated
+            )
+            + (
+                " " + _("Учеников без группы — {count}: перевод их не трогает.").format(count=without_group)
+                if without_group
+                else ""
+            )
         ),
     }
 
@@ -114,7 +130,9 @@ def run(*, actor, confirm: str) -> dict:
     if plan["done"]:
         raise TransferRefused(plan["done"]["detail"])
     if str(confirm or "").strip() != plan["confirm"]:
-        raise TransferRefused(f"Наберите число затронутых учеников — {plan['confirm']}, — чтобы подтвердить перевод")
+        raise TransferRefused(
+            _("Наберите число затронутых учеников — {count}, — чтобы подтвердить перевод").format(count=plan["confirm"])
+        )
 
     year = plan["school_year"]
     try:
@@ -125,7 +143,7 @@ def run(*, actor, confirm: str) -> dict:
                 actor_title=getattr(actor, "full_name", "") or getattr(actor, "handle", ""),
             )
     except IntegrityError as error:
-        raise TransferRefused(f"Перевод за {year} уже выполнен — повторить его нельзя") from error
+        raise TransferRefused(_("Перевод за {year} уже выполнен — повторить его нельзя").format(year=year)) from error
 
     today = timezone.localdate()
     steps = _steps()
@@ -136,7 +154,10 @@ def run(*, actor, confirm: str) -> dict:
         group = step.group
         for student in Student.objects.filter(group=group).select_related("user"):
             record_event(
-                student=student, code="year_transfer", text=f"выпуск {year}: в архиве, вход закрыт", actor=actor
+                student=student,
+                code="year_transfer",
+                text=_("выпуск {year}: в архиве, вход закрыт").format(year=year),
+                actor=actor,
             )
             if student.user_id:
                 type(student.user).objects.filter(pk=student.user_id).update(is_active=False)
@@ -156,7 +177,9 @@ def run(*, actor, confirm: str) -> dict:
                 record_event(
                     student=student,
                     code="year_transfer",
-                    text=f"перевод {year}: {parallel} → {parallel + 1} параллель",
+                    text=_("перевод {year}: {parallel} → {next_parallel} параллель").format(
+                        year=year, parallel=parallel, next_parallel=parallel + 1
+                    ),
                     actor=actor,
                 )
                 moved_students += 1
@@ -177,8 +200,16 @@ def run(*, actor, confirm: str) -> dict:
         field_name="year_transfer",
         old_value="",
         new_value=(
-            f"перевод на следующий год ({year}): переведено групп {moved_groups}, учеников {moved_students}; "
-            f"выпущено групп {graduated_groups}, учеников {graduated_students}"
+            _(
+                "перевод на следующий год ({year}): переведено групп {groups_moved}, учеников {students_moved}; "
+                "выпущено групп {groups_graduated}, учеников {students_graduated}"
+            ).format(
+                year=year,
+                groups_moved=moved_groups,
+                students_moved=moved_students,
+                groups_graduated=graduated_groups,
+                students_graduated=graduated_students,
+            )
         ),
     )
     return {
@@ -188,7 +219,9 @@ def run(*, actor, confirm: str) -> dict:
         "groups_graduated": graduated_groups,
         "students_graduated": graduated_students,
         "detail": (
-            f"Школа переведена на следующий год: переведено учеников {moved_students}, "
-            f"выпущено {graduated_students}. Выпускники в архиве, их вход закрыт"
+            _(
+                "Школа переведена на следующий год: переведено учеников {moved}, "
+                "выпущено {graduated}. Выпускники в архиве, их вход закрыт"
+            ).format(moved=moved_students, graduated=graduated_students)
         ),
     }

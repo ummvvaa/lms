@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext
 from rest_framework import serializers
 
 from accounts.models import Identity, Language, Role, Theme, User
@@ -133,7 +134,7 @@ class PreferencesSerializer(serializers.Serializer):
     def validate_language_notice(self, value: bool) -> bool:
         # включает уведомление только школа (миграция, привязка ученика), не запрос
         if value:
-            raise serializers.ValidationError("Уведомление о языке можно только закрыть")
+            raise serializers.ValidationError(gettext("Уведомление о языке можно только закрыть"))
         return value
 
 
@@ -152,7 +153,7 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         identifier = (attrs.get("login") or attrs.get("email") or "").strip().lower()
         if not identifier:
-            raise serializers.ValidationError({"login": "Укажите почту или логин"})
+            raise serializers.ValidationError({"login": gettext("Укажите почту или логин")})
         attrs["identifier"] = identifier
         return attrs
 
@@ -251,7 +252,7 @@ class UserWriteSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if self.partial is False and not attrs.get("email"):
-            raise serializers.ValidationError({"email": "Почта обязательна"})
+            raise serializers.ValidationError({"email": gettext("Почта обязательна")})
         return attrs
 
 

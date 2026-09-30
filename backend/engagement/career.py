@@ -20,7 +20,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from django.db import transaction
+from django.utils.translation import gettext
 
+from core.i18n import language_of, render
 from engagement.models import CareerAnswer, CareerDirection, CareerQuestion, CareerRun, CareerRunStatus
 from students.models import Student
 from universities.models import Program
@@ -31,7 +33,9 @@ CANDIDATES = 60
 #: Сколько направлений принимаем из разбора: больше пяти человек не читает.
 MAX_DIRECTIONS = 5
 
-SYSTEM = """Ты помогаешь ученику школы понять, какие направления обучения ему подходят.
+# fmt: off
+SYSTEM = (  # i18n-skip: промпт ИИ — язык ответа модели настраивается отдельно
+    """Ты помогаешь ученику школы понять, какие направления обучения ему подходят.
 
 Правила, нарушать нельзя:
 - предлагай от трёх до пяти направлений, каждое — с объяснением, почему оно подходит
@@ -44,8 +48,10 @@ SYSTEM = """Ты помогаешь ученику школы понять, ка
 - не обещай поступление и не употребляй слова «шанс», «вероятность», «прогноз»;
 - пиши по-русски, коротко и по делу, без общих слов вроде «вы творческая личность».
 """
+)
+# fmt: on
 
-RESULT_SCHEMA = {
+RESULT_SCHEMA = {  # i18n-skip: схема ответа для модели ИИ
     "type": "object",
     "properties": {
         "summary": {"type": "string", "description": "общий вывод в двух-трёх предложениях"},
@@ -90,13 +96,15 @@ def availability() -> Availability:
     from suggestions.llm import status as llm_status
 
     if is_available():
-        return Availability(True, "Профтест доступен")
+        return Availability(True, gettext("Профтест доступен"))
     detail = llm_status()["detail"]
     if not is_configured():
         return Availability(
             False,
-            "Профтест разбирает ответы моделью, а она не подключена. "
-            "Разбор правилами дал бы бессмысленный результат, поэтому раздел ждёт ключ. " + detail,
+            gettext(
+                "Профтест разбирает ответы моделью, а она не подключена. "
+                "Разбор правилами дал бы бессмысленный результат, поэтому раздел ждёт ключ. {detail}"
+            ).format(detail=detail),
         )
     return Availability(False, detail)
 
@@ -115,19 +123,22 @@ def _candidates() -> list[Program]:
 
 
 def _prompt(answers: list[tuple[CareerQuestion, str]], programs: list[Program]) -> str:
-    lines = ["Ответы ученика:"]
+    """Запрос модели ИИ: язык разбора настраивается отдельно, текст не переводится."""
+    lines = ["Ответы ученика:"]  # i18n-skip: промпт ИИ
     for question, value in answers:
-        lines.append(f"- {question.text}: {value.strip() or 'не ответил'}")
+        lines.append(f"- {question.text}: {value.strip() or 'не ответил'}")  # i18n-skip: промпт ИИ
     lines.append("")
     if programs:
-        lines.append("Программы справочника школы (только из них можно выбирать):")
+        lines.append("Программы справочника школы (только из них можно выбирать):")  # i18n-skip: промпт ИИ
         for program in programs:
             level = program.get_level_display()
             lines.append(f"- id={program.pk}: {program.name} · {program.university.name} · {level}")
     else:
-        lines.append("Справочник программ школы пуст: списки программ оставь пустыми и скажи об этом.")
+        lines.append(
+            "Справочник программ школы пуст: списки программ оставь пустыми и скажи об этом."  # i18n-skip: промпт ИИ
+        )
     lines.append("")
-    lines.append("Назови от трёх до пяти направлений.")
+    lines.append("Назови от трёх до пяти направлений.")  # i18n-skip: промпт ИИ
     return "\n".join(lines)
 
 
@@ -149,7 +160,9 @@ def run_for(student: Student, *, answers: dict[str, str], actor=None, role: str 
 
     asked = questions()
     if not asked:
-        raise CareerUnavailable("Анкета пуста: вопросы профтеста заводит директор школы. Пока их нет, разбирать нечего")
+        raise CareerUnavailable(
+            gettext("Анкета пуста: вопросы профтеста заводит директор школы. Пока их нет, разбирать нечего")
+        )
 
     with transaction.atomic():
         run = CareerRun.objects.create(student=student)
@@ -159,6 +172,8 @@ def run_for(student: Student, *, answers: dict[str, str], actor=None, role: str 
             CareerAnswer.objects.create(run=run, question=question, value=value)
             pairs.append((question, value))
 
+    # причина неудачи хранится у прохода и читается учеником — на его языке
+    lang = language_of(student.user)
     programs = _candidates()
     known = {program.pk: program for program in programs}
     try:
@@ -173,7 +188,7 @@ def run_for(student: Student, *, answers: dict[str, str], actor=None, role: str 
         )
     except LLMUnavailable as error:
         run.status = CareerRunStatus.FAILED
-        run.error = str(error) or "Модель сейчас недоступна"
+        run.error = str(error) or render(lang, "Модель сейчас недоступна")
         run.save(update_fields=["status", "error"])
         raise CareerUnavailable(run.error) from error
 
@@ -182,7 +197,7 @@ def run_for(student: Student, *, answers: dict[str, str], actor=None, role: str 
     rows = parsed.get("directions")
     if not isinstance(rows, list) or not rows:
         run.status = CareerRunStatus.FAILED
-        run.error = "Модель вернула пустой разбор — попробуйте пройти анкету ещё раз"
+        run.error = render(lang, "Модель вернула пустой разбор — попробуйте пройти анкету ещё раз")
         run.save(update_fields=["summary", "status", "error"])
         raise CareerUnavailable(run.error)
 
@@ -206,7 +221,7 @@ def run_for(student: Student, *, answers: dict[str, str], actor=None, role: str 
 
     if order == 0:
         run.status = CareerRunStatus.FAILED
-        run.error = "Разбор пришёл без направлений — попробуйте ещё раз"
+        run.error = render(lang, "Разбор пришёл без направлений — попробуйте ещё раз")
     run.save(update_fields=["summary", "status", "error"])
     return run
 
@@ -230,12 +245,12 @@ def agree(direction: CareerDirection, *, user, student: Student) -> dict:
                 "field": "target_major",
                 "value": direction.title,
                 "student": student.pk,
-                "reason": "выбрано по разбору профтеста",
+                "reason": "выбрано по разбору профтеста",  # i18n-skip: причина предложения хранится в базе как данные
             }
         ],
     )
     if not created:
-        return {"ok": False, "detail": rejected[0]["reason"] if rejected else "Предложение не создалось"}
+        return {"ok": False, "detail": rejected[0]["reason"] if rejected else gettext("Предложение не создалось")}
 
     direction.agreed_at = timezone.now()
     direction.suggestion = created[0]
@@ -243,5 +258,5 @@ def agree(direction: CareerDirection, *, user, student: Student) -> dict:
     return {
         "ok": True,
         "suggestion": created[0].pk,
-        "detail": "Направление ушло директору по поступлению — он подтвердит его в вашем профиле",
+        "detail": gettext("Направление ушло директору по поступлению — он подтвердит его в вашем профиле"),
     }

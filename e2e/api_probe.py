@@ -1657,7 +1657,7 @@ def main() -> int:
             },
         )
         reasons = json.dumps(refused, ensure_ascii=False) if isinstance(refused, dict) else ""
-        check(code == 400 and "пробника школы" in reasons, f"ученик предлагает правку пробника → {code}")
+        check(code == 400 and "Mock Test школы" in reasons, f"ученик предлагает правку пробника → {code}")
     code, _ = student.call("POST", "/api/attempts/", {"student": 0, "exam_type": "IELTS", "attempt_format": "mock"})
     check(code in (403, 400), f"ученик заводит мок-попытку → {code}, ожидали отказ")
 

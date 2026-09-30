@@ -15,6 +15,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from django.utils.translation import gettext as _
+
+from core.phrasing import tn
 from homework.models import FileKind
 
 #: сколько первых байтов нужно, чтобы узнать тип
@@ -46,9 +49,9 @@ EXECUTABLE = (
 def sniff(head: bytes) -> Sniffed:
     """Тип файла по первым байтам. Неизвестное — «файл», скачивается как есть."""
     if not head:
-        raise FileRejected("Файл пустой — проверьте, что выгрузилось")
+        raise FileRejected(_("Файл пустой — проверьте, что выгрузилось"))
     if any(head.startswith(prefix) for prefix in EXECUTABLE):
-        raise FileRejected("Программы не принимаются: сдайте работу документом, фото, звуком или видео")
+        raise FileRejected(_("Программы не принимаются: сдайте работу документом, фото, звуком или видео"))
     if head.startswith(b"%PDF-"):
         return Sniffed("application/pdf", FileKind.PDF)
     if head.startswith(b"\xff\xd8\xff"):
@@ -127,18 +130,28 @@ def limits() -> dict:
 def check_size(name: str, size: int, content_type: str) -> None:
     """Размер файла против пределов школы; видео — по своему пределу."""
     if size <= 0:
-        raise FileRejected(f"Файл «{name}» пустой — проверьте, что выгрузилось")
+        raise FileRejected(_("Файл «{name}» пустой — проверьте, что выгрузилось").format(name=name))
     caps = limits()
     video = content_type.startswith("video/")
     cap = caps["video_mb"] if video else caps["file_mb"]
     if size > cap * 1024 * 1024:
-        what = "Видео" if video else "Файл"
-        raise FileRejected(
-            f"{what} «{name}» весит {size / 1024 / 1024:.1f} МБ, а можно до {cap} МБ — сожмите или разбейте на части"
+        template = (
+            _("Видео «{name}» весит {size} МБ, а можно до {cap} МБ — сожмите или разбейте на части")
+            if video
+            else _("Файл «{name}» весит {size} МБ, а можно до {cap} МБ — сожмите или разбейте на части")
         )
+        raise FileRejected(template.format(name=name, size=f"{size / 1024 / 1024:.1f}", cap=cap))
 
 
 def check_count(existing: int, adding: int = 1) -> None:
     cap = limits()["max_files"]
     if existing + adding > cap:
-        raise FileRejected(f"В работе уже {existing} файлов — больше {cap} не прикладывается")
+        raise FileRejected(
+            tn(
+                existing,
+                "В работе уже {n} файл — больше {cap} не прикладывается|"
+                "В работе уже {n} файла — больше {cap} не прикладывается|"
+                "В работе уже {n} файлов — больше {cap} не прикладывается",
+                cap=cap,
+            )
+        )

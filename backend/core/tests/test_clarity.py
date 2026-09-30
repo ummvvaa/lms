@@ -99,6 +99,9 @@ def test_registry_has_no_english_left_in_titles():
         "Speaking",
         "Math",
         "Verbal",
+        # решение владельца (30.09.2026): «пробник» не используется ни в одном языке —
+        # «Mock Test», как в шаблонах школы и отчётах
+        "Mock Test",
     }
     for _domain, _model, spec in iter_field_specs():
         words = [w for w in spec.title.replace(",", " ").split() if w.isascii() and w.isalpha()]

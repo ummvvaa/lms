@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 from prep.models import (
@@ -79,9 +80,11 @@ class PassageSerializer(serializers.ModelSerializer):
             return upload
         name = (upload.name or "").lower()
         if not name.endswith(AUDIO_EXTENSIONS):
-            raise serializers.ValidationError("Аудио — файлом mp3 или m4a")
+            raise serializers.ValidationError(_("Аудио — файлом mp3 или m4a"))
         if upload.size > AUDIO_MAX_MB * 1024 * 1024:
-            raise serializers.ValidationError(f"Аудио тяжелее {AUDIO_MAX_MB} МБ — сожмите или разрежьте запись")
+            raise serializers.ValidationError(
+                _("Аудио тяжелее {limit} МБ — сожмите или разрежьте запись").format(limit=AUDIO_MAX_MB)
+            )
         return upload
 
     def validate(self, attrs):
@@ -90,10 +93,10 @@ class PassageSerializer(serializers.ModelSerializer):
         body = attrs.get("body", getattr(self.instance, "body", ""))
         if kind == PassageKind.LISTENING and not has_audio:
             raise serializers.ValidationError(
-                {"audio": "Аудирование без аудио не сохраняется: приложите файл mp3 или m4a"}
+                {"audio": _("Аудирование без аудио не сохраняется: приложите файл mp3 или m4a")}
             )
         if kind == PassageKind.READING and not str(body or "").strip():
-            raise serializers.ValidationError({"body": "У текста для чтения нужен сам текст"})
+            raise serializers.ValidationError({"body": _("У текста для чтения нужен сам текст")})
         return attrs
 
     def _store_audio(self, passage, upload):
@@ -173,29 +176,29 @@ class QuestionSerializer(serializers.ModelSerializer):
             # открытое задание: тип следует из секции, вариантов не бывает
             attrs["question_type"] = QuestionType.WRITING if section == Section.WRITING else QuestionType.SPEAKING
             if options:
-                raise serializers.ValidationError({"options": "У Writing и Speaking вариантов ответа не бывает"})
+                raise serializers.ValidationError({"options": _("У Writing и Speaking вариантов ответа не бывает")})
             attrs["options"] = []
             return attrs
 
         if value("question_type") in OPEN_TYPES:
             attrs["question_type"] = QuestionType.SINGLE
         if section == Section.LISTENING and (passage is None or not passage.audio):
-            raise serializers.ValidationError({"passage": "Задание на аудирование не сохраняется без аудио"})
+            raise serializers.ValidationError({"passage": _("Задание на аудирование не сохраняется без аудио")})
         if section == Section.READING and passage is None:
-            raise serializers.ValidationError({"passage": "Вопрос по чтению заводится к пассажу — сначала текст"})
+            raise serializers.ValidationError({"passage": _("Вопрос по чтению заводится к пассажу — сначала текст")})
         if passage is not None and (passage.exam_type != value("exam_type") or passage.section != section):
-            raise serializers.ValidationError({"passage": "Источник заведён для другого экзамена или секции"})
+            raise serializers.ValidationError({"passage": _("Источник заведён для другого экзамена или секции")})
         kind = value("question_type", QuestionType.SINGLE)
         if kind == QuestionType.SHORT:
             return attrs  # короткий ответ приходит из файла: вариантов у него нет
         filled = [option for option in options if str(option.get("text") or "").strip()]
         if len(filled) < 2:
-            raise serializers.ValidationError({"options": "Нужно хотя бы два варианта ответа"})
+            raise serializers.ValidationError({"options": _("Нужно хотя бы два варианта ответа")})
         correct = sum(1 for option in filled if option.get("is_correct"))
         if kind == QuestionType.MULTIPLE and correct < 1:
-            raise serializers.ValidationError({"options": "Отметьте верные варианты"})
+            raise serializers.ValidationError({"options": _("Отметьте верные варианты")})
         if kind != QuestionType.MULTIPLE and correct != 1:
-            raise serializers.ValidationError({"options": "Верный вариант — ровно один"})
+            raise serializers.ValidationError({"options": _("Верный вариант — ровно один")})
         return attrs
 
     def create(self, validated_data):
@@ -300,7 +303,7 @@ class OpenAnswerReviewSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if attrs.get("score") is None and not str(attrs.get("comment") or "").strip():
-            raise serializers.ValidationError("Нужна оценка или комментарий — пустую проверку ученик не поймёт")
+            raise serializers.ValidationError(_("Нужна оценка или комментарий — пустую проверку ученик не поймёт"))
         return attrs
 
 

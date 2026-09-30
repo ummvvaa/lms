@@ -21,6 +21,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core import signing
+from django.utils.translation import gettext as _
 
 #: сколько живёт ссылка на скачивание и на загрузку
 LINK_SECONDS = 5 * 60
@@ -53,7 +54,7 @@ class LocalStorage:
     def path(self, key: str) -> Path:
         target = (self.root / key).resolve()
         if self.root.resolve() not in target.parents:
-            raise StorageError("Неверный ключ файла")
+            raise StorageError(_("Неверный ключ файла"))
         return target
 
     def max_bytes(self) -> int:
@@ -66,13 +67,13 @@ class LocalStorage:
     def read_token(token: str, action: str, max_age: int) -> str:
         data = signing.loads(token, salt=LOCAL_SALT, max_age=max_age)
         if data.get("a") != action:
-            raise signing.BadSignature("не то действие")
+            raise signing.BadSignature("не то действие")  # i18n-skip: внутренняя ошибка подписи, людям не показывается
         return data["k"]
 
     def start_upload(self, key: str, size: int) -> dict:
         if size > self.max_bytes():
             mb = self.max_bytes() // (1024 * 1024)
-            raise StorageError(f"Хранилище не настроено: без него файл до {mb} МБ")
+            raise StorageError(_("Хранилище не настроено: без него файл до {limit} МБ").format(limit=mb))
         return {"method": "single", "url": f"/api/homework/local/{self._token(key, 'put')}/", "upload_id": ""}
 
     def complete(self, key: str, upload_id: str, parts: list[dict]) -> None:
@@ -102,7 +103,7 @@ class LocalStorage:
                 if written > self.max_bytes():
                     handle.close()
                     target.unlink(missing_ok=True)
-                    raise StorageError("Файл больше предела")
+                    raise StorageError(_("Файл больше предела"))
                 handle.write(chunk)
         return written
 
@@ -176,7 +177,7 @@ class S3Storage:
             ({"PartNumber": int(p["number"]), "ETag": str(p["etag"])} for p in parts), key=lambda p: p["PartNumber"]
         )
         if not ordered:
-            raise StorageError("Загрузка по частям пришла без частей")
+            raise StorageError(_("Загрузка по частям пришла без частей"))
         self.client.complete_multipart_upload(
             Bucket=self.bucket, Key=key, UploadId=upload_id, MultipartUpload={"Parts": ordered}
         )

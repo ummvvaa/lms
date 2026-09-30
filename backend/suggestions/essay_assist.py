@@ -10,10 +10,14 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
+
 from suggestions.llm import LLMUnavailable, complete, is_available
 from suggestions.models import EssayAssistLog
 
-SYSTEM = """Ты помогаешь школьнику раскрыть собственную историю для эссе.
+SYSTEM = (  # i18n-skip: промпт модели
+    """Ты помогаешь школьнику раскрыть собственную историю для эссе.
 
 Категорически запрещено:
 - писать текст эссе или его фрагменты;
@@ -25,14 +29,15 @@ SYSTEM = """Ты помогаешь школьнику раскрыть собс
 
 Ответ — 3–5 вопросов списком, по-русски. Ничего кроме вопросов.
 """
+)  # fmt: skip
 
 #: Ответ, когда модель недоступна: вопросы общие, но по делу.
 FALLBACK_QUESTIONS = [
-    "Что конкретно вы сделали в этой истории — какими были ваши действия, а не действия команды?",
-    "Что было самым трудным моментом и как вы через него прошли?",
-    "Что вы поняли о себе после этого, чего не понимали раньше?",
-    "Как этот опыт связан с тем, чему вы хотите учиться дальше?",
-    "Какая деталь этой истории запомнилась вам сильнее всего и почему?",
+    gettext_lazy("Что конкретно вы сделали в этой истории — какими были ваши действия, а не действия команды?"),
+    gettext_lazy("Что было самым трудным моментом и как вы через него прошли?"),
+    gettext_lazy("Что вы поняли о себе после этого, чего не понимали раньше?"),
+    gettext_lazy("Как этот опыт связан с тем, чему вы хотите учиться дальше?"),
+    gettext_lazy("Какая деталь этой истории запомнилась вам сильнее всего и почему?"),
 ]
 
 
@@ -42,11 +47,11 @@ def ask_questions(*, essay_id: int, prompt: str, actor=None) -> dict:
 
     essay = Essay.objects.filter(pk=essay_id).select_related("student").first()
     if essay is None:
-        return {"ok": False, "detail": "Эссе не найдено"}
+        return {"ok": False, "detail": _("Эссе не найдено")}
 
     if is_available():
         try:
-            response = complete(
+            response = complete(  # i18n-skip: промпт модели
                 system=SYSTEM,
                 user=f"Ученик рассказывает: {prompt}\n\nЗадай вопросы, которые помогут раскрыть эту историю.",
                 purpose="essay_questions",

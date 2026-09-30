@@ -84,5 +84,5 @@ def test_dry_run_changes_nothing(dictionaries, tmp_path):
     before = (dictionaries / "en.ts").read_text(encoding="utf-8")
     output = StringIO()
     call_command("i18n_import", str(path), dry_run=True, frontend_dir=str(dictionaries), stdout=output)
-    assert "Изменится: kk — 0, en — 1" in output.getvalue()
+    assert "Изменится (Интерфейс): kk — 0, en — 1" in output.getvalue()
     assert (dictionaries / "en.ts").read_text(encoding="utf-8") == before

@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext, gettext_lazy
 
 from core.archivable import Archivable
 from students.models import Student
 
 #: Текст плашки над непроверенной записью справочника (инвариант №14).
-UNVERIFIED_NOTE = "Данные не подтверждены, проверьте на сайте вуза"
+UNVERIFIED_NOTE = gettext_lazy("Данные не подтверждены, проверьте на сайте вуза")
 
 
 class CatalogSource(models.TextChoices):
@@ -23,13 +24,13 @@ class CatalogSource(models.TextChoices):
     школы и не с официального сайта, показывается только с плашкой.
     """
 
-    SCHOOL = "school", "Заведено школой"
-    SEED = "seed", "Стартовый справочник"
-    IMPORT = "import", "Импорт файла"
-    SYNC = "sync", "Фоновая сверка"
+    SCHOOL = "school", gettext_lazy("Заведено школой")
+    SEED = "seed", gettext_lazy("Стартовый справочник")
+    IMPORT = "import", gettext_lazy("Импорт файла")
+    SYNC = "sync", gettext_lazy("Фоновая сверка")
     #: разобрано моделью по названию или ссылке — такие записи всегда
     #: заводятся неподтверждёнными и сверяются человеком (инвариант №14)
-    AI = "ai", "Разобрано помощником"
+    AI = "ai", gettext_lazy("Разобрано помощником")
 
 
 class VerifiableRecord(models.Model):
@@ -41,13 +42,13 @@ class VerifiableRecord(models.Model):
     """
 
     data_source = models.CharField(
-        "Источник записи", max_length=16, choices=CatalogSource.choices, default=CatalogSource.SCHOOL
+        gettext_lazy("Источник записи"), max_length=16, choices=CatalogSource.choices, default=CatalogSource.SCHOOL
     )
-    is_verified = models.BooleanField("Данные подтверждены", default=True)
-    verified_at = models.DateTimeField("Когда подтверждено", null=True, blank=True)
+    is_verified = models.BooleanField(gettext_lazy("Данные подтверждены"), default=True)
+    verified_at = models.DateTimeField(gettext_lazy("Когда подтверждено"), null=True, blank=True)
     verified_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Кто подтвердил",
+        verbose_name=gettext_lazy("Кто подтвердил"),
         related_name="verified_%(class)s_set",
         on_delete=models.SET_NULL,
         null=True,
@@ -60,27 +61,30 @@ class VerifiableRecord(models.Model):
     @property
     def verification_note(self) -> str:
         """Текст плашки. Пустая строка — плашки нет."""
-        return "" if self.is_verified else UNVERIFIED_NOTE
+        return "" if self.is_verified else str(UNVERIFIED_NOTE)
 
 
 class University(VerifiableRecord):
     """Вуз."""
 
-    name = models.CharField("Название", max_length=250, unique=True)
-    country = models.CharField("Страна", max_length=100)
-    website = models.URLField("Сайт", blank=True)
+    name = models.CharField(gettext_lazy("Название"), max_length=250, unique=True)
+    country = models.CharField(gettext_lazy("Страна"), max_length=100)
+    website = models.URLField(gettext_lazy("Сайт"), blank=True)
     domain = models.CharField(
-        "Домен для сверки", max_length=100, blank=True, help_text="Например utoronto.ca — по нему сверяются источники"
+        gettext_lazy("Домен для сверки"),
+        max_length=100,
+        blank=True,
+        help_text="Например utoronto.ca — по нему сверяются источники",
     )
     #: место в мировом рейтинге — для порядка «других университетов»
     #: в результате подбора (фаза 40). Ведёт директор по поступлению;
     #: рейтинги мы не выдумываем: пусто — значит не заполнено
-    world_rank = models.PositiveSmallIntegerField("Место в мировом рейтинге", null=True, blank=True)
-    is_active = models.BooleanField("Активен", default=True)
+    world_rank = models.PositiveSmallIntegerField(gettext_lazy("Место в мировом рейтинге"), null=True, blank=True)
+    is_active = models.BooleanField(gettext_lazy("Активен"), default=True)
 
     class Meta:
-        verbose_name = "Вуз"
-        verbose_name_plural = "Вузы"
+        verbose_name = gettext_lazy("Вуз")
+        verbose_name_plural = gettext_lazy("Вузы")
         ordering = ("name",)
         indexes = [models.Index(fields=("country",))]
 
@@ -89,22 +93,26 @@ class University(VerifiableRecord):
 
 
 class ProgramLevel(models.TextChoices):
-    BACHELOR = "bachelor", "Бакалавриат"
-    MASTER = "master", "Магистратура"
+    BACHELOR = "bachelor", gettext_lazy("Бакалавриат")
+    MASTER = "master", gettext_lazy("Магистратура")
     FOUNDATION = "foundation", "Foundation"
 
 
 class Program(VerifiableRecord):
     """Программа обучения в вузе."""
 
-    university = models.ForeignKey(University, verbose_name="Вуз", related_name="programs", on_delete=models.CASCADE)
-    name = models.CharField("Специальность", max_length=250)
-    level = models.CharField("Уровень", max_length=16, choices=ProgramLevel.choices, default=ProgramLevel.BACHELOR)
-    is_active = models.BooleanField("Активна", default=True)
+    university = models.ForeignKey(
+        University, verbose_name=gettext_lazy("Вуз"), related_name="programs", on_delete=models.CASCADE
+    )
+    name = models.CharField(gettext_lazy("Специальность"), max_length=250)
+    level = models.CharField(
+        gettext_lazy("Уровень"), max_length=16, choices=ProgramLevel.choices, default=ProgramLevel.BACHELOR
+    )
+    is_active = models.BooleanField(gettext_lazy("Активна"), default=True)
 
     class Meta:
-        verbose_name = "Программа"
-        verbose_name_plural = "Программы"
+        verbose_name = gettext_lazy("Программа")
+        verbose_name_plural = gettext_lazy("Программы")
         ordering = ("university__name", "name")
         constraints = [
             models.UniqueConstraint(fields=("university", "name", "level"), name="uniq_program_per_university")
@@ -124,16 +132,18 @@ class RoundType(models.TextChoices):
 class AdmissionRound(VerifiableRecord):
     """Раунд подачи с дедлайном. Дедлайн — здесь и только здесь."""
 
-    program = models.ForeignKey(Program, verbose_name="Программа", related_name="rounds", on_delete=models.CASCADE)
-    round_type = models.CharField("Тип раунда", max_length=8, choices=RoundType.choices)
-    deadline = models.DateField("Дедлайн")
-    source_url = models.URLField("Источник", blank=True)
-    checked_at = models.DateTimeField("Последняя сверка", null=True, blank=True)
-    updated_at = models.DateTimeField("Обновлён", auto_now=True)
+    program = models.ForeignKey(
+        Program, verbose_name=gettext_lazy("Программа"), related_name="rounds", on_delete=models.CASCADE
+    )
+    round_type = models.CharField(gettext_lazy("Тип раунда"), max_length=8, choices=RoundType.choices)
+    deadline = models.DateField(gettext_lazy("Дедлайн"))
+    source_url = models.URLField(gettext_lazy("Источник"), blank=True)
+    checked_at = models.DateTimeField(gettext_lazy("Последняя сверка"), null=True, blank=True)
+    updated_at = models.DateTimeField(gettext_lazy("Обновлён"), auto_now=True)
 
     class Meta:
-        verbose_name = "Раунд подачи"
-        verbose_name_plural = "Раунды подачи"
+        verbose_name = gettext_lazy("Раунд подачи")
+        verbose_name_plural = gettext_lazy("Раунды подачи")
         ordering = ("deadline",)
         constraints = [
             models.UniqueConstraint(fields=("program", "round_type"), name="uniq_round_per_program"),
@@ -141,7 +151,9 @@ class AdmissionRound(VerifiableRecord):
         indexes = [models.Index(fields=("deadline",))]
 
     def __str__(self) -> str:
-        return f"{self.program} · {self.round_type} до {self.deadline}"
+        return gettext("{program} · {round_type} до {deadline}").format(
+            program=self.program, round_type=self.round_type, deadline=self.deadline
+        )
 
 
 class Tier(models.TextChoices):
@@ -151,21 +163,21 @@ class Tier(models.TextChoices):
 
 
 class ApplicationStatus(models.TextChoices):
-    NOT_STARTED = "not_started", "Не начата"
-    IN_PROGRESS = "in_progress", "В работе"
-    READY = "ready", "Готова"
-    SUBMITTED = "submitted", "Подана"
-    ACCEPTED = "accepted", "Принят"
-    REJECTED = "rejected", "Отказ"
-    WAITLIST = "waitlist", "Лист ожидания"
+    NOT_STARTED = "not_started", gettext_lazy("Не начата")
+    IN_PROGRESS = "in_progress", gettext_lazy("В работе")
+    READY = "ready", gettext_lazy("Готова")
+    SUBMITTED = "submitted", gettext_lazy("Подана")
+    ACCEPTED = "accepted", gettext_lazy("Принят")
+    REJECTED = "rejected", gettext_lazy("Отказ")
+    WAITLIST = "waitlist", gettext_lazy("Лист ожидания")
 
 
 class AddedBy(models.TextChoices):
     """Кто положил программу в список ученика."""
 
-    DIRECTOR = "director", "Директор по поступлению"
-    STUDENT = "student", "Ученик"
-    IMPORT = "import", "Импорт"
+    DIRECTOR = "director", gettext_lazy("Директор по поступлению")
+    STUDENT = "student", gettext_lazy("Ученик")
+    IMPORT = "import", gettext_lazy("Импорт")
 
 
 class StudentUniversity(Archivable):
@@ -176,34 +188,43 @@ class StudentUniversity(Archivable):
     только то, что добавил сам: чужое решение снимает тот, кто его принял.
     """
 
-    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="universities", on_delete=models.CASCADE)
-    program = models.ForeignKey(Program, verbose_name="Программа", related_name="applicants", on_delete=models.PROTECT)
+    student = models.ForeignKey(
+        Student, verbose_name=gettext_lazy("Ученик"), related_name="universities", on_delete=models.CASCADE
+    )
+    program = models.ForeignKey(
+        Program, verbose_name=gettext_lazy("Программа"), related_name="applicants", on_delete=models.PROTECT
+    )
     admission_round = models.ForeignKey(
         AdmissionRound,
-        verbose_name="Раунд",
+        verbose_name=gettext_lazy("Раунд"),
         related_name="applicants",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
-    tier = models.CharField("Категория", max_length=8, choices=Tier.choices, default=Tier.TARGET)
+    tier = models.CharField(gettext_lazy("Категория"), max_length=8, choices=Tier.choices, default=Tier.TARGET)
     application_status = models.CharField(
-        "Статус заявки", max_length=16, choices=ApplicationStatus.choices, default=ApplicationStatus.NOT_STARTED
+        gettext_lazy("Статус заявки"),
+        max_length=16,
+        choices=ApplicationStatus.choices,
+        default=ApplicationStatus.NOT_STARTED,
     )
-    note = models.CharField("Примечание", max_length=250, blank=True)
-    added_by = models.CharField("Кто добавил", max_length=16, choices=AddedBy.choices, default=AddedBy.DIRECTOR)
+    note = models.CharField(gettext_lazy("Примечание"), max_length=250, blank=True)
+    added_by = models.CharField(
+        gettext_lazy("Кто добавил"), max_length=16, choices=AddedBy.choices, default=AddedBy.DIRECTOR
+    )
     #: главный вуз ученика: ровно один на список и первым в нём у всех ролей
     #: (фаза 70). Ставит ученик — это его выбор, а не оценка школы; строку
     #: директора он тоже вправе пометить, не меняя в ней ничего другого
-    is_priority = models.BooleanField("Приоритетный", default=False)
+    is_priority = models.BooleanField(gettext_lazy("Приоритетный"), default=False)
     #: подтверждение директора нужно только тому, что добавил ученик
-    is_confirmed = models.BooleanField("Подтверждено директором", default=True)
-    created_at = models.DateTimeField("Создана", auto_now_add=True)
-    updated_at = models.DateTimeField("Обновлена", auto_now=True)
+    is_confirmed = models.BooleanField(gettext_lazy("Подтверждено директором"), default=True)
+    created_at = models.DateTimeField(gettext_lazy("Создана"), auto_now_add=True)
+    updated_at = models.DateTimeField(gettext_lazy("Обновлена"), auto_now=True)
 
     class Meta:
-        verbose_name = "Вуз ученика"
-        verbose_name_plural = "Вузы учеников"
+        verbose_name = gettext_lazy("Вуз ученика")
+        verbose_name_plural = gettext_lazy("Вузы учеников")
         # приоритетный — первым, остальные по категории, как и раньше
         ordering = ("student", "-is_priority", "tier")
         constraints = [
@@ -243,28 +264,34 @@ class AdmissionRequirement(VerifiableRecord):
     """
 
     program = models.OneToOneField(
-        Program, verbose_name="Программа", related_name="requirement", on_delete=models.CASCADE
+        Program, verbose_name=gettext_lazy("Программа"), related_name="requirement", on_delete=models.CASCADE
     )
-    min_gpa = models.DecimalField("Минимальный GPA", max_digits=4, decimal_places=2, null=True, blank=True)
-    min_ielts = models.DecimalField("Минимальный IELTS", max_digits=3, decimal_places=1, null=True, blank=True)
-    min_toefl = models.PositiveSmallIntegerField("Минимальный TOEFL", null=True, blank=True)
-    min_sat = models.PositiveSmallIntegerField("Минимальный SAT", null=True, blank=True)
-    min_act = models.PositiveSmallIntegerField("Минимальный ACT", null=True, blank=True)
-    required_subjects = models.CharField("Требуемые предметы", max_length=300, blank=True, help_text="Через запятую")
-    portfolio_required = models.BooleanField("Нужно портфолио", default=False)
-    portfolio_note = models.CharField("Требования к портфолио", max_length=300, blank=True)
-    notes = models.TextField("Примечания", blank=True)
-    source_url = models.URLField("Источник", blank=True)
-    checked_at = models.DateTimeField("Дата актуализации", null=True, blank=True)
-    updated_at = models.DateTimeField("Обновлено", auto_now=True)
+    min_gpa = models.DecimalField(
+        gettext_lazy("Минимальный GPA"), max_digits=4, decimal_places=2, null=True, blank=True
+    )
+    min_ielts = models.DecimalField(
+        gettext_lazy("Минимальный IELTS"), max_digits=3, decimal_places=1, null=True, blank=True
+    )
+    min_toefl = models.PositiveSmallIntegerField(gettext_lazy("Минимальный TOEFL"), null=True, blank=True)
+    min_sat = models.PositiveSmallIntegerField(gettext_lazy("Минимальный SAT"), null=True, blank=True)
+    min_act = models.PositiveSmallIntegerField(gettext_lazy("Минимальный ACT"), null=True, blank=True)
+    required_subjects = models.CharField(
+        gettext_lazy("Требуемые предметы"), max_length=300, blank=True, help_text="Через запятую"
+    )
+    portfolio_required = models.BooleanField(gettext_lazy("Нужно портфолио"), default=False)
+    portfolio_note = models.CharField(gettext_lazy("Требования к портфолио"), max_length=300, blank=True)
+    notes = models.TextField(gettext_lazy("Примечания"), blank=True)
+    source_url = models.URLField(gettext_lazy("Источник"), blank=True)
+    checked_at = models.DateTimeField(gettext_lazy("Дата актуализации"), null=True, blank=True)
+    updated_at = models.DateTimeField(gettext_lazy("Обновлено"), auto_now=True)
 
     class Meta:
-        verbose_name = "Требования программы"
-        verbose_name_plural = "Требования программ"
+        verbose_name = gettext_lazy("Требования программы")
+        verbose_name_plural = gettext_lazy("Требования программ")
         ordering = ("program__university__name", "program__name")
 
     def __str__(self) -> str:
-        return f"Требования: {self.program}"
+        return gettext("Требования: {program}").format(program=self.program)
 
     @property
     def subjects_list(self) -> list[str]:
@@ -275,9 +302,9 @@ class AdmissionRequirement(VerifiableRecord):
 
 
 class MatchRunStatus(models.TextChoices):
-    RUNNING = "running", "Считается"
-    DONE = "done", "Готов"
-    FAILED = "failed", "Не получился"
+    RUNNING = "running", gettext_lazy("Считается")
+    DONE = "done", gettext_lazy("Готов")
+    FAILED = "failed", gettext_lazy("Не получился")
 
 
 class RunTier(models.TextChoices):
@@ -287,16 +314,16 @@ class RunTier(models.TextChoices):
     (инвариант №11). Границы — в настройках (`MATCH_TIER_*`), не в коде.
     """
 
-    DREAM = "dream", "Dream — очень конкурентно, но стоит попробовать"
-    REACH = "reach", "Reach — амбициозно, нужны усилия"
-    MATCH = "match", "Match — реалистично при текущей траектории"
-    SAFETY = "safety", "Safety — уже соответствуете или превышаете"
+    DREAM = "dream", gettext_lazy("Dream — очень конкурентно, но стоит попробовать")
+    REACH = "reach", gettext_lazy("Reach — амбициозно, нужны усилия")
+    MATCH = "match", gettext_lazy("Match — реалистично при текущей траектории")
+    SAFETY = "safety", gettext_lazy("Safety — уже соответствуете или превышаете")
 
 
 class ResultSection(models.TextChoices):
-    TOP = "top", "Финальный список"
-    STRONG = "strong", "Ещё сильные варианты"
-    OTHER = "other", "Другие университеты"
+    TOP = "top", gettext_lazy("Финальный список")
+    STRONG = "strong", gettext_lazy("Ещё сильные варианты")
+    OTHER = "other", gettext_lazy("Другие университеты")
 
 
 class MatchRun(models.Model):
@@ -308,65 +335,79 @@ class MatchRun(models.Model):
     считалось: ученик видит исходные данные, а не только вывод.
     """
 
-    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="match_runs", on_delete=models.CASCADE)
-    major = models.CharField("Специальность", max_length=150, blank=True)
-    level = models.CharField("Уровень", max_length=16, choices=ProgramLevel.choices, blank=True)
+    student = models.ForeignKey(
+        Student, verbose_name=gettext_lazy("Ученик"), related_name="match_runs", on_delete=models.CASCADE
+    )
+    major = models.CharField(gettext_lazy("Специальность"), max_length=150, blank=True)
+    level = models.CharField(gettext_lazy("Уровень"), max_length=16, choices=ProgramLevel.choices, blank=True)
     #: охват стран через запятую; пусто — весь справочник
-    countries = models.CharField("Страны", max_length=500, blank=True)
+    countries = models.CharField(gettext_lazy("Страны"), max_length=500, blank=True)
 
-    status = models.CharField("Статус", max_length=12, choices=MatchRunStatus.choices, default=MatchRunStatus.RUNNING)
-    stage = models.CharField("Этап", max_length=24, blank=True)
-    progress = models.PositiveSmallIntegerField("Прогресс, %", default=0)
-    error = models.CharField("Что пошло не так", max_length=250, blank=True)
+    status = models.CharField(
+        gettext_lazy("Статус"), max_length=12, choices=MatchRunStatus.choices, default=MatchRunStatus.RUNNING
+    )
+    stage = models.CharField(gettext_lazy("Этап"), max_length=24, blank=True)
+    progress = models.PositiveSmallIntegerField(gettext_lazy("Прогресс, %"), default=0)
+    error = models.CharField(gettext_lazy("Что пошло не так"), max_length=250, blank=True)
 
     # снимок профиля на момент запуска
-    snapshot_gpa = models.DecimalField("GPA на момент", max_digits=4, decimal_places=2, null=True, blank=True)
-    snapshot_ielts = models.DecimalField("IELTS на момент", max_digits=3, decimal_places=1, null=True, blank=True)
-    snapshot_sat = models.PositiveSmallIntegerField("SAT на момент", null=True, blank=True)
-    snapshot_grade = models.PositiveSmallIntegerField("Класс", null=True, blank=True)
-    snapshot_graduation_year = models.PositiveSmallIntegerField("Год выпуска", null=True, blank=True)
+    snapshot_gpa = models.DecimalField(
+        gettext_lazy("GPA на момент"), max_digits=4, decimal_places=2, null=True, blank=True
+    )
+    snapshot_ielts = models.DecimalField(
+        gettext_lazy("IELTS на момент"), max_digits=3, decimal_places=1, null=True, blank=True
+    )
+    snapshot_sat = models.PositiveSmallIntegerField(gettext_lazy("SAT на момент"), null=True, blank=True)
+    snapshot_grade = models.PositiveSmallIntegerField(gettext_lazy("Класс"), null=True, blank=True)
+    snapshot_graduation_year = models.PositiveSmallIntegerField(gettext_lazy("Год выпуска"), null=True, blank=True)
 
     # воронка: сколько было и сколько осталось на каждом шаге
-    funnel_catalog = models.PositiveIntegerField("В каталоге", default=0)
-    funnel_filtered = models.PositiveIntegerField("Прошло фильтр", default=0)
-    funnel_analyzed = models.PositiveIntegerField("Разобрано подробно", default=0)
-    funnel_final = models.PositiveIntegerField("В финальном списке", default=0)
+    funnel_catalog = models.PositiveIntegerField(gettext_lazy("В каталоге"), default=0)
+    funnel_filtered = models.PositiveIntegerField(gettext_lazy("Прошло фильтр"), default=0)
+    funnel_analyzed = models.PositiveIntegerField(gettext_lazy("Разобрано подробно"), default=0)
+    funnel_final = models.PositiveIntegerField(gettext_lazy("В финальном списке"), default=0)
 
     # стратегия — три карточки текстом
-    strategy_position = models.TextField("Текущая позиция", blank=True)
-    strategy_improve = models.TextField("Что важно усилить", blank=True)
-    strategy_next = models.TextField("Следующий шаг", blank=True)
-    strategy_offline = models.BooleanField("Собрана правилами", default=True)
+    strategy_position = models.TextField(gettext_lazy("Текущая позиция"), blank=True)
+    strategy_improve = models.TextField(gettext_lazy("Что важно усилить"), blank=True)
+    strategy_next = models.TextField(gettext_lazy("Следующий шаг"), blank=True)
+    strategy_offline = models.BooleanField(gettext_lazy("Собрана правилами"), default=True)
 
-    created_at = models.DateTimeField("Запущен", auto_now_add=True)
-    finished_at = models.DateTimeField("Закончен", null=True, blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Запущен"), auto_now_add=True)
+    finished_at = models.DateTimeField(gettext_lazy("Закончен"), null=True, blank=True)
 
     class Meta:
-        verbose_name = "Прогон подбора"
-        verbose_name_plural = "Прогоны подбора"
+        verbose_name = gettext_lazy("Прогон подбора")
+        verbose_name_plural = gettext_lazy("Прогоны подбора")
         ordering = ("-created_at",)
         indexes = [models.Index(fields=("student", "-created_at"))]
 
     def __str__(self) -> str:
-        return f"Подбор #{self.pk} · {self.student}"
+        return gettext("Подбор #{number} · {student}").format(number=self.pk, student=self.student)
 
 
 class MatchRunResult(models.Model):
     """Одна программа в результате прогона — со снимком процентов."""
 
-    run = models.ForeignKey(MatchRun, verbose_name="Прогон", related_name="results", on_delete=models.CASCADE)
-    program = models.ForeignKey(Program, verbose_name="Программа", related_name="run_results", on_delete=models.CASCADE)
+    run = models.ForeignKey(
+        MatchRun, verbose_name=gettext_lazy("Прогон"), related_name="results", on_delete=models.CASCADE
+    )
+    program = models.ForeignKey(
+        Program, verbose_name=gettext_lazy("Программа"), related_name="run_results", on_delete=models.CASCADE
+    )
     #: соответствие сейчас и «если закрыть разрывы» — при целевых баллах
     #: из целей по экзаменам (фаза 39). Ни то ни другое — не шанс поступления
-    percent_now = models.PositiveSmallIntegerField("Соответствие сейчас", default=0)
-    percent_goal = models.PositiveSmallIntegerField("Если закрыть разрывы", default=0)
-    tier = models.CharField("Категория", max_length=8, choices=RunTier.choices, blank=True)
-    section = models.CharField("Раздел", max_length=8, choices=ResultSection.choices, default=ResultSection.OTHER)
-    position = models.PositiveSmallIntegerField("Порядок", default=0)
+    percent_now = models.PositiveSmallIntegerField(gettext_lazy("Соответствие сейчас"), default=0)
+    percent_goal = models.PositiveSmallIntegerField(gettext_lazy("Если закрыть разрывы"), default=0)
+    tier = models.CharField(gettext_lazy("Категория"), max_length=8, choices=RunTier.choices, blank=True)
+    section = models.CharField(
+        gettext_lazy("Раздел"), max_length=8, choices=ResultSection.choices, default=ResultSection.OTHER
+    )
+    position = models.PositiveSmallIntegerField(gettext_lazy("Порядок"), default=0)
 
     class Meta:
-        verbose_name = "Строка результата подбора"
-        verbose_name_plural = "Строки результатов подбора"
+        verbose_name = gettext_lazy("Строка результата подбора")
+        verbose_name_plural = gettext_lazy("Строки результатов подбора")
         ordering = ("position", "id")
         constraints = [models.UniqueConstraint(fields=("run", "program"), name="uniq_program_per_run")]
 
@@ -380,20 +421,22 @@ class FavoriteProgram(models.Model):
     Истории у отметки нет, удаление физическое — как у справочников.
     """
 
-    student = models.ForeignKey(Student, verbose_name="Ученик", related_name="favorites", on_delete=models.CASCADE)
-    program = models.ForeignKey(
-        Program, verbose_name="Программа", related_name="favorited_by", on_delete=models.CASCADE
+    student = models.ForeignKey(
+        Student, verbose_name=gettext_lazy("Ученик"), related_name="favorites", on_delete=models.CASCADE
     )
-    created_at = models.DateTimeField("Отмечено", auto_now_add=True)
+    program = models.ForeignKey(
+        Program, verbose_name=gettext_lazy("Программа"), related_name="favorited_by", on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField(gettext_lazy("Отмечено"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Избранная программа"
-        verbose_name_plural = "Избранные программы"
+        verbose_name = gettext_lazy("Избранная программа")
+        verbose_name_plural = gettext_lazy("Избранные программы")
         ordering = ("-created_at",)
         constraints = [models.UniqueConstraint(fields=("student", "program"), name="uniq_favorite_per_student")]
 
     def __str__(self) -> str:
-        return f"{self.student} · избранное · {self.program}"
+        return gettext("{student} · избранное · {program}").format(student=self.student, program=self.program)
 
 
 # --- Стипендии и гранты (фаза 44) -----------------------------------------
@@ -402,9 +445,9 @@ class FavoriteProgram(models.Model):
 class FundingType(models.TextChoices):
     """Что покрывает стипендия. Типизированной колонкой, а не текстом."""
 
-    FULL = "full", "Полное финансирование"
-    PARTIAL = "partial", "Частичное финансирование"
-    TUITION = "tuition", "Только обучение"
+    FULL = "full", gettext_lazy("Полное финансирование")
+    PARTIAL = "partial", gettext_lazy("Частичное финансирование")
+    TUITION = "tuition", gettext_lazy("Только обучение")
 
 
 class Scholarship(VerifiableRecord):
@@ -419,47 +462,47 @@ class Scholarship(VerifiableRecord):
     несколько, и по каждому нужен фильтр (инвариант №6).
     """
 
-    name = models.CharField("Название", max_length=250)
-    organizer = models.CharField("Организатор", max_length=250, blank=True)
-    country = models.CharField("Страна", max_length=100, blank=True)
+    name = models.CharField(gettext_lazy("Название"), max_length=250)
+    organizer = models.CharField(gettext_lazy("Организатор"), max_length=250, blank=True)
+    country = models.CharField(gettext_lazy("Страна"), max_length=100, blank=True)
     #: пусто — стипендия не привязана к уровню обучения
-    level = models.CharField("Уровень обучения", max_length=16, choices=ProgramLevel.choices, blank=True)
+    level = models.CharField(gettext_lazy("Уровень обучения"), max_length=16, choices=ProgramLevel.choices, blank=True)
     funding_type = models.CharField(
-        "Тип финансирования", max_length=12, choices=FundingType.choices, default=FundingType.PARTIAL
+        gettext_lazy("Тип финансирования"), max_length=12, choices=FundingType.choices, default=FundingType.PARTIAL
     )
     #: сумма или диапазон: одна граница — фиксированная сумма
-    amount_min = models.DecimalField("Сумма от", max_digits=12, decimal_places=2, null=True, blank=True)
-    amount_max = models.DecimalField("Сумма до", max_digits=12, decimal_places=2, null=True, blank=True)
-    currency = models.CharField("Валюта", max_length=8, blank=True, default="USD")
+    amount_min = models.DecimalField(gettext_lazy("Сумма от"), max_digits=12, decimal_places=2, null=True, blank=True)
+    amount_max = models.DecimalField(gettext_lazy("Сумма до"), max_digits=12, decimal_places=2, null=True, blank=True)
+    currency = models.CharField(gettext_lazy("Валюта"), max_length=8, blank=True, default="USD")
 
-    for_international = models.BooleanField("Для иностранцев", default=False)
-    for_merit = models.BooleanField("За заслуги", default=False)
-    for_need = models.BooleanField("По нужде", default=False)
+    for_international = models.BooleanField(gettext_lazy("Для иностранцев"), default=False)
+    for_merit = models.BooleanField(gettext_lazy("За заслуги"), default=False)
+    for_need = models.BooleanField(gettext_lazy("По нужде"), default=False)
 
     #: дедлайн подачи живёт у самой стипендии — как дедлайн вуза живёт
     #: у раунда: сдвинулся один раз, сдвинулся у всех (инвариант №4)
-    deadline = models.DateField("Дедлайн подачи", null=True, blank=True)
-    url = models.URLField("Страница стипендии", blank=True)
-    requirements = models.TextField("Требования", blank=True)
-    description = models.TextField("Описание", blank=True)
+    deadline = models.DateField(gettext_lazy("Дедлайн подачи"), null=True, blank=True)
+    url = models.URLField(gettext_lazy("Страница стипендии"), blank=True)
+    requirements = models.TextField(gettext_lazy("Требования"), blank=True)
+    description = models.TextField(gettext_lazy("Описание"), blank=True)
     #: PROTECT: стипендию вуза не сносит удаление вуза молча — отказ
     #: назовёт число ссылок, как и у программ в списках учеников
     university = models.ForeignKey(
         University,
-        verbose_name="Вуз",
+        verbose_name=gettext_lazy("Вуз"),
         related_name="scholarships",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
         help_text="Пусто — стипендия не привязана к вузу",
     )
-    is_active = models.BooleanField("Показывать", default=True)
-    created_at = models.DateTimeField("Заведена", auto_now_add=True)
-    updated_at = models.DateTimeField("Обновлена", auto_now=True)
+    is_active = models.BooleanField(gettext_lazy("Показывать"), default=True)
+    created_at = models.DateTimeField(gettext_lazy("Заведена"), auto_now_add=True)
+    updated_at = models.DateTimeField(gettext_lazy("Обновлена"), auto_now=True)
 
     class Meta:
-        verbose_name = "Стипендия"
-        verbose_name_plural = "Стипендии"
+        verbose_name = gettext_lazy("Стипендия")
+        verbose_name_plural = gettext_lazy("Стипендии")
         ordering = ("name",)
         constraints = [models.UniqueConstraint(fields=("name", "organizer"), name="uniq_scholarship_name")]
         indexes = [models.Index(fields=("deadline",)), models.Index(fields=("country",))]
@@ -472,11 +515,11 @@ class Scholarship(VerifiableRecord):
         """Метки основания для карточки — по одной на каждую колонку."""
         out = []
         if self.for_international:
-            out.append("Для иностранцев")
+            out.append(gettext("Для иностранцев"))
         if self.for_merit:
-            out.append("За заслуги")
+            out.append(gettext("За заслуги"))
         if self.for_need:
-            out.append("По нужде")
+            out.append(gettext("По нужде"))
         return out
 
 
@@ -488,20 +531,22 @@ class SavedScholarship(models.Model):
     """
 
     student = models.ForeignKey(
-        Student, verbose_name="Ученик", related_name="saved_scholarships", on_delete=models.CASCADE
+        Student, verbose_name=gettext_lazy("Ученик"), related_name="saved_scholarships", on_delete=models.CASCADE
     )
     scholarship = models.ForeignKey(
-        Scholarship, verbose_name="Стипендия", related_name="saved_by", on_delete=models.CASCADE
+        Scholarship, verbose_name=gettext_lazy("Стипендия"), related_name="saved_by", on_delete=models.CASCADE
     )
-    created_at = models.DateTimeField("Сохранена", auto_now_add=True)
+    created_at = models.DateTimeField(gettext_lazy("Сохранена"), auto_now_add=True)
 
     class Meta:
-        verbose_name = "Сохранённая стипендия"
-        verbose_name_plural = "Сохранённые стипендии"
+        verbose_name = gettext_lazy("Сохранённая стипендия")
+        verbose_name_plural = gettext_lazy("Сохранённые стипендии")
         ordering = ("-created_at",)
         constraints = [
             models.UniqueConstraint(fields=("student", "scholarship"), name="uniq_saved_scholarship_per_student")
         ]
 
     def __str__(self) -> str:
-        return f"{self.student} · сохранил · {self.scholarship}"
+        return gettext("{student} · сохранил · {scholarship}").format(
+            student=self.student, scholarship=self.scholarship
+        )

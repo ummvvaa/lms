@@ -13,6 +13,8 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from rest_framework import permissions
 from rest_framework.exceptions import PermissionDenied
 
@@ -25,7 +27,7 @@ SAFE = permissions.SAFE_METHODS
 class IsAuthenticatedStaffOrOwnStudent(permissions.BasePermission):
     """Доступ к API: сотрудник или ученик со своим профилем."""
 
-    message = "Недостаточно прав"
+    message = gettext_lazy("Недостаточно прав")
 
     def has_permission(self, request, view) -> bool:
         return bool(request.user and request.user.is_authenticated)
@@ -38,7 +40,7 @@ class DomainFieldPermission(permissions.BasePermission):
     которой она правит. Читать может любой аутентифицированный сотрудник.
     """
 
-    message = "Это поле ведёт другой директор — вы можете его видеть, но не менять"
+    message = gettext_lazy("Это поле ведёт другой директор — вы можете его видеть, но не менять")
 
     def has_permission(self, request, view) -> bool:
         user = request.user
@@ -86,7 +88,7 @@ class DomainOwnerPermission(permissions.BasePermission):
     второго источника у прав быть не может (инвариант №2).
     """
 
-    message = "Этот справочник ведёт другой директор"
+    message = gettext_lazy("Этот справочник ведёт другой директор")
 
     def has_permission(self, request, view) -> bool:
         user = request.user
@@ -109,7 +111,7 @@ class DomainOwnerPermission(permissions.BasePermission):
 class IsOwnStudentOrStaff(permissions.BasePermission):
     """Ученик видит только себя, сотрудник — всех."""
 
-    message = "Чужой профиль недоступен"
+    message = gettext_lazy("Чужой профиль недоступен")
 
     def has_permission(self, request, view) -> bool:
         return bool(request.user and request.user.is_authenticated)
@@ -128,7 +130,7 @@ def assert_writable(role: str, label: str, field_names) -> None:
     if foreign:
         raise PermissionDenied(
             {
-                "detail": "Поля чужого домена изменить нельзя",
+                "detail": _("Поля чужого домена изменить нельзя"),
                 "model": label,
                 "fields": foreign,
             }

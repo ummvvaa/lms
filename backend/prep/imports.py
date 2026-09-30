@@ -19,6 +19,7 @@ import io
 from dataclasses import dataclass, field
 
 from django.db import transaction
+from django.utils.translation import gettext as _
 
 from prep.models import (
     Difficulty,
@@ -73,18 +74,24 @@ def import_questions(content: str, *, media: dict[str, tuple[bytes, str]] | None
         clean = {(k or "").strip().lower(): (v or "").strip() for k, v in row.items()}
         missing = [name for name in REQUIRED if not clean.get(name)]
         if missing:
-            result.skipped.append({"row": number, "reason": f"не заполнено: {', '.join(missing)}"})
+            result.skipped.append(
+                {"row": number, "reason": _("не заполнено: {columns}").format(columns=", ".join(missing))}
+            )
             continue
 
         exam = clean["exam_type"].upper()
         # HSK и Duolingo пишутся как есть; остальное — заглавными
         exam = next((v for v in ExamType.values if v.upper() == exam), clean["exam_type"])
         if exam not in ExamType.values:
-            result.skipped.append({"row": number, "reason": f"неизвестный экзамен «{clean['exam_type']}»"})
+            result.skipped.append(
+                {"row": number, "reason": _("неизвестный экзамен «{exam}»").format(exam=clean["exam_type"])}
+            )
             continue
         section = clean["section"].lower()
         if section not in Section.values:
-            result.skipped.append({"row": number, "reason": f"неизвестная секция «{clean['section']}»"})
+            result.skipped.append(
+                {"row": number, "reason": _("неизвестная секция «{section}»").format(section=clean["section"])}
+            )
             continue
 
         qtype = clean.get("question_type", "").lower()
@@ -99,13 +106,18 @@ def import_questions(content: str, *, media: dict[str, tuple[bytes, str]] | None
 
         if qtype in (QuestionType.SINGLE, QuestionType.MULTIPLE):
             if not correct_letters:
-                result.skipped.append({"row": number, "reason": "не указан верный вариант"})
+                result.skipped.append({"row": number, "reason": _("не указан верный вариант")})
                 continue
             if len(options) < 2:
-                result.skipped.append({"row": number, "reason": "нужно минимум два варианта ответа"})
+                result.skipped.append({"row": number, "reason": _("нужно минимум два варианта ответа")})
                 continue
             if not correct_letters <= {letter for letter, _ in options}:
-                result.skipped.append({"row": number, "reason": f"верный вариант «{correct_raw}» не среди ответов"})
+                result.skipped.append(
+                    {
+                        "row": number,
+                        "reason": _("верный вариант «{answer}» не среди ответов").format(answer=correct_raw),
+                    }
+                )
                 continue
 
         # источник-группа: текст чтения или аудио. Первый раз с этим ключом —

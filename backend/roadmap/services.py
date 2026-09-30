@@ -12,6 +12,7 @@ from datetime import date
 
 from django.db import transaction
 
+from core.i18n import language_of, render
 from roadmap.models import Task, TaskCategory, TaskPriority, TaskStatus, TaskTemplate
 from students.models import Student
 from universities.models import AdmissionRound
@@ -92,13 +93,20 @@ def generate_from_deadlines(students, *, author=None) -> GenerationResult:
                 result.skipped += 1
                 continue
             university = admission_round.program.university.name
+            # задача ложится ученику: текст — на его языке, а не того, кто запустил генерацию
+            lang = language_of(student.user)
             Task.objects.create(
                 student=student,
                 admission_round=admission_round,
-                title=f"Подать заявку: {university} ({admission_round.round_type})",
+                title=render(
+                    lang,
+                    "Подать заявку: {university} ({round})",
+                    university=university,
+                    round=admission_round.round_type,
+                ),
                 category=TaskCategory.UNIVERSITY,
                 priority=TaskPriority.HIGH,
-                description=f"Программа: {admission_round.program.name}",
+                description=render(lang, "Программа: {program}", program=admission_round.program.name),
                 author=author,
             )
             result.created += 1

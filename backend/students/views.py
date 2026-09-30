@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
@@ -135,13 +137,13 @@ class StudentViewSet(
     def create(self, request, *args, **kwargs):
         """Завести карточку ученика. Пять профилей создаются сразу пустыми."""
         if request.user.role != ROLE_ADMIN:
-            return Response({"detail": "Учеников заводит администратор"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("Учеников заводит администратор")}, status=status.HTTP_403_FORBIDDEN)
         return super().create(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
         if request.user.role != ROLE_ADMIN:
             return Response(
-                {"detail": "Реестровую карточку ведёт администратор, доменные поля правятся у себя"},
+                {"detail": _("Реестровую карточку ведёт администратор, доменные поля правятся у себя")},
                 status=status.HTTP_403_FORBIDDEN,
             )
         return super().update(request, *args, **kwargs)
@@ -175,7 +177,7 @@ class StudentViewSet(
         """Кабинет ученика: своя карточка без внутренних ярлыков."""
         student = getattr(request.user, "student", None)
         if student is None:
-            raise NotFound("У этого пользователя нет карточки ученика")
+            raise NotFound(_("У этого пользователя нет карточки ученика"))
         data = self.get_serializer(student).data
         if not has_admission(student):
             # у 8–10 нет поступления: ни профилей поступления и экзаменов,
@@ -192,7 +194,7 @@ class StudentViewSet(
         """Готовность одного ученика — вычисляется, не хранится. У 8–10 её нет."""
         student = self.get_object()
         if not has_admission(student):
-            raise NotFound("Готовность к подаче считается только у 11 параллели")
+            raise NotFound(_("Готовность к подаче считается только у 11 параллели"))
         return Response(compute_readiness(student).as_dict())
 
     @action(detail=True, methods=["get"])
@@ -200,7 +202,7 @@ class StudentViewSet(
         """Вкладка истории изменений на карточке ученика."""
         student = self.get_object()
         if request.user.role == ROLE_STUDENT:
-            return Response({"detail": "История доступна сотрудникам"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("История доступна сотрудникам")}, status=status.HTTP_403_FORBIDDEN)
         entries = AuditLog.objects.filter(student_id=student.pk).select_related("actor")[:200]
         return Response(AuditEntrySerializer(entries, many=True).data)
 
@@ -271,7 +273,7 @@ def batch_save(request):
     Строки чужого домена возвращаются в `rejected`, а не роняют весь запрос.
     """
     if request.user.role == ROLE_STUDENT:
-        return Response({"detail": "Ученик не редактирует данные"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Ученик не редактирует данные")}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = BatchSaveSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -286,7 +288,9 @@ def batch_save(request):
 #: Отказ директору на любую загрузку файла. Текст объясняет, куда идти,
 #: а не только «нельзя»: первое, что сделает человек без кнопки, —
 #: напишет, что она пропала.
-FILES_ARE_ADMINS = "Файлы загружает администратор. Данные вносятся руками в таблице " "или вставкой текста в помощнике"
+FILES_ARE_ADMINS = gettext_lazy(
+    "Файлы загружает администратор. Данные вносятся руками в таблице или вставкой текста в помощнике"
+)
 
 
 def _deny_file_upload(request):
@@ -310,7 +314,7 @@ def _chosen_domain(request):
         return code, None
     titles = ", ".join(f"«{d.title}»" for d in DOMAINS.values())
     return None, Response(
-        {"detail": f"Сначала выберите домен, чьи данные в файле: {titles}"},
+        {"detail": _("Сначала выберите домен, чьи данные в файле: {titles}").format(titles=titles)},
         status=status.HTTP_400_BAD_REQUEST,
     )
 
@@ -338,7 +342,7 @@ def import_preview(request):
 
     uploaded = request.FILES.get("file")
     if uploaded is None:
-        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Файл не приложен")}, status=status.HTTP_400_BAD_REQUEST)
 
     header, rows = read_table(uploaded)
     raw_mapping = request.data.get("mapping") or "{}"
@@ -383,11 +387,11 @@ def enrollment_preview(request):
     from students.import_service import read_table
 
     if request.user.role != ROLE_ADMIN:
-        return Response({"detail": "Учётные записи заводит администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Учётные записи заводит администратор")}, status=status.HTTP_403_FORBIDDEN)
 
     uploaded = request.FILES.get("file")
     if uploaded is None:
-        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Файл не приложен")}, status=status.HTTP_400_BAD_REQUEST)
 
     header, rows = read_table(uploaded)
     return Response(build_preview(header=header, rows=rows).as_dict())
@@ -401,7 +405,7 @@ def enrollment_apply(request):
     from students.enrollment import enroll
 
     if request.user.role != ROLE_ADMIN:
-        return Response({"detail": "Учётные записи заводит администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Учётные записи заводит администратор")}, status=status.HTTP_403_FORBIDDEN)
 
     payload = EnrollmentApplySerializer(data=request.data)
     payload.is_valid(raise_exception=True)
@@ -427,7 +431,7 @@ def contacts_preview(request):
 
     uploaded = request.FILES.get("file")
     if uploaded is None:
-        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Файл не приложен")}, status=status.HTTP_400_BAD_REQUEST)
 
     header, rows = read_table(uploaded)
     return Response(build_preview(header=header, rows=rows).as_dict())
@@ -474,7 +478,7 @@ def competitions_preview(request):
 
     uploaded = request.FILES.get("file")
     if uploaded is None:
-        return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Файл не приложен")}, status=status.HTTP_400_BAD_REQUEST)
 
     header, rows = read_table(uploaded)
     return Response(build_preview(header=header, rows=rows).as_dict())
@@ -571,9 +575,9 @@ class StudentScopedViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
 
         student = Student.objects.filter(pk=self.request.data.get("student")).first()
         if student is None:
-            raise ValidationError({"student": "Не указан ученик или его нет в списке"})
+            raise ValidationError({"student": _("Не указан ученик или его нет в списке")})
         if not sees_student(self.request.user, student.pk):
-            raise NotFound("Ученик не найден")
+            raise NotFound(_("Ученик не найден"))
         row = serializer.save(student=student, **self.extra_on_create())
         self.after_curator_create(row)
 
@@ -614,7 +618,9 @@ class ExamAttemptViewSet(StudentScopedViewSet):
     filterset_fields = ("student", "exam_type", "attempt_format", "source")
     ordering_fields = ("date",)
 
-    MOCKS_BY_FILE = "Пробник из файла не правится руками: неверный файл убирают в архив и загружают заново"
+    MOCKS_BY_FILE = gettext_lazy(
+        "Mock Test из файла не правится руками: неверный файл убирают в архив и загружают заново"
+    )
 
     def extra_on_create(self) -> dict:
         # куратор вносит официальную попытку с сертификата или пробник руками
@@ -623,7 +629,7 @@ class ExamAttemptViewSet(StudentScopedViewSet):
         if self.request.user.role == ROLE_CURATOR:
             wanted = str(self.request.data.get("attempt_format") or AttemptFormat.OFFICIAL)
             if wanted not in (AttemptFormat.OFFICIAL, AttemptFormat.MOCK):
-                raise ValidationError({"attempt_format": "Формат сдачи — официальный или пробник"})
+                raise ValidationError({"attempt_format": _("Формат сдачи — официальный или Mock Test")})
             return {"attempt_format": wanted}
         return {}
 
@@ -663,7 +669,9 @@ class ExamAttemptViewSet(StudentScopedViewSet):
             return Response({"detail": self.MOCKS_BY_FILE}, status=status.HTTP_403_FORBIDDEN)
         return None
 
-    NOT_A_TABLE_ROW = "Директор по поступлению правит попытки своей таблицы — остальные ведёт домен экзаменов"
+    NOT_A_TABLE_ROW = gettext_lazy(
+        "Директор по поступлению правит попытки своей таблицы — остальные ведёт домен экзаменов"
+    )
 
     def _foreign_to_the_admission_block(self, request):
         """Асем правит попытки как строки блока «Поступление» — и только их.
@@ -765,7 +773,7 @@ class ParentContactViewSet(StudentScopedViewSet):
             return refuse(role, self.domain_model_label)
         student_id = request.data.get("student")
         if not sees_student(request.user, int(student_id) if str(student_id).isdigit() else None):
-            return Response({"detail": "Ученика нет в ваших группах"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": _("Ученика нет в ваших группах")}, status=status.HTTP_404_NOT_FOUND)
         return viewsets.ModelViewSet.create(self, request, *args, **kwargs)
 
 
@@ -781,7 +789,9 @@ class StudyGroupViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
     #: поля «куратор» у группы больше нет (фаза 61): куратор — назначение
     #: с датой. Старый запрос с этим полем получает внятный отказ, а не
     #: молчаливое «сохранено» с потерянным значением
-    CURATOR_FIELD_FROZEN = "Куратора назначают на экране «Пользователи»: у группы нет поля с именем куратора"
+    CURATOR_FIELD_FROZEN = gettext_lazy(
+        "Куратора назначают на экране «Пользователи»: у группы нет поля с именем куратора"
+    )
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -802,12 +812,12 @@ class StudyGroupViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         if self._staff_only(request):
-            return Response({"detail": "Группы заводит администратор"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("Группы заводит администратор")}, status=status.HTTP_403_FORBIDDEN)
         return self._curator_field_touched(request) or super().create(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
         if self._staff_only(request):
-            return Response({"detail": "Группы ведёт администратор"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("Группы ведёт администратор")}, status=status.HTTP_403_FORBIDDEN)
         return self._curator_field_touched(request) or super().update(request, *args, **kwargs)
 
 
@@ -862,7 +872,7 @@ class StudentDocumentViewSet(
         student = _portfolio_student(request)
         if student is not None and not document_open(student, str(request.data.get("doc_type") or "")):
             return Response(
-                {"detail": "Документы поступления ведутся только у 11 параллели", "code": "parallel_closed"},
+                {"detail": _("Документы поступления ведутся только у 11 параллели"), "code": "parallel_closed"},
                 status=status.HTTP_403_FORBIDDEN,
             )
         by_curator = False
@@ -870,16 +880,16 @@ class StudentDocumentViewSet(
             # куратор — за ученика своей группы; чужой ученик — 404, как везде
             student = Student.objects.filter(pk=request.data.get("student")).first()
             if student is None or not sees_student(request.user, student.pk):
-                return Response({"detail": "Ученик не найден"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"detail": _("Ученик не найден")}, status=status.HTTP_404_NOT_FOUND)
             by_curator = True
         if student is None:
             return Response(
-                {"detail": "Документы портфолио загружает сам ученик или куратор его группы"},
+                {"detail": _("Документы портфолио загружает сам ученик или куратор его группы")},
                 status=status.HTTP_403_FORBIDDEN,
             )
         uploaded = request.FILES.get("file")
         if uploaded is None:
-            return Response({"detail": "Файл не приложен"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": _("Файл не приложен")}, status=status.HTTP_400_BAD_REQUEST)
         try:
             info = inspect(uploaded)
         except FileRejected as error:
@@ -946,9 +956,9 @@ class StudentDocumentViewSet(
 
         row = self._own_row(request)
         if row is None:
-            return Response({"detail": "Свой документ убирает сам ученик"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": _("Свой документ убирает сам ученик")}, status=status.HTTP_403_FORBIDDEN)
         entry = archive(row, actor=request.user)
-        return Response({"archived": entry.pk, "detail": f"Документ «{entry.title}» в архиве"})
+        return Response({"archived": entry.pk, "detail": _("Документ «{title}» в архиве").format(title=entry.title)})
 
 
 @extend_schema(responses={200: None})
@@ -966,10 +976,10 @@ def document_file(request, pk: int):
 
     row = StudentDocument.objects.select_related("student").filter(pk=pk).first()
     if row is None or not sees_student(request.user, row.student_id):
-        raise NotFound("Документа нет")
+        raise NotFound(_("Документа нет"))
     own = _portfolio_student(request)
     if own is not None and not document_open(own, row.doc_type):
-        raise NotFound("Документа нет")
+        raise NotFound(_("Документа нет"))
     # документ-ссылка (фаза 65): после той же проверки прав — переход на адрес;
     # сам адрес в ответах API виден только тем, кому виден документ
     if row.is_link:
@@ -979,7 +989,7 @@ def document_file(request, pk: int):
         response["Cache-Control"] = "private, no-store"
         return response
     if not row.file:
-        raise NotFound("У документа нет файла")
+        raise NotFound(_("У документа нет файла"))
 
     extension = {"application/pdf": ".pdf", "image/jpeg": ".jpg", "image/png": ".png"}.get(row.content_type, "")
     response = FileResponse(row.file.open("rb"), content_type=row.content_type or "application/octet-stream")
@@ -998,7 +1008,7 @@ def portfolio_state(request):
 
     student = _portfolio_student(request)
     if student is None:
-        return Response({"detail": "Портфолио — экран ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Портфолио — экран ученика")}, status=status.HTTP_403_FORBIDDEN)
     return Response(portfolio.state(student))
 
 
@@ -1013,7 +1023,7 @@ def portfolio_cv(request):
 
     student = _portfolio_student(request)
     if student is None:
-        return Response({"detail": "CV собирается из портфолио ученика"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("CV собирается из портфолио ученика")}, status=status.HTTP_403_FORBIDDEN)
     response = HttpResponse(portfolio.cv_html(student), content_type="text/html; charset=utf-8")
     response["Content-Disposition"] = 'attachment; filename="cv.html"'
     response["Cache-Control"] = "private, no-store"
@@ -1070,7 +1080,7 @@ def exam_goals_attention(request):
     from core.domains import DOMAINS
 
     if request.user.role not in (DOMAINS["exam"].role, ROLE_ADMIN):
-        return Response({"detail": "Списки целей ведёт академический директор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"detail": _("Списки целей ведёт академический директор")}, status=status.HTTP_403_FORBIDDEN)
 
     today = timezone.localdate()
     week = today + dt.timedelta(days=7)
@@ -1119,7 +1129,9 @@ def year_transfer(request):
     from students import year_transfer as transfer
 
     if request.user.role != ROLE_ADMIN:
-        return Response({"detail": "Перевод на следующий год делает администратор"}, status=status.HTTP_403_FORBIDDEN)
+        return Response(
+            {"detail": _("Перевод на следующий год делает администратор")}, status=status.HTTP_403_FORBIDDEN
+        )
     if request.method == "GET":
         return Response(transfer.preview())
     try:

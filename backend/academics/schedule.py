@@ -10,17 +10,20 @@
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from django.db import transaction
 from django.db.models import Q
-from django.utils import timezone
+from django.utils import timezone, translation
+from django.utils.translation import gettext as _
 
 from academics import cache
 from academics.calendar import SchoolCalendar, date_with_weekday, lesson_groups, today
 from academics.cohorts import group_ids_of, member_ids, students_share
 from academics.models import Cohort, Course, Lesson, LessonSeries, LessonStatus
 from academics.payloads import user_name
+from core import stored_text
 from core.audit import record_change
 from core.domains import Source
 from core.models import AuditLog
@@ -75,8 +78,9 @@ def recent_changes(limit: int = 8) -> list[dict]:
         {
             "id": row.pk,
             "when": row.created_at,
-            "who": (row.actor.full_name or row.actor.email) if row.actor_id else (row.actor_title or "система"),
-            "text": row.new_value,
+            "who": (row.actor.full_name or row.actor.email) if row.actor_id else (row.actor_title or _("система")),
+            # фраза хранится по-русски, читающему — на его языке
+            "text": stored_text.localize(row.new_value),
             "lesson": int(row.object_id) if row.object_id.isdigit() else None,
         }
         for row in rows
@@ -145,7 +149,7 @@ def create_weekly(
 ) -> LessonSeries:
     """Урок каждую неделю с даты до конца года; каникулы и праздники пропускаются."""
     if not calendar.is_school_day(starts):
-        raise ScheduleRefused("Повторяющийся урок начинается с учебного дня")
+        raise ScheduleRefused(_("Повторяющийся урок начинается с учебного дня"))
     year_end = ends or (calendar.year.ends if calendar.year else starts + dt.timedelta(days=270))
     course = _course(subject, teacher, cohort)
     series = LessonSeries.objects.create(
@@ -160,7 +164,13 @@ def create_weekly(
     materialize(series, calendar, actor=actor)
     first = Lesson.objects.filter(series=series).order_by("date").first()
     log_change(
-        f"Добавлен урок: {subject.short_title.lower()} {cohort.name}, каждый {_weekday_word(starts)}, {slot} урок",
+        stored_text.store(
+            stored_text.LESSON_SERIES_ADDED,
+            subject=subject.short_title.lower(),
+            cohort=cohort.name,
+            date=f"{starts:%d.%m.%Y}",
+            slot=slot,
+        ),
         actor=actor,
         lesson=first,
     )
@@ -179,15 +189,15 @@ def create_once(
         slot=slot,
         room=room[:40],
         teacher=teacher,
-        note=(note or "Разовый урок")[:120],
+        note=(note or "Разовый урок")[:120],  # i18n-skip: заметка урока хранится в базе как данные
         created_by=actor if getattr(actor, "pk", None) else None,
     )
-    log_change(f"Добавлен разовый урок: {_title(lesson)}, {date:%d.%m.%Y}, {slot} урок", actor=actor, lesson=lesson)
+    log_change(
+        stored_text.store(stored_text.LESSON_ADDED, lesson=_title(lesson), date=f"{date:%d.%m.%Y}", slot=slot),
+        actor=actor,
+        lesson=lesson,
+    )
     return lesson
-
-
-def _weekday_word(day: dt.date) -> str:
-    return ("понедельник", "вторник", "среду", "четверг", "пятницу", "субботу", "воскресенье")[day.weekday()]
 
 
 # --- Накладки ----------------------------------------------------------------
@@ -223,7 +233,7 @@ def overlaps(a: Span | None, a_slot: int, b: Span | None, b_slot: int) -> bool:
 
 def time_words(span: Span | None, slot: int) -> str:
     """«13:15» или, если звонка нет, «5 урок»."""
-    return f"{span[0]:%H:%M}" if span is not None else f"{slot} урок"
+    return f"{span[0]:%H:%M}" if span is not None else _("{slot} урок").format(slot=slot)
 
 
 def lessons_on(date: dt.date):
@@ -271,14 +281,16 @@ def conflicts_for(
         # урок без учителя с другим таким же не накладка: учителя ещё нет
         if teacher_id is not None and other.actual_teacher_id == teacher_id:
             who = other.substitute or other.teacher
-            out.append(Conflict("teacher", f"{user_name(who)} ведёт два урока сразу", None, other.pk))
+            out.append(
+                Conflict("teacher", _("{teacher} ведёт два урока сразу").format(teacher=user_name(who)), None, other.pk)
+            )
         elif room and other.room and other.room.strip().lower() == room.strip().lower():
-            out.append(Conflict("room", f"Кабинет {room} занят дважды", None, other.pk))
+            out.append(Conflict("room", _("Кабинет {room} занят дважды").format(room=room), None, other.pk))
         elif students_share(cohort, other.course.cohort, date):
             out.append(
                 Conflict(
                     "students",
-                    f"У {cohort.name} и {other.course.cohort.name} общие ученики",
+                    _("У {first} и {second} общие ученики").format(first=cohort.name, second=other.course.cohort.name),
                     None,
                     other.pk,
                 )
@@ -303,9 +315,9 @@ def bells_conflicts(cohort: Cohort) -> list[Conflict]:
     parts = []
     for group_id in groups:
         schedule_id = calendar.group_schedule.get(group_id)
-        title = calendar.schedule_titles.get(schedule_id, "общее") if schedule_id else "общее"
+        title = calendar.schedule_titles.get(schedule_id, _("общее")) if schedule_id else _("общее")
         parts.append(f"{codes.get(group_id, group_id)} — «{title}»")
-    return [Conflict("bells", "У групп состава разные звонки: " + ", ".join(parts), None, None)]
+    return [Conflict("bells", _("У групп состава разные звонки: {groups}").format(groups=", ".join(parts)), None, None)]
 
 
 def conflicts_between(start: dt.date, end: dt.date) -> list[dict]:
@@ -352,11 +364,12 @@ def _later(a: Span | None, b: Span | None) -> Span | None:
 def _pair_conflict(a: Lesson, b: Lesson, date: dt.date) -> Conflict | None:
     if a.actual_teacher_id is not None and a.actual_teacher_id == b.actual_teacher_id:
         who = a.substitute or a.teacher
-        return Conflict("teacher", f"{user_name(who)} ведёт два урока сразу", a.pk, b.pk)
+        return Conflict("teacher", _("{teacher} ведёт два урока сразу").format(teacher=user_name(who)), a.pk, b.pk)
     if a.room and b.room and a.room.strip().lower() == b.room.strip().lower():
-        return Conflict("room", f"Кабинет {a.room} занят дважды", a.pk, b.pk)
+        return Conflict("room", _("Кабинет {room} занят дважды").format(room=a.room), a.pk, b.pk)
     if students_share(a.course.cohort, b.course.cohort, date):
-        return Conflict("students", f"У {a.course.cohort.name} и {b.course.cohort.name} общие ученики", a.pk, b.pk)
+        text = _("У {first} и {second} общие ученики").format(first=a.course.cohort.name, second=b.course.cohort.name)
+        return Conflict("students", text, a.pk, b.pk)
     return None
 
 
@@ -410,7 +423,7 @@ def has_marks(lesson: Lesson) -> bool:
 
 def _refuse_past(lesson: Lesson) -> None:
     if lesson.date < today():
-        raise ScheduleRefused("Прошедший урок не меняется: это уже история журнала")
+        raise ScheduleRefused(_("Прошедший урок не меняется: это уже история журнала"))
 
 
 @transaction.atomic
@@ -437,7 +450,11 @@ def edit_this(
     if reason:
         changes["reason"] = reason[:200]
     _apply(lesson, changes, actor)
-    log_change(f"Изменён урок {lesson.date:%d.%m.%Y}: {_title(lesson)}", actor=actor, lesson=lesson)
+    log_change(
+        stored_text.store(stored_text.LESSON_CHANGED, date=f"{lesson.date:%d.%m.%Y}", lesson=_title(lesson)),
+        actor=actor,
+        lesson=lesson,
+    )
     return lesson
 
 
@@ -471,7 +488,7 @@ def edit_from(
     _refuse_past(lesson)
     series = lesson.series
     if series is None:
-        raise ScheduleRefused("У разового урока нет серии: меняйте только этот урок")
+        raise ScheduleRefused(_("У разового урока нет серии: меняйте только этот урок"))
     cut = lesson.date
     year_end = series.ends
     _retire_from(series, cut, actor=actor)
@@ -488,7 +505,11 @@ def edit_from(
     materialize(new_series, calendar, actor=actor)
     first = Lesson.objects.filter(series=new_series).order_by("date").first()
     log_change(
-        f"Изменена серия с {cut:%d.%m.%Y}: {subject.short_title.lower()} {cohort.name}", actor=actor, lesson=first
+        stored_text.store(
+            stored_text.SERIES_CHANGED, date=f"{cut:%d.%m.%Y}", subject=subject.short_title.lower(), cohort=cohort.name
+        ),
+        actor=actor,
+        lesson=first,
     )
     return new_series
 
@@ -518,14 +539,24 @@ def substitute(lesson: Lesson, *, teacher, reason: str, actor=None) -> Lesson:
     _refuse_past(lesson)
     # занят — по времени звонков: 1 урок 8 класса и 1 урок 10 класса — разные часы
     if teacher.pk in busy_teacher_ids(lesson):
-        raise ScheduleRefused("Этот учитель в это время ведёт урок")
+        raise ScheduleRefused(_("Этот учитель в это время ведёт урок"))
     _apply(lesson, {"substitute": teacher, "reason": reason[:200]}, actor)
     log_change(
-        f"Замена: {_title(lesson)} {lesson.date:%d.%m.%Y} — {teacher.full_name or teacher.email}",
+        stored_text.store(
+            stored_text.LESSON_COVER,
+            lesson=_title(lesson),
+            date=f"{lesson.date:%d.%m.%Y}",
+            teacher=teacher.full_name or teacher.email,
+        ),
         actor=actor,
         lesson=lesson,
     )
-    _notify_teachers(lesson, f"Замена на {date_with_weekday(lesson.date)}, {lesson.slot} урок: {_title(lesson)}")
+    _notify_teachers(
+        lesson,
+        lambda: _("Замена на {date}, {slot} урок: {lesson}").format(
+            date=date_with_weekday(lesson.date), slot=lesson.slot, lesson=_title(lesson)
+        ),
+    )
     return lesson
 
 
@@ -536,7 +567,7 @@ def move(
     """Перенос на другой день или номер. Накладка требует подтверждения."""
     _refuse_past(lesson)
     if not calendar.is_school_day(date):
-        raise ScheduleRefused("Это не учебный день")
+        raise ScheduleRefused(_("Это не учебный день"))
     found = conflicts_for(
         date=date,
         slot=slot,
@@ -546,15 +577,24 @@ def move(
         exclude=lesson.pk,
     )
     if found and not force:
-        raise ScheduleRefused("Есть накладка: " + "; ".join(c.text for c in found))
-    changes = {"date": date, "slot": slot, "reason": (reason or "Перенос")[:200]}
+        raise ScheduleRefused(_("Есть накладка: {conflicts}").format(conflicts="; ".join(c.text for c in found)))
+    changes = {"date": date, "slot": slot, "reason": (reason or "Перенос")[:200]}  # i18n-skip: причина хранится в базе
     if lesson.status != LessonStatus.MOVED:
         changes["moved_from_date"] = lesson.date
         changes["moved_from_slot"] = lesson.slot
         changes["status"] = LessonStatus.MOVED
     _apply(lesson, changes, actor)
-    log_change(f"Перенос: {_title(lesson)} на {date:%d.%m.%Y}, {slot} урок", actor=actor, lesson=lesson)
-    _notify_all(lesson, f"Урок перенесён на {date_with_weekday(date)}, {slot} урок: {_title(lesson)}")
+    log_change(
+        stored_text.store(stored_text.LESSON_MOVED, lesson=_title(lesson), date=f"{date:%d.%m.%Y}", slot=slot),
+        actor=actor,
+        lesson=lesson,
+    )
+    _notify_all(
+        lesson,
+        lambda: _("Урок перенесён на {date}, {slot} урок: {lesson}").format(
+            date=date_with_weekday(date), slot=slot, lesson=_title(lesson)
+        ),
+    )
     return lesson
 
 
@@ -563,10 +603,19 @@ def cancel(lesson: Lesson, *, reason: str, actor=None) -> Lesson:
     """Отмена: урок остаётся в расписании зачёркнутым с причиной."""
     _refuse_past(lesson)
     if not reason.strip():
-        raise ScheduleRefused("Напишите причину: её увидят ученики")
+        raise ScheduleRefused(_("Напишите причину: её увидят ученики"))
     _apply(lesson, {"status": LessonStatus.CANCELLED, "reason": reason[:200]}, actor)
-    log_change(f"Отменён урок: {_title(lesson)} {lesson.date:%d.%m.%Y}", actor=actor, lesson=lesson)
-    _notify_all(lesson, f"Урок отменён: {_title(lesson)}, {date_with_weekday(lesson.date)}. {reason}")
+    log_change(
+        stored_text.store(stored_text.LESSON_CANCELLED, lesson=_title(lesson), date=f"{lesson.date:%d.%m.%Y}"),
+        actor=actor,
+        lesson=lesson,
+    )
+    _notify_all(
+        lesson,
+        lambda: _("Урок отменён: {lesson}, {date}. {reason}").format(
+            lesson=_title(lesson), date=date_with_weekday(lesson.date), reason=reason
+        ),
+    )
     return lesson
 
 
@@ -585,7 +634,11 @@ def restore(lesson: Lesson, *, actor=None) -> Lesson:
         )
     changes["status"] = LessonStatus.PLANNED
     _apply(lesson, changes, actor)
-    log_change(f"Урок возвращён как было: {_title(lesson)} {lesson.date:%d.%m.%Y}", actor=actor, lesson=lesson)
+    log_change(
+        stored_text.store(stored_text.LESSON_RESTORED, lesson=_title(lesson), date=f"{lesson.date:%d.%m.%Y}"),
+        actor=actor,
+        lesson=lesson,
+    )
     return lesson
 
 
@@ -619,7 +672,10 @@ def delete(lesson: Lesson, *, scope: str, actor=None) -> dict:
             archive(lesson, actor=actor)
         else:
             lesson.delete()
-    log_change(f"Удалено: {title}, уроков {gone} с {preview['from']:%d.%m.%Y}", actor=actor)
+    log_change(
+        stored_text.store(stored_text.SERIES_DELETED, title=title, count=gone, date=f"{preview['from']:%d.%m.%Y}"),
+        actor=actor,
+    )
     return {**preview, "deleted": gone}
 
 
@@ -630,9 +686,19 @@ def reassign(course: Course, *, teacher, since: dt.date, actor=None) -> Course:
     course.teacher = teacher
     course.save(update_fields=["teacher"])
     Lesson.objects.filter(course=course, date__gte=since, substitute__isnull=True).update(teacher=teacher)
+    params = {
+        "subject": course.subject.short_title.lower(),
+        "cohort": course.cohort.name,
+        "date": f"{since:%d.%m.%Y}",
+        "teacher": user_name(teacher),
+    }
+    old_name = user_name(old)
     log_change(
-        f"Журнал {course.subject.short_title.lower()} {course.cohort.name}: с {since:%d.%m.%Y} ведёт "
-        f"{user_name(teacher)} вместо {user_name(old) or 'неназначенного учителя'}",
+        (
+            stored_text.store(stored_text.JOURNAL_TEACHER, old=old_name, **params)
+            if old_name
+            else stored_text.store(stored_text.JOURNAL_TEACHER_FIRST, **params)
+        ),
         actor=actor,
     )
     return course
@@ -641,25 +707,31 @@ def reassign(course: Course, *, teacher, since: dt.date, actor=None) -> Course:
 # --- Уведомления -------------------------------------------------------------
 
 
-def _notify_teachers(lesson: Lesson, text: str) -> None:
+def _tell(user, words: Callable[[], str]) -> None:
+    """Уведомление об уроке — текст собирается на языке получателя, а не того, кто правил."""
+    from core.i18n import language_of
     from core.models import Notification
     from materials.services import notify
 
+    with translation.override(language_of(user)):
+        text = words()
+    notify(user, kind=Notification.Kind.LESSON_CHANGED, template="{text}", link="/schedule", text=text)
+
+
+def _notify_teachers(lesson: Lesson, words: Callable[[], str]) -> None:
     for user in {lesson.teacher, lesson.substitute}:
         if user is not None:
-            notify(user, kind=Notification.Kind.LESSON_CHANGED, template="{text}", link="/schedule", text=text)
+            _tell(user, words)
 
 
-def _notify_all(lesson: Lesson, text: str) -> None:
+def _notify_all(lesson: Lesson, words: Callable[[], str]) -> None:
     """Учителю и ученикам состава — тем, у кого есть учётная запись."""
-    from core.models import Notification
-    from materials.services import notify
     from students.models import Student
 
-    _notify_teachers(lesson, text)
+    _notify_teachers(lesson, words)
     ids = member_ids(lesson.course.cohort, lesson.date)
     for student in Student.objects.filter(pk__in=ids, user__isnull=False).select_related("user"):
-        notify(student.user, kind=Notification.Kind.LESSON_CHANGED, template="{text}", link="/schedule", text=text)
+        _tell(student.user, words)
 
 
 # --- Выборки для экранов ------------------------------------------------------

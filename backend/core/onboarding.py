@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from django.utils.translation import gettext as _
+
 from core.domains import DOMAINS, ROLE_ADMIN, ROLE_STUDENT, domain_of_role
 
 
@@ -73,14 +75,14 @@ def _students_step() -> Step:
     count = Student.objects.count()
     return Step(
         code="students",
-        title="Ученики заведены",
+        title=_("Ученики заведены"),
         # заводит их администратор списком на экране «Пользователи» —
         # и директору, и администратору шаг ведёт туда же
-        hint="Пока в школе нет ни одного ученика, все экраны будут пустыми. Заводит их администратор списком",
+        hint=_("Пока в школе нет ни одного ученика, все экраны будут пустыми. Заводит их администратор списком"),
         path="/users",
         done=count > 0,
         count=count,
-        action="Завести учеников",
+        action=_("Завести учеников"),
     )
 
 
@@ -119,15 +121,15 @@ def _profile_step(domain_code: str) -> Step:
 
     return Step(
         code="profiles",
-        title=f"Данные домена «{domain.title}» внесены",
+        title=_("Данные домена «{domain}» внесены").format(domain=domain.title),
         # с фазы 35 директор вносит данные руками или вставкой текста;
         # файл, если он есть, отдаётся администратору
-        hint="Внесите данные в таблице или вставьте текст в помощнике; файл загружает администратор",
+        hint=_("Внесите данные в таблице или вставьте текст в помощнике; файл загружает администратор"),
         path="/table",
         done=total > 0 and filled >= max(1, total // 2),
         count=filled,
         total=total,
-        action="Открыть таблицу",
+        action=_("Открыть таблицу"),
     )
 
 
@@ -148,13 +150,13 @@ def _labels_step(domain_code: str) -> Step | None:
         code="labels",
         # без «(статус)» в скобках: подпись поля и так называется «Статус»,
         # и строка читалась как «Статусы проставлены (статус)»
-        title="Статусы проставлены",
-        hint="Статус ставится руками: формулы для него школа не задала",
+        title=_("Статусы проставлены"),
+        hint=_("Статус ставится руками: формулы для него школа не задала"),
         path="/table",
         done=total > 0 and filled == total,
         count=filled,
         total=total,
-        action="Открыть таблицу",
+        action=_("Открыть таблицу"),
     )
 
 
@@ -169,35 +171,35 @@ def _catalog_steps() -> list[Step]:
     steps = [
         Step(
             code="universities",
-            title="Вузы заведены",
-            hint="Заполните стартовый справочник одной кнопкой или заведите вузы руками",
+            title=_("Вузы заведены"),
+            hint=_("Заполните стартовый справочник одной кнопкой или заведите вузы руками"),
             path="/directory",
             done=universities > 0,
             count=universities,
-            action="Открыть справочник",
+            action=_("Открыть справочник"),
         ),
         Step(
             code="requirements",
-            title="Требования внесены",
-            hint="Без порогов процент соответствия считать не из чего",
+            title=_("Требования внесены"),
+            hint=_("Без порогов процент соответствия считать не из чего"),
             path="/directory",
             done=programs > 0 and requirements >= programs,
             count=requirements,
             total=programs,
-            action="Открыть справочник",
+            action=_("Открыть справочник"),
         ),
     ]
     if unverified:
         steps.append(
             Step(
                 code="verified",
-                title="Данные справочника подтверждены",
-                hint="Сверьте пороги с сайтами вузов и снимите оранжевые плашки",
+                title=_("Данные справочника подтверждены"),
+                hint=_("Сверьте пороги с сайтами вузов и снимите оранжевые плашки"),
                 path="/directory",
                 done=False,
                 count=universities - unverified,
                 total=universities,
-                action="Проверить",
+                action=_("Проверить"),
             )
         )
     return steps
@@ -212,21 +214,21 @@ def _admin_steps() -> list[Step]:
     return [
         Step(
             code="users",
-            title="Учётные записи директоров заведены",
-            hint="Каждый директор ведёт свой домен — без записи он не войдёт",
+            title=_("Учётные записи директоров заведены"),
+            hint=_("Каждый директор ведёт свой домен — без записи он не войдёт"),
             path="/users",
             done=users > 1,
             count=users,
-            action="Завести пользователя",
+            action=_("Завести пользователя"),
         ),
         Step(
             code="groups",
-            title="Учебные группы заведены",
-            hint="По группам считаются дашборды и раскладываются ученики",
+            title=_("Учебные группы заведены"),
+            hint=_("По группам считаются дашборды и раскладываются ученики"),
             path="/users",
             done=groups > 0,
             count=groups,
-            action="Завести группу",
+            action=_("Завести группу"),
         ),
         _students_step(),
     ]
@@ -246,31 +248,31 @@ def _student_steps(student) -> list[Step]:
     return [
         Step(
             code="profile",
-            title="Профиль заполнен",
-            hint="Несколько коротких вопросов о себе — и кабинет наполнится",
+            title=_("Профиль заполнен"),
+            hint=_("Несколько коротких вопросов о себе — и кабинет наполнится"),
             path="/onboarding",
             done=answered >= total_questions,
             count=answered,
             total=total_questions,
-            action="Заполнить",
+            action=_("Заполнить"),
         ),
         Step(
             code="universities",
-            title="Вузы выбраны",
-            hint="В каталоге видно, куда вы проходите уже сейчас",
+            title=_("Вузы выбраны"),
+            hint=_("В каталоге видно, куда вы проходите уже сейчас"),
             path="/catalog",
             done=universities > 0,
             count=universities,
-            action="Открыть каталог",
+            action=_("Открыть каталог"),
         ),
         Step(
             code="plan",
-            title="План на год открыт",
-            hint="Задачи собираются из ваших вузов и их дедлайнов",
+            title=_("План на год открыт"),
+            hint=_("Задачи собираются из ваших вузов и их дедлайнов"),
             path="/roadmap",
             done=tasks > 0,
             count=tasks,
-            action="Посмотреть план",
+            action=_("Посмотреть план"),
         ),
     ]
 
@@ -279,26 +281,41 @@ def _directory_step(domain_code: str) -> Step | None:
     """Справочник предмета или вида спорта — без него список выбора пуст."""
     from directories.models import OlympiadSubject, SportType
 
+    # подсказка — целой фразой на каждый справочник: слово внутри фразы
+    # в переводе встаёт в другой падеж и на другое место
     setup = {
-        "talent": (OlympiadSubject, "Завести предметы олимпиад", "/subjects", "предмет"),
-        "sport": (SportType, "Завести виды спорта", "/sport-types", "вид спорта"),
+        "talent": (
+            OlympiadSubject,
+            _("Завести предметы олимпиад"),
+            "/subjects",
+            _(
+                "Пока список выбора пуст, предмет у ученика не указать. "
+                "Заведите те, что реально встречаются у ваших ребят"
+            ),
+        ),
+        "sport": (
+            SportType,
+            _("Завести виды спорта"),
+            "/sport-types",
+            _(
+                "Пока список выбора пуст, вид спорта у ученика не указать. "
+                "Заведите те, что реально встречаются у ваших ребят"
+            ),
+        ),
     }.get(domain_code)
     if setup is None:
         return None
 
-    model, title, path, one = setup
+    model, title, path, hint = setup
     count = model.objects.count()
     return Step(
         code=f"directory_{domain_code}",
         title=title,
-        hint=(
-            f"Пока список выбора пуст, {one} у ученика не указать. "
-            f"Заведите те, что реально встречаются у ваших ребят"
-        ),
+        hint=hint,
         path=path,
         done=count > 0,
         count=count,
-        action="Открыть справочник",
+        action=_("Открыть справочник"),
     )
 
 
@@ -307,17 +324,17 @@ def build(user) -> Checklist:
     role = user.role
     if role == ROLE_STUDENT:
         student = getattr(user, "student", None)
-        checklist = Checklist(role=role, title="С чего начать")
+        checklist = Checklist(role=role, title=_("С чего начать"))
         if student is not None:
             checklist.steps = _student_steps(student)
         return checklist
 
     if role == ROLE_ADMIN:
-        return Checklist(role=role, title="Начало работы", steps=_admin_steps())
+        return Checklist(role=role, title=_("Начало работы"), steps=_admin_steps())
 
     domain = domain_of_role(role)
     if domain is None:
-        return Checklist(role=role, title="Начало работы")
+        return Checklist(role=role, title=_("Начало работы"))
 
     steps = [_students_step()]
     directory = _directory_step(domain.code)
@@ -329,4 +346,4 @@ def build(user) -> Checklist:
     labels = _labels_step(domain.code)
     if labels is not None:
         steps.append(labels)
-    return Checklist(role=role, title="Начало работы", steps=steps)
+    return Checklist(role=role, title=_("Начало работы"), steps=steps)

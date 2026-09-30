@@ -19,6 +19,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.utils import timezone
+from django.utils.translation import gettext, gettext_lazy
 
 from accounts.models import User
 from accounts.passwords import set_password
@@ -84,7 +85,7 @@ def is_expired(user: User) -> bool:
 
 def expired_message(user: User) -> str:
     """Что сказать человеку с просроченным паролем. Без подробностей о сроке."""
-    return (
+    return gettext(
         "Временный пароль больше не действует — у него ограниченный срок. "
         "Попросите администратора школы выпустить новый: это одна кнопка"
     )
@@ -166,7 +167,7 @@ def send_letter(user: User, password: str) -> bool:
 # --- Выгрузка списка ------------------------------------------------------
 
 #: Заголовок выгрузки. Порядок колонок из задания: ФИО, логин, пароль.
-EXPORT_HEADER = ("ФИО", "Логин", "Временный пароль")
+EXPORT_HEADER = (gettext_lazy("ФИО"), gettext_lazy("Логин"), gettext_lazy("Временный пароль"))
 
 
 def export_csv(rows: list[dict]) -> str:
@@ -182,7 +183,7 @@ def export_csv(rows: list[dict]) -> str:
 
     buffer = io.StringIO()
     writer = csv.writer(buffer, delimiter=";", lineterminator="\r\n")
-    writer.writerow(EXPORT_HEADER)
+    writer.writerow([str(title) for title in EXPORT_HEADER])
     for row in rows:
         writer.writerow([row.get("full_name", ""), row.get("login") or row.get("email", ""), row.get("password", "")])
     # BOM: без него Excel читает файл в своей кодировке и рисует кракозябры

@@ -14,6 +14,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from django.utils import timezone
+from django.utils.translation import gettext
 
 from engagement.models import CueCondition, HomeCue
 from students.models import Student
@@ -31,7 +32,7 @@ def _portfolio_gap(student: Student) -> str | None:
     percent = state(student)["percent"]
     if percent >= 100:
         return None
-    return f"Портфолио заполнено на {percent}%"
+    return gettext("Портфолио заполнено на {percent}%").format(percent=percent)
 
 
 def _exam_goal_gap(student: Student) -> str | None:
@@ -52,10 +53,10 @@ def _exam_goal_gap(student: Student) -> str | None:
         if have is not None and float(have) >= float(goal.target_score):
             continue
         if goal.exam_date and goal.exam_date >= today:
-            return f"До экзамена {(goal.exam_date - today).days} дн."
+            return gettext("До экзамена {days} дн.").format(days=(goal.exam_date - today).days)
         if have is None:
-            return f"Цель по {kind}: {goal.target_score}"
-        return f"{kind} {have} — цель {goal.target_score}"
+            return gettext("Цель по {exam}: {target}").format(exam=kind, target=goal.target_score)
+        return gettext("{exam} {score} — цель {target}").format(exam=kind, score=have, target=goal.target_score)
     return None
 
 
@@ -70,7 +71,7 @@ def _scholarship_deadline(student: Student) -> str | None:
     count = rows.count()
     if count == 0:
         return None
-    return f"Стипендий с ближайшим дедлайном: {count}"
+    return gettext("Стипендий с ближайшим дедлайном: {count}").format(count=count)
 
 
 def _plan_idle(student: Student) -> str | None:
@@ -83,7 +84,7 @@ def _plan_idle(student: Student) -> str | None:
     moved = Task.objects.filter(student=student, updated_at__gte=edge).exists()
     if moved:
         return None
-    return f"Плана не касались {PLAN_IDLE_DAYS} дн."
+    return gettext("Плана не касались {days} дн.").format(days=PLAN_IDLE_DAYS)
 
 
 def _no_universities(student: Student) -> str | None:
@@ -92,7 +93,7 @@ def _no_universities(student: Student) -> str | None:
 
     if StudentUniversity.objects.filter(student=student).exists():
         return None
-    return "Список вузов пуст"
+    return gettext("Список вузов пуст")
 
 
 def _documents_missing(student: Student) -> str | None:
@@ -103,7 +104,7 @@ def _documents_missing(student: Student) -> str | None:
     left = [row for row in rows if not row["done"]]
     if not left:
         return None
-    return f"Не загружено документов: {len(left)} из {len(rows)}"
+    return gettext("Не загружено документов: {missing} из {total}").format(missing=len(left), total=len(rows))
 
 
 #: Проверка условия. Возвращает надпись над заголовком или None,

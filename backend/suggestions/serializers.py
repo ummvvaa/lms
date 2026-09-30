@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 from core.labels import field_short, field_title, model_title, value_title
@@ -125,7 +126,7 @@ class SuggestionSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_author_name(self, obj) -> str:
-        return (obj.author.full_name or obj.author.email) if obj.author_id else "система"
+        return (obj.author.full_name or obj.author.email) if obj.author_id else _("система")
 
 
 class PasteSerializer(serializers.Serializer):
@@ -172,7 +173,7 @@ class ReviewSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if attrs["decision"] == "decline" and not (attrs.get("reason") or "").strip():
-            raise serializers.ValidationError("Отклоняя, назовите причину — ученик должен понять, что поправить")
+            raise serializers.ValidationError(_("Отклоняя, назовите причину — ученик должен понять, что поправить"))
         return attrs
 
 
@@ -282,5 +283,5 @@ class AssistantAskSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if not (attrs.get("command") or "").strip() and not (attrs.get("text") or "").strip():
-            raise serializers.ValidationError("Нужна кнопка или текст вопроса")
+            raise serializers.ValidationError(_("Нужна кнопка или текст вопроса"))
         return attrs

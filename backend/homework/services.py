@@ -19,6 +19,7 @@ from dataclasses import dataclass
 
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from academics.models import Lesson, LessonStatus
 from core.domains import ROLE_ADMIN, ROLE_STUDENT
@@ -126,7 +127,7 @@ def save_assignment(
 ) -> Assignment:
     """Сдача в LMS, срок и правило после срока. Текст ДЗ — `Lesson.homework`."""
     if late_policy not in LatePolicy.values:
-        raise HomeworkRefused("После срока — принимать с пометкой или закрыть сдачу")
+        raise HomeworkRefused(_("После срока — принимать с пометкой или закрыть сдачу"))
     if requires_submission and due_at is None:
         due_at = default_due(lesson)
     row = assignment_of(lesson)
@@ -173,22 +174,22 @@ def may_change(submission: Submission, now: dt.datetime | None = None) -> None:
     """Менять работу можно до срока; после срока — только несданную и только если учитель принимает."""
     assignment = submission.assignment
     if submission.is_checked:
-        raise HomeworkRefused("Учитель уже проверил работу — менять её нельзя")
+        raise HomeworkRefused(_("Учитель уже проверил работу — менять её нельзя"))
     if not is_past_due(assignment, now):
         return
     if submission.is_submitted:
-        raise HomeworkRefused("Срок прошёл — сданную работу можно только посмотреть")
+        raise HomeworkRefused(_("Срок прошёл — сданную работу можно только посмотреть"))
     if assignment.late_policy == LatePolicy.CLOSE:
-        raise HomeworkRefused("Срок прошёл, учитель не принимает работы после срока")
+        raise HomeworkRefused(_("Срок прошёл, учитель не принимает работы после срока"))
 
 
 @transaction.atomic
 def submit(assignment: Assignment, student, *, text: str, link: str, comment: str) -> Submission:
     """«Сдать»: до срока — вовремя, после — по правилу задания."""
     if not assignment.requires_submission:
-        raise HomeworkRefused("По этому заданию сдача в LMS не нужна")
+        raise HomeworkRefused(_("По этому заданию сдача в LMS не нужна"))
     if not is_recipient(student.pk, assignment.lesson):
-        raise HomeworkRefused("Это задание не вашего состава")
+        raise HomeworkRefused(_("Это задание не вашего состава"))
     submission = draft_of(assignment, student)
     now = timezone.now()
     may_change(submission, now)
@@ -197,9 +198,9 @@ def submit(assignment: Assignment, student, *, text: str, link: str, comment: st
     ready = submission.files.filter(state=FileState.READY, archived_at__isnull=True).count()
     text, link = text.strip(), link.strip()
     if link and not link.startswith(("http://", "https://")):
-        raise HomeworkRefused("Ссылка начинается с http:// или https://")
+        raise HomeworkRefused(_("Ссылка начинается с http:// или https://"))
     if not ready and not text and not link:
-        raise HomeworkRefused("Приложите файл, напишите ответ или дайте ссылку")
+        raise HomeworkRefused(_("Приложите файл, напишите ответ или дайте ссылку"))
     submission.text = text[:20000]
     submission.link = link[:500]
     submission.comment = comment.strip()[:2000]
@@ -233,9 +234,9 @@ def _award(student, submission: Submission) -> None:
 def check(submission: Submission, *, grade: int | None, comment: str, actor) -> Submission:
     """Проверено: оценка 1–10 или «без оценки» и комментарий. Вернуть на доработку нельзя."""
     if not submission.is_submitted:
-        raise HomeworkRefused("Работа ещё не сдана")
+        raise HomeworkRefused(_("Работа ещё не сдана"))
     if grade is not None and not 1 <= int(grade) <= 10:
-        raise HomeworkRefused("Оценка — от 1 до 10 или «без оценки»")
+        raise HomeworkRefused(_("Оценка — от 1 до 10 или «без оценки»"))
     submission.grade = int(grade) if grade is not None else None
     submission.teacher_comment = comment.strip()[:4000]
     submission.checked_at = timezone.now()

@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext_lazy
 from rest_framework import permissions
 
 from core.domains import ROLE_STUDENT
@@ -26,7 +27,7 @@ class OwnStudentOrStaff(permissions.BasePermission):
     решает, — а выглядит это как обычное сохранение.
     """
 
-    message = "Доступны только свои задачи"
+    message = gettext_lazy("Доступны только свои задачи")
 
     def has_permission(self, request, view) -> bool:
         if not (request.user and request.user.is_authenticated):
@@ -48,7 +49,7 @@ class OwnStudentOrStaff(permissions.BasePermission):
 class StaffOnly(permissions.BasePermission):
     """Шаблоны задач заводит директор, не ученик."""
 
-    message = "Шаблоны задач ведут сотрудники"
+    message = gettext_lazy("Шаблоны задач ведут сотрудники")
 
     def has_permission(self, request, view) -> bool:
         if not (request.user and request.user.is_authenticated):
@@ -95,7 +96,7 @@ class OwnCommentOrCurator(permissions.BasePermission):
     Ученик своё замечание куратору тоже не переписывает.
     """
 
-    message = "Комментарий правит тот, кто его написал"
+    message = gettext_lazy("Комментарий правит тот, кто его написал")
 
     def has_permission(self, request, view) -> bool:
         return bool(request.user and request.user.is_authenticated)

@@ -13,6 +13,8 @@ from __future__ import annotations
 import datetime as dt
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -30,7 +32,7 @@ from students.models import BehaviorRemark, Student, StudyGroup
 #: группам, администратор — как везде. Ученику закрыто наглухо
 DISCIPLINE_ROLES = ("director_behavior", ROLE_CURATOR, ROLE_ADMIN)
 
-STUDENT_REFUSAL = "Посещаемость и замечания ведёт школа"
+STUDENT_REFUSAL = gettext_lazy("Посещаемость и замечания ведёт школа")
 
 
 def _forbidden(detail: str = STUDENT_REFUSAL) -> Response:
@@ -38,7 +40,7 @@ def _forbidden(detail: str = STUDENT_REFUSAL) -> Response:
 
 
 def _not_found() -> Response:
-    return Response({"detail": "Не найдено"}, status=status.HTTP_404_NOT_FOUND)
+    return Response({"detail": _("Не найдено")}, status=status.HTTP_404_NOT_FOUND)
 
 
 def _date(raw) -> dt.date | None:
@@ -84,7 +86,7 @@ def attendance_day(request):
     if request.user.role == ROLE_STUDENT:
         return _forbidden()
     if request.user.role not in DISCIPLINE_ROLES:
-        return _forbidden("Посещаемость ведут куратор и директор школы")
+        return _forbidden(_("Посещаемость ведут куратор и директор школы"))
     groups = _my_groups(request.user)
     raw = request.query_params.get("group")
     # экран открывается без выбранной группы: подставляем первую доступную,
@@ -127,7 +129,7 @@ def _journal_or_refusal(request):
     if request.user.role == ROLE_STUDENT:
         return None, _forbidden()
     if request.user.role not in DISCIPLINE_ROLES:
-        return None, _forbidden("Посещаемость ведут куратор и директор школы")
+        return None, _forbidden(_("Посещаемость ведут куратор и директор школы"))
     groups = _my_groups(request.user)
     raw = request.query_params.get("group")
     group = _group_for(request.user, raw) if raw else (_group_for(request.user, groups[0]["id"]) if groups else None)
@@ -164,14 +166,14 @@ def attendance_journal_export(request):
     if payload.get("group") is None:
         return _not_found()
     words = payload["words"]
-    columns = [Column("Ученик", lambda row: row["full_name"], 30)]
+    columns = [Column(_("Ученик"), lambda row: row["full_name"], 30)]
     for index, day in enumerate(payload["days"]):
         title = f"{day['day']:02d} {day['weekday']}"
         columns.append(Column(title, (lambda i: lambda row: words[row["cells"][i]])(index), 10))
-    columns.append(Column("Отсутствовал, дней", lambda row: row["absent"], 18))
-    columns.append(Column("Учебных дней", lambda row: row["marked"], 14))
+    columns.append(Column(_("Отсутствовал, дней"), lambda row: row["absent"], 18))
+    columns.append(Column(_("Учебных дней"), lambda row: row["marked"], 14))
     return workbook_response(
-        filename=f"посещаемость-{payload['group_code']}-{payload['month']}.xlsx",
+        filename=_("посещаемость-{group}-{month}.xlsx").format(group=payload["group_code"], month=payload["month"]),
         sheet=payload["group_code"],
         columns=columns,
         rows=payload["rows"],
@@ -200,12 +202,12 @@ def _attendance_save_legacy(request):  # pragma: no cover
         return _not_found()
     date = _date(request.data.get("date"))
     if date is None:
-        return Response({"detail": "Не указана дата"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Не указана дата")}, status=status.HTTP_400_BAD_REQUEST)
     if date > timezone.localdate():
-        return Response({"detail": "День ещё не наступил"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("День ещё не наступил")}, status=status.HTTP_400_BAD_REQUEST)
     rows = request.data.get("rows")
     if not isinstance(rows, list):
-        return Response({"detail": "Не переданы отметки"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": _("Не переданы отметки")}, status=status.HTTP_400_BAD_REQUEST)
     payload = discipline.save_day(group=group, date=date, rows=rows, actor=request.user)
     payload["groups"] = _my_groups(request.user)
     return Response(payload)
@@ -229,7 +231,7 @@ def _my_groups(user) -> list[dict]:
 def remarks(request, pk: int):
     """Замечания ученика: список и запись новой строки словами."""
     if request.user.role == ROLE_STUDENT:
-        return _forbidden("Замечания ученику не показываются")
+        return _forbidden(_("Замечания ученику не показываются"))
     student = _student_for(request.user, pk)
     if student is None:
         return _not_found()
@@ -241,7 +243,7 @@ def remarks(request, pk: int):
             }
         )
     if not discipline.may_write(request.user, student):
-        return _forbidden("Замечание записывают куратор группы и директор школы")
+        return _forbidden(_("Замечание записывают куратор группы и директор школы"))
     try:
         row = discipline.add_remark(
             student=student,
@@ -260,11 +262,11 @@ def remarks(request, pk: int):
 def remark_drop(request, pk: int):
     """Убрать замечание в архив: написанное о ребёнке не удаляется насовсем."""
     if request.user.role == ROLE_STUDENT:
-        return _forbidden("Замечания ученику не показываются")
+        return _forbidden(_("Замечания ученику не показываются"))
     row = BehaviorRemark.objects.select_related("student").filter(pk=pk).first()
     if row is None or _student_for(request.user, row.student_id) is None:
         return _not_found()
     if not discipline.may_write(request.user, row.student):
-        return _forbidden("Замечание снимают куратор группы и директор школы")
+        return _forbidden(_("Замечание снимают куратор группы и директор школы"))
     discipline.drop_remark(row, actor=request.user)
     return Response({"rows": discipline.remarks_of(row.student)})

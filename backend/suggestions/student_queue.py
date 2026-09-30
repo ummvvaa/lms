@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from django.utils.translation import gettext as _
+
 from core.domains import (
     CURATOR_CONFIRM_DOMAINS,
     DOMAINS,
@@ -102,11 +104,11 @@ def kind_of(changes) -> dict:
     рядом с расхождением, — чтобы очередь и кабинет говорили одно и то же.
     """
     if all(not change.old_value for change in changes):
-        return {"code": "new", "title": "Новое"}
+        return {"code": "new", "title": _("Новое")}
     gap = max((divergence(change) for change in changes), default=0.0)
     if gap >= 0.2:
-        return {"code": "gap", "title": "Расхождение"}
-    return {"code": "edit", "title": "Правка"}
+        return {"code": "gap", "title": _("Расхождение")}
+    return {"code": "edit", "title": _("Правка")}
 
 
 def _document_payload(suggestion: Suggestion) -> dict | None:

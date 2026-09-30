@@ -25,6 +25,8 @@ from django.utils import timezone
 from django.utils.cache import patch_vary_headers
 from django.utils.http import http_date
 
+from core.i18n import translate
+
 
 def _touch_key(session_key: str) -> str:
     return f"session-touch:{session_key}"
@@ -38,7 +40,10 @@ class ResilientSessionMiddleware(SessionMiddleware):
             response = super().process_response(request, response)
         except SessionInterrupted:
             if request.path.startswith("/api/"):
-                return JsonResponse({"detail": "Сессия завершена, войдите заново"}, status=401)
+                # язык ответа уже снят `LanguageMiddleware` (она внутри): берём
+                # тот, что она выбрала для этого запроса
+                lang = getattr(request, "LANGUAGE_CODE", "ru")
+                return JsonResponse({"detail": translate(lang, "Сессия завершена, войдите заново")}, status=401)
             raise
         self._touch(request, response)
         return response

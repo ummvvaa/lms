@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 from core.serializers import PartialUniqueMixin
@@ -34,7 +35,9 @@ class MaterialFileSerializer(serializers.ModelSerializer):
 
     def get_size_human(self, obj) -> str:
         mb = obj.size / (1024 * 1024)
-        return f"{mb:.1f} МБ".replace(".0 ", " ") if mb >= 0.1 else f"{max(1, obj.size // 1024)} КБ"
+        if mb >= 0.1:
+            return _("{size} МБ").format(size=f"{mb:.1f}".removesuffix(".0"))
+        return _("{size} КБ").format(size=max(1, obj.size // 1024))
 
     class Meta:
         model = MaterialFile
@@ -102,14 +105,16 @@ class MaterialSerializer(serializers.ModelSerializer):
     def validate_rights_confirmed(self, value: bool) -> bool:
         if not value:
             raise serializers.ValidationError(
-                "Без подтверждения права на публикацию материал не заводится. "
-                "Если материал чужой и права нет — не выкладывайте его"
+                _(
+                    "Без подтверждения права на публикацию материал не заводится. "
+                    "Если материал чужой и права нет — не выкладывайте его"
+                )
             )
         return value
 
     def validate_source_kind(self, value: str) -> str:
         if value not in SourceKind.values:
-            raise serializers.ValidationError("Выберите, что это за материал: ваше решение, ваш разбор или чужое")
+            raise serializers.ValidationError(_("Выберите, что это за материал: ваше решение, ваш разбор или чужое"))
         return value
 
 
@@ -156,7 +161,7 @@ class MaterialReportSerializer(PartialUniqueMixin, serializers.ModelSerializer):
 
     def validate(self, attrs):
         if not attrs.get("material") and not attrs.get("comment"):
-            raise serializers.ValidationError("Укажите, на что жалуетесь: на материал или на комментарий")
+            raise serializers.ValidationError(_("Укажите, на что жалуетесь: на материал или на комментарий"))
         return attrs
 
 
@@ -217,7 +222,7 @@ class ReviewSerializer(serializers.Serializer):
     def validate(self, attrs):
         if attrs["decision"] == "reject" and not (attrs.get("reason") or "").strip():
             raise serializers.ValidationError(
-                {"reason": "Отклонение без причины автор не поймёт — напишите, что не так"}
+                {"reason": _("Отклонение без причины автор не поймёт — напишите, что не так")}
             )
         return attrs
 

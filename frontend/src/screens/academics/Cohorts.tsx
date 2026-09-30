@@ -37,6 +37,8 @@ import { todayAlmaty } from '../../lib/dates'
  *  переводится при показе. Переведённое слово записалось бы в базу на языке
  *  того, кто делил, и другие видели бы его на чужом языке. */
 const RULE_TITLE = { level: tk('по уровню'), alpha: tk('по списку'), hand: tk('вручную') } as const
+/** Правило, которое пишет сервер при импорте расписания (`academics/schedule_import.py`). */
+export const IMPORTED_RULE = tk('по файлу школы')
 
 type GroupRow = CohortsScreen['groups'][number]
 

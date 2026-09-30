@@ -11,6 +11,7 @@ import datetime as dt
 
 from django.db import transaction
 from django.db.models import Q
+from django.utils.translation import gettext as _
 
 from academics import cache
 from academics.calendar import today
@@ -80,7 +81,7 @@ def group_ids_of(cohort: Cohort) -> list[int]:
 
 
 def kind_title(cohort: Cohort) -> str:
-    return {CohortKind.GROUP: "вся группа", CohortKind.SUBGROUP: "подгруппа", CohortKind.STREAM: "поток"}[
+    return {CohortKind.GROUP: _("вся группа"), CohortKind.SUBGROUP: _("подгруппа"), CohortKind.STREAM: _("поток")}[
         CohortKind(cohort.kind)
     ]
 
@@ -138,8 +139,8 @@ def split_group(
             group=group,
             subject=subject,
             number=index,
-            name=f"{group.code} · подгр. {index}",
-            short_name=f"подгр. {index}",
+            name=f"{group.code} · подгр. {index}",  # i18n-skip: название состава хранится в базе как данные
+            short_name=f"подгр. {index}",  # i18n-skip: название состава хранится в базе как данные
             rule=rule[:60],
         )
         CohortMembership.objects.bulk_create(

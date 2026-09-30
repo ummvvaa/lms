@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from django.utils.translation import gettext_lazy
+
 BEHAVIOR = "director_behavior"
 ADMISSION = "director_admission"
 EXAM = "director_exam"
@@ -34,107 +36,125 @@ COMMANDS: tuple[Command, ...] = (
     # --- общие ---
     Command(
         "paste_as_is",
-        "Вставить как есть",
-        "Текст из мессенджера или письма → разбор → предпросмотр",
+        gettext_lazy("Вставить как есть"),
+        gettext_lazy("Текст из мессенджера или письма → разбор → предпросмотр"),
         "text",
         ALL_DIRECTORS,
     ),
     # файлы грузит только администратор (фаза 35): у директоров кнопки
     # нет ни здесь, ни на экране импорта — они вставляют текст
-    Command("upload_file", "Загрузить файл", "XLSX или CSV → разбор → предпросмотр", "file", (ADMIN,)),
-    Command("digest", "Дайджест на сегодня", "Что изменилось в вашем домене", "none", ALL_DIRECTORS),
+    Command(
+        "upload_file",
+        gettext_lazy("Загрузить файл"),
+        gettext_lazy("XLSX или CSV → разбор → предпросмотр"),
+        "file",
+        (ADMIN,),
+    ),
+    Command(
+        "digest",
+        gettext_lazy("Дайджест на сегодня"),
+        gettext_lazy("Что изменилось в вашем домене"),
+        "none",
+        ALL_DIRECTORS,
+    ),
     Command(
         "explain_match",
-        "Объясни соответствие",
-        "Ученик и программа → чего не хватает и что даст больше всего",
+        gettext_lazy("Объясни соответствие"),
+        gettext_lazy("Ученик и программа → чего не хватает и что даст больше всего"),
         "selection",
         ALL_DIRECTORS,
     ),
     # --- Асем ---
     Command(
         "check_balance",
-        "Проверить баланс списка",
-        "Соотношение reach / target / safety у ученика",
+        gettext_lazy("Проверить баланс списка"),
+        gettext_lazy("Соотношение reach / target / safety у ученика"),
         "selection",
         (ADMISSION, ADMIN),
     ),
     # --- Кымбат ---
-    Command("parse_mock", "Разобрать мок", "Баллы строками → секции, сравнение с прошлым", "text", (EXAM, ADMIN)),
+    Command(
+        "parse_mock",
+        gettext_lazy("Разобрать Mock Test"),
+        gettext_lazy("Баллы строками → секции, сравнение с прошлым"),
+        "text",
+        (EXAM, ADMIN),
+    ),
     # --- Операции уровня управления (фаза 20) ---
     Command(
         "explain_list",
-        "Объясни этот список",
-        "Выделенные ученики → что общего, с чего начать, кто в приоритете",
+        gettext_lazy("Объясни этот список"),
+        gettext_lazy("Выделенные ученики → что общего, с чего начать, кто в приоритете"),
         "selection",
         ALL_DIRECTORS,
     ),
     Command(
         "week_changes",
-        "Что изменилось за неделю",
-        "Сводка по вашему домену с выводами, а не перечислением",
+        gettext_lazy("Что изменилось за неделю"),
+        gettext_lazy("Сводка по вашему домену с выводами, а не перечислением"),
         "none",
         ALL_DIRECTORS,
     ),
     Command(
         "focus_today",
-        "На кого смотреть сегодня",
-        "Короткий список с обоснованием по каждому",
+        gettext_lazy("На кого смотреть сегодня"),
+        gettext_lazy("Короткий список с обоснованием по каждому"),
         "none",
         ALL_DIRECTORS,
     ),
     Command(
         "bulk_tasks",
-        "Поставить задачу выделенным",
-        "Опишите словами, что нужно, — задача уйдёт предложением на всех выделенных",
+        gettext_lazy("Поставить задачу выделенным"),
+        gettext_lazy("Опишите словами, что нужно, — задача уйдёт предложением на всех выделенных"),
         "text",
         ALL_DIRECTORS,
     ),
     Command(
         "prep_plan",
-        "План подготовки к экзамену",
-        "От текущего балла к целевому: часы, темы, дата следующего пробного",
+        gettext_lazy("План подготовки к экзамену"),
+        gettext_lazy("От текущего балла к целевому: часы, темы, дата следующего Mock Test"),
         "selection",
         (EXAM, ADMIN),
     ),
     Command(
         "gap_to_tasks",
-        "Пробелы портфолио в задачи",
-        "Чего не хватает портфолио → задачи роадмапа со сроками",
+        gettext_lazy("Пробелы портфолио в задачи"),
+        gettext_lazy("Чего не хватает портфолио → задачи роадмапа со сроками"),
         "selection",
         (TALENT, ADMIN),
     ),
     Command(
         "parse_university",
-        "Разобрать вуз",
-        "Название или ссылка → программы, требования и дедлайны. Записи заводятся неподтверждёнными",
+        gettext_lazy("Разобрать вуз"),
+        gettext_lazy("Название или ссылка → программы, требования и дедлайны. Записи заводятся неподтверждёнными"),
         "text",
         (ADMISSION, ADMIN),
     ),
     Command(
         "verify_requirements",
-        "Сверить требования с сайтом",
-        "Программа → пороги с официального сайта, со ссылкой и цитатой. Расхождение уходит предложением",
+        gettext_lazy("Сверить требования с сайтом"),
+        gettext_lazy("Программа → пороги с официального сайта, со ссылкой и цитатой. Расхождение уходит предложением"),
         "selection",
         (ADMISSION, ADMIN),
     ),
     Command(
         "parse_activity",
-        "Разобрать активность",
-        "Описание словами → категория, предмет и чего не хватает",
+        gettext_lazy("Разобрать активность"),
+        gettext_lazy("Описание словами → категория, предмет и чего не хватает"),
         "text",
         (TALENT, ADMIN),
     ),
     Command(
         "parse_certificate",
-        "Прочитать грамоту",
-        "Фото грамоты → соревнование, дата, результат",
+        gettext_lazy("Прочитать грамоту"),
+        gettext_lazy("Фото грамоты → соревнование, дата, результат"),
         "image",
         (SPORT, TALENT, ADMIN),
     ),
     Command(
         "parse_score_screenshot",
-        "Прочитать скриншот с баллами",
-        "Скриншот результата → попытка экзамена",
+        gettext_lazy("Прочитать скриншот с баллами"),
+        gettext_lazy("Скриншот результата → попытка экзамена"),
         "image",
         (EXAM, ADMIN),
     ),
@@ -150,7 +170,7 @@ NOT_BUILT_YET: tuple[str, ...] = ()
 def for_role(role: str) -> list[dict]:
     """Кнопки, доступные роли."""
     return [
-        {"code": c.code, "title": c.title, "hint": c.hint, "input_kind": c.input_kind}
+        {"code": c.code, "title": str(c.title), "hint": str(c.hint), "input_kind": c.input_kind}
         for c in COMMANDS
         if role in c.roles
     ]
@@ -164,11 +184,11 @@ def get(code: str) -> Command | None:
 #: фоновой сверкой или из уже убранной кнопки, а в списке «ждёт решения»
 #: человек всё равно должен читать слова, а не код.
 EXTRA_TITLES = {
-    "web_sync": "Фоновая сверка дедлайнов",
-    "import": "Загрузка файла",
-    "manual": "Заведено руками",
-    "bulk_action": "Массовая постановка задач",
-    "gap_to_tasks": "Пробелы портфолио в задачи",
+    "web_sync": gettext_lazy("Фоновая сверка дедлайнов"),
+    "import": gettext_lazy("Загрузка файла"),
+    "manual": gettext_lazy("Заведено руками"),
+    "bulk_action": gettext_lazy("Массовая постановка задач"),
+    "gap_to_tasks": gettext_lazy("Пробелы портфолио в задачи"),
 }
 
 
@@ -178,5 +198,5 @@ def title_of(code: str) -> str:
         return ""
     command = get(code)
     if command is not None:
-        return command.title
-    return EXTRA_TITLES.get(code, "")
+        return str(command.title)
+    return str(EXTRA_TITLES.get(code, ""))

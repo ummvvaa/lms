@@ -15,6 +15,8 @@ from collections.abc import Iterable
 
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
 from academics import cache
 from academics.calendar import SchoolCalendar, lesson_groups, today
@@ -22,16 +24,39 @@ from academics.cohorts import member_ids
 from academics.models import Attendance, Excuse, Grade, Lesson, LessonKind, Mark
 from core.audit import record_change, record_event
 from core.domains import ROLE_ADMIN, ROLE_TEACHER
+from core.phrasing import tn
+
+
+class _Words(dict):
+    """Подписи по коду: по ключу отдаётся готовая строка на активном языке.
+
+    Значения — ленивые переводы; Excel и склейки ждут настоящую строку,
+    поэтому `[]` и `get` переводят сразу, в момент чтения.
+    """
+
+    def __getitem__(self, key):
+        return str(super().__getitem__(key))
+
+    def get(self, key, default=None):
+        return self[key] if key in self else default
+
 
 #: Как отметка читается человеком — на экране, в файле и в отчёте
-MARK_WORDS = {
-    "present": "был",
-    "absent": "не был",
-    "late": "опоздал",
-    "excused": "уважительная",
-    "unmarked": "не отмечен",
-}
-MARK_SHORT = {"present": "", "absent": "н", "late": "оп", "excused": "у", "unmarked": ""}
+MARK_WORDS = _Words(
+    present=gettext_lazy("был"),
+    absent=gettext_lazy("не был"),
+    late=gettext_lazy("опоздал"),
+    excused=gettext_lazy("уважительная"),
+    unmarked=gettext_lazy("не отмечен"),
+)
+#: Короткая отметка в клетке журнала: «н», «оп», «у»
+MARK_SHORT = _Words(
+    present="",
+    absent=gettext_lazy("н"),
+    late=gettext_lazy("оп"),
+    excused=gettext_lazy("у"),
+    unmarked="",
+)
 
 PRESENT, ABSENT, LATE, EXCUSED = "present", "absent", "late", "excused"
 
@@ -64,9 +89,9 @@ def is_excused(periods: dict[int, list[tuple[dt.date, dt.date]]], student_id: in
 def add_excuse(*, student, starts: dt.date, ends: dt.date, reason: str, document: str, file=None, actor=None) -> Excuse:
     """Оформить причину за период: пропуски «н» в эти дни станут «у» во всех журналах."""
     if ends < starts:
-        raise MarkRefused("Дата «по» раньше даты «с»")
+        raise MarkRefused(_("Дата «по» раньше даты «с»"))
     if not reason.strip():
-        raise MarkRefused("Напишите причину")
+        raise MarkRefused(_("Напишите причину"))
     row = Excuse.objects.create(
         student=student,
         starts=starts,
@@ -77,7 +102,7 @@ def add_excuse(*, student, starts: dt.date, ends: dt.date, reason: str, document
         created_by=actor if getattr(actor, "pk", None) else None,
     )
     cache.invalidate()
-    record_event(
+    record_event(  # i18n-skip: значение записи журнала хранится в базе как данные
         student=student,
         code="excuse",
         text=f"{starts:%d.%m.%Y}–{ends:%d.%m.%Y}: {row.reason} ({row.get_document_display().lower()})",
@@ -93,7 +118,7 @@ def drop_excuse(row: Excuse, *, actor=None) -> None:
 
     archive(row, actor=actor)
     cache.invalidate()
-    record_event(
+    record_event(  # i18n-skip: значение записи журнала хранится в базе как данные
         student=row.student,
         code="excuse_dropped",
         text=f"{row.starts:%d.%m.%Y}–{row.ends:%d.%m.%Y}: {row.reason}",
@@ -190,9 +215,9 @@ def save_attendance(
     уроке оно обязательно, на идущем — без времени берётся «сейчас».
     """
     if not lesson.is_live:
-        raise MarkRefused("Урок отменён: отмечать нечего")
+        raise MarkRefused(_("Урок отменён: отмечать нечего"))
     if not calendar.lesson_started(lesson.date, lesson.slot, lesson_groups(lesson)):
-        raise MarkRefused("Урок ещё впереди: отметить можно со звонка")
+        raise MarkRefused(_("Урок ещё впереди: отметить можно со звонка"))
     allowed = set(member_ids(lesson.course.cohort, lesson.date))
     current = {row.student_id: row for row in Attendance.objects.filter(lesson=lesson)}
     wanted: dict[int, str] = {}
@@ -267,7 +292,9 @@ def save_attendance(
             row.delete()
             written += 1
     if lesson.marked_at is None:
-        record_change(instance=lesson, field_name="marked_at", old_value="", new_value="да", actor=actor)
+        record_change(  # i18n-skip: значение журнала правок хранится в базе как данные
+            instance=lesson, field_name="marked_at", old_value="", new_value="да", actor=actor
+        )
     lesson.marked_at = timezone.now()
     lesson.marked_by = _actor(actor)
     lesson.save(update_fields=["marked_at", "marked_by", "updated_at"])
@@ -290,7 +317,7 @@ def _parse_time(raw) -> dt.time | None:
         return None
     found = re.fullmatch(r"(\d{1,2}):(\d{2})(?::\d{2})?", text)
     if found is None or int(found.group(1)) > 23 or int(found.group(2)) > 59:
-        raise MarkRefused("Время прихода — в виде ЧЧ:ММ, например 08:12")
+        raise MarkRefused(_("Время прихода — в виде ЧЧ:ММ, например 08:12"))
     return dt.time(int(found.group(1)), int(found.group(2)))
 
 
@@ -315,14 +342,18 @@ def arrival_of(lesson: Lesson, raw, *, calendar: SchoolCalendar, kept=None, know
         elif span is None:
             return None
         else:
-            raise MarkRefused("Укажите, во сколько пришёл опоздавший: урок уже прошёл")
+            raise MarkRefused(_("Укажите, во сколько пришёл опоздавший: урок уже прошёл"))
     if span is None:
         return arrived
     starts, ends = span
     if arrived <= starts:
-        raise MarkRefused(f"Пришёл к началу урока ({starts:%H:%M}) — поставьте «Был», а не «Опоздал»")
+        raise MarkRefused(
+            _("Пришёл к началу урока ({time}) — поставьте «Был», а не «Опоздал»").format(time=f"{starts:%H:%M}")
+        )
     if arrived >= ends:
-        raise MarkRefused(f"Пришёл после конца урока ({ends:%H:%M}) — это «Не был», а не опоздание")
+        raise MarkRefused(
+            _("Пришёл после конца урока ({time}) — это «Не был», а не опоздание").format(time=f"{ends:%H:%M}")
+        )
     return arrived
 
 
@@ -352,16 +383,23 @@ def set_grade(
 ) -> Grade | None:
     """Поставить, изменить или снять оценку одному ученику за урок."""
     if not lesson.is_live:
-        raise MarkRefused("Урок отменён: оценки не ставятся")
+        raise MarkRefused(_("Урок отменён: оценки не ставятся"))
     if not calendar.lesson_started(lesson.date, lesson.slot, lesson_groups(lesson)):
-        raise MarkRefused("Урок ещё впереди")
+        raise MarkRefused(_("Урок ещё впереди"))
     if edit_locked(lesson, actor, scale):
-        raise MarkRefused(f"Оценка старше {scale.edit_days} дней: её правит академический директор")
+        raise MarkRefused(
+            tn(
+                scale.edit_days,
+                "Оценка старше {n} дня: её правит академический директор"
+                "|Оценка старше {n} дней: её правит академический директор"
+                "|Оценка старше {n} дней: её правит академический директор",
+            )
+        )
     quarter = calendar.quarter_of(lesson.date)
     if quarter is not None and quarter.is_closed and getattr(actor, "role", "") == ROLE_TEACHER:
-        raise MarkRefused("Четверть закрыта: оценки правят Кымбат и администратор")
+        raise MarkRefused(_("Четверть закрыта: оценки правят Кымбат и администратор"))
     if student.pk not in set(member_ids(lesson.course.cohort, lesson.date)):
-        raise MarkRefused("Этого ученика нет в составе урока")
+        raise MarkRefused(_("Этого ученика нет в составе урока"))
     row = Grade.objects.filter(lesson=lesson, student=student).first()
     if value is None or value == "":
         if row is not None:
@@ -371,10 +409,10 @@ def set_grade(
     try:
         number = int(value)
     except (TypeError, ValueError) as error:
-        raise MarkRefused("Оценка — целое число") from error
+        raise MarkRefused(_("Оценка — целое число")) from error
     low, high = grade_bounds(lesson, scale)
     if number < low or number > high:
-        raise MarkRefused(f"Баллы от {low} до {high}")
+        raise MarkRefused(_("Баллы от {low} до {high}").format(low=low, high=high))
     # оценка ставится только тому, кто был: отсутствующий становится присутствующим
     absent = Attendance.objects.filter(lesson=lesson, student=student, mark=Mark.ABSENT).first()
     if absent is not None:
@@ -420,9 +458,9 @@ def set_lesson_meta(lesson: Lesson, *, actor, **fields) -> Lesson:
         if name in ("number", "max_score"):
             value = int(value) if value not in (None, "") else None
         if name == "kind" and value not in (LessonKind.FO, LessonKind.SOR, LessonKind.SOCH):
-            raise MarkRefused("Вид оценивания: ФО, СОР или СОЧ")
+            raise MarkRefused(_("Вид оценивания: ФО, СОР или СОЧ"))
         if name == "max_score" and value is not None and value <= 0:
-            raise MarkRefused("Максимум баллов больше нуля")
+            raise MarkRefused(_("Максимум баллов больше нуля"))
         if name in ("topic", "homework"):
             value = str(value or "")[: 200 if name == "topic" else 2000]
         old = getattr(lesson, name)
@@ -439,7 +477,7 @@ def set_lesson_meta(lesson: Lesson, *, actor, **fields) -> Lesson:
 
 def kind_label(lesson: Lesson) -> str:
     if lesson.kind == LessonKind.SOR:
-        return f"СОР {lesson.number}" if lesson.number else "СОР"
+        return _("СОР {number}").format(number=lesson.number) if lesson.number else _("СОР")
     if lesson.kind == LessonKind.SOCH:
-        return "СОЧ"
-    return "ФО"
+        return _("СОЧ")
+    return _("ФО")

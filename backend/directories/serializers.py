@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 from directories.models import ExamKind, OlympiadSubject, SportType, SubjectArea
@@ -90,7 +91,7 @@ class ExamKindSerializer(DirectorySerializer):
         if obj.min_score is None and obj.max_score is None:
             return ""
         low = obj.min_score if obj.min_score is not None else 0
-        return f"{low}–{obj.max_score}" if obj.max_score is not None else f"от {low}"
+        return f"{low}–{obj.max_score}" if obj.max_score is not None else _("от {low}").format(low=low)
 
     class Meta:
         model = ExamKind

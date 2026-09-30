@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from django.db import models
+from django.utils.translation import gettext as _
 
 
 def is_directory(model: type[models.Model]) -> bool:
@@ -47,8 +48,10 @@ def find(model: type[models.Model], value: Any) -> Any:
             return row
 
     raise LookupError(
-        f"«{text}» — такого значения нет в справочнике «{model._meta.verbose_name_plural}». "
-        f"Заведите эту запись в справочнике или выберите значение из списка"
+        _(
+            "«{value}» — такого значения нет в справочнике «{directory}». "
+            "Заведите эту запись в справочнике или выберите значение из списка"
+        ).format(value=text, directory=model._meta.verbose_name_plural)
     )
 
 

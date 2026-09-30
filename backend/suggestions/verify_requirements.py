@@ -19,7 +19,9 @@ import logging
 from decimal import Decimal, InvalidOperation
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
+from core.phrasing import tn
 from suggestions import websearch
 from suggestions.llm import LLMUnavailable, complete, is_available
 
@@ -28,7 +30,7 @@ log = logging.getLogger("llm")
 #: Поля требований, которые умеем сверять: имя в схеме → имя в модели.
 FIELDS = ("min_gpa", "min_ielts", "min_toefl", "min_sat", "min_act")
 
-SCHEMA = {
+SCHEMA = {  # i18n-skip: схема ответа модели
     "type": "object",
     "properties": {
         "found": {"type": "boolean", "description": "Нашлась ли страница с требованиями"},
@@ -45,7 +47,8 @@ SCHEMA = {
     "required": ["found"],
 }
 
-RULES = """Ты сверяешь требования к поступлению с официальным сайтом вуза.
+RULES = (  # i18n-skip: промпт модели
+    """Ты сверяешь требования к поступлению с официальным сайтом вуза.
 
 Правила:
 - пользуйся поиском: числа бери только со страниц, которые открыл;
@@ -55,6 +58,7 @@ RULES = """Ты сверяешь требования к поступлению 
   и пустые поля. Пустое поле лучше выдуманного числа: по этому числу
   ученик будет решать, подавать документы или нет;
 - ничего не пересчитывай и не переводи из шкалы в шкалу."""
+)  # fmt: skip
 
 
 class CannotVerify(Exception):
@@ -77,32 +81,38 @@ def verify(*, program_id: int, actor, role: str) -> dict:
 
     program = Program.objects.select_related("university").filter(pk=program_id).first()
     if program is None:
-        raise CannotVerify("Такой программы нет в справочнике")
+        raise CannotVerify(_("Такой программы нет в справочнике"))
 
     university = program.university
     # без домена сверять не с чем: Common App в белом списке есть всегда,
     # но требований конкретной программы там не написано
     if not (university.domain or university.website):
         raise CannotVerify(
-            f"Сверять нечем: у вуза «{university.name}» не указан домен официального сайта. "
-            f"Впишите его в карточку вуза — по форумам и агрегаторам мы не ходим"
+            _(
+                "Сверять нечем: у вуза «{university}» не указан домен официального сайта. "
+                "Впишите его в карточку вуза — по форумам и агрегаторам мы не ходим"
+            ).format(university=university.name)
         )
 
     domains = websearch.domains_for_university(university)
     search = websearch.tool(domains)
     if search is None:
         raise CannotVerify(
-            "Поиск по официальным сайтам выключен в настройках контура — сверять нечем. "
-            "Включите LLM_SEARCH или проверьте требования вручную по сайту вуза"
+            _(
+                "Поиск по официальным сайтам выключен в настройках контура — сверять нечем. "
+                "Включите LLM_SEARCH или проверьте требования вручную по сайту вуза"
+            )
         )
     if not is_available():
         raise CannotVerify(
-            "Для сверки нужна подключённая модель. Сейчас она недоступна — "
-            "проверьте требования вручную по сайту вуза или обратитесь к администратору"
+            _(
+                "Для сверки нужна подключённая модель. Сейчас она недоступна — "
+                "проверьте требования вручную по сайту вуза или обратитесь к администратору"
+            )
         )
 
     try:
-        response = complete(
+        response = complete(  # i18n-skip: промпт модели
             system=RULES,
             user=(
                 f"Вуз: {university.name}\n"
@@ -118,7 +128,7 @@ def verify(*, program_id: int, actor, role: str) -> dict:
             search=search,
         )
     except LLMUnavailable as error:
-        raise CannotVerify(f"Модель не ответила: {error}") from error
+        raise CannotVerify(_("Модель не ответила: {error}").format(error=error)) from error
 
     payload = response.parsed or {}
     if not payload.get("found"):
@@ -126,10 +136,10 @@ def verify(*, program_id: int, actor, role: str) -> dict:
             "ok": True,
             "found": False,
             "searches": response.searches,
-            "detail": (
-                f"На официальном сайте требования к «{program.name}» не названы. "
-                f"Ничего не меняем: пустой порог значит «требования нет», а не ноль"
-            ),
+            "detail": _(
+                "На официальном сайте требования к «{program}» не названы. "
+                "Ничего не меняем: пустой порог значит «требования нет», а не ноль"
+            ).format(program=program.name),
         }
 
     source = websearch.sources_from_payload([payload])
@@ -140,9 +150,12 @@ def verify(*, program_id: int, actor, role: str) -> dict:
             "found": False,
             "searches": response.searches,
             "detail": (
-                "Числа пришли без ссылки на официальный сайт"
-                + (f" (отброшено: {', '.join(dropped[:3])})" if dropped else "")
-                + ". Без источника мы такие данные не принимаем"
+                _(
+                    "Числа пришли без ссылки на официальный сайт (отброшено: {urls}). "
+                    "Без источника мы такие данные не принимаем"
+                ).format(urls=", ".join(dropped[:3]))
+                if dropped
+                else _("Числа пришли без ссылки на официальный сайт. Без источника мы такие данные не принимаем")
             ),
         }
 
@@ -191,7 +204,9 @@ def verify(*, program_id: int, actor, role: str) -> dict:
             "changed": 0,
             "searches": response.searches,
             "source": fact.as_dict(),
-            "detail": f"Требования совпадают с сайтом. Сверено {fact.checked_at or timezone.localdate().isoformat()}",
+            "detail": _("Требования совпадают с сайтом. Сверено {date}").format(
+                date=fact.checked_at or timezone.localdate().isoformat()
+            ),
         }
 
     suggestion, rejected = create_suggestion(
@@ -211,8 +226,13 @@ def verify(*, program_id: int, actor, role: str) -> dict:
         "searches": response.searches,
         "source": fact.as_dict(),
         "suggestion": suggestion.pk,
-        "detail": (
-            f"Расхождение с сайтом: {len(rows) - len(rejected)} значений. "
-            f"Ссылка и фрагмент приложены к каждой строке — примените, если согласны"
+        "detail": tn(
+            len(rows) - len(rejected),
+            "Расхождение с сайтом: {n} значение. "
+            "Ссылка и фрагмент приложены к каждой строке — примените, если согласны|"
+            "Расхождение с сайтом: {n} значения. "
+            "Ссылка и фрагмент приложены к каждой строке — примените, если согласны|"
+            "Расхождение с сайтом: {n} значений. "
+            "Ссылка и фрагмент приложены к каждой строке — примените, если согласны",
         ),
     }

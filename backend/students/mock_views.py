@@ -18,6 +18,8 @@ from decimal import Decimal, InvalidOperation
 from django.db import IntegrityError
 from django.db.models import Count, Q
 from django.http import FileResponse
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import api_view, parser_classes, permission_classes
@@ -28,6 +30,7 @@ from rest_framework.response import Response
 from accounts.curators import curated_group_ids, picked_groups
 from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT
 from core.parallels import mock_groups, mocks_open, section_open
+from core.phrasing import counted
 from students import mocks
 from students.models import IELTS_SECTIONS, ExamType, MockImport, StudyGroup
 
@@ -40,7 +43,9 @@ RESTORERS = ("director_exam", ROLE_ADMIN)
 
 #: Ученику раздел закрыт целиком — отказ словами, а не «не найдено»:
 #: 404 говорил бы, что такой пробник, может быть, где-то и есть
-STUDENT_REFUSAL = "Пробники ведут куратор и академический директор. Свой результат вы видите у себя в кабинете"
+STUDENT_REFUSAL = gettext_lazy(
+    "Mock Test ведут куратор и академический директор. Свой результат вы видите у себя в кабинете"
+)
 
 
 def _forbidden(detail: str) -> Response:
@@ -48,7 +53,7 @@ def _forbidden(detail: str) -> Response:
 
 
 def _not_found() -> Response:
-    return Response({"detail": "Пробника нет"}, status=status.HTTP_404_NOT_FOUND)
+    return Response({"detail": _("Mock Test не найден")}, status=status.HTTP_404_NOT_FOUND)
 
 
 def _bad(detail: str) -> Response:
@@ -147,30 +152,34 @@ def _wizard_input(request) -> tuple[dict | None, Response | None]:
     if not is_staff_here(request.user):
         return None, _forbidden(STUDENT_REFUSAL)
     if request.user.role not in UPLOADERS:
-        return None, _forbidden("Загружают пробники куратор и академический директор")
+        return None, _forbidden(_("Mock Test загружают куратор и академический директор"))
 
     exam_type = (request.data.get("exam_type") or "").strip()
     if exam_type not in mocks.MOCK_EXAMS:
-        return None, _bad("Пробники загружаются по IELTS и SAT — других экзаменов школа не проводит")
+        return None, _bad(_("Mock Test загружаются по IELTS и SAT — других экзаменов школа не проводит"))
 
     raw_group = request.data.get("group")
     group = StudyGroup.objects.filter(pk=raw_group).first() if str(raw_group or "").isdigit() else None
     if group is None:
         group = StudyGroup.objects.filter(code=str(raw_group or "").strip()).first()
     if group is None:
-        return None, _bad("Не выбрана группа")
+        return None, _bad(_("Не выбрана группа"))
     if not mocks_open(group.parallel):
-        return None, _bad(f"Группа «{group.code}» — {group.parallel} параллель: у неё пробники не ведутся")
+        return None, _bad(
+            _("Группа «{group}» — {parallel} параллель: у неё Mock Test не проводятся").format(
+                group=group.code, parallel=group.parallel
+            )
+        )
     if not may_upload(request.user, group.pk):
         return None, _not_found()
 
     date = _date(request.data.get("date"))
     if date is None:
-        return None, _bad("Не указана дата пробника")
+        return None, _bad(_("Не указана дата Mock Test"))
 
     uploaded = request.FILES.get("file")
     if uploaded is None:
-        return None, _bad("Файл не приложен")
+        return None, _bad(_("Файл не приложен"))
 
     return (
         {
@@ -242,8 +251,14 @@ def mock_preview(request):
     twin = mocks.duplicate_of(exam_type=data["exam_type"], group=data["group"], date=data["date"])
     if twin is not None:
         return _bad(
-            f"Пробник {data['exam_type']} для группы {data['group'].code} на эту дату уже загружен "
-            f"({twin.rows_applied} результатов). Проверьте дату или уберите прежнюю загрузку в архив"
+            _(
+                "{exam} Mock Test для группы {group} на эту дату уже загружен ({results}). "
+                "Проверьте дату или уберите прежнюю загрузку в архив"
+            ).format(
+                exam=data["exam_type"],
+                group=data["group"].code,
+                results=counted(twin.rows_applied, "результат|результата|результатов"),
+            )
         )
 
     try:
@@ -283,14 +298,14 @@ def mock_apply(request):
     except mocks.FileRejected as error:
         return _bad(str(error))
     except IntegrityError:
-        return _bad("Пробник этого экзамена для этой группы на эту дату уже загружен")
+        return _bad(_("Mock Test этого экзамена для этой группы на эту дату уже загружен"))
 
     return Response(
         {
             "import": record.pk,
             "applied": record.rows_applied,
             "skipped": record.rows_skipped,
-            "detail": f"Записано результатов: {record.rows_applied}",
+            "detail": _("Записано результатов: {count}").format(count=record.rows_applied),
         },
         status=status.HTTP_201_CREATED,
     )
@@ -342,19 +357,19 @@ def mock_export(request, pk: int):
         return _not_found()
     payload = mocks.results(record)
 
-    columns = [Column("Ученик", lambda r: r["full_name"], width=28)]
+    columns = [Column(_("Ученик"), lambda r: r["full_name"], width=28)]
     if record.exam_type == ExamType.IELTS:
         columns += [
             Column(name.title(), (lambda n: lambda r: r["sections"].get(n))(name), width=12) for name in IELTS_SECTIONS
         ]
     columns += [
-        Column("Балл", lambda r: r["total"], width=10),
-        Column("Цель", lambda r: r["target"], width=10),
-        Column("Сдавал", lambda r: r["took"], width=10),
+        Column(_("Балл"), lambda r: r["total"], width=10),
+        Column(_("Цель"), lambda r: r["target"], width=10),
+        Column(_("Сдавал"), lambda r: r["took"], width=10),
     ]
     return workbook_response(
-        filename=f"пробник-{record.exam_type}-{record.group.code}-{record.date}.xlsx",
-        sheet="Пробник",
+        filename=f"mock-test-{record.exam_type}-{record.group.code}-{record.date}.xlsx",
+        sheet="Mock Test",
         columns=columns,
         rows=payload["results"],
         request=request,
@@ -372,9 +387,9 @@ def mock_template(request):
         return _forbidden(STUDENT_REFUSAL)
     exam_type = (request.query_params.get("exam") or ExamType.IELTS).strip()
     if exam_type not in mocks.MOCK_EXAMS:
-        return _bad("Шаблон есть для IELTS и SAT")
+        return _bad(_("Шаблон есть для IELTS и SAT"))
     if not may_upload(request.user):
-        return _forbidden("Пробники загружают куратор и академический директор")
+        return _forbidden(_("Mock Test загружают куратор и академический директор"))
 
     from students.models import Student
 
@@ -393,7 +408,7 @@ def mock_template(request):
         for index, title in enumerate(titles)
     ]
     return workbook_response(
-        filename=f"шаблон-пробника-{exam_type}.xlsx",
+        filename=_("шаблон-mock-test-{exam}.xlsx").format(exam=exam_type),
         sheet=exam_type,
         columns=columns,
         rows=rows or [["", *([""] * (len(titles) - 1))]],
@@ -413,12 +428,17 @@ def mock_archive(request, pk: int):
     if record is None:
         return _not_found()
     if not may_upload(request.user, record.group_id):
-        return _forbidden("Убрать пробник может куратор группы или академический директор")
+        return _forbidden(_("Убрать Mock Test может куратор группы или академический директор"))
     if record.is_archived:
-        return _bad("Этот пробник уже в архиве")
+        return _bad(_("Этот Mock Test уже в архиве"))
 
     entry = archive(record, actor=request.user)
-    return Response({"archived": entry.pk, "detail": f"Пробник «{record}» в архиве, баллы у учеников скрыты"})
+    return Response(
+        {
+            "archived": entry.pk,
+            "detail": _("Mock Test «{title}» в архиве, баллы у учеников скрыты").format(title=record),
+        }
+    )
 
 
 @extend_schema(request=None, responses={200: dict})
@@ -435,9 +455,9 @@ def mock_restore(request, pk: int):
     if record is None:
         return _not_found()
     if request.user.role not in RESTORERS:
-        return _forbidden("Вернуть пробник из архива может академический директор или администратор")
+        return _forbidden(_("Вернуть Mock Test из архива может академический директор или администратор"))
     if not record.is_archived:
-        return _bad("Этот пробник и так не в архиве")
+        return _bad(_("Этот Mock Test и так не в архиве"))
 
     entry = (
         ArchiveEntry.objects.filter(
@@ -447,7 +467,7 @@ def mock_restore(request, pk: int):
         .first()
     )
     if entry is None:
-        return _bad("Записи архива для этого пробника нет — вернуть его нечем")
+        return _bad(_("Записи архива для этого Mock Test нет — вернуть его нечем"))
     outcome = restore(entry, actor=request.user)
     return Response({**outcome, "import": record.pk})
 
@@ -463,8 +483,12 @@ def mock_remind(request, pk: int):
     if record is None:
         return _not_found()
     if not may_upload(request.user, record.group_id):
-        return _forbidden("Задачи ставит куратор группы или академический директор")
+        return _forbidden(_("Задачи ставит куратор группы или академический директор"))
     if not may_remind(record):
-        return _bad(f"У {record.group.parallel} параллели задач нет: напомнить о пробнике можно только словами")
+        return _bad(
+            _("У {parallel} параллели задач нет: напомнить о Mock Test можно только словами").format(
+                parallel=record.group.parallel
+            )
+        )
     made = mocks.remind(record, actor=request.user)
     return Response({"created": len(made), "students": made})
