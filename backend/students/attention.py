@@ -58,7 +58,7 @@ BUCKETS: tuple[Bucket, ...] = (
         "far",
         gettext_lazy("Балл далеко от цели, экзамен ближе 60 дней"),
         gettext_lazy("До цели больше балла по IELTS или больше 100 по SAT, а сдавать скоро"),
-        "risk",
+        "bad",
     ),
     Bucket(
         "docs",
@@ -70,7 +70,7 @@ BUCKETS: tuple[Bucket, ...] = (
         "rejected",
         gettext_lazy("Отклонено и не перевнесено"),
         gettext_lazy("Вы отклонили значение, а ученик так и не внёс новое"),
-        "risk",
+        "bad",
     ),
 )
 
