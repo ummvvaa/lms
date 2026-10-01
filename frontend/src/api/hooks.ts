@@ -2303,6 +2303,9 @@ export function useFinishSession() {
   })
 }
 
+/** решение по Mock Test онлайн: засчитан, не засчитан, ждёт */
+export type MockReviewState = 'counted' | 'rejected' | 'waiting'
+
 export interface MyRun {
   id: number
   mock: string
@@ -2311,6 +2314,9 @@ export interface MyRun {
   status: string
   score: number | null
   counted_in_profile: boolean
+  /** решение директора: подпись приходит с сервера на языке ученика */
+  review_state: MockReviewState
+  review_state_title: string
   created_at: string
 }
 
@@ -2327,6 +2333,8 @@ export interface PlatformMock {
   correct: number
   total: number
   counted_in_profile: boolean
+  review_state: MockReviewState
+  review_state_title: string
   reviewed_at: string | null
   created_at: string
 }

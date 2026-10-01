@@ -490,4 +490,9 @@ def review_mock(run: MockRun, *, count_it: bool, actor) -> dict:
     # с тренировки перекрывала настоящие 7.0, и ни в карточке, ни в подборе
     # вузов этого не было видно. Отметка «засчитан» осталась — по ней Кымбат
     # отличает сверенный результат от несверенного, — но профиль не трогает
-    return {"run": run.pk, "counted_in_profile": run.counted_in_profile}
+    return {
+        "run": run.pk,
+        "counted_in_profile": run.counted_in_profile,
+        "review_state": run.review_state,
+        "review_state_title": run.review_title(for_director=True),
+    }

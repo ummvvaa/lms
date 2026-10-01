@@ -347,6 +347,23 @@ class MockSection(models.Model):
         return f"{self.mock.title} · {self.get_section_display()}"
 
 
+class MockReview(models.TextChoices):
+    """Решение академического директора по Mock Test онлайн — подпись приходит с сервера.
+
+    Подписи собирал фронт по двум полям, и «не засчитан» ученик не видел:
+    ему отдавали только «засчитан или нет», и после отказа он так и читал
+    «ждёт сверки». Слова ученику и директору — свои только у ожидания.
+    """
+
+    COUNTED = "counted", gettext_lazy("засчитан")
+    REJECTED = "rejected", gettext_lazy("не засчитан")
+    WAITING = "waiting", gettext_lazy("ждёт сверки")
+
+
+#: директору то же ожидание называется по-своему: решение за ним
+WAITING_FOR_DIRECTOR = gettext_lazy("ждёт решения")
+
+
 class MockRun(models.Model):
     """Прохождение мока учеником.
 
@@ -393,6 +410,18 @@ class MockRun(models.Model):
 
     def __str__(self) -> str:
         return f"{self.student} · {self.mock.title}"
+
+    @property
+    def review_state(self) -> str:
+        """`counted`, `rejected` или `waiting`: решение директора, а не два поля."""
+        if self.counted_in_profile:
+            return MockReview.COUNTED
+        return MockReview.REJECTED if self.reviewed_at else MockReview.WAITING
+
+    def review_title(self, *, for_director: bool = False) -> str:
+        if for_director and self.review_state == MockReview.WAITING:
+            return str(WAITING_FOR_DIRECTOR)
+        return str(MockReview(self.review_state).label)
 
 
 class TheoryLevel(models.TextChoices):

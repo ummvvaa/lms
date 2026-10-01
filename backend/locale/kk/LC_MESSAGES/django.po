@@ -15270,3 +15270,19 @@ msgstr ""
 #, python-brace-format
 msgid "«{value}» не подходит для поля «{field}»: выберите один из вариантов — {options}"
 msgstr "«{value}» мәні «{field}» өрісіне сәйкес келмейді: нұсқалардың бірін таңдаңыз — {options}"
+
+#: prep/models.py:358
+msgid "засчитан"
+msgstr "есепке алынды"
+
+#: prep/models.py:359
+msgid "не засчитан"
+msgstr "есепке алынбады"
+
+#: prep/models.py:360
+msgid "ждёт сверки"
+msgstr "салыстыруды күтуде"
+
+#: prep/models.py:364
+msgid "ждёт решения"
+msgstr "шешім күтуде"

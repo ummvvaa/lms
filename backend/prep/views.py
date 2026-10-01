@@ -448,6 +448,9 @@ def my_runs(request):
                 "status": run.session.status,
                 "score": float(run.exam_attempt.total_score) if run.exam_attempt else None,
                 "counted_in_profile": run.counted_in_profile,
+                # решение директора с подписью: после отказа ученик читает «не засчитан»
+                "review_state": run.review_state,
+                "review_state_title": run.review_title(),
                 "created_at": run.created_at,
             }
             for run in rows
@@ -480,6 +483,8 @@ def platform_mocks(request):
                 "correct": run.session.correct,
                 "total": run.session.total,
                 "counted_in_profile": run.counted_in_profile,
+                "review_state": run.review_state,
+                "review_state_title": run.review_title(for_director=True),
                 "reviewed_at": run.reviewed_at,
                 "created_at": run.created_at,
             }

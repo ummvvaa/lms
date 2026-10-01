@@ -775,7 +775,7 @@ export default function Prep() {
                     { key: 'date', title: t('Дата'), width: '20%', cell: (run: MyRun) => <span className="num">{formatDate(run.created_at)}</span>, sortBy: (run: MyRun) => run.created_at },
                     { key: 'mock', title: t('Mock Test'), width: '40%', cell: (run: MyRun) => <b>{run.mock}</b> },
                     { key: 'score', title: t('Балл'), width: '20%', align: 'right', cell: (run: MyRun) => <span className="num">{run.score ?? t('нет')}</span>, sortBy: (run: MyRun) => run.score },
-                    { key: 'counted', title: '', width: '20%', cell: (run: MyRun) => <Chip tone={run.counted_in_profile ? 'good' : 'neutral'} size="sm">{run.counted_in_profile ? t('засчитан') : t('ждёт сверки')}</Chip> },
+                    { key: 'counted', title: '', width: '20%', cell: (run: MyRun) => <Chip tone={run.review_state === 'counted' ? 'good' : 'neutral'} size="sm">{run.review_state_title}</Chip> },
                   ]}
                   rows={(runs.data ?? []).slice(0, 8)}
                   rowKey={(run) => run.id}

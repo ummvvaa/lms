@@ -15354,3 +15354,19 @@ msgstr ""
 #, python-brace-format
 msgid "«{value}» не подходит для поля «{field}»: выберите один из вариантов — {options}"
 msgstr "“{value}” is not valid for the “{field}” field: choose one of the options — {options}"
+
+#: prep/models.py:358
+msgid "засчитан"
+msgstr "counted"
+
+#: prep/models.py:359
+msgid "не засчитан"
+msgstr "not counted"
+
+#: prep/models.py:360
+msgid "ждёт сверки"
+msgstr "awaiting verification"
+
+#: prep/models.py:364
+msgid "ждёт решения"
+msgstr "awaiting a decision"

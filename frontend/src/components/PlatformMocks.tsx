@@ -5,11 +5,14 @@
  * решение «учитывать» принимает человек, и оно уходит в журнал.
  */
 import { useState } from 'react'
-import { usePlatformMocks, useReviewMock } from '../api/hooks'
+import { usePlatformMocks, useReviewMock, type MockReviewState } from '../api/hooks'
 import { t, tn } from '../i18n'
 import { Button } from './ui/button'
 import DataTable from './DataTable'
-import { Chip } from './ui'
+import { Chip, type Tone } from './ui'
+
+/** Цвет решения: подпись приходит с сервера, цвет — по коду */
+const REVIEW_TONE: Record<MockReviewState, Tone> = { counted: 'good', rejected: 'neutral', waiting: 'warn' }
 import { formatDate } from '../lib/format'
 
 /**
@@ -65,7 +68,7 @@ export default function PlatformMocks() {
             title: t('Состояние'),
             width: '14%',
             cell: (row: MockRow) =>
-              row.counted_in_profile ? <Chip tone="good" size="sm">{t('засчитан')}</Chip> : row.reviewed_at ? <Chip size="sm">{t('не засчитан')}</Chip> : <Chip tone="warn" size="sm">{t('ждёт решения')}</Chip>,
+              <Chip tone={REVIEW_TONE[row.review_state]} size="sm">{row.review_state_title}</Chip>,
           },
           {
             key: 'acts',

@@ -770,3 +770,34 @@ def test_card_shows_sections_and_who_uploaded(klass, curator, kymbat):
     assert card["mocks"][-1]["teacher"] == "Айгуль Сергеевна"
     assert card["mocks"][-1]["uploaded_by"] == "Кымбат"
     assert card["mocks"][-1]["sections"]["reading"] == 6.5
+
+
+@pytest.mark.django_db
+def test_student_sees_that_the_platform_mock_was_not_counted(klass, kymbat):
+    """После «Не засчитывать» ученик читает «не засчитан», а не вечное «ждёт сверки»."""
+    from prep.models import MockExam, MockRun, PracticeSession
+    from prep.services import review_mock
+
+    student, user = klass[0]
+    exam = MockExam.objects.create(title="Пробный IELTS", exam_type="IELTS")
+    attempt = ExamAttempt.objects.create(
+        student=student,
+        exam_type="IELTS",
+        attempt_format=AttemptFormat.MOCK,
+        source=AttemptSource.PLATFORM,
+        date=TODAY,
+        total_score=6,
+    )
+    session = PracticeSession.objects.create(student=student, exam_type="IELTS")
+    run = MockRun.objects.create(student=student, mock=exam, session=session, exam_attempt=attempt)
+
+    pupil, director = login(user), login(kymbat)
+    mine = pupil.get("/api/prep/runs/my/").json()[0]
+    assert (mine["review_state"], mine["review_state_title"]) == ("waiting", "ждёт сверки")
+    listed = director.get("/api/prep/runs/platform/").json()[0]
+    assert (listed["review_state"], listed["review_state_title"]) == ("waiting", "ждёт решения")
+
+    review_mock(run, count_it=False, actor=kymbat)
+    mine = pupil.get("/api/prep/runs/my/").json()[0]
+    assert (mine["review_state"], mine["review_state_title"]) == ("rejected", "не засчитан")
+    assert director.get("/api/prep/runs/platform/").json()[0]["review_state_title"] == "не засчитан"
