@@ -309,6 +309,44 @@ def test_journal_keeps_every_row_and_the_author_becomes_text(admin, make_user, l
 
 
 @pytest.mark.django_db
+def test_uploads_keep_the_name_of_an_erased_author(client, admin, make_user):
+    """История загрузок и архив после удаления автора читаются с его именем, а не «автор не сохранён»."""
+    from core.models import ImportBatch
+    from students.models import AdmissionImport
+
+    author = make_user(Role.DIRECTOR_ADMISSION, email="asem.gone@example.kz", full_name="Асем Ушедшая")
+    ImportBatch.objects.create(actor=author, file_name="поля.csv", domain_code="admission")
+    AdmissionImport.objects.create(uploaded_by=author, file_name="таблица.xlsx")
+    ArchiveEntry.objects.create(model_label="students.Student", object_id="1", title="Ученик", actor=author)
+    entry = ArchiveEntry.objects.create(
+        model_label="accounts.User", object_id=str(author.pk), title=author.email, kind_title="Учётная запись"
+    )
+    purge(entry, actor=admin)
+
+    login(client, admin)
+    batch = next(row for row in client.get("/api/imports/").json() if row["file_name"] == "поля.csv")
+    assert "Асем Ушедшая" in batch["actor_name"]
+    table = client.get("/api/admission-imports/").json()["rows"][0]
+    assert "Асем Ушедшая" in table["uploaded_by"]
+    archived = next(row for row in client.get("/api/archive/").json() if row["title"] == "Ученик")
+    assert "Асем Ушедшая" in archived["actor_name"]
+
+
+@pytest.mark.django_db
+def test_probe_cleanup_signs_uploads_too(make_user):
+    """Чистка записей прогона подписывает не только журнал, но и загрузки."""
+    from accounts import probe
+    from core.models import ImportBatch
+
+    runner = make_user(Role.DIRECTOR_EXAM, email="exam.run@probe.local", full_name="Прогон Экзамены")
+    batch = ImportBatch.objects.create(actor=runner, file_name="пробник.csv", domain_code="exam")
+    probe.purge_all()
+    batch.refresh_from_db()
+    assert batch.actor_id is None
+    assert batch.actor_title == "Прогон Экзамены · одноразовая запись прогона"
+
+
+@pytest.mark.django_db
 def test_erasure_itself_is_recorded_forever(admin, make_user):
     """Кто удалил, кого, когда и что было удалено — остаётся навсегда."""
     victim = make_user(Role.DIRECTOR_SPORT, email="erased.erasure@example.kz", full_name="Стёртый Человек")

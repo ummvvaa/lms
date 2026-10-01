@@ -25,6 +25,6 @@ class Command(BaseCommand):
             self.style.SUCCESS(
                 f"Удалено записей: {counts['users']}, сессий: {counts['sessions']}, "
                 f"попыток входа: {counts['attempts']}, ссылок: {counts['links']}; "
-                f"строк журнала подписано: {counts['signed']}"
+                f"записей с автором подписано: {counts['signed']}"
             )
         )

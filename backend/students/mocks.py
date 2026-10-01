@@ -31,6 +31,7 @@ from django.utils.translation import gettext_lazy
 
 from core import stored_text
 from core.domains import scale_of
+from core.purge import author_name
 from students.models import (
     IELTS_SECTIONS,
     AttemptFormat,
@@ -567,7 +568,7 @@ def short(record: MockImport) -> dict:
         "date": record.date,
         "teacher": record.teacher,
         "file_name": record.file_name,
-        "uploaded_by": (record.uploaded_by.full_name or record.uploaded_by.email) if record.uploaded_by_id else "",
+        "uploaded_by": author_name(record.uploaded_by, record.uploaded_by_title),
         "created_at": record.created_at,
         "students": ExamAttempt.all_objects.filter(mock_import=record).count(),
         "rows_total": record.rows_total,

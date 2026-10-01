@@ -14,6 +14,7 @@ from __future__ import annotations
 import datetime as dt
 
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy
 
 from core.domains import ROLE_STUDENT
 from students.models import Activity, Competition, ExamGoal, Student
@@ -29,8 +30,28 @@ def _within(date, today: dt.date) -> bool:
     return today - dt.timedelta(days=PAST_DAYS) <= date <= today + dt.timedelta(days=FUTURE_DAYS)
 
 
+#: чем событие является — словом: вторая строка в ленте телефона, иначе
+#: «Пробный SAT» и «Дедлайн Стэнфорда» выглядят одинаково
+KIND_TITLES = {
+    "exam": gettext_lazy("Экзамен"),
+    "deadline": gettext_lazy("Дедлайн вуза"),
+    "competition": gettext_lazy("Соревнование"),
+    "olympiad": gettext_lazy("Олимпиада"),
+    "scholarship": gettext_lazy("Стипендия"),
+    "task": gettext_lazy("Задача"),
+    "homework": gettext_lazy("Домашнее задание"),
+}
+
+
 def _event(kind: str, title: str, date, link: str, *, pending: bool = False) -> dict:
-    return {"kind": kind, "title": title, "date": date.isoformat(), "link": link, "pending": pending}
+    return {
+        "kind": kind,
+        "kind_title": str(KIND_TITLES[kind]),
+        "title": title,
+        "date": date.isoformat(),
+        "link": link,
+        "pending": pending,
+    }
 
 
 def _pending_goal_events(student: Student, today: dt.date) -> list[dict]:

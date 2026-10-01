@@ -15286,3 +15286,11 @@ msgstr "салыстыруды күтуде"
 #: prep/models.py:364
 msgid "ждёт решения"
 msgstr "шешім күтуде"
+
+#: core/models.py:220
+msgid "Кто удалил, на момент удаления"
+msgstr "Кім жойды (жою сәтінде)"
+
+#: students/calendar_feed.py:36
+msgid "Дедлайн вуза"
+msgstr "ЖОО дедлайны"

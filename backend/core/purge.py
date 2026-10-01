@@ -42,6 +42,9 @@ from core.phrasing import counted, tn
 #: не показывается, и хранить его незачем.
 AUTHOR_TRAILS: tuple[tuple[str, str, str], ...] = (
     ("core.AuditLog", "actor", "actor_title"),
+    ("core.ImportBatch", "actor", "actor_title"),
+    ("core.ArchiveEntry", "actor", "actor_title"),
+    ("students.AdmissionImport", "uploaded_by", "uploaded_by_title"),
     ("students.CuratorNote", "author", "author_title"),
     ("students.BehaviorRemark", "author", "author_title"),
     ("students.MockImport", "uploaded_by", "uploaded_by_title"),
@@ -65,13 +68,25 @@ def trail(user) -> str:
     return f"{who} · удалён {timezone.localdate():%d.%m.%Y}"[:250]  # i18n-skip: след автора хранится в базе
 
 
-def detach_author(user) -> dict[str, int]:
+def author_name(user, title: str = "") -> str:
+    """Подпись автора для экрана: имя живой учётной записи или её след.
+
+    След пуст у записей, автор которых жив или не записывался вовсе, —
+    тогда пусто и здесь, а экран пишет своё «автор не сохранён».
+    """
+    if user is not None:
+        return user.full_name or user.email or user.handle
+    return title or ""
+
+
+def detach_author(user, mark: str | None = None) -> dict[str, int]:
     """Заменить ссылки на автора текстовым следом. Возвращает, сколько где.
 
-    Заполняем только пустые следы: если запись уже подписана (так делает
-    чистка одноразовых записей прогона), переписывать её нечем и незачем.
+    Заполняем только пустые следы: если запись уже подписана, переписывать
+    её нечем и незачем. `mark` — своя подпись вместо имени и даты удаления
+    (так подписывает записи прогона его чистка).
     """
-    mark = trail(user)
+    mark = (mark or trail(user))[:250]
     out: dict[str, int] = {}
     for label, link, title_field in AUTHOR_TRAILS:
         model = _model(label)

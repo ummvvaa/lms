@@ -5,8 +5,9 @@
 удаляются насовсем — вместе с сессиями, попытками входа и ссылками.
 Это единственные учётные записи, которые система удаляет физически:
 у настоящих на записи висит журнал правок и без автора он слепнет,
-а здесь автор остаётся снимком (`AuditLog.actor_title`) — строка журнала
-читается как раньше, только вести ей уже некуда.
+а здесь автор остаётся снимком (`AuditLog.actor_title` и другие следы
+`core.purge.AUTHOR_TRAILS`) — строка журнала и загрузка читаются как
+раньше, только вести им уже некуда.
 
 Отличать их система умеет сама — по домену почты. Отдельное поле в модели
 не нужно: `.local` — зарезервированный домен, настоящий человек с такой
@@ -118,7 +119,7 @@ def create_all(password: str) -> list:
 def purge_all() -> dict[str, int]:
     """Удалить все записи прогона насовсем. Журнал остаётся с подписью.
 
-    Порядок важен: сначала снимок автора в журнал, потом сессии, потом
+    Порядок важен: сначала снимок автора в журнал и загрузки, потом сессии, потом
     сами записи — каскад заберёт идентичности и уведомления, остальные
     ссылки обнулятся (`SET_NULL`).
     """
@@ -126,7 +127,7 @@ def purge_all() -> dict[str, int]:
     from django.db.models import Q
 
     from accounts.models import LoginAttempt, MagicLinkToken
-    from core.models import AuditLog
+    from core.purge import detach_author
 
     users = list(probe_users())
     ids = {user.pk for user in users}
@@ -134,7 +135,7 @@ def purge_all() -> dict[str, int]:
     signed = 0
     for user in users:
         title = f"{user.full_name or user.handle} · одноразовая запись прогона"
-        signed += AuditLog.objects.filter(actor_id=user.pk, actor_title="").update(actor_title=title[:250])
+        signed += sum(detach_author(user, mark=title).values())
 
     sessions = 0
     if ids:

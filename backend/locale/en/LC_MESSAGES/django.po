@@ -15370,3 +15370,11 @@ msgstr "awaiting verification"
 #: prep/models.py:364
 msgid "ждёт решения"
 msgstr "awaiting a decision"
+
+#: core/models.py:220
+msgid "Кто удалил, на момент удаления"
+msgstr "Deleted by, at the time of erasure"
+
+#: students/calendar_feed.py:36
+msgid "Дедлайн вуза"
+msgstr "University deadline"

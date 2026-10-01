@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCalendar, type CalendarEvent } from '../api/hooks'
 import CalendarCell, { type CalendarCellTone } from '../components/CalendarCell'
-import { EVENT_KIND_TITLE, isoOf, shortDate, weekdays } from '../components/CalendarCard'
+import { isoOf, shortDate, weekdays } from '../components/CalendarCard'
 import Icon from '../layout/icons'
 import { Row, Rows, Segmented, ShowAll } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
@@ -81,7 +81,7 @@ export default function Calendar() {
       key={`${event.date}-${index}`}
       lead={<span className="stu__when num">{shortDate(event.date, today)}</span>}
       title={event.title}
-      note={t(EVENT_KIND_TITLE[event.kind] ?? 'Событие')}
+      note={event.kind_title}
       right={event.pending ? <Chip size="sm">{t('ждёт проверки')}</Chip> : undefined}
       to={event.link}
     />

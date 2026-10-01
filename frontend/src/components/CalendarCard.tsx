@@ -24,7 +24,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Icon from '../layout/icons'
 import { usePhone } from '../phone'
-import { t, tk, tn } from '../i18n'
+import { t, tn } from '../i18n'
 import { Row, Rows, Segmented } from './patterns'
 import { Button } from './ui/button'
 import CalendarCell from './CalendarCell'
@@ -59,24 +59,6 @@ export interface CalendarCardEvent {
   right?: ReactNode
   /** куда ведёт строка; без адреса строка не открывается */
   link?: string
-}
-
-/**
- * Чем событие является — словом.
- *
- * Сервер отдаёт код вида (`exam`, `deadline`, …), а подпись собирает
- * интерфейс: в ленте телефона у строки обязана быть вторая строка,
- * иначе «Пробный SAT» и «Дедлайн Стэнфорда» выглядят одинаково.
- */
-export const EVENT_KIND_TITLE: Record<string, string> = {
-  exam: tk('Экзамен'),
-  deadline: tk('Дедлайн вуза'),
-  competition: tk('Соревнование'),
-  olympiad: tk('Олимпиада'),
-  scholarship: tk('Стипендия'),
-  task: tk('Задача'),
-  assessment: tk('СОР или СОЧ'),
-  homework: tk('Домашнее задание'),
 }
 
 /** Сколько строк ленты видно сразу: больше не помещается в первый экран. */

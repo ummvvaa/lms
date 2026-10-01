@@ -25,7 +25,7 @@ import {
   useScholarshipOverview,
   useTaskStatus,
 } from '../../api/hooks'
-import { EVENT_KIND_TITLE, shortDate } from '../../components/CalendarCard'
+import { shortDate } from '../../components/CalendarCard'
 import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
@@ -393,7 +393,7 @@ export default function StudentHome() {
                         key={`${event.date}-${index}`}
                         lead={<span className="stu__when num">{shortDate(event.date, today)}</span>}
                         title={event.title}
-                        note={t(EVENT_KIND_TITLE[event.kind] ?? 'Событие')}
+                        note={event.kind_title}
                         right={event.pending ? <Chip size="sm">{t('ждёт проверки')}</Chip> : undefined}
                         to={event.link}
                       />

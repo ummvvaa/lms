@@ -106,6 +106,20 @@ def test_calendar_collects_events_with_nearest_countdown(student, kymbat):
 
 
 @pytest.mark.django_db
+def test_event_kind_comes_as_a_word_in_the_reader_language(student):
+    """Вид события подписывает сервер — на языке читающего, без словаря на экране."""
+    from django.utils import translation
+
+    today = dt.date(2027, 1, 10)
+    ExamGoal.objects.create(student=student, exam=ielts(), target_score=7, exam_date=today + dt.timedelta(days=20))
+    event = next(e for e in calendar_state(student, today)["events"] if e["kind"] == "exam")
+    assert event["kind_title"] == "Экзамен"
+    with translation.override("kk"):
+        event = next(e for e in calendar_state(student, today)["events"] if e["kind"] == "exam")
+    assert event["kind_title"] == "Емтихан"
+
+
+@pytest.mark.django_db
 def test_pending_goal_shows_in_calendar_as_waiting(api, student_user, student):
     propose_goal(api, student_user, exam="IELTS", exam_date="2027-03-20")
     payload = calendar_state(student, dt.date(2027, 1, 10))

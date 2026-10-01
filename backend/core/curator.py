@@ -31,6 +31,7 @@ from accounts.curators import ALL_GROUPS, curated_group_ids, picked_groups
 from core import school_rules
 from core.domains import ROLE_CURATOR
 from core.parallels import admission_students, has_admission, mocks_open_for, parallel_of
+from core.purge import author_name
 from students import attention
 from students.models import DocumentType, Student, StudyGroup
 from students.portfolio import REQUIRED_DOCUMENTS
@@ -380,8 +381,8 @@ def student_card(request, pk: int):
             "mock_import": row.mock_import_id,
             "teacher": row.mock_import.teacher if row.mock_import_id else "",
             "uploaded_by": (
-                (row.mock_import.uploaded_by.full_name or row.mock_import.uploaded_by.email)
-                if row.mock_import_id and row.mock_import.uploaded_by_id
+                author_name(row.mock_import.uploaded_by, row.mock_import.uploaded_by_title)
+                if row.mock_import_id
                 else ""
             ),
         }

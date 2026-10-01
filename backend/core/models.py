@@ -165,6 +165,8 @@ class ImportBatch(models.Model):
         null=True,
         blank=True,
     )
+    #: след загрузившего, если его запись удалили навсегда (`core.purge`)
+    actor_title = models.CharField(gettext_lazy("Кто загрузил, на момент удаления"), max_length=250, blank=True)
     created_at = models.DateTimeField(gettext_lazy("Когда"), auto_now_add=True)
     file_name = models.CharField(gettext_lazy("Файл"), max_length=250, blank=True)
     kind = models.CharField(gettext_lazy("Что загружали"), max_length=16, choices=Kind.choices, default=Kind.STUDENTS)
@@ -218,6 +220,8 @@ class ArchiveEntry(models.Model):
         null=True,
         blank=True,
     )
+    #: след удалившего, если его запись удалили навсегда (`core.purge`)
+    actor_title = models.CharField(gettext_lazy("Кто удалил, на момент удаления"), max_length=250, blank=True)
     created_at = models.DateTimeField(gettext_lazy("Когда удалено"), auto_now_add=True)
     restored_at = models.DateTimeField(gettext_lazy("Когда восстановлено"), null=True, blank=True)
     #: запись вычищена из архива насовсем: сама она остаётся строкой

@@ -1150,6 +1150,8 @@ export const useGoalsAttention = () =>
 
 export interface CalendarEvent {
   kind: string
+  /** вид события словом, на языке читающего — с сервера */
+  kind_title: string
   title: string
   date: string
   link: string

@@ -37,6 +37,7 @@ from django.utils import timezone, translation
 from django.utils.translation import gettext, gettext_noop
 from django.utils.translation import gettext as _
 
+from core.purge import author_name
 from students import import_registry as registry
 from students.import_registry import parse_date as parse_expiry  # noqa: F401
 from students.import_registry import (  # noqa: F401 — разбор ячеек живёт в реестре, имена оставлены
@@ -752,7 +753,7 @@ def record_payload(record) -> dict:
         "id": record.pk,
         "created_at": record.created_at,
         "file_name": record.file_name,
-        "uploaded_by": ((record.uploaded_by.full_name or record.uploaded_by.email) if record.uploaded_by_id else ""),
+        "uploaded_by": author_name(record.uploaded_by, record.uploaded_by_title),
         "domains": [code for code in (record.domains or "").split(",") if code],
         "sheets": record.sheets,
         "students_updated": record.students_updated,

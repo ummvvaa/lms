@@ -42,6 +42,7 @@ from core.imports import revert_batch
 from core.labels import field_title, model_title, value_title
 from core.models import ArchiveEntry, AuditLog, ImportBatch
 from core.onboarding import build as build_checklist
+from core.purge import author_name
 from core.references import is_directory
 from core.search import search as run_search
 
@@ -292,7 +293,7 @@ def archive_list(request):
                 "kind": stored_text.localize(row.kind_title),
                 "summary": row.summary,
                 "related_count": row.related_count,
-                "actor_name": row.actor.full_name or row.actor.email if row.actor else "",
+                "actor_name": author_name(row.actor, row.actor_title),
                 "created_at": row.created_at,
                 "restored_at": row.restored_at,
                 "restored_by_name": row.restored_by.full_name or row.restored_by.email if row.restored_by else "",
@@ -365,8 +366,8 @@ def import_batches(request):
                 "status_title": row.get_status_display(),
                 "actor": row.actor_id,
                 # пусто — значит загрузка старше фазы 29, когда автора
-                # ещё не записывали; новые записи всегда с именем
-                "actor_name": row.actor.full_name or row.actor.email if row.actor else "",
+                # ещё не записывали; удалённый автор читается по следу
+                "actor_name": author_name(row.actor, row.actor_title),
                 # роль автора: строка «администратор за домен «Экзамены»»
                 # собирается на экране из этих двух полей
                 "actor_role": row.actor.role if row.actor else "",

@@ -1042,6 +1042,8 @@ class AdmissionImport(models.Model):
         null=True,
         blank=True,
     )
+    #: след загрузившего, если его запись удалили навсегда (`core.purge`)
+    uploaded_by_title = models.CharField(gettext_lazy("Кто загрузил, на момент удаления"), max_length=250, blank=True)
     created_at = models.DateTimeField(gettext_lazy("Когда"), auto_now_add=True)
     file_name = models.CharField(gettext_lazy("Имя файла"), max_length=250, blank=True)
     #: какие домены заполнялись (фаза 71): коды через запятую — след того,
