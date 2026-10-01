@@ -140,8 +140,10 @@
 /* --- Документы (фаза 62) --- */
 
 /* Ячейка матрицы: квадрат со знаком состояния. Цвета — тона статусов:
-   отклонённый и истекающий — `--bad`, истекающий отличается пунктиром. */
-.cdocs__cell[data-slot='button'],
+   отклонённый и истекающий — `--bad`, истекающий отличается пунктиром.
+   Ячейка — кнопка реестра: правило варианта весом (0,2,1) перебивало
+   цвета и размер, поэтому у кнопки селектор с `[data-variant]` */
+body .cdocs__cell[data-slot='button'][data-variant],
 .cdocs__cell--key {
   display: inline-flex;
   align-items: center;
@@ -158,25 +160,25 @@
   color: var(--ink-3);
 }
 
-.cdocs__cell--confirmed[data-slot='button'],
+body .cdocs__cell--confirmed[data-slot='button'][data-variant],
 .cdocs__cell--confirmed.cdocs__cell--key {
   background: var(--good-bg);
   color: var(--good);
 }
 
-.cdocs__cell--pending[data-slot='button'],
+body .cdocs__cell--pending[data-slot='button'][data-variant],
 .cdocs__cell--pending.cdocs__cell--key {
   background: var(--warn-bg);
   color: var(--warn);
 }
 
-.cdocs__cell--rejected[data-slot='button'],
+body .cdocs__cell--rejected[data-slot='button'][data-variant],
 .cdocs__cell--rejected.cdocs__cell--key {
   background: var(--bad-bg);
   color: var(--bad);
 }
 
-.cdocs__cell--expiring[data-slot='button'],
+body .cdocs__cell--expiring[data-slot='button'][data-variant],
 .cdocs__cell--expiring.cdocs__cell--key {
   background: var(--bad-bg);
   color: var(--bad);
@@ -184,7 +186,7 @@
   outline-offset: calc(var(--space) * -1);
 }
 
-.cdocs__cell[data-slot='button']:hover {
+body .cdocs__cell[data-slot='button'][data-variant]:hover {
   outline: 2px solid var(--ink-3);
   outline-offset: calc(var(--space) * -1);
 }

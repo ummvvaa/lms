@@ -120,10 +120,13 @@
 
 /* --- Карточка урока в сетке -----------------------------------------------
    Отдельный блок с отступом: предмет, ниже учитель · кабинет · состав.
-   Правила стоят на `button.les`, чтобы перебить размеры кнопки реестра:
-   блок растёт по содержимому и никогда не ложится на соседний. */
-button.les,
-.les {
+   Карточка — кнопка реестра (`ghost`), и правило варианта весом (0,2,1)
+   съедало полосу подгруппы и потока, фон замены и цвет текста: легенда
+   над сеткой ни с чем не сходилась. Поэтому у каждого правила второй
+   селектор `body [data-slot='button'][data-variant].les…` — тяжелее
+   варианта; первый (`.les`) — для тени переноса, она не кнопка */
+.les,
+body [data-slot='button'][data-variant].les {
   position: static;
   display: flex;
   flex-direction: column;
@@ -136,7 +139,7 @@ button.les,
   height: auto;
   padding: calc(var(--space) * 2) calc(var(--space) * 2.5);
   border: 0;
-  border-left: calc(var(--space) * 0.75) solid var(--accent);
+  border-left: calc(var(--space) * 0.75) solid var(--line-2);
   border-radius: var(--radius-inrow);
   background: var(--surface-2);
   color: var(--ink);
@@ -147,35 +150,43 @@ button.les,
   cursor: pointer;
 }
 
-.les:hover {
+.les:hover,
+body [data-slot='button'][data-variant].les:hover {
   background: color-mix(in srgb, var(--accent-bg) 70%, var(--surface-2));
 }
 
-.les--sub1 {
+.les--sub1,
+body [data-slot='button'][data-variant].les--sub1 {
   border-left-color: var(--info);
 }
 
-.les--sub2 {
+.les--sub2,
+body [data-slot='button'][data-variant].les--sub2 {
   border-left-color: var(--good);
 }
 
-.les--stream {
-  border-left-color: var(--warn);
+.les--stream,
+body [data-slot='button'][data-variant].les--stream {
+  /* поток — акцентом, как в легенде над сеткой и в эталоне; жёлтый — замена */
+  border-left-color: var(--accent);
 }
 
-.les--changed {
+.les--changed,
+body [data-slot='button'][data-variant].les--changed {
   border-left-color: var(--warn);
   background: var(--warn-bg);
 }
 
-.les--off {
+.les--off,
+body [data-slot='button'][data-variant].les--off {
   border-left-color: var(--ink-4);
   background: var(--surface-2);
   color: var(--ink-3);
   text-decoration: line-through;
 }
 
-.les--conflict {
+.les--conflict,
+body [data-slot='button'][data-variant].les--conflict {
   box-shadow: inset 0 0 0 1px var(--bad);
 }
 
@@ -705,7 +716,8 @@ button.les,
     grid-column: 2;
   }
 
-  .les {
+  .les,
+  body [data-slot='button'][data-variant].les {
     min-height: var(--touch);
   }
 }

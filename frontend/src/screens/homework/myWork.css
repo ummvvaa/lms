@@ -151,7 +151,7 @@
   margin-bottom: calc(var(--space) * 3);
 }
 
-.mywork__way[data-slot='button'] {
+body .mywork__way[data-slot='button'][data-variant] {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space) * 1);
@@ -165,7 +165,8 @@
   color: var(--accent-ink);
 }
 
-.mywork__way[aria-pressed='true'] {
+/* выбранный способ — тяжелее варианта кнопки реестра (`outline`) */
+body .mywork__way[data-slot='button'][data-variant][aria-pressed='true'] {
   border-color: var(--accent);
   background: var(--accent-bg);
   color: var(--accent-ink);

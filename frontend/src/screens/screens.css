@@ -363,7 +363,8 @@ body .tbl [data-slot='badge'].users__state {
   border-color: var(--accent);
 }
 
-.users__danger {
+.users__danger,
+body [data-slot='button'][data-variant].users__danger {
   color: var(--bad);
 }
 
@@ -1150,7 +1151,8 @@ body .tbl [data-slot='badge'].users__state {
   gap: calc(var(--space) * 2);
 }
 
-.essay__opt {
+.essay__opt,
+body [data-slot='button'][data-variant].essay__opt {
   text-align: left;
   padding: calc(var(--space) * 2) calc(var(--space) * 3);
   border-radius: var(--radius-inrow);
@@ -1159,12 +1161,15 @@ body .tbl [data-slot='badge'].users__state {
   cursor: pointer;
 }
 
-.essay__opt--right {
+/* состояния ответа — тяжелее варианта кнопки реестра, иначе их съедает `outline` */
+.essay__opt--right,
+body [data-slot='button'][data-variant].essay__opt--right {
   border-color: var(--good);
   background: var(--good-bg);
 }
 
-.essay__opt--wrong {
+.essay__opt--wrong,
+body [data-slot='button'][data-variant].essay__opt--wrong {
   border-color: var(--bad);
   background: var(--bad-bg);
 }
@@ -1583,7 +1588,8 @@ body .tbl [data-slot='badge'].users__state {
   /* роль — тот же лист снизу, что у всех списков на телефоне, но
      в строке она выглядит текстом с шевроном, а не полем в 44 пикселя:
      иначе вторая строка карточки выше первой вдвое */
-  .users__role.selfield {
+  .users__role.selfield,
+  body [data-slot='button'][data-variant].users__role.selfield {
     width: auto;
     min-height: 0;
     padding: 0;

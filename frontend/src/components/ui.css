@@ -2422,7 +2422,8 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 @media (max-width: 759px) {
-  .selfield {
+  .selfield,
+  body [data-slot='button'][data-variant].selfield {
     display: flex;
     align-items: center;
     justify-content: space-between;

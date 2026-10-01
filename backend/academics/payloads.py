@@ -141,6 +141,9 @@ def lesson_dict(lesson: Lesson, calendar: SchoolCalendar, *, students: int | Non
                 "name": lesson.course.cohort.name,
                 "short_name": lesson.course.cohort.short_name or lesson.course.cohort.name,
                 "group": lesson.course.cohort.group.code if lesson.course.cohort.group_id else "",
+                # номер подгруппы красит её полосу в сетке (1 — синяя, остальные —
+                # зелёная); без него все подгруппы недели были зелёными
+                "number": lesson.course.cohort.number,
                 "students": students,
             }
         ),
