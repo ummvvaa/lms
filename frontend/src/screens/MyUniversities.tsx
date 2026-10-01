@@ -97,7 +97,7 @@ export default function MyUniversities() {
                     <Row
                       avatar={result.university_name}
                       title={result.university_name}
-                      note={[result.program_name, result.country, tierTitle ? t(tierTitle) : '', entry && entry.added_by === 'student' && !entry.is_confirmed ? t('ждёт подтверждения') : ''].filter(Boolean).join(' · ')}
+                      note={[result.program_name, t(result.country), tierTitle ? t(tierTitle) : '', entry && entry.added_by === 'student' && !entry.is_confirmed ? t('ждёт подтверждения') : ''].filter(Boolean).join(' · ')}
                       right={
                         <span className="catalog__acts">
                           {entry?.is_priority && <Chip tone="accent" size="sm">{t('приоритетный')}</Chip>}

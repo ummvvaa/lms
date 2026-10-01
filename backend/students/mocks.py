@@ -29,6 +29,7 @@ from django.db import transaction
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
+from core import stored_text
 from core.domains import scale_of
 from students.models import (
     IELTS_SECTIONS,
@@ -485,8 +486,9 @@ def _record_journal(record: MockImport, *, actor) -> None:
 
     text = f"{record.exam_type} · {record.date:%d.%m.%Y}"
     if record.teacher:
-        text = _("{exam} · {date} · учитель {teacher}").format(
-            exam=record.exam_type, date=f"{record.date:%d.%m.%Y}", teacher=record.teacher
+        # журнал хранит фразу по-русски, читающему её переводят при показе (`core.stored_text`)
+        text = stored_text.store(
+            stored_text.MOCK_IMPORT, exam=record.exam_type, date=f"{record.date:%d.%m.%Y}", teacher=record.teacher
         )
     for attempt in record.attempts.select_related("student"):
         record_event(student=attempt.student, code="mock_import", text=text, actor=actor)

@@ -76,7 +76,7 @@ function Details({ row, onClose }: { row: ScholarshipRow; onClose: () => void })
         ))}
         <Chip size="sm">{row.funding_title}</Chip>
         {row.level_title && <Chip size="sm">{row.level_title}</Chip>}
-        {row.country && <Chip size="sm">{row.country}</Chip>}
+        {row.country && <Chip size="sm">{t(row.country)}</Chip>}
       </div>
       <Rows>
         <Row title={t('Сумма')} value={row.amount_title || null} none={t('не указана')} />
@@ -172,7 +172,7 @@ export default function Scholarships() {
   const filterCard = (
     <DataCard title={t('Фильтры')} right={hasFilters ? <Button variant="link" size="sm" onClick={() => setFilters({})}>{t('Сбросить')}</Button> : undefined}>
       <Field kind="text" name="q" label={t('Поиск')} value={filters.q ?? ''} onChange={(value) => setFilter('q', value)} placeholder={t('Название или организатор')} />
-      <Field kind="select" name="country" label={t('Страна')} value={filters.country ?? ''} onChange={(value) => setFilter('country', value)} placeholder={t('Все страны')} options={(facets?.countries ?? []).map((country) => ({ value: country, title: country }))} />
+      <Field kind="select" name="country" label={t('Страна')} value={filters.country ?? ''} onChange={(value) => setFilter('country', value)} placeholder={t('Все страны')} options={(facets?.countries ?? []).map((country) => ({ value: country, title: t(country) }))} />
       <Field kind="select" name="level" label={t('Уровень обучения')} value={filters.level ?? ''} onChange={(value) => setFilter('level', value)} placeholder={t('Любой уровень')} options={(facets?.levels ?? []).map((level) => ({ value: level.value, title: level.title }))} />
       <Field kind="select" name="funding_type" label={t('Тип финансирования')} value={filters.funding_type ?? ''} onChange={(value) => setFilter('funding_type', value)} placeholder={t('Любое финансирование')} options={(facets?.funding_types ?? []).map((item) => ({ value: item.value, title: item.title }))} />
       <Field kind="select" name="basis" label={t('Основание')} value={filters.basis ?? ''} onChange={(value) => setFilter('basis', value)} placeholder={t('Любое основание')} options={(facets?.bases ?? []).map((item) => ({ value: item.value, title: item.title }))} />

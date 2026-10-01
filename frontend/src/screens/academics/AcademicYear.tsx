@@ -38,7 +38,7 @@ function QuartersDialog({ year, onClose }: { year: YearScreen; onClose: () => vo
     <Modal title={t('Четверти и каникулы')} onClose={onClose} wide>
       {rows.map((q, i) => (
         <Field.Row key={q.number}>
-          <Field.Static label={t('Четверть')}>{q.title}</Field.Static>
+          <Field.Static label={t('Четверть')}>{q.name ?? q.title}</Field.Static>
           <Field kind="date" name={`f${q.number}`} label={t('С')} value={q.starts} onChange={(v) => setRows((old) => old.map((row, j) => (j === i ? { ...row, starts: v } : row)))} />
           <Field kind="date" name={`t${q.number}`} label={t('По')} value={q.ends} onChange={(v) => setRows((old) => old.map((row, j) => (j === i ? { ...row, ends: v } : row)))} />
         </Field.Row>
@@ -335,7 +335,7 @@ function NewYearDialog({ onClose }: { onClose: () => void }) {
 function BellsCard({ schedule, onEdit, onDrop }: { schedule: BellSchedule; onEdit: () => void; onDrop?: () => void }) {
   return (
     <DataCard
-      title={schedule.title}
+      title={schedule.name ?? schedule.title}
       note={schedule.is_default ? t('все группы без своего расписания') : schedule.groups.length ? schedule.groups.join(', ') : t('группы не назначены')}
       right={
         <span className="acad__inline">
@@ -398,16 +398,16 @@ export default function AcademicYear() {
                 <Row
                   key={q.id}
                   lead={<b className="num">{q.number}</b>}
-                  title={q.title}
+                  title={q.name ?? q.title}
                   note={`${dateFull(q.starts)} — ${dateFull(q.ends)}`}
                   right={q.closed ? <Chip tone="good">{t('итоги закрыты')}</Chip> : q.current ? <Chip tone="accent">{t('идёт')}</Chip> : q.past ? <Chip tone="neutral">{t('прошла')}</Chip> : undefined}
                 />
               ))}
               {data.breaks.map((b) => (
-                <Row key={b.id} icon="calendar" title={b.title} note={`${dateWords(b.starts)} — ${dateWords(b.ends)}`} />
+                <Row key={b.id} icon="calendar" title={b.name ?? b.title} note={`${dateWords(b.starts)} — ${dateWords(b.ends)}`} />
               ))}
               {data.holidays.map((h) => (
-                <Row key={h.id} icon="star" title={h.title} note={dateWords(h.date)} />
+                <Row key={h.id} icon="star" title={h.name ?? h.title} note={dateWords(h.date)} />
               ))}
             </Rows>
           </DataCard>
@@ -459,11 +459,12 @@ export default function AcademicYear() {
           {current && (
             <DataCard title={t('Итоги четверти')}>
               <Rows>
+                <Row title={t('Четверть')} value={current.name ?? current.title} />
                 <Row title={t('Итоги в журнале до')} value={dateWords(current.ends)} />
               </Rows>
               <div className="acad__actions">
                 <Button variant={current.closed ? 'outline' : 'default'} size="sm" onClick={() => (current.closed ? close.mutate({ id: current.id, closed: false }, { onSuccess: () => toast.success(t('Приём итогов открыт')) }) : setClosing(current))}>
-                  {current.closed ? `${t('Открыть приём итогов')} · ${current.title}` : `${t('Закрыть приём итогов')} · ${current.title}`}
+                  {current.closed ? t('Открыть приём итогов') : t('Закрыть приём итогов')}
                 </Button>
               </div>
             </DataCard>
@@ -477,7 +478,7 @@ export default function AcademicYear() {
       {typeof dialog === 'object' && dialog !== null && 'bells' in dialog && <BellsDialog schedule={dialog.bells ?? undefined} onClose={() => setDialog(null)} />}
       <ConfirmDialog
         open={closing !== null}
-        title={closing ? t('Закрыть приём итогов · {quarter}?', { quarter: closing.title }) : ''}
+        title={closing ? t('Закрыть приём итогов · {quarter}?', { quarter: closing.name ?? closing.title }) : ''}
         consequences={[t('Учителя больше не смогут менять оценки и итоговые отметки этой четверти'), t('Отчёты родителям за четверть соберутся сами')]}
         confirmLabel={t('Закрыть')}
         busy={close.isPending}

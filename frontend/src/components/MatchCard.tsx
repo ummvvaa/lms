@@ -89,7 +89,7 @@ export default function MatchCard({
         <div>
           <b className="match__title">{card.university_name}</b>
           <p className="muted match__sub">
-            {card.country} · {card.program_name}
+            {t(card.country)} · {card.program_name}
           </p>
         </div>
         {card.has_requirements ? (

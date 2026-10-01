@@ -14,6 +14,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core import stored_text
 from core.archive import (
     blockers,
     confirm_word,
@@ -286,8 +287,9 @@ def archive_list(request):
                 "id": row.id,
                 "model": row.model_label,
                 "object_id": row.object_id,
-                "title": row.title,
-                "kind": row.kind_title,
+                # заголовок и вид сохранены при архивировании по-русски — читающему на его языке
+                "title": stored_text.localize(row.title),
+                "kind": stored_text.localize(row.kind_title),
                 "summary": row.summary,
                 "related_count": row.related_count,
                 "actor_name": row.actor.full_name or row.actor.email if row.actor else "",

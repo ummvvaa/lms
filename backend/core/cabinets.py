@@ -22,6 +22,7 @@ from django.db.models import Avg, Count, Exists, F, OuterRef, Q, Sum
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
+from core import stored_text
 from core.dashboards import mock_drops
 from core.parallels import admission_q, parallel_of
 from core.phrasing import counted, tn
@@ -411,7 +412,9 @@ def call_list(limit: int = 8) -> list[dict]:
 
     def add(student, rule, detail: str) -> None:
         current = rows.get(student.pk)
-        reason = rule.reason if not detail else f"{rule.reason} · {detail}"
+        # причина — запись справочника: исходная формулировка переводится, своя — как введена
+        title = stored_text.localize(rule.reason)
+        reason = title if not detail else f"{title} · {detail}"
         if current is not None:
             if order[rule.urgency] < order[current["urgency"]]:
                 current["urgency"] = rule.urgency

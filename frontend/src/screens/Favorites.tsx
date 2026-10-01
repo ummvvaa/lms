@@ -49,7 +49,7 @@ export default function Favorites() {
                   key={row.id}
                   avatar={row.university_name}
                   title={row.university_name}
-                  note={`${row.country} · ${row.program_name} · ${row.level_title}`}
+                  note={[t(row.country), row.program_name, row.level_title].filter(Boolean).join(' · ')}
                   right={row.in_my_list ? <Chip tone="good" size="sm">{t('в списке подачи')}</Chip> : undefined}
                   acts={
                     <>

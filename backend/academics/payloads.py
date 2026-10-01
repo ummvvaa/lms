@@ -89,7 +89,7 @@ def teacher_dict(user, profile: TeacherProfile | None = None) -> dict:
         "email": user.email,
         "is_active": user.is_active,
         "subjects": [subject_dict(s) for s in subjects],
-        "subject_titles": ", ".join(s.title for s in subjects),
+        "subject_titles": ", ".join(s.name for s in subjects),
         "room": profile.room if profile is not None else "",
     }
 

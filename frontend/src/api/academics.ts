@@ -510,6 +510,8 @@ export interface GroupGrades {
 export interface BellSchedule {
   id: number
   title: string
+  /** название на языке интерфейса («Общее» по умолчанию переводится); `title` — как записано */
+  name?: string
   is_default: boolean
   groups: string[]
   bells: { number: number; starts: string; ends: string }[]
@@ -520,6 +522,8 @@ export interface YearScreen {
   quarters: {
     id: number
     number: number
+    /** название на языке интерфейса; `title` — как записано */
+    name?: string
     title: string
     starts: string
     ends: string
@@ -528,8 +532,9 @@ export interface YearScreen {
     current: boolean
     past: boolean
   }[]
-  breaks: { id: number; title: string; starts: string; ends: string }[]
-  holidays: { id: number; date: string; title: string }[]
+  /** `title` — как записано (для правки), `name` — на языке интерфейса (для показа) */
+  breaks: { id: number; title: string; name?: string; starts: string; ends: string }[]
+  holidays: { id: number; date: string; title: string; name?: string }[]
   bells: { number: number; starts: string; ends: string }[]
   /** расписания звонков карточками: общее и назначенные группам (27.09.2026) */
   bell_schedules: BellSchedule[]

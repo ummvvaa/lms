@@ -40,6 +40,7 @@ export const ROUTES: Record<string, string[]> = {
     "/roadmap",
     "/achievements",
     "/profile",
+    "/resources",
   ],
   curator: [
     "/dashboard",
@@ -112,6 +113,7 @@ export const ROUTES: Record<string, string[]> = {
     "/assistant",
     "/students/{id}",
     "/students/{id}#history",
+    "/homework-review",
   ],
   director_behavior: [
     "/dashboard",
@@ -128,6 +130,8 @@ export const ROUTES: Record<string, string[]> = {
     "/assistant",
     "/students/{id}",
     "/students/{id}#history",
+    "/task-templates",
+    "/reports",
   ],
   director_talent: [
     "/dashboard",
@@ -142,6 +146,7 @@ export const ROUTES: Record<string, string[]> = {
     "/assistant",
     "/students/{id}",
     "/students/{id}#history",
+    "/task-templates",
   ],
   director_sport: [
     "/dashboard",
@@ -154,6 +159,7 @@ export const ROUTES: Record<string, string[]> = {
     "/assistant",
     "/students/{id}",
     "/students/{id}#history",
+    "/task-templates",
   ],
   admin: [
     "/badges",
@@ -174,6 +180,10 @@ export const ROUTES: Record<string, string[]> = {
     "/spend",
     "/students/{id}",
     "/students/{id}#history",
+    "/assistant",
+    "/digest",
+    "/homework-review",
+    "/school-settings",
   ],
 };
 

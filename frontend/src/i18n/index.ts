@@ -129,9 +129,10 @@ function pickForm(count: number, forms: string): string {
   return parts[index >= 0 && index < parts.length ? index : Math.min(1, parts.length - 1)]
 }
 
-/** Число в записи языка: «1 500», «1,500». */
+/** Число в записи языка: «1 500», «1,500». Казахский — по записи `ru-RU`:
+ *  данных `kk-KZ` в Chromium нет, а в Казахстане запись та же. */
 export function formatCount(count: number): string {
-  return new Intl.NumberFormat(LOCALES[current]).format(count)
+  return new Intl.NumberFormat(current === 'kk' ? 'ru-RU' : LOCALES[current]).format(count)
 }
 
 /**

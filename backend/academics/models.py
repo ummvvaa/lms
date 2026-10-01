@@ -152,6 +152,14 @@ class Quarter(models.Model):
         return f"{self.title} {self.year}"
 
     @property
+    def name(self) -> str:
+        """Название на языке ответа: название по умолчанию («1 четверть») переводится,
+        своё название школы — как введено."""
+        from core import stored_text
+
+        return stored_text.localize(self.title)
+
+    @property
     def is_closed(self) -> bool:
         return self.closed_at is not None
 

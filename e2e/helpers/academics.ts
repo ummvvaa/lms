@@ -14,6 +14,8 @@ export interface LessonRow {
   course: number;
   date: string;
   slot: number;
+  /** звонок урока «10:25–11:10»; урок без звонка в сетке — пусто */
+  bell?: string;
   is_live?: boolean;
   actual_teacher?: { id: number; short: string } | null;
   subject: { id: number; title: string; short_title: string };
@@ -119,7 +121,7 @@ export function substitute(route: string, ids: RouteIds): string | null {
 export async function markLesson(
   page: Page,
   lesson: number,
-  rows: { student: number; mark: "present" | "absent" | "late" }[] | "all",
+  rows: { student: number; mark: "present" | "absent" | "late"; arrived?: string }[] | "all",
 ): Promise<void> {
   const csrf =
     (await page.context().cookies()).find((c) => c.name === "csrftoken")

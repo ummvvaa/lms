@@ -12,6 +12,7 @@ from pathlib import Path
 
 from django.utils.translation import gettext as _
 
+from core import stored_text
 from core.domains import (
     CURATOR_CONFIRM_DOMAINS,
     DOMAINS,
@@ -124,7 +125,8 @@ def _document_payload(suggestion: Suggestion) -> dict | None:
         "id": document.pk,
         "doc_type": document.doc_type,
         "doc_type_title": document.get_doc_type_display(),
-        "file_name": document.title or Path(document.file.name).name,
+        # название документа-ссылки по умолчанию хранится по-русски — читающему на его языке
+        "file_name": stored_text.localize(document.title) or Path(document.file.name).name,
         "content_type": document.content_type,
         "expires_at": document.expires_at,
         "file_url": f"/api/documents/{document.pk}/file/",

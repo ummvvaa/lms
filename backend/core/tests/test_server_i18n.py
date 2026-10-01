@@ -122,3 +122,21 @@ def test_anonymous_answer_language_comes_from_the_browser():
     assert response["Content-Language"] == "en"
     response = api.post("/api/auth/login/", {"login": "", "password": "x"}, format="json", HTTP_ACCEPT_LANGUAGE="de")
     assert response["Content-Language"] == "ru"
+
+
+def test_archive_keeps_titles_in_russian_and_shows_them_in_the_reader_language():
+    from core import archive, stored_text
+    from students.models import Student
+
+    student = Student()
+    with translation.override("ru"):
+        russian = str(Student._meta.verbose_name)
+    with translation.override("kk"):
+        # удалял человек с казахским интерфейсом — в базе всё равно русский исходник
+        assert str(Student._meta.verbose_name) != russian
+        assert archive._stored(archive.kind_of, student) == russian
+        with translation.override("ru"):
+            plan = stored_text.store(stored_text.PLAN_TITLE, student="Иванов Иван", program="MIT — CS")
+        assert stored_text.localize(plan) == "Жоспар: Иванов Иван → MIT — CS"
+    with translation.override("en"):
+        assert stored_text.localize(plan).startswith("Plan: Иванов Иван")

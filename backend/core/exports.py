@@ -26,6 +26,7 @@ from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.utils.functional import Promise
 from django.utils.translation import gettext as _
+from django.utils.translation import pgettext
 
 #: сколько строк листа уходит в предпросмотр. Файл отдаётся целиком; экрану
 #: тысяча строк ни к чему — их число предпросмотр называет словами
@@ -54,7 +55,7 @@ def _cell(value: Any) -> Any:
         # ленивая подпись (слово-отметка, вариант выбора) — строкой на языке выгрузки
         return str(value)
     if isinstance(value, bool):
-        return _("да") if value else _("нет")
+        return pgettext("answer", "да") if value else pgettext("answer", "нет")
     if isinstance(value, datetime):
         return timezone.localtime(value).replace(tzinfo=None)
     if isinstance(value, date):

@@ -27,6 +27,7 @@ from django.utils import timezone, translation
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_noop
 
+from core import stored_text
 from core.audit import apply_changes, record_event
 from core.domains import ROLE_STUDENT, Source
 from core.i18n import language_of
@@ -91,7 +92,12 @@ def state_of(students: QuerySet[Student]) -> dict[int, dict]:
                 "state": row.state if row else "none",
                 "document": row.pk if row else None,
                 # имя файла — как назвал ученик, иначе само имя файла: повторять тип незачем
-                "file_name": (row.title or (Path(row.file.name).name if row.file else row.external_url)) if row else "",
+                # название документа-ссылки по умолчанию хранится по-русски — читающему на его языке
+                "file_name": (
+                    (stored_text.localize(row.title) or (Path(row.file.name).name if row.file else row.external_url))
+                    if row
+                    else ""
+                ),
                 "content_type": row.content_type if row else "",
                 # документ-ссылка (фаза 65): свой значок, предпросмотр открывает адрес
                 "is_link": row.is_link if row else False,

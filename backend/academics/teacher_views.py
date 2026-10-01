@@ -36,6 +36,7 @@ from academics.models import Course, Excuse, Lesson, LessonKind, LessonStatus, Q
 from academics.payloads import cohort_dict, course_dict, lesson_dict, person, student_brief, teacher_dict, user_name
 from academics.results import ResultRefused, calendar_period, course_context, late_fields, set_finals
 from academics.views import _excuse_dict, _forbid, _int, _not_found
+from core import stored_text
 from core.domains import ROLE_TEACHER
 from students.models import Student
 
@@ -201,7 +202,12 @@ def journals(request):
         {
             "teacher": teacher_dict(user, teachers.profile_of(user)),
             "quarter": (
-                {"number": quarter.number, "title": quarter.title, "ends": quarter.ends, "closed": quarter.is_closed}
+                {
+                    "number": quarter.number,
+                    "title": stored_text.localize(quarter.title),
+                    "ends": quarter.ends,
+                    "closed": quarter.is_closed,
+                }
                 if quarter
                 else None
             ),
@@ -318,7 +324,7 @@ def journal_payload(course: Course, user, period: str) -> dict:
             {
                 "id": quarter_for_finals.pk,
                 "number": quarter_for_finals.number,
-                "title": quarter_for_finals.title,
+                "title": stored_text.localize(quarter_for_finals.title),
                 "ends": quarter_for_finals.ends,
                 "closed": quarter_for_finals.is_closed,
             }

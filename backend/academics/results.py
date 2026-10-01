@@ -474,9 +474,7 @@ def recent_absences(student_id: int, *, days: int = 30) -> dict:
     rows = []
     for day in sorted(totals.days, reverse=True):
         items = totals.days[day]
-        words = ", ".join(
-            f"{lesson.course.subject.short} — {MARK_WORDS.get(mark, mark)}" for lesson, mark in items
-        )
+        words = ", ".join(f"{lesson.course.subject.short} — {MARK_WORDS.get(mark, mark)}" for lesson, mark in items)
         rows.append(
             {
                 "date": day,

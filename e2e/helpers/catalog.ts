@@ -24,6 +24,7 @@ import path from "node:path";
 import type { Page } from "@playwright/test";
 import { clickTab } from "./routes";
 import { close, fingerprint, listen, settle, within } from "./walk";
+import { audit, LANG, type I18nFinding } from "./i18n-audit";
 
 /** Окно съёмки экрана: высокое, чтобы экран вошёл целиком (и растёт дальше). */
 export const CATALOG_LAPTOP = { width: 1440, height: 2000 };
@@ -60,7 +61,7 @@ const skipped = (name: string) =>
 
 /** Куда ложатся снимки каталога: состояние школы — своей папкой. */
 export const catalogDir = (state: string): string =>
-  path.join(__dirname, "..", "shots", "catalog", state);
+  path.join(__dirname, "..", "shots", "catalog", LANG ? `${state}-${LANG}` : state);
 
 export interface CatalogShot {
   /** экран, окно (в т.ч. из меню строки) или форма, развернувшаяся на месте */
@@ -94,6 +95,8 @@ export interface CatalogScreen {
   consoleErrors: string[];
   pageErrors: string[];
   badResponses: string[];
+  /** проверка перевода (`CATALOG_LANG`): что на снимке осталось по-русски или сломалось */
+  i18n?: I18nFinding[];
 }
 
 /** Видимые поля ввода внутри содержимого: по их числу видно, развернулась ли форма. */
@@ -415,6 +418,8 @@ export async function catalogScreen(
       return false;
     });
   if (!took) return finish(screen, bag);
+  const found18 = await audit(page, file, "page", width <= 640).catch(() => null);
+  if (found18) (screen.i18n ??= []).push(found18);
   screen.shots.push({
     kind: "экран",
     file,
@@ -458,6 +463,8 @@ export async function catalogScreen(
         path: path.join(dir, name),
         animations: "disabled",
       });
+      const inDialog = await audit(page, name, "dialog", base.width <= 640).catch(() => null);
+      if (inDialog) (screen.i18n ??= []).push(inDialog);
     } else {
       // форма раскрылась на месте: экран снова высокий и целиком
       await page.setViewportSize(base);

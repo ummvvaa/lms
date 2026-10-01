@@ -691,6 +691,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .confirm__actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: calc(var(--space) * 6);
   margin-top: calc(var(--space) * 4);
@@ -1773,6 +1774,9 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .modal__body {
+  /* элемент сетки окна: без нуля ширина тянется по самому длинному ряду
+     (лента сегментов, длинная английская подпись) и окно режет поля справа */
+  min-width: 0;
   padding: calc(var(--space) * 3) var(--pad-card) var(--pad-card);
   /* поля окна столбиком с ровным зазором: без него подпись следующего
      поля прилипала к нижнему краю предыдущего и читалась как спрятанная

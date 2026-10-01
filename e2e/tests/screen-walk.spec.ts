@@ -54,6 +54,7 @@ import {
   saveCatalog,
   type CatalogScreen,
 } from "../helpers/catalog";
+import { LANG } from "../helpers/i18n-audit";
 import {
   LAPTOP,
   PHONE,
@@ -197,6 +198,15 @@ async function catalogRole(
   const laptop = new Map<string, { hits: Set<string>; seen: Set<string> }>();
   for (const viewport of [CATALOG_LAPTOP, CATALOG_PHONE]) {
     const page = await openAs(browser, role, viewport);
+    if (LANG) {
+      // каталог на казахском или английском: язык ставится в профиль роли
+      const csrf =
+        (await page.context().cookies()).find((c) => c.name === "csrftoken")?.value ?? "";
+      await page.request.patch("/api/auth/me/preferences/", {
+        data: { language: LANG },
+        headers: { "X-CSRFToken": csrf },
+      });
+    }
     const ids = await routeIds(page, role, routes, () => pupilId(page, role));
     // окно кнопки каркаса (помощник, поиск) одно на роль — снимается раз
     const shown = new Set<string>();

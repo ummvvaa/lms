@@ -587,7 +587,7 @@ button.calcell.calcell--full:hover {
 
 .matrix__col {
   min-width: calc(var(--cell-w) * 2);
-  padding: 4px 2px;
+  padding: 4px;
 }
 
 .matrix__coltitle,
@@ -596,7 +596,12 @@ button.calcell.calcell--full:hover {
   white-space: nowrap;
 }
 
+/* подпись под датой на казахском и английском бывает длиннее колонки:
+   не раздвигает её и не налезает на соседнюю — многоточие, целиком в подсказке */
 .matrix__colsub {
+  max-width: calc(var(--cell-w) * 2);
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--ink-3);
 }
 

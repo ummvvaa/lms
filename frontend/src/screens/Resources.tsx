@@ -250,7 +250,8 @@ export default function Resources() {
           { value: '', label: t('Все'), icon: 'layers' },
           ...categories.map((row) => ({
             value: row.code,
-            label: row.count === undefined ? row.name : `${row.name} · ${row.count}`,
+            // категория — запись справочника: исходное название переводится, своё — как введено
+            label: row.count === undefined ? t(row.name) : `${t(row.name)} · ${row.count}`,
             icon: 'openbook' as const,
           })),
         ]}

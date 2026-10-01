@@ -13,9 +13,10 @@ from typing import Any
 
 from django.apps import apps
 from django.db import models, transaction
-from django.utils import timezone
+from django.utils import timezone, translation
 from django.utils.translation import gettext as _
 
+from core import stored_text
 from core.archivable import Archivable
 from core.audit import model_label
 from core.domains import PROFILE_MODELS
@@ -51,6 +52,11 @@ def title_of(instance: models.Model) -> str:
 
 def kind_of(instance: models.Model) -> str:
     return str(instance._meta.verbose_name)
+
+
+def _stored(name_of, instance: models.Model) -> str:
+    with translation.override("ru"):
+        return name_of(instance)
 
 
 def _cascade_children(instance: models.Model) -> list[models.Model]:
@@ -209,8 +215,10 @@ def archive(instance: models.Model, *, actor=None) -> ArchiveEntry:
         batch=batch,
         model_label=model_label(instance),
         object_id=str(instance.pk),
-        title=title_of(instance),
-        kind_title=kind_of(instance),
+        # хранится по-русски, переводится при показе (`stored_text.localize`):
+        # иначе запись осталась бы на языке того, кто удалял
+        title=_stored(title_of, instance),
+        kind_title=_stored(kind_of, instance),
         summary=phrase,
         related_count=len(related),
         actor=actor,
@@ -353,14 +361,15 @@ def purge_preview(entry: ArchiveEntry) -> dict:
     related = countable(branch[1:]) if branch else []
     phrase, rows = summarize(related)
 
+    title = stored_text.localize(entry.title)
     base = {
         "id": entry.pk,
-        "title": entry.title,
-        "kind": entry.kind_title,
+        "title": title,
+        "kind": stored_text.localize(entry.kind_title),
         "found": len(branch),
         "summary": phrase,
         "related": rows,
-        "what": _("Удалить «{title}» навсегда?").format(title=entry.title),
+        "what": _("Удалить «{title}» навсегда?").format(title=title),
     }
 
     if instance is None:
@@ -400,7 +409,7 @@ def purge_preview(entry: ArchiveEntry) -> dict:
             )
         )
     else:
-        consequences.append(_("Записи журнала останутся и будут помечены именем «{title}»").format(title=entry.title))
+        consequences.append(_("Записи журнала останутся и будут помечены именем «{title}»").format(title=title))
 
     return {
         "consequences": consequences,
@@ -485,7 +494,9 @@ def purge(entry: ArchiveEntry, *, actor=None) -> dict:
         "files": files,
         "audit_marked": marked,
         "signed": signed,
-        "detail": _purge_detail(removed=removed, files=files, marked=marked, title=entry.title, signed=signed),
+        "detail": _purge_detail(
+            removed=removed, files=files, marked=marked, title=stored_text.localize(entry.title), signed=signed
+        ),
     }
 
 

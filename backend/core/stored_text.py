@@ -40,6 +40,32 @@ YEAR_SETTINGS = gettext_noop("Изменены настройки учебног
 RESULTS_CLOSED = gettext_noop("Закрыт приём итогов: {quarter}")
 RESULTS_OPENED = gettext_noop("Открыт приём итогов: {quarter}")
 ENGLISH_LEVEL = gettext_noop("{level} с {date}")
+#: название четверти, которое школа получает по умолчанию при заведении года
+QUARTER_TITLE = gettext_noop("{number} четверть")
+MOCK_IMPORT = gettext_noop("{exam} · {date} · учитель {teacher}")
+LINK_FROM_TABLE = gettext_noop("{document}: ссылка из таблицы поступления")
+LINK_FROM_BLOCK = gettext_noop("{document}: ссылка из блока «Поступление»")
+#: название плана в архиве (`roadmap.Plan.__str__`)
+PLAN_TITLE = gettext_noop("План: {student} → {program}")
+
+#: Названия и формулировки, которые школа получает по умолчанию (посев, миграции):
+#: хранятся в базе как данные, но пока школа их не переименовала, читающему
+#: показывается перевод. Своё название школы показывается как введено.
+DEFAULTS = (
+    gettext_noop("Общее"),
+    gettext_noop("Звонки"),
+    gettext_noop("Каникулы"),
+    gettext_noop("Праздник"),
+    gettext_noop("Осенние каникулы"),
+    gettext_noop("Зимние каникулы"),
+    gettext_noop("Весенние каникулы"),
+    gettext_noop("Летние каникулы"),
+    gettext_noop("низкая посещаемость"),
+    gettext_noop("просел по пробным"),
+    gettext_noop("не заходил в систему"),
+    gettext_noop("пропустил дедлайн"),
+    gettext_noop("нет контактов родителей"),
+)
 
 TEMPLATES = (
     LESSON_SERIES_ADDED,
@@ -62,6 +88,11 @@ TEMPLATES = (
     RESULTS_CLOSED,
     RESULTS_OPENED,
     ENGLISH_LEVEL,
+    QUARTER_TITLE,
+    MOCK_IMPORT,
+    LINK_FROM_TABLE,
+    LINK_FROM_BLOCK,
+    PLAN_TITLE,
 )
 
 
@@ -84,11 +115,18 @@ def _patterns() -> tuple[tuple[str, re.Pattern], ...]:
 
 
 def localize(text: str) -> str:
-    """Сохранённая фраза на активном языке; не из реестра — как есть."""
+    """Сохранённая фраза на активном языке; не из реестра — как есть.
+
+    Подошёл шаблон — подстановки тоже переводятся, если это строка каталога
+    («Паспорт» в названии документа-ссылки). Целиком строка каталога
+    (подпись варианта, записанная в журнал; название по умолчанию) —
+    переводится целиком. Остальное — данные людей, показываются как введены.
+    """
     if not isinstance(text, str) or not text:
         return text
     for template, pattern in _patterns():
         match = pattern.fullmatch(text)
         if match:
-            return gettext(template).format(**match.groupdict())
-    return text
+            params = {name: gettext(value) for name, value in match.groupdict().items()}
+            return gettext(template).format(**params)
+    return gettext(text)

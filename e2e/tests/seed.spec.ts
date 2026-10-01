@@ -1165,15 +1165,22 @@ test("дисциплина: три недели уроков с пропуска
     ).json()) as { roster: { id: number }[] };
     // каждый третий ученик пропускает каждый третий урок, один опаздывает —
     // так в списках есть и те, у кого пропусков нет, и те, у кого их несколько
-    const rows = detail.roster.map((row, position) => ({
-      student: row.id,
-      mark:
+    // опоздание на прошедшем уроке сервер принимает только со временем прихода:
+    // пять минут после звонка
+    const start = /^(\d{2}):(\d{2})/.exec(lesson.bell ?? "");
+    const minutes = start ? Number(start[1]) * 60 + Number(start[2]) + 5 : 0;
+    const arrived = start
+      ? `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
+      : undefined;
+    const rows = detail.roster.map((row, position) => {
+      const mark =
         (position + index) % 3 === 0
           ? ("absent" as const)
-          : (position + index) % 7 === 0
+          : (position + index) % 7 === 0 && arrived
             ? ("late" as const)
-            : ("present" as const),
-    }));
+            : ("present" as const);
+      return mark === "late" ? { student: row.id, mark, arrived } : { student: row.id, mark };
+    });
     await markLesson(teacher, lesson.id, rows);
   }
   await teacher.context().close();

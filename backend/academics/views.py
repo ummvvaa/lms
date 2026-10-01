@@ -52,7 +52,7 @@ from academics.results import (
     unexcused_days,
 )
 from accounts.curators import curated_group_ids
-from core import school_rules
+from core import school_rules, stored_text
 from core.domains import ROLE_CURATOR, ROLE_STUDENT, ROLE_TEACHER
 from core.scope import sees_student, visible_students
 from students.models import Student, StudyGroup
@@ -117,7 +117,7 @@ def meta_payload(user) -> dict:
             {
                 "id": q.pk,
                 "number": q.number,
-                "title": q.title,
+                "title": stored_text.localize(q.title),
                 "starts": q.starts,
                 "ends": q.ends,
                 "closed": q.is_closed,

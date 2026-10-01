@@ -16,7 +16,7 @@ from typing import Any
 from django.apps import apps
 from django.core.exceptions import FieldDoesNotExist
 from django.utils.translation import gettext as _
-from django.utils.translation import gettext_lazy
+from django.utils.translation import gettext_lazy, pgettext
 
 from core import stored_text
 from core.domains import spec_of_field
@@ -164,14 +164,15 @@ def value_title(model_label: str, field_name: str, value: Any) -> str:
     if value is None or value == "":
         return ""
     if isinstance(value, bool):
-        return _("да") if value else _("нет")
+        return pgettext("answer", "да") if value else pgettext("answer", "нет")
     text = str(value)
     if text in ("True", "False"):
-        return _("да") if text == "True" else _("нет")
+        return pgettext("answer", "да") if text == "True" else pgettext("answer", "нет")
     # «да» и «нет», записанные в журнал словом, и фразы событий из реестра
     # `core.stored_text` хранятся по-русски — читающему на его языке
     if text in ("да", "нет"):  # i18n-skip: сравнение с сохранённым значением журнала
-        return _("да") if text == "да" else _("нет")  # i18n-skip: сравнение с сохранённым значением журнала
+        yes = text == "да"  # i18n-skip: сравнение с сохранённым значением журнала
+        return pgettext("answer", "да") if yes else pgettext("answer", "нет")
     localized = stored_text.localize(text)
     if localized != text:
         return localized

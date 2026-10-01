@@ -14,6 +14,7 @@ from django.utils import timezone
 from django.utils.translation import gettext, gettext_noop
 
 from academics.models import AcademicYear, Bell, BellSchedule, Break, GradingScale, Quarter, ReportSettings
+from core import stored_text
 
 #: Уроков в дне по умолчанию — для звонков посева и пустого года
 DEFAULT_BELLS: tuple[tuple[int, str, str], ...] = (
@@ -356,7 +357,7 @@ def period_bounds(calendar: SchoolCalendar, code: str) -> tuple[dt.date, dt.date
         number = int(code[1:])
         for quarter in calendar.quarters:
             if quarter.number == number:
-                return quarter.starts, quarter.ends, quarter.title
+                return quarter.starts, quarter.ends, stored_text.localize(quarter.title)
     if len(code) == 7 and code[4] == "-" and code[:4].isdigit() and code[5:].isdigit():
         first = dt.date(int(code[:4]), int(code[5:]), 1)
         last = (first.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(days=1)
@@ -374,5 +375,5 @@ def period_choices(calendar: SchoolCalendar) -> list[dict]:
         {"code": f"{day.year}-{day.month:02d}", "title": MONTHS_NOMINATIVE[day.month - 1].capitalize()},
     ]
     for quarter in calendar.quarters:
-        out.append({"code": f"q{quarter.number}", "title": quarter.title})
+        out.append({"code": f"q{quarter.number}", "title": stored_text.localize(quarter.title)})
     return out

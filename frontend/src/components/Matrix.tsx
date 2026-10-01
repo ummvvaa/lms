@@ -156,7 +156,11 @@ export default function Matrix({
             {columns.map((column) => (
               <th key={column.key} className="matrix__col" scope="col">
                 <span className="matrix__coltitle t-caps">{column.title}</span>
-                {column.sub && <span className="matrix__colsub t-note">{column.sub}</span>}
+                {column.sub && (
+                  <span className="matrix__colsub t-note" title={typeof column.sub === 'string' ? column.sub : undefined}>
+                    {column.sub}
+                  </span>
+                )}
               </th>
             ))}
           </tr>

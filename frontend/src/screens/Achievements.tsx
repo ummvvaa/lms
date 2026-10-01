@@ -29,7 +29,7 @@ export default function Achievements() {
       <StatRow>
         <Kpi tone="accent" label={t('Получено')} value={data?.earned || null} none={t('нет')} note={t('бейджей из набора школы')} />
         <Kpi label={t('Ещё можно взять')} value={locked.length || null} none={t('нет')} note={t('условие видно у каждого')} />
-        <Kpi label={t('Ближайший')} value={locked[0] ? `${Math.round(locked[0].percent)}%` : null} none={t('нет')} note={locked[0]?.name} />
+        <Kpi label={t('Ближайший')} value={locked[0] ? `${Math.round(locked[0].percent)}%` : null} none={t('нет')} note={locked[0] ? t(locked[0].name) : undefined} />
       </StatRow>
       <div className="acad__cols">
         <div className="acad__stack">
@@ -38,7 +38,7 @@ export default function Achievements() {
             <DataCard title={t('Получено')} count={earned.length}>
               <Rows>
                 {earned.map((badge) => (
-                  <Row key={badge.id} lead={<span className="stu__slot"><Icon name={(badge.icon || 'medal') as IconName} size={18} /></span>} tone="good" title={badge.name} note={badge.description} right={<Chip tone="good" size="sm">{badge.earned_at ? formatDate(badge.earned_at) : t('получен')}</Chip>} />
+                  <Row key={badge.id} lead={<span className="stu__slot"><Icon name={(badge.icon || 'medal') as IconName} size={18} /></span>} tone="good" title={t(badge.name)} note={t(badge.description)} right={<Chip tone="good" size="sm">{badge.earned_at ? formatDate(badge.earned_at) : t('получен')}</Chip>} />
                 ))}
               </Rows>
             </DataCard>
@@ -50,8 +50,8 @@ export default function Achievements() {
                   <Row
                     key={badge.id}
                     lead={<span className="stu__slot"><Icon name={(badge.icon || 'medal') as IconName} size={18} /></span>}
-                    title={badge.name}
-                    note={badge.description || badge.condition}
+                    title={t(badge.name)}
+                    note={badge.description ? t(badge.description) : badge.condition}
                     right={
                       <span className="badges__progress">
                         <Progress percent={badge.percent} label={false} />

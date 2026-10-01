@@ -102,8 +102,8 @@ function displayValue(student: StudentCard, domainKey: string, field: DomainFiel
   }
   const raw = profile?.[name]
   if (raw === null || raw === undefined) return ''
-  // «да» и «нет» — на языке человека; разбор ввода понимает и их, и русские
-  if (typeof raw === 'boolean') return raw ? t('да') : t('нет')
+  // ответ «Да» и «Нет» — на языке человека; разбор ввода понимает и его, и русский
+  if (typeof raw === 'boolean') return raw ? t('Да') : t('Нет')
   // выбор из списка показывается подписью, а не кодом: на телефоне карточка
   // строки писала «can_execute» (найдено в 76-й); сервер принимает и код
   if (typeof field !== 'string' && field.choices) {
@@ -119,7 +119,7 @@ function parseValue(field: DomainField, text: string): unknown {
   if (trimmed === '') return field.type === 'boolean' ? false : null
   if (field.type === 'boolean')
     // eslint-disable-next-line i18n-text -- слова, которые разбор ввода принимает за «да», не показываются
-    return ['да', t('да').toLowerCase(), 'yes', 'true', '1', '+'].includes(trimmed.toLowerCase())
+    return ['да', t('Да').toLowerCase(), 'yes', 'true', '1', '+'].includes(trimmed.toLowerCase())
   if (field.type === 'integer') {
     const n = Number(trimmed.replace(',', '.'))
     return Number.isFinite(n) ? Math.round(n) : trimmed

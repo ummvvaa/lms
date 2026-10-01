@@ -78,7 +78,7 @@ function LaunchForm({ onStarted }: { onStarted: (run: SelectionRun) => void }) {
       <div className="acad__chips">
         {allCountries.map((country) => (
           <Button key={country} variant={countries.includes(country) ? 'default' : 'outline'} size="sm" onClick={() => setCountries((prev) => (prev.includes(country) ? prev.filter((c) => c !== country) : [...prev, country]))}>
-            {country}
+            {t(country)}
           </Button>
         ))}
         {allCountries.length === 0 && <span className="t-note">{t('Справочник пока пуст')}</span>}
@@ -166,7 +166,7 @@ function ResultRow({ run, row }: { run: SelectionRun; row: SelectionResultRow })
       <Row
         avatar={row.university_name}
         title={row.university_name}
-        note={`${row.country}${row.world_rank ? ` · #${row.world_rank}` : ''} · ${row.program_name}`}
+        note={[t(row.country), row.world_rank ? `#${row.world_rank}` : '', row.program_name].filter(Boolean).join(' · ')}
         right={
           <span className="catalog__acts">
             {row.tier && <Chip tone={TIER_TONE[row.tier] ?? 'neutral'} size="sm">{row.tier}</Chip>}
@@ -239,7 +239,7 @@ function Result({ run }: { run: SelectionRun }) {
           <DataCard title={t('Другие университеты')} count={other.length}>
             <Rows>
               {other.map((row) => (
-                <Row key={row.id} title={row.university_name} note={`${row.country}${row.world_rank ? ` · #${row.world_rank}` : ''} · ${row.program_name}`} />
+                <Row key={row.id} title={row.university_name} note={[t(row.country), row.world_rank ? `#${row.world_rank}` : '', row.program_name].filter(Boolean).join(' · ')} />
               ))}
             </Rows>
           </DataCard>

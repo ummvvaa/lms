@@ -143,15 +143,17 @@ export default function Career() {
                       <div className="career__qhead">
                         <b className={`num stu__slot${done ? ' stu__slot--done' : ''}`}>{index + 1}</b>
                         <div className="career__qtext">
-                          <span className="career__label">{question.text}</span>
-                          {question.hint && <p className="t-note">{question.hint}</p>}
+                          {/* вопрос — запись справочника: исходная формулировка переводится, своя школьная — как введена */}
+                          <span className="career__label">{t(question.text)}</span>
+                          {question.hint && <p className="t-note">{t(question.hint)}</p>}
                         </div>
                       </div>
                       {options.length > 0 && (
-                        <div className="acad__chips" role="group" aria-label={question.text}>
+                        <div className="acad__chips" role="group" aria-label={t(question.text)}>
                           {options.map((option) => (
                             <Button key={option} variant={chosen.includes(option) ? 'default' : 'outline'} size="sm" aria-pressed={chosen.includes(option)} disabled={!data?.available} onClick={() => toggle(question.code, option)}>
-                              {option}
+                              {/* на сервер уходит исходный вариант, на экране — перевод */}
+                              {t(option)}
                             </Button>
                           ))}
                         </div>

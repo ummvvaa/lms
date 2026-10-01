@@ -40,7 +40,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.utils import translation
 from django.utils.translation import gettext as _
-from django.utils.translation import gettext_lazy
+from django.utils.translation import gettext_lazy, pgettext
 
 # --- Типы значений ------------------------------------------------------------
 
@@ -557,7 +557,7 @@ def as_rows() -> list[dict]:
             "domain": spec.domain_title,
             "kind": str(KIND_TITLES[spec.kind]),
             "destination": spec.destination,
-            "required": _("да") if spec.required else _("нет"),
+            "required": pgettext("answer", "да") if spec.required else pgettext("answer", "нет"),
         }
         for spec in COLUMNS
     ]

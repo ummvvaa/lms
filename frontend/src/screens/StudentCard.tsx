@@ -53,7 +53,7 @@ function shown(student: Card, domain: Domain, field: DomainField): string {
   const raw = profile?.[field.name]
   // пустое значение — слово, не прочерк (правило вида)
   if (raw === null || raw === undefined || raw === '') return t('нет')
-  if (typeof raw === 'boolean') return raw ? t('да') : t('нет')
+  if (typeof raw === 'boolean') return raw ? t('Да') : t('Нет')
   const choice = field.choices?.find((c) => c.value === raw)
   return choice ? choice.title : String(raw)
 }

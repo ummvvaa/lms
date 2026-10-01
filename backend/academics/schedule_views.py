@@ -1178,6 +1178,8 @@ def year_payload() -> dict:
                 "id": q.pk,
                 "number": q.number,
                 "title": q.title,
+                # название на языке читающего: по умолчанию («1 четверть») переводится, своё — как введено
+                "name": stored_text.localize(q.title),
                 "starts": q.starts,
                 "ends": q.ends,
                 "closed": q.is_closed,
@@ -1187,8 +1189,14 @@ def year_payload() -> dict:
             }
             for q in calendar.quarters
         ],
-        "breaks": [{"id": b.pk, "title": b.title, "starts": b.starts, "ends": b.ends} for b in calendar.breaks],
-        "holidays": [{"id": h.pk, "date": h.date, "title": h.title} for h in (year.holidays.all() if year else [])],
+        "breaks": [
+            {"id": b.pk, "title": b.title, "name": stored_text.localize(b.title), "starts": b.starts, "ends": b.ends}
+            for b in calendar.breaks
+        ],
+        "holidays": [
+            {"id": h.pk, "date": h.date, "title": h.title, "name": stored_text.localize(h.title)}
+            for h in (year.holidays.all() if year else [])
+        ],
         "bells": [{"number": n, "starts": s, "ends": e} for n, (s, e) in sorted(calendar.bells.items())],
         "bell_schedules": bell_schedules_payload(year),
         "scale": {
@@ -1249,6 +1257,7 @@ def bell_schedules_payload(year) -> list[dict]:
             {
                 "id": row.pk,
                 "title": row.title,
+                "name": stored_text.localize(row.title),
                 "is_default": row.is_default,
                 "groups": sorted(group.code for group in row.groups.all()),
                 "bells": [

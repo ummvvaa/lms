@@ -22,7 +22,6 @@ import './school-settings.css'
 const whenAt = (value: string) =>
   formatDateTime(value)
 
-const yesNo = (value: number | string) => (Number(value) ? t('да') : t('нет'))
 
 // eslint-disable-next-line i18n-concat -- число и единица измерения: порядок «15 мин» одинаков во всех трёх языках
 const withUnit = (value: number | string, unit: string) => (unit === '%' ? `${value} %` : unit ? `${value} ${t(unit)}` : String(value))
@@ -62,7 +61,7 @@ function RuleRow({ rule }: { rule: SchoolRule }) {
         <span className="t-note">{t(rule.hint)}</span>
         <span className="t-note">
           {rule.kind === 'bool'
-            ? t('По умолчанию: {value}', { value: yesNo(rule.default) })
+            ? Number(rule.default) ? t('По умолчанию: да') : t('По умолчанию: нет')
             : `${t('По умолчанию: {value}', { value: withUnit(rule.default, rule.unit) })} · ${t('от {min} до {max}', { min: rule.minimum, max: rule.maximum })}`}
         </span>
       </div>
@@ -76,8 +75,8 @@ function RuleRow({ rule }: { rule: SchoolRule }) {
             }}
             label={t(rule.title)}
             items={[
-              { value: '1', label: t('да') },
-              { value: '0', label: t('нет') },
+              { value: '1', label: t('Да') },
+              { value: '0', label: t('Нет') },
             ]}
           />
         ) : (

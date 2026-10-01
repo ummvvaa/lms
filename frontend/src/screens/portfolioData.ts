@@ -12,7 +12,7 @@ export function shown(profile: Record<string, unknown> | undefined, field: Domai
   if (field.type === 'reference') return String(profile?.[`${field.name}_name`] || t('нет'))
   const value = profile?.[field.name]
   if (value === null || value === undefined || value === '') return t('нет')
-  if (typeof value === 'boolean') return value ? t('да') : t('нет')
+  if (typeof value === 'boolean') return value ? t('Да') : t('Нет')
   const choice = field.choices?.find((c) => c.value === value)
   return choice ? choice.title : String(value)
 }
