@@ -6,6 +6,7 @@
  * отвечает 404 на всё, а маршрут закрыт в `App.tsx` (фаза 19).
  */
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   useCollections,
@@ -13,6 +14,7 @@ import {
   useMaterialActions,
   useMaterialQueue,
   useMaterialRequests,
+  useMyMaterialReports,
   useMaterials,
   useMaterialsState,
   type Material,
@@ -20,7 +22,7 @@ import {
 import { useAuth } from '../auth/AuthContext'
 import Empty from '../components/Empty'
 import MaterialCard from '../components/MaterialCard'
-import { Chip, counted, EmptyNote, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { Chip, counted, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import './materials.css'
 import { t, tk } from '../i18n'
 import { SelectField } from '../components/SelectField'
@@ -485,7 +487,46 @@ function MyMaterials({
           onAction={() => setOpen(true)}
         />
       )}
+      <MyReports />
     </div>
+  )
+}
+
+/**
+ * Свои жалобы: на что, в каком состоянии, что решили. Открытую жалобу автор
+ * отзывает сам — раньше отозвать можно было только запросом к API, списка
+ * своих жалоб не было ни на одном экране. Жалоб нет — блока нет.
+ */
+function MyReports() {
+  const reports = useMyMaterialReports()
+  const actions = useMaterialActions()
+  const rows = reports.data?.results ?? []
+  if (!rows.length) return null
+  return (
+    <DataCard title={t('Мои жалобы')} count={rows.length}>
+      <Rows>
+        {rows.map((row) => (
+          <Row
+            key={row.id}
+            icon="alert"
+            title={row.material_title || t('материал убран')}
+            note={[row.status_title, row.resolution || row.reason].filter(Boolean).join(' · ')}
+            acts={
+              row.status === 'open' ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={actions.withdrawReport.isPending}
+                  onClick={() => actions.withdrawReport.mutate(row.id, { onSuccess: (result) => toast.success(result.detail), onError: (e) => toast.error(e.message) })}
+                >
+                  {t('Отозвать')}
+                </Button>
+              ) : undefined
+            }
+          />
+        ))}
+      </Rows>
+    </DataCard>
   )
 }
 

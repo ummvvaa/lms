@@ -3837,12 +3837,21 @@ export interface MaterialReportRow {
   material: number | null
   comment: number | null
   reporter_name: string
+  /** на какой материал жалоба (у жалобы на комментарий — материал комментария) */
+  material_title: string
   reason: string
   status: 'open' | 'resolved'
   status_title: string
   resolution: string
   created_at: string
 }
+
+/** Свои жалобы на материалы и комментарии — открытую можно отозвать. */
+export const useMyMaterialReports = () =>
+  useQuery({
+    queryKey: ['material-reports', 'mine'],
+    queryFn: () => get<Paginated<MaterialReportRow>>('/material-reports/?mine=true&page_size=100'),
+  })
 
 export const useMaterialRequests = () =>
   useQuery({
@@ -3903,12 +3912,22 @@ export function useMaterialActions() {
     report: useMutation({
       mutationFn: (body: { material?: number; comment?: number; reason: string }) =>
         post<{ id: number }>('/material-reports/', body),
-      onSuccess: refresh,
+      onSuccess: () => {
+        refresh()
+        void client.invalidateQueries({ queryKey: ['material-reports'] })
+      },
     }),
     resolveReport: useMutation({
       mutationFn: ({ id, resolution }: { id: number; resolution: string }) =>
         post<{ detail: string }>(`/material-reports/${id}/resolve/`, { resolution }),
       onSuccess: refresh,
+    }),
+    withdrawReport: useMutation({
+      mutationFn: (id: number) => api<{ detail: string }>(`/material-reports/${id}/`, { method: 'DELETE' }),
+      onSuccess: () => {
+        refresh()
+        void client.invalidateQueries({ queryKey: ['material-reports'] })
+      },
     }),
     ask: useMutation({
       mutationFn: (body: { subject: number; topic: string; text: string }) =>

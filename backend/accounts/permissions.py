@@ -160,6 +160,9 @@ CURATOR_READ_ROUTES = frozenset(
         "acad-lessons",
         "acad-lesson",
         "acad-journal",
+        # выгрузка того же журнала: права — та же `_course_for`, что у экрана;
+        # кнопка «Выгрузить» у куратора была, а ручка отвечала 403
+        "acad-journal-export",
         "acad-attendance",
         "acad-attendance-export",
         "acad-group-grades",

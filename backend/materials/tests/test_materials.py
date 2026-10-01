@@ -481,6 +481,26 @@ def test_report_goes_to_the_curator(api, arman, material, olympian):
     assert MaterialReport.objects.get(pk=created.json()["id"]).status == MaterialReport.Status.RESOLVED
 
 
+@pytest.mark.django_db
+def test_author_sees_own_reports_and_withdraws_an_open_one(api, arman, material, olympian):
+    """«Мои жалобы»: свои с названием материала; открытую автор отзывает с экрана."""
+    api.force_authenticate(olympian.user)
+    created = api.post("/api/material-reports/", {"material": material.pk, "reason": "Чужой скан"}, format="json")
+    mine = api.get("/api/material-reports/?mine=true").json()
+    rows = mine["results"] if isinstance(mine, dict) else mine
+    assert [(row["id"], row["material_title"], row["status"]) for row in rows] == [
+        (created.json()["id"], material.title, "open")
+    ]
+    # у хранителя раздела «только мои» — без чужих жалоб, хотя очередь он видит целиком
+    api.force_authenticate(arman)
+    theirs = api.get("/api/material-reports/?mine=true").json()
+    assert (theirs["results"] if isinstance(theirs, dict) else theirs) == []
+
+    api.force_authenticate(olympian.user)
+    assert api.delete(f"/api/material-reports/{created.json()['id']}/").status_code == 200
+    assert not MaterialReport.objects.filter(pk=created.json()["id"]).exists()
+
+
 # --- Подборки и запросы ----------------------------------------------------
 
 

@@ -98,7 +98,7 @@ export function ProposeForm({
   return (
     <div className="propose__form">
       <p className="muted propose__note">
-        {t('Значение проверит директор — до этого оно помечено как «ждёт проверки».')}
+        {t('Значение проверит директор — до этого оно помечено «на проверке у директора».')}
       </p>
       {fields.map((field) => (
         <label key={field.name} className="propose__field">
@@ -294,7 +294,7 @@ export function AddRowForm({
   )
 }
 
-/** Список записей раздела с пометками «ждёт проверки» у отправленных. */
+/** Список записей раздела с пометкой «на проверке у директора» у отправленных. */
 export function RowsList({
   rows,
   pendingRows,
@@ -313,7 +313,7 @@ export function RowsList({
         <li key={`pending-${index}`} className="rows__item">
           <div className="rows__body">
             <span className="rows__label">
-              {row.label} <Chip tone="neutral">{t('ждёт проверки')}</Chip>
+              {row.label} <Chip tone="neutral">{t('на проверке у директора')}</Chip>
             </span>
             {row.note && <span className="muted rows__note">{row.note}</span>}
           </div>
@@ -346,7 +346,7 @@ export const ByCurator = () => <Chip tone="neutral">{t('внёс куратор'
 
 /**
  * Карточка домена в кабинете ученика: ровно колонки таблицы владельца
- * домена (фаза 70), значения с пометками «ждёт проверки» и «внёс куратор»,
+ * домена (фаза 70), значения с пометками «на проверке у директора» и «внёс куратор»,
  * форма предложения для полей, которые ученик вносит сам.
  */
 export function ProfileCard({
@@ -394,7 +394,7 @@ export function ProfileCard({
             <div key={field.name} className={`portfolio__pair${wide ? ' portfolio__pair--wide' : ''}`}>
               <span className="portfolio__k">{t(field.short || field.title)}</span>
               <span className={`portfolio__v${value === t('нет') ? ' portfolio__v--empty' : ''}`}>{value}</span>
-              {waiting !== undefined && <Chip tone="neutral">{t('ждёт проверки')}</Chip>}
+              {waiting !== undefined && <Chip tone="neutral">{t('на проверке у директора')}</Chip>}
               {byCurator && <ByCurator />}
             </div>
           )

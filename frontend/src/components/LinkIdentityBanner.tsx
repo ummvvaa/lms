@@ -24,6 +24,8 @@ export default function LinkIdentityBanner() {
   const link = useLinkIdentity()
   const prefs = useUpdatePreferences()
   const [email, setEmail] = useState('')
+  // нажали «Привязать» — теперь неверный адрес объясняется, а не молча не уходит
+  const [tried, setTried] = useState(false)
   // мгновенный отклик на «Позже»; сервер догоняет через предпочтения
   const [hidden, setHidden] = useState(false)
 
@@ -32,6 +34,9 @@ export default function LinkIdentityBanner() {
   if (hasPersonal || me.role !== 'student') return null
   // одно место, а не каждый экран: баннер над каждым списком читается как шапка
   if (location.pathname !== '/dashboard') return null
+
+  const typed = email.trim()
+  const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed)
 
   if (link.isSuccess) {
     // письмо ушло — почта заработает после подтверждения по ссылке
@@ -46,21 +51,25 @@ export default function LinkIdentityBanner() {
           {t('Школьный аккаунт после выпуска отключат. Личная почта — второй способ войти.')}
         </p>
       </div>
+      {/* проверка своя, а не всплывающая подсказка браузера: её не замечали,
+          и пустое поле «Привязать» молчало — ни запроса, ни объяснения */}
       <form
         className="banner__form"
+        noValidate
         onSubmit={(e) => {
           e.preventDefault()
-          link.mutate(email)
+          setTried(true)
+          if (looksLikeEmail) link.mutate(typed)
         }}
       >
         <Input
           type="email"
-          required
           value={email}
+          aria-invalid={tried && !looksLikeEmail}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@gmail.com"
         />
-        <Button size="sm" type="submit" disabled={link.isPending}>
+        <Button size="sm" type="submit" disabled={link.isPending || typed === ''}>
           {t('Привязать')}
         </Button>
         <Button
@@ -75,12 +84,14 @@ export default function LinkIdentityBanner() {
           {t('Позже')}
         </Button>
       </form>
+      {tried && typed !== '' && !looksLikeEmail && <Chip tone="bad" className="badge--sentence">{t('Адрес почты пишется как name@gmail.com — проверьте «@» и домен')}</Chip>}
       {link.isError && (
-        <Chip tone="bad">
-          {t('Не удалось привязать эту почту')}
+        <Chip tone="bad" className="badge--sentence">
+          {/* причина с сервера («адрес уже привязан к другой учётке») полезнее общих слов */}
+          {link.error instanceof Error && link.error.message ? link.error.message : t('Не удалось привязать эту почту')}
         </Chip>
       )}
-      {email.trim() === '' && link.isIdle && (
+      {typed === '' && link.isIdle && (
         <p className="muted banner__note">{t('Укажите почту, которой пользуетесь вне школы.')}</p>
       )}
     </Notice>

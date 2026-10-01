@@ -260,10 +260,13 @@ class MaterialCommentViewSet(SectionViewSet):
 class MaterialReportViewSet(SectionViewSet):
     """Жалобы на материал или комментарий. Разбирает Арман."""
 
-    queryset = MaterialReport.objects.select_related("reporter", "material", "comment")
+    queryset = MaterialReport.objects.select_related("reporter", "material", "comment", "comment__material")
     serializer_class = MaterialReportSerializer
 
     def get_queryset(self):
+        # «Мои жалобы» во вкладке «Мои материалы»: только свои, у любой роли
+        if self.request.query_params.get("mine") in ("1", "true"):
+            return self.queryset.filter(reporter=self.request.user)
         if keeps_the_group(self.request.user):
             return self.queryset
         # свою жалобу человек видит, чужие — нет

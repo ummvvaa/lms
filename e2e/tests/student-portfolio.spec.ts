@@ -57,7 +57,7 @@ test("портфолио открывается: вкладки, процент,
   await expect(page.getByText(/Заполнено на \d+%/)).toBeVisible();
 });
 
-test("достижение с файлом уходит на проверку и помечается «ждёт проверки»", async ({
+test("достижение с файлом уходит на проверку и помечается «на проверке у директора»", async ({
   browser,
 }) => {
   const page = await as(browser, "student");
@@ -93,7 +93,7 @@ test("достижение с файлом уходит на проверку и
   documentId = ((await upload.json()) as { id: number }).id;
 
   await expect(card.getByText(ACHIEVEMENT)).toBeVisible();
-  await expect(card.getByText("ждёт проверки").first()).toBeVisible();
+  await expect(card.getByText("на проверке у директора").first()).toBeVisible();
 });
 
 test("файл документа не открывается без входа", async ({ browser }) => {

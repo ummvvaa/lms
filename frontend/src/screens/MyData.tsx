@@ -137,7 +137,7 @@ function GoalsCard({ meta, proposals }: { meta: DomainMeta | undefined; proposal
           <div key={exam.value} className="goals__row" data-exam={exam.value}>
             <span className="goals__exam">
               {exam.title}
-              {waiting && <Chip tone="neutral">{t('ждёт проверки')}</Chip>}
+              {waiting && <Chip tone="neutral">{t('на проверке у директора')}</Chip>}
             </span>
             <Input
               className="num goals__score"
@@ -724,7 +724,7 @@ export default function MyData() {
                 id: row.id,
                 label: row.title,
                 byCurator: (row.entered_by_curator ?? []).length > 0,
-                note: row.is_confirmed ? t('подтверждено') : t('ждёт подтверждения'),
+                note: row.is_confirmed ? t('подтверждено') : t('внесено, ждёт отметки'),
               }))}
               pendingRows={pendingAchievements.map((row) => ({ label: row.title ?? '', note: '' }))}
               emptyText={t('Достижений пока нет — добавьте первое')}
@@ -788,7 +788,7 @@ export default function MyData() {
               rows={olympiadRows.map((row) => ({
                 id: row.id,
                 label: row.title,
-                note: [row.subject_name, row.is_confirmed ? t('подтверждено') : t('ждёт подтверждения')]
+                note: [row.subject_name, row.is_confirmed ? t('подтверждено') : t('внесено, ждёт отметки')]
                   .filter(Boolean)
                   .join(' · '),
               }))}

@@ -262,7 +262,18 @@ export default function ScheduleEditor() {
         </>
       )}
       {opened && <LessonDrawer lesson={opened} conflicts={openedConflicts} onClose={() => setOpened(null)} />}
-      {adding && <LessonForm date={adding.date} slot={adding.slot} starts={adding.starts} onClose={() => setAdding(null)} />}
+      {adding && (
+        <LessonForm
+          date={adding.date}
+          slot={adding.slot}
+          starts={adding.starts}
+          // открытая неделя подставляется в новый урок: её учитель, группа или кабинет
+          teacher={view === 'teacher' && data.key ? Number(data.key) : undefined}
+          group={view === 'group' ? data.key || undefined : undefined}
+          room={view === 'room' ? data.key || undefined : undefined}
+          onClose={() => setAdding(null)}
+        />
+      )}
       {reject !== null && <RejectDialog id={reject} onClose={() => setReject(null)} />}
       {approve && <ApproveDialog request={approve} onClose={() => setApprove(null)} />}
       <EditDrawer open={importing} onClose={() => setImporting(false)} title={t('Импорт расписания')} className="drawer--wide">

@@ -138,9 +138,15 @@ class MaterialCommentSerializer(serializers.ModelSerializer):
 class MaterialReportSerializer(PartialUniqueMixin, serializers.ModelSerializer):
     reporter_name = serializers.SerializerMethodField()
     status_title = serializers.CharField(source="get_status_display", read_only=True)
+    #: на что жалоба — в списке «Мои жалобы» без названия строку не узнать
+    material_title = serializers.SerializerMethodField()
 
     def get_reporter_name(self, obj) -> str:
         return obj.reporter.full_name or obj.reporter.email
+
+    def get_material_title(self, obj) -> str:
+        material = obj.material or (obj.comment.material if obj.comment_id else None)
+        return material.title if material else ""
 
     class Meta:
         model = MaterialReport
@@ -150,6 +156,7 @@ class MaterialReportSerializer(PartialUniqueMixin, serializers.ModelSerializer):
             "comment",
             "reporter",
             "reporter_name",
+            "material_title",
             "reason",
             "status",
             "status_title",

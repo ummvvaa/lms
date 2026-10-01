@@ -76,6 +76,9 @@ export function LessonForm({
   date: initialDate,
   slot: initialSlot,
   starts,
+  teacher: presetTeacher,
+  group: presetGroup,
+  room: presetRoom,
   onClose,
 }: {
   lesson?: AcadLesson
@@ -83,6 +86,10 @@ export function LessonForm({
   slot?: number
   /** время ряда недели, из которого добавляют урок: номер берётся по звонкам выбранного состава */
   starts?: string
+  /** открытая неделя редактора: учитель, группа (код) или кабинет — подставляются в новый урок */
+  teacher?: number
+  group?: string
+  room?: string
   onClose: () => void
 }) {
   const meta = useAcadMeta()
@@ -94,14 +101,14 @@ export function LessonForm({
   const [scope, setScope] = useState<'this' | 'next'>('this')
   const [repeat, setRepeat] = useState<'weekly' | 'once'>('weekly')
   const [subject, setSubject] = useState(String(lesson?.subject.id ?? ''))
-  const [teacher, setTeacher] = useState(String(lesson?.actual_teacher?.id ?? ''))
+  const [teacher, setTeacher] = useState(String(lesson?.actual_teacher?.id ?? presetTeacher ?? ''))
   const [kind, setKind] = useState<'group' | 'subgroup' | 'stream'>(lesson?.cohort.kind ?? 'group')
   const [cohort, setCohort] = useState(String(lesson?.cohort.id ?? ''))
   const [date, setDate] = useState(lesson?.date ?? initialDate ?? meta.data?.today ?? '')
   const [slot, setSlot] = useState(String(lesson?.slot ?? initialSlot ?? 1))
   // номер выбран руками — время ряда его больше не переставляет
   const [slotPicked, setSlotPicked] = useState(false)
-  const [room, setRoom] = useState(lesson?.room ?? '')
+  const [room, setRoom] = useState(lesson?.room ?? presetRoom ?? '')
   const [force, setForce] = useState(false)
   const [error, setError] = useState('')
   const [conflicts, setConflicts] = useState<AcadConflict[]>([])
@@ -110,23 +117,31 @@ export function LessonForm({
   const subjects = useMemo(() => meta.data?.subjects ?? [], [meta.data])
   const staff = useMemo(() => {
     const all = teachers.data?.rows ?? []
-    const pool = all.filter((row) => !subject || row.subjects.some((s) => String(s.id) === subject) || row.subjects.length === 0)
+    // выбранный учитель остаётся в списке и тогда, когда предмет не его
+    const pool = all.filter((row) => !subject || String(row.id) === teacher || row.subjects.some((s) => String(s.id) === subject) || row.subjects.length === 0)
     return pool.length ? pool : all
-  }, [teachers.data, subject])
+  }, [teachers.data, subject, teacher])
   const options = useMemo(() => (cohorts.data?.rows ?? []).filter((row) => row.kind === kind), [cohorts.data, kind])
   const onlyThis = Boolean(lesson) && scope === 'this' && !lesson?.is_one_off
 
+  // предмет нового урока: из недели учителя — его первый предмет, иначе первый
+  // в списке; ждём учителей, чтобы не подставить чужой предмет раньше времени
   useEffect(() => {
-    if (!subject && subjects.length) setSubject(String(subjects[0].id))
-  }, [subject, subjects])
+    if (subject || !subjects.length || (presetTeacher && !teachers.data)) return
+    const own = teachers.data?.rows.find((row) => row.id === presetTeacher)?.subjects[0]
+    setSubject(String(own?.id ?? subjects[0].id))
+  }, [subject, subjects, presetTeacher, teachers.data])
   // новому уроку учитель подставляется; у заведённого пустое значение —
   // «учитель не назначен», и молча подставлять туда первого нельзя
   useEffect(() => {
     if (!lesson && !teacher && staff.length) setTeacher(String(staff[0].id))
   }, [lesson, teacher, staff])
+  // состав: из недели группы — эта группа (или её подгруппа, если выбран такой вид)
   useEffect(() => {
-    if (!options.some((row) => String(row.id) === cohort)) setCohort(String(options[0]?.id ?? ''))
-  }, [options, cohort])
+    if (options.some((row) => String(row.id) === cohort)) return
+    const own = presetGroup ? options.find((row) => row.group === presetGroup) : undefined
+    setCohort(String((own ?? options[0])?.id ?? ''))
+  }, [options, cohort, presetGroup])
   // добавляют из ряда недели «10:15»: номер — тот, что у звонков выбранного
   // состава начинается в это время (у 8–9 это 4 урок, у 10–11 — 1)
   const bells = useCohortBells(cohort ? Number(cohort) : null).data?.bells

@@ -228,3 +228,16 @@ def test_admin_edit_is_marked_in_the_journal(lesson, pupils, admin, calendar):
     marking.set_grade(lesson, pupils["aliya"], 6, actor=admin, calendar=calendar, scale=scale)
     entry = AuditLog.objects.get(model_label="academics.Grade", field_name="value", new_value="6")
     assert entry.actor_id == admin.pk and entry.domain_code == "academics" and entry.acting_for == "academics"
+
+
+def test_curator_exports_the_journal_of_own_group_and_not_a_foreign_one(lesson, curator, chicago, subjects, teacher):
+    """Кнопка «Выгрузить» у куратора работает: та же граница, что у журнала на экране."""
+    from academics.cohorts import group_cohort
+    from academics.models import Course
+
+    client = login(curator)
+    own = client.get(f"/api/acad/journals/{lesson.course_id}/export/")
+    assert own.status_code == 200, own.content[:200]
+    assert own["Content-Type"].startswith("application/vnd.openxmlformats")
+    foreign = Course.objects.create(subject=subjects["alg"], cohort=group_cohort(chicago), teacher=teacher)
+    assert client.get(f"/api/acad/journals/{foreign.pk}/export/").status_code == 404
