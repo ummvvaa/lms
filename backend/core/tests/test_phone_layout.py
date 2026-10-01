@@ -193,11 +193,26 @@ def test_table_row_becomes_a_card_by_its_own_labels():
     в карточке другое.
     """
     table = read("components", "DataTable.tsx")
-    assert "data-label={index === 0 ? undefined : column.title}" in table
-    assert "data-head={index === 0 ? '' : undefined}" in table
+    assert "data-label={index === headIndex || column.phone === 'hidden' ? undefined : column.title}" in table
+    assert "data-head={index === headIndex ? '' : undefined}" in table
     css = read("components", "ui.css")
     phone = css.split("@media (max-width: 759px) {")
     assert any("content: attr(data-label)" in block for block in phone[1:])
+    assert any(".tbl td[data-phone='hidden']" in block for block in phone[1:])
+
+
+def test_user_row_on_the_phone_is_a_name_and_a_password():
+    """Строка «Пользователей» на телефоне — имя с почтой и пароль, а не все колонки таблицы.
+
+    Галочка массовых действий, доступ и роль в карточке занимали 277 px
+    на человека; при двухстах людях список не пролистать.
+    """
+    users = read("screens", "Users.tsx")
+    columns = users[users.index("const columns: Column<ManagedUser>[]") :]
+    phone = dict(re.findall(r"key: '(\w+)',[^}]*?phone: '(\w+)'", columns))
+    assert phone == {"pick": "hidden", "person": "head", "access": "hidden"}, phone
+    assert "if (phone) return null" in users, "роль на телефоне снова в карточке"
+    assert ".users__table" not in read("screens", "screens.css"), "правила старой таблицы пользователей не нужны"
 
 
 def test_manual_entry_grid_is_not_offered_on_the_phone():
@@ -209,7 +224,10 @@ def test_manual_entry_grid_is_not_offered_on_the_phone():
     """
     screen = read("screens", "TableScreen.tsx")
     assert "phone ? undefined : locked ?" in screen
-    assert "tblcard__pairs" in screen, "карточек вместо строк на телефоне нет"
+    # карточки на телефоне собирает общая таблица, как на всех экранах:
+    # своя разметка пар расходилась с ней по виду
+    assert "{phone && rows.length > 0 && (\n        <DataTable" in screen, "карточек вместо строк на телефоне нет"
+    assert "tblcard" not in screen and "tblcard" not in read("components", "ui.css")
 
 
 def test_form_submit_sticks_to_the_bottom():

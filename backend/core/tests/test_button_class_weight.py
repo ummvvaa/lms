@@ -65,7 +65,6 @@ LEGACY: frozenset[str] = frozenset(
         "rowmenu__action",
         "rowmenu__button",
         "squeue__hint",
-        "tblcard__name",
         "tipbar__action",
         "wk__add",
         "wk__more",

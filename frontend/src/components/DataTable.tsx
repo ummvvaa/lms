@@ -41,6 +41,11 @@ export interface Column<T> {
   /** кнопки строки: одной линией справа, клетка их не режет и не переносит;
    *  на телефоне — внизу карточки справа. Ширина колонки — числом под кнопки */
   actions?: boolean
+  /** на телефоне строка — карточка: `head` — её заголовок (без пометки им
+   *  становится первая колонка), `hidden` — на карточке колонки нет вовсе:
+   *  галочка массовых действий и второстепенный признак не стоят строки
+   *  высотой в экран. Заголовок — первая из видимых колонок */
+  phone?: 'head' | 'hidden'
 }
 
 type Direction = 'asc' | 'desc'
@@ -118,6 +123,7 @@ export default function DataTable<T>({
 
   const cut = limit !== undefined && !open && sorted.length > limit
   const shown = cut ? sorted.slice(0, limit) : sorted
+  const headIndex = Math.max(0, columns.findIndex((column) => column.phone === 'head'))
   const showFoot = foot !== undefined || (limit !== undefined && sorted.length > limit)
 
   return (
@@ -195,10 +201,11 @@ export default function DataTable<T>({
                     className={[column.align === 'right' ? 'tbl__right' : '', column.actions ? 'tbl__acts' : ''].filter(Boolean).join(' ') || undefined}
                     /* подпись колонки едет с ячейкой: на телефоне строка
                        становится карточкой из пар «подпись — значение»,
-                       а шапки там нет вовсе. Первая колонка —
-                       заголовок карточки, подпись ей не нужна */
-                    data-label={index === 0 ? undefined : column.title}
-                    data-head={index === 0 ? '' : undefined}
+                       а шапки там нет вовсе. Заголовку карточки подпись
+                       не нужна, скрытой на телефоне — тоже */
+                    data-label={index === headIndex || column.phone === 'hidden' ? undefined : column.title}
+                    data-head={index === headIndex ? '' : undefined}
+                    data-phone={column.phone === 'hidden' ? 'hidden' : undefined}
                   >
                     {column.actions ? <span className="tbl__buttons">{column.cell(item)}</span> : column.cell(item)}
                   </TableCell>

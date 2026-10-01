@@ -151,13 +151,14 @@ function PasswordBox({ issued, onClose }: { issued: IssuedPassword; onClose: () 
   )
 }
 
-/** Роль — списком в клетке; на телефоне короткая форма. */
+/** Роль — списком в клетке. На телефоне её нет: строка там — имя и пароль,
+ *  а роли меняет администратор с ноутбука, где видна вся таблица. */
 function RolePick({ user }: { user: ManagedUser }) {
   const phone = usePhone()
   const update = useUpdateUser()
+  if (phone) return null
   return (
     <SelectField
-      className={phone ? 'users__role' : undefined}
       aria-label={t('Роль: {name}', { name: user.full_name || user.email })}
       value={user.role}
       onChange={(e) => update.mutate({ id: user.id, role: e.target.value as Role }, { onError: (error) => toast.error(error.message) })}
@@ -302,12 +303,15 @@ export default function Users() {
 
   // Таблица в ширину карточки: с шириной 960 px «Выдать пароль» и меню строки
   // на окне уже 1200 уезжали за край. Роль — под именем и почтой той же
-  // клетки: отдельной колонкой ей не хватало места, и должность резалась
+  // клетки: отдельной колонкой ей не хватало места, и должность резалась.
+  // На телефоне карточка — имя с почтой и состояние пароля: галочки, доступа
+  // и роли там нет, иначе одна строка занимала пол-экрана
   const columns: Column<ManagedUser>[] = [
     {
       key: 'pick',
       title: '',
       width: '48px',
+      phone: 'hidden',
       cell: (user) => (
         <Checkbox
           checked={picked.includes(user.id)}
@@ -320,6 +324,7 @@ export default function Users() {
       key: 'person',
       title: t('Человек'),
       width: 'auto',
+      phone: 'head',
       cell: (user) => (
         <span className="users__who">
           <span>
@@ -346,6 +351,7 @@ export default function Users() {
       title: t('Доступ'),
       hint: t('Доступ'),
       width: '152px',
+      phone: 'hidden',
       cell: (user) => (user.sees_whole_school ? <Chip tone="info" size="sm">{t('вся школа')}</Chip> : <span className="t-note">{t('свои')}</span>),
       sortBy: (user) => (user.sees_whole_school ? 0 : 1),
     },

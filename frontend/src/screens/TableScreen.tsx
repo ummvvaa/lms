@@ -18,7 +18,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useBatchSave, useDomainMeta, useStudents, type BatchChange, type StudentCard } from '../api/hooks'
 import { useConnection, useReconnected } from '../api/useConnection'
@@ -28,6 +28,7 @@ import { usePhone } from '../phone'
 import Notice from '../components/Notice'
 import Empty from '../components/Empty'
 import ManualEntryNote from '../components/ManualEntryNote'
+import DataTable, { type Column } from '../components/DataTable'
 import StudentRegistry from '../components/StudentRegistry'
 import { Chip, counted, ErrorNote, Loading, ScreenHead, type Tone } from '../components/ui'
 import { useRowMotion } from '../motion'
@@ -197,6 +198,27 @@ export default function TableScreen() {
   // профиль домена всегда первая модель — она один-к-одному со Student
   const profileModel = myDomain ? profileModelOf(myDomain) : undefined
   const columns = useMemo(() => profileModel?.fields ?? [], [profileModel])
+  // карточка ученика на телефоне: те же поля домена, подписи — из шапки сетки
+  const domainCode = myDomain?.code ?? ''
+  const phoneColumns = useMemo<Column<StudentCard>[]>(
+    () => [
+      {
+        key: 'name',
+        title: t('Ученик'),
+        width: 'auto',
+        cell: (student) => <Link to={`/students/${student.id}`}>{student.full_name}</Link>,
+      },
+      { key: 'group', title: t('Группа'), width: 'auto', cell: (student) => student.group_code ?? t('нет') },
+      ...columns.map((field) => ({
+        key: field.name,
+        title: field.short,
+        hint: field.title,
+        width: 'auto',
+        cell: (student: StudentCard) => <span className="num">{displayValue(student, domainCode, field) || t('нет')}</span>,
+      })),
+    ],
+    [columns, domainCode],
+  )
   const dirtyCount = Object.keys(draft).length
 
   // --- автосохранение --------------------------------------------------
@@ -821,29 +843,15 @@ export default function TableScreen() {
 
       {/* Телефон: строка таблицы становится карточкой — имя заголовком,
           остальное парами «подпись — значение». Сетка в двенадцать колонок
-          на 390 пикселях едет вбок, а вбок на телефоне не ездят */}
-      {phone && (
-        <div className="tblcards" hidden={rows.length === 0}>
-          {rows.map((student) => (
-            <div key={student.id} className="card card-pad tblcard">
-              <Button variant="link" className="tblcard__name" onClick={() => navigate(`/students/${student.id}`)}>
-                {student.full_name}
-              </Button>
-              <dl className="tblcard__pairs">
-                <div className="tblcard__pair">
-                  <dt>{t('Группа')}</dt>
-                  <dd className="num">{student.group_code ?? t('нет')}</dd>
-                </div>
-                {columns.map((field) => (
-                  <div key={field.name} className="tblcard__pair">
-                    <dt title={field.title}>{field.short}</dt>
-                    <dd className="num">{displayValue(student, myDomain.code, field) || t('нет')}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          ))}
-        </div>
+          на 390 пикселях едет вбок, а вбок на телефоне не ездят. Карточки
+          собирает общая таблица — тем же способом, что на остальных экранах */}
+      {phone && rows.length > 0 && (
+        <DataTable
+          columns={phoneColumns}
+          rows={rows}
+          rowKey={(student) => student.id}
+          onRowClick={(student) => navigate(`/students/${student.id}`)}
+        />
       )}
 
       <QuickGrid

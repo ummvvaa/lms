@@ -136,9 +136,10 @@ test("названия документов, профтест без дубля,
   const behavior = await as(browser, "director_behavior");
   await behavior.goto("/table");
   await settle(behavior);
-  const cards = behavior.locator(".tblcard");
+  // карточки на телефоне — строки общей таблицы
+  const cards = behavior.locator(".tbl tbody tr");
   await expect(cards.first()).toBeVisible();
-  const text = await behavior.locator(".tblcards").textContent();
+  const text = await behavior.locator(".tbl tbody").first().textContent();
   expect(text).not.toMatch(/can_execute|needs_supervision|critical/);
   await behavior.context().close();
 });

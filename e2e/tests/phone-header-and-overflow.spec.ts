@@ -362,13 +362,17 @@ test("«Пользователи»: строка в две линии, дейс�
 
   const rows = page.locator("table.tbl tbody tr");
   expect(await rows.count()).toBeGreaterThan(0);
-  // строка директора: у неё в меню есть «Видит всю школу»
-  const first = rows.filter({ hasText: "Директор" }).first();
+  // строка директора: у неё в меню есть «Видит всю школу». Роли на телефоне
+  // в строке нет — директора находим по имени учётки прогона
+  const first = rows.filter({ hasText: "Салтанат Прогон" }).first();
   const box = await first.boundingBox();
-  // на телефоне строка общей таблицы — карточка из пар «подпись — значение» (D66)
-  expect(box?.height ?? 999, "не выше карточки строки").toBeLessThanOrEqual(
-    320,
+  // на телефоне строка — карточка: имя с почтой и пароль; галочки, доступа
+  // и роли в ней нет (было 277 px на человека, стало около 180)
+  expect(box?.height ?? 999, "карточка в две строки и кнопки").toBeLessThanOrEqual(
+    220,
   );
+  await expect(first.getByRole("checkbox")).toHaveCount(0);
+  await expect(first.getByRole("combobox")).toHaveCount(0);
   // страница не шире экрана и на этом экране
   const wide = await page.evaluate(
     (limit) => document.documentElement.scrollWidth - limit,

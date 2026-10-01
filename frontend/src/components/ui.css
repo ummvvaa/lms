@@ -2299,6 +2299,11 @@ button.head__pill:hover:not(.head__pill--on) {
     background: none;
   }
 
+  /* Колонка, которой на карточке нет (`phone: 'hidden'` у колонки) */
+  .tbl td[data-phone='hidden'] {
+    display: none;
+  }
+
   /* Кнопки строки — внизу карточки справа, одной линией; подписи у них нет */
   .tbl td.tbl__acts {
     justify-content: flex-end;
@@ -2307,62 +2312,6 @@ button.head__pill:hover:not(.head__pill--on) {
 
   .tbl td.tbl__acts::before {
     display: none;
-  }
-
-  /* Карточки таблицы быстрого ввода — те же пары, но своей разметкой:
-     там `<table>` живёт ради ходьбы по ячейкам, и на телефоне
-     он не рисуется вовсе */
-  .tblcards {
-    display: grid;
-    gap: calc(var(--space) * 2);
-  }
-
-  .tblcard__name {
-    display: block;
-    width: 100%;
-    padding: 0 0 calc(var(--space) * 2);
-    border: 0;
-    border-bottom: 1px solid var(--line);
-    background: none;
-    text-align: left;
-    color: var(--ink);
-    font-size: var(--type-card);
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  .tblcard__pairs {
-    margin: calc(var(--space) * 2) 0 0;
-  }
-
-  /* Пары «подпись — значение» на одной сетке (фаза 75): колонка подписей
-     одной ширины, значения начинаются на одной вертикали и с той же
-     высоты, что подпись. До этого пара была `space-between`, и значения
-     разной длины стояли вразнобой — столбиком их было не прочитать */
-  .tblcard__pair {
-    display: grid;
-    grid-template-columns: minmax(calc(var(--space) * 24), 38%) minmax(0, 1fr);
-    align-items: start;
-    gap: calc(var(--space) * 3);
-    padding: calc(var(--space) * 1) 0;
-  }
-
-  .tblcard__pair dt {
-    color: var(--ink-2);
-    font-size: var(--type-note);
-    font-weight: 650;
-  }
-
-  /* значение не переносится посреди себя: длинная ссылка обрезается
-     многоточием, как в блоке «Поступление» (фаза 73) */
-  .tblcard__pair dd {
-    margin: 0;
-    min-width: 0;
-    font-size: var(--type-body);
-    text-align: left;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 }
 
