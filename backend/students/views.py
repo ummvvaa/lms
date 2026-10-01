@@ -17,6 +17,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core.audience import Audience, DeclaredAudience
 from core.deletion import ArchiveDeleteMixin, refuse
 from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, domain_of_role, owns_model
 from core.models import AuditLog
@@ -221,9 +222,10 @@ class StudentViewSet(
         return Response(data)
 
 
-class BaseProfileViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+class BaseProfileViewSet(DeclaredAudience, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
     """Профиль одного домена. Ключ — id ученика, а не id профиля."""
 
+    audiences = (Audience.OWN_OR_SCOPED,)
     permission_classes = [DomainFieldPermission, IsOwnStudentOrStaff]
     lookup_field = "student_id"
     lookup_url_kwarg = "student_id"
@@ -234,30 +236,35 @@ class BaseProfileViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, vie
 
 
 class BehaviorProfileViewSet(BaseProfileViewSet):
+    audience = Audience.OWN_OR_SCOPED
     queryset = BehaviorProfile.objects.all()
     serializer_class = BehaviorProfileSerializer
     domain_model_label = "students.BehaviorProfile"
 
 
 class AdmissionProfileViewSet(BaseProfileViewSet):
+    audience = Audience.OWN_OR_SCOPED
     queryset = AdmissionProfile.objects.all()
     serializer_class = AdmissionProfileSerializer
     domain_model_label = "students.AdmissionProfile"
 
 
 class ExamProfileViewSet(BaseProfileViewSet):
+    audience = Audience.OWN_OR_SCOPED
     queryset = ExamProfile.objects.all()
     serializer_class = ExamProfileSerializer
     domain_model_label = "students.ExamProfile"
 
 
 class TalentProfileViewSet(BaseProfileViewSet):
+    audience = Audience.OWN_OR_SCOPED
     queryset = TalentProfile.objects.all()
     serializer_class = TalentProfileSerializer
     domain_model_label = "students.TalentProfile"
 
 
 class SportProfileViewSet(BaseProfileViewSet):
+    audience = Audience.OWN_OR_SCOPED
     queryset = SportProfile.objects.all()
     serializer_class = SportProfileSerializer
     domain_model_label = "students.SportProfile"
@@ -531,13 +538,14 @@ def import_apply(request):
     return Response(result)
 
 
-class StudentScopedViewSet(ArchiveDeleteMixin, viewsets.ModelViewSet):
+class StudentScopedViewSet(DeclaredAudience, ArchiveDeleteMixin, viewsets.ModelViewSet):
     """Дочерняя таблица ученика: строки заводит и убирает владелец домена.
 
     Ученик такие записи только читает и только свои. Право на удаление
     берётся из реестра доменов — проверяет его `ArchiveDeleteMixin`.
     """
 
+    audiences = (Audience.OWN_OR_SCOPED,)
     permission_classes = [DomainFieldPermission, IsOwnStudentOrStaff]
     domain_model_label = ""
 
@@ -612,6 +620,7 @@ class ExamAttemptViewSet(StudentScopedViewSet):
     моки видно по источнику `platform` — на графике они отмечены отдельно.
     """
 
+    audience = Audience.OWN_OR_SCOPED
     queryset = ExamAttempt.objects.select_related("student").all().order_by("date")
     serializer_class = ExamAttemptSerializer
     domain_model_label = "students.ExamAttempt"
@@ -703,6 +712,7 @@ class ExamAttemptViewSet(StudentScopedViewSet):
 class ActivityViewSet(StudentScopedViewSet):
     """Активности портфолио. Ведёт директор талантов (инвариант №5)."""
 
+    audience = Audience.OWN_OR_SCOPED
     queryset = Activity.objects.select_related("student").all()
     serializer_class = ActivitySerializer
     domain_model_label = "students.Activity"
@@ -722,6 +732,7 @@ class ActivityViewSet(StudentScopedViewSet):
 class CompetitionViewSet(StudentScopedViewSet):
     """Соревнования. Ведёт директор спорта (инвариант №5)."""
 
+    audience = Audience.OWN_OR_SCOPED
     queryset = Competition.objects.select_related("student").all()
     serializer_class = CompetitionSerializer
     domain_model_label = "students.Competition"
@@ -751,6 +762,7 @@ class ParentContactViewSet(StudentScopedViewSet):
     Ученику свои контакты видны: это его семья, а не внутренняя оценка.
     """
 
+    audience = Audience.OWN_OR_SCOPED
     queryset = ParentContact.objects.select_related("student").all()
     serializer_class = ParentContactSerializer
     domain_model_label = "students.ParentContact"
@@ -1036,6 +1048,7 @@ def portfolio_cv(request):
 class ExamGoalViewSet(StudentScopedViewSet):
     """Цели по экзаменам. Ставит ученик предложением, ведёт домен `exam`."""
 
+    audience = Audience.OWN_OR_SCOPED
     queryset = ExamGoal.objects.select_related("student", "exam").all()
     serializer_class = ExamGoalSerializer
     domain_model_label = "students.ExamGoal"

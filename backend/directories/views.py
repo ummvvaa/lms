@@ -16,6 +16,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core.audience import Audience, DeclaredAudience
 from core.audit import model_label
 from core.deletion import refuse
 from core.domains import ROLE_STUDENT, can_delete, owns_model
@@ -29,9 +30,10 @@ from directories.serializers import (
 from directories.services import deletion_verdict, duplicate_groups, replace, usage_total
 
 
-class DirectoryViewSet(viewsets.ModelViewSet):
+class DirectoryViewSet(DeclaredAudience, viewsets.ModelViewSet):
     """Один справочник. Ведёт его домен-владелец, читают все сотрудники."""
 
+    audiences = (Audience.STAFF_DIRECTORY,)
     permission_classes = [IsAuthenticated]
     filterset_fields = ("is_active",)
     search_fields = ("name", "description")
@@ -162,6 +164,7 @@ class DirectoryViewSet(viewsets.ModelViewSet):
 class OlympiadSubjectViewSet(DirectoryViewSet):
     """Предметы олимпиад — домен `talent` (Арман)."""
 
+    audience = Audience.STAFF_DIRECTORY
     queryset = OlympiadSubject.objects.all()
     serializer_class = OlympiadSubjectSerializer
     directory_label = "directories.OlympiadSubject"
@@ -176,6 +179,7 @@ class OlympiadSubjectViewSet(DirectoryViewSet):
 class SportTypeViewSet(DirectoryViewSet):
     """Виды спорта — домен `sport` (Нурлыбек)."""
 
+    audience = Audience.STAFF_DIRECTORY
     queryset = SportType.objects.all()
     serializer_class = SportTypeSerializer
     directory_label = "directories.SportType"
@@ -195,6 +199,7 @@ def counts(model: type[models.Model]) -> dict:
 class ExamKindViewSet(DirectoryViewSet):
     """Экзамены — домен `exam` (Кымбат). Фаза 39."""
 
+    audience = Audience.STAFF_DIRECTORY
     queryset = ExamKind.objects.all()
     serializer_class = ExamKindSerializer
     directory_label = "directories.ExamKind"

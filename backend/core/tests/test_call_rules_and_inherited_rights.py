@@ -158,3 +158,47 @@ def test_no_routed_viewset_inherits_from_another_routed_viewset():
         if parent in routed
     ]
     assert guilty == [], "наследование прав у соседнего эндпойнта: " + "; ".join(guilty)
+
+
+# --- Страж: аудитория, взятая у основы, объявлена в самом эндпойнте ----------
+
+#: что решает, кому отвечает вьюха: выборка, права и вход в раздел
+SCOPING = ("get_queryset", "permission_classes", "get_permissions", "initial")
+
+
+def test_endpoint_that_takes_its_scope_from_a_base_declares_its_audience():
+    """Наследник основы без маршрута пишет `audience` сам — по нему видно, кто получает ответ.
+
+    Выборку и права дают профиль домена, дочерняя таблица ученика, раздел
+    олимпиадников и справочник. Наследник о них молчал: кто получает ответ,
+    было видно только в основе, и взять не ту основу можно было молча.
+    """
+    silent = []
+    for cls in _routed_viewsets():
+        inherited = [
+            attr
+            for attr in SCOPING
+            if attr not in cls.__dict__
+            and any(
+                attr in parent.__dict__ and not parent.__module__.startswith(("rest_framework", "django"))
+                for parent in cls.__mro__[1:]
+            )
+        ]
+        if inherited and "audience" not in cls.__dict__:
+            silent.append(f"{cls.__module__}.{cls.__name__} ({', '.join(inherited)})")
+    assert silent == [], "эндпойнт берёт выборку или права у основы и молчит о своей аудитории: " + "; ".join(silent)
+
+
+def test_base_refuses_an_endpoint_without_its_audience():
+    """Основа не даёт создать наследника без `audience` или с чужой аудиторией."""
+    from django.core.exceptions import ImproperlyConfigured
+
+    from core.audience import Audience
+    from directories.views import DirectoryViewSet
+
+    with pytest.raises(ImproperlyConfigured):
+        type("SilentDirectory", (DirectoryViewSet,), {"__module__": __name__})
+    with pytest.raises(ImproperlyConfigured):
+        type("WrongDirectory", (DirectoryViewSet,), {"__module__": __name__, "audience": Audience.OWN_OR_SCOPED})
+    made = type("RightDirectory", (DirectoryViewSet,), {"__module__": __name__, "audience": Audience.STAFF_DIRECTORY})
+    assert made.audience == Audience.STAFF_DIRECTORY

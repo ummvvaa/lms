@@ -19,6 +19,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core.audience import Audience, DeclaredAudience
 from core.audit import apply_changes
 from core.domains import ROLE_STUDENT, Source
 from core.models import Notification
@@ -53,9 +54,32 @@ from materials.serializers import (
 from students.models import Student
 
 
-class SectionViewSet(viewsets.ModelViewSet):
+def visible_materials(user, *, mine: bool = False):
+    """Материалы раздела глазами человека — одна выборка на библиотеку и вопросы.
+
+    До одобрения материал виден только автору и проверяющему. Отклонённый
+    в библиотеке не появляется, но автор видит его вместе с причиной.
+    `mine` — «Мои материалы»: свои целиком, включая отклонённые. У директора
+    талантов карточки ученика нет — его материалы помечены им как сотрудником.
+    """
+    queryset = StudyMaterial.objects.select_related("author", "subject").prefetch_related("files")
+    student = student_of(user)
+    if mine:
+        if student is not None:
+            return queryset.filter(author=student)
+        return queryset.filter(staff_author=user)
+    if keeps_the_group(user):
+        return queryset
+    if student is None:
+        # сотрудник не из домена талантов видит только опубликованное
+        return queryset.filter(status=MaterialStatus.APPROVED)
+    return queryset.filter(Q(status=MaterialStatus.APPROVED) | Q(author=student))
+
+
+class SectionViewSet(DeclaredAudience, viewsets.ModelViewSet):
     """Общая часть: раздел закрыт олимпиадной группой."""
 
+    audiences = (Audience.OLYMPIAD_SECTION,)
     permission_classes = [IsAuthenticated]
 
     def initial(self, request, *args, **kwargs):
@@ -70,6 +94,7 @@ class MaterialViewSet(SectionViewSet):
     в библиотеке не появляется, но автор видит его вместе с причиной.
     """
 
+    audience = Audience.OLYMPIAD_SECTION
     queryset = StudyMaterial.objects.select_related("author", "subject").prefetch_related("files")
     serializer_class = MaterialSerializer
     parser_classes = [JSONParser, MultiPartParser, FormParser]
@@ -78,24 +103,7 @@ class MaterialViewSet(SectionViewSet):
     ordering_fields = ("created_at", "helpful_count", "title")
 
     def get_queryset(self):
-        queryset = self.queryset
-        user = self.request.user
-        student = student_of(user)
-
-        # «Мои материалы»: свои целиком, включая отклонённые с причиной.
-        # У директора талантов карточки ученика нет — его материалы
-        # помечены им самим как сотрудником
-        if self.request.query_params.get("mine") == "true":
-            if student is not None:
-                return queryset.filter(author=student)
-            return queryset.filter(staff_author=user)
-
-        if keeps_the_group(user):
-            return queryset
-        if student is None:
-            # сотрудник не из домена талантов видит только опубликованное
-            return queryset.filter(status=MaterialStatus.APPROVED)
-        return queryset.filter(Q(status=MaterialStatus.APPROVED) | Q(author=student))
+        return visible_materials(self.request.user, mine=self.request.query_params.get("mine") == "true")
 
     def perform_create(self, serializer):
         """Выкладывают и ученики группы, и директор талантов.
@@ -221,13 +229,14 @@ class MaterialViewSet(SectionViewSet):
 class MaterialCommentViewSet(SectionViewSet):
     """Вопросы под материалом."""
 
+    audience = Audience.OLYMPIAD_SECTION
     queryset = MaterialComment.objects.select_related("author", "material")
     serializer_class = MaterialCommentSerializer
     filterset_fields = ("material",)
 
     def get_queryset(self):
         # комментарии видны там же, где сам материал
-        allowed = MaterialViewSet(request=self.request, kwargs={}).get_queryset()
+        allowed = visible_materials(self.request.user)
         return self.queryset.filter(material__in=allowed)
 
     def perform_create(self, serializer):
@@ -260,6 +269,7 @@ class MaterialCommentViewSet(SectionViewSet):
 class MaterialReportViewSet(SectionViewSet):
     """Жалобы на материал или комментарий. Разбирает Арман."""
 
+    audience = Audience.OLYMPIAD_SECTION
     queryset = MaterialReport.objects.select_related("reporter", "material", "comment", "comment__material")
     serializer_class = MaterialReportSerializer
 
@@ -309,6 +319,7 @@ class MaterialReportViewSet(SectionViewSet):
 class MaterialRequestViewSet(SectionViewSet):
     """Запросы: «нужен разбор по такой-то теме». Видны всем в группе."""
 
+    audience = Audience.OLYMPIAD_SECTION
     queryset = MaterialRequest.objects.select_related("author", "subject").prefetch_related("materials")
     serializer_class = TopicRequestSerializer
     filterset_fields = ("subject", "status")
@@ -343,6 +354,7 @@ class MaterialRequestViewSet(SectionViewSet):
 class MaterialCollectionViewSet(SectionViewSet):
     """Тематические подборки. Собирает их Арман."""
 
+    audience = Audience.OLYMPIAD_SECTION
     queryset = MaterialCollection.objects.prefetch_related("items__material__author", "items__material__subject")
     serializer_class = MaterialCollectionSerializer
     filterset_fields = ("subject",)
