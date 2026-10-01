@@ -15349,3 +15349,8 @@ msgid "Отмена вернёт прежние значения, но заве�
 msgstr ""
 "Undoing restores the previous values but does not delete the scholarships "
 "that were added"
+
+#: core/audit.py:126
+#, python-brace-format
+msgid "«{value}» не подходит для поля «{field}»: выберите один из вариантов — {options}"
+msgstr "“{value}” is not valid for the “{field}” field: choose one of the options — {options}"

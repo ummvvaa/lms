@@ -67,3 +67,45 @@ def test_api_answers_200_not_500(client, student):
     assert response.status_code == 200
     assert response.json()["applied"] == 0
     assert response.json()["rejected"]
+
+
+@pytest.fixture
+def behavior(db):
+    from students.models import BehaviorProfile
+
+    student = Student.objects.create(
+        last_name="Сериков", first_name="Айдар", email="choice@example.kz", graduation_year=2027
+    )
+    return BehaviorProfile.objects.create(student=student)
+
+
+def status_change(profile, value):
+    return {"student": profile.student_id, "model": "students.BehaviorProfile", "field": "status", "value": value}
+
+
+@pytest.mark.django_db
+def test_value_outside_the_choices_is_rejected_with_the_options(behavior):
+    """Поле со списком вариантов не принимает свободный текст: он оседал в колонке как есть."""
+    result = apply_batch(changes=[status_change(behavior, "что угодно")], role=Role.DIRECTOR_BEHAVIOR)
+
+    assert result.applied == 0
+    reason = result.rejected[0]["reason"]
+    assert "что угодно" in reason and "«Нужен контроль»" in reason
+    behavior.refresh_from_db()
+    assert behavior.status == ""
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("typed", ["needs_supervision", "Нужен контроль", "нужен контроль ", "Бақылау қажет"])
+def test_choice_comes_as_its_key_or_its_label_in_any_language(behavior, typed):
+    """Подпись из карточки или файла — на любом языке интерфейса — ложится ключом."""
+    from django.utils import translation
+
+    with translation.override("kk"):
+        kk_label = str(behavior._meta.get_field("status").choices[1][1])
+    value = kk_label if typed == "Бақылау қажет" else typed
+    result = apply_batch(changes=[status_change(behavior, value)], role=Role.DIRECTOR_BEHAVIOR)
+
+    assert result.applied == 1, result.rejected
+    behavior.refresh_from_db()
+    assert behavior.status == "needs_supervision"

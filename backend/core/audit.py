@@ -97,12 +97,49 @@ def coerce(instance: Any, field_name: str, value: Any) -> Any:
                 _("«{value}» не подходит для поля «{field}»: нужно «да» или «нет»").format(value=value, field=title)
             )
         return flag
+    if field.choices:
+        return choice_key(field, value, title=str(title))
     try:
         field.to_python(value)
     except (ValidationError, TypeError, ValueError) as error:
         raise ValueRejected(_("«{value}» не подходит для поля «{field}»").format(value=value, field=title)) from error
     check_bounds(instance, field_name, value, title=str(title))
     return normalize(instance, field_name, value)
+
+
+def choice_key(field, value: Any, *, title: str = "") -> Any:
+    """Ключ варианта поля со списком: сам ключ или его подпись на любом языке интерфейса.
+
+    Строка не из списка раньше ложилась в колонку как есть: `to_python`
+    варианты не проверяет, и «Работает самостоятельно», набранное в карточке
+    подписью, или опечатка в таблице оседали в поле, по которому строятся
+    дашборды (инвариант 6). Подпись из файла или с экрана переводится в ключ,
+    остальное отклоняется с перечнем вариантов.
+    """
+    text = str(value).strip()
+    folded = text.casefold()
+    for key, label in field.flatchoices:
+        if text == str(key) or folded == str(key).casefold() or folded in _label_forms(label):
+            return key
+    options = ", ".join(f"«{label}»" for _key, label in field.flatchoices)
+    raise ValueRejected(
+        _("«{value}» не подходит для поля «{field}»: выберите один из вариантов — {options}").format(
+            value=value, field=title, options=options
+        )
+    )
+
+
+def _label_forms(label) -> set[str]:
+    """Подпись варианта на всех языках интерфейса, без регистра."""
+    from django.utils import translation
+
+    from core.i18n import INTERFACE_LANGUAGES
+
+    forms = set()
+    for language in INTERFACE_LANGUAGES:
+        with translation.override(language):
+            forms.add(str(label).strip().casefold())
+    return forms
 
 
 def check_bounds(instance: Any, field_name: str, value: Any, *, title: str = "") -> None:

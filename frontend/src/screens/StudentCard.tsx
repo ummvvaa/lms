@@ -26,6 +26,8 @@ import GradesTab from './academics/GradesTab'
 import DataTable from '../components/DataTable'
 import { Chip, DataCard, ErrorNote, Hint, Loading, Ring, ScreenTabs } from '../components/ui'
 import { Input } from '../components/ui/input'
+import { NativeSelectOption } from '../components/ui/native-select'
+import { SelectField } from '../components/SelectField'
 import './card.css'
 import { t } from '../i18n'
 import { PublishStudents } from '../assistant/context'
@@ -265,7 +267,28 @@ function DirectorStudentCard() {
                     <div key={field.name} className="domain__row">
                       <dt className="muted">{field.title}</dt>
                       <dd>
-                        {editable ? (
+                        {editable && field.choices ? (
+                          // поле со списком — выбор, а не ввод: набранная подпись
+                          // («Работает самостоятельно») уходила на сервер вместо ключа
+                          <SelectField
+                            className="domain__input"
+                            aria-label={field.title}
+                            value={edits[`${domain.code}:${field.name}`] ?? raw(card, domain, field)}
+                            onChange={(e) =>
+                              setEdits((prev) => ({
+                                ...prev,
+                                [`${domain.code}:${field.name}`]: e.target.value,
+                              }))
+                            }
+                          >
+                            <NativeSelectOption value="">{t('не выбрано')}</NativeSelectOption>
+                            {field.choices.map((choice) => (
+                              <NativeSelectOption key={choice.value} value={choice.value}>
+                                {choice.title}
+                              </NativeSelectOption>
+                            ))}
+                          </SelectField>
+                        ) : editable ? (
                           <Input
                             className="cell num domain__input"
                             value={
