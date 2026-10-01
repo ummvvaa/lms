@@ -21,6 +21,9 @@ import './components/queue.css'
 import './screens/dashboards/cabinet.css'
 import './screens/dashboards/student.css'
 import './components/calendar-card.css'
+// строка инструментов — на прежнем месте, перед таблицей: модификаторы экранов
+// (`toolbar mat__ask`) переигрывают её отступы, только если идут после
+import './components/toolbar.css'
 import './screens/table.css'
 import './screens/universities.css'
 import './screens/catalog.css'

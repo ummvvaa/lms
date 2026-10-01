@@ -1,0 +1,14 @@
+/* Строка инструментов над таблицей и распорка, уводящая действия вправо. */
+
+/* Плотная таблица ввода. Липкая шапка и первая колонка. */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  margin-bottom: var(--gap-block);
+}
+
+.toolbar__spacer {
+  flex: 1;
+}

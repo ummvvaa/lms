@@ -135,37 +135,11 @@
   box-shadow: var(--shadow-raised);
 }
 
-/* Требования к паролю: видны до первой попытки, а не после отказа */
-.password-rules {
-  list-style: none;
-  margin: calc(var(--space) * 1) 0 calc(var(--space) * 2);
-  padding: 0;
-  font-size: var(--type-note);
-}
-
-.password-rules li {
-  padding: 2px 0;
-}
-
-.password-rules__ok {
-  color: var(--good);
-}
-
-.password-rules__todo {
-  color: var(--ink-3);
-}
-
 .login__modes {
   display: flex;
   flex-wrap: wrap;
   gap: calc(var(--space) * 2);
   justify-content: center;
-}
-
-/* Экран пользователей */
-.users__form {
-  display: grid;
-  gap: calc(var(--space) * 2);
 }
 
 /* Выезжающая панель «Завести учеников списком»: предпросмотр файла
@@ -177,10 +151,6 @@
 .users__sheetbody {
   overflow-y: auto;
   min-height: 0;
-}
-
-.users__wrap {
-  overflow-x: auto;
 }
 
 .users__table {
@@ -221,18 +191,6 @@ body .tbl [data-slot='badge'].users__state {
   flex-wrap: wrap;
   gap: calc(var(--space) * 1);
   align-items: center;
-}
-
-.users__check {
-  display: inline-flex;
-  gap: calc(var(--space) * 1);
-  align-items: center;
-  font-size: var(--type-note);
-  color: var(--ink-2);
-}
-
-.users__off td {
-  opacity: 0.5;
 }
 
 /* Профиль (фаза 23). */
@@ -306,51 +264,6 @@ body .tbl [data-slot='badge'].users__state {
   margin: calc(var(--space) * 1) 0 calc(var(--space) * 3);
 }
 
-/* Ссылка-приглашение: показывается по нажатию, копируется одной кнопкой.
-   Заметная рамка — чтобы человек не потерял её среди строк таблицы. */
-.users__link {
-  border-color: var(--accent);
-  margin: calc(var(--space) * 2) 0;
-}
-
-/* Меню строки: всё, кроме основного действия. Опасное — в конце,
-   за чертой и цветом риска: рядом с обычными кнопками его нажимают
-   промахом, а обратного хода у него нет.
-
-   Позиционирование, стрелки и закрытие рисует `DropdownMenu` из shadcn
-   (фаза 32) — здесь остались размеры кнопки и поля пунктов. */
-.rowmenu__button {
-  min-height: calc(var(--space) * 7);
-  padding: 0 calc(var(--space) * 2);
-}
-
-.rowmenu__panel {
-  min-width: calc(var(--space) * 55);
-  padding: calc(var(--space) * 1);
-  box-shadow: var(--shadow-raised);
-}
-
-.rowmenu__item {
-  padding: calc(var(--space) * 2) calc(var(--space) * 2);
-  border-radius: var(--radius-inrow);
-  font-size: var(--type-note);
-}
-
-/* Действие внутри пункта меню (удаление с диалогом): текст пункта,
-   а не кнопка в кнопке. Цвет — от пункта, у опасного он винный */
-.rowmenu__action {
-  all: unset;
-  display: block;
-  width: 100%;
-  cursor: pointer;
-  color: inherit;
-  font: inherit;
-}
-
-.rowmenu__sep {
-  margin: calc(var(--space) * 1) calc(var(--space) * 1);
-}
-
 /* Экран «Пользователи»: отметки строк и массовые действия. */
 .users__pick {
   width: calc(var(--space) * 8);
@@ -366,15 +279,6 @@ body .tbl [data-slot='badge'].users__state {
 .users__danger,
 body [data-slot='button'][data-variant].users__danger {
   color: var(--bad);
-}
-
-.users__file {
-  display: none;
-}
-
-.users__password {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  letter-spacing: 0.02em;
 }
 
 /* Разбор загружаемого файла: объяснение словами перед сопоставлением. */
@@ -469,150 +373,6 @@ body [data-slot='button'][data-variant].users__danger {
   align-items: center;
 }
 
-/* --- «Мои данные»: ученик вносит, директор подтверждает (фаза 37) --- */
-
-.propose__cell {
-  display: grid;
-  gap: calc(var(--space) * 1);
-  justify-items: start;
-}
-
-/* Пояснение рядом с кнопкой внесения: форма откроется здесь же. */
-.propose__hint {
-  font-size: var(--type-note);
-}
-
-.propose__form {
-  margin-top: calc(var(--space) * 3);
-  display: grid;
-  gap: calc(var(--space) * 2);
-}
-
-.propose__note {
-  margin: 0;
-  font-size: var(--type-note);
-}
-
-.propose__field {
-  display: grid;
-  gap: calc(var(--space) * 1);
-}
-
-.propose__label {
-  font-size: var(--type-note);
-}
-
-.propose__actions {
-  display: flex;
-  gap: calc(var(--space) * 2);
-  margin-top: calc(var(--space) * 1);
-}
-
-.propose__declined {
-  margin-bottom: calc(var(--space) * 4);
-}
-
-.propose__declinedlist {
-  margin: calc(var(--space) * 2) 0 0;
-  padding-left: calc(var(--space) * 4);
-  font-size: var(--type-body);
-  line-height: 1.6;
-}
-
-/* --- Очередь «От учеников» у директора (фаза 37) --- */
-
-.squeue__row {
-  display: flex;
-  align-items: flex-start;
-  gap: calc(var(--space) * 3);
-  padding: calc(var(--space) * 3) 0;
-  border-top: 1px solid var(--line);
-}
-
-.squeue__body {
-  flex: 1;
-  min-width: 0;
-}
-
-.squeue__what {
-  font-size: var(--type-body);
-}
-
-.squeue__change {
-  font-size: var(--type-note);
-  margin: calc(var(--space) * 1) 0 0;
-}
-
-/* Время подачи табличными цифрами: «14:32» и «16:11» одной ширины, и строка
-   не переносится по-разному от прогона к прогону. Эталон раскладки маскирует
-   само время, но перенос строки маской не спрятать (фаза 61). */
-.squeue__when {
-  font-variant-numeric: tabular-nums;
-}
-
-.squeue__actions {
-  flex: none;
-  display: flex;
-  gap: calc(var(--space) * 2);
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.squeue__bulk {
-  display: flex;
-  gap: calc(var(--space) * 2);
-  align-items: center;
-  margin-top: calc(var(--space) * 3);
-}
-
-.squeue__note {
-  margin: calc(var(--space) * 1) 0 calc(var(--space) * 2);
-  font-size: var(--type-note);
-}
-
-/* Телефон (фаза 61): строка очереди в две линии.
-
-   На узком экране «имя — что изменилось — три кнопки» в один ряд
-   не помещаются: текст сжимается в колонку по одному слову, а «7.0 → 8.5»
-   рвётся на четыре строки. Поэтому сверху — кто и что предложил,
-   снизу — решения во всю ширину. */
-@media (max-width: 759px) {
-  .squeue__row {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: calc(var(--space) * 2) calc(var(--space) * 3);
-    padding: calc(var(--space) * 3) 0;
-  }
-
-  .squeue__body {
-    min-width: 0;
-  }
-
-  .squeue__actions {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
-  }
-
-  .squeue__actions [data-slot='button'] {
-    flex: 1;
-    min-width: calc(var(--space) * 24);
-  }
-
-  .squeue__reasons {
-    grid-column: 1 / -1;
-  }
-
-  .squeue__bulk {
-    flex-wrap: wrap;
-  }
-}
-
-.squeue__editinput {
-  margin-top: calc(var(--space) * 1);
-  max-width: calc(var(--space) * 80);
-}
-
 /* --- Календарь ученика (фаза 39) --- */
 
 .cal__nearest {
@@ -697,63 +457,6 @@ body [data-slot='button'][data-variant].users__danger {
 
 .cal__more {
   font-size: var(--type-note);
-}
-
-/* --- Цели по экзаменам (фаза 39) --- */
-
-.goals__input {
-  max-width: calc(var(--space) * 40);
-}
-
-.goals__create {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--space) * 2);
-  align-items: center;
-  margin: calc(var(--space) * 3) 0;
-}
-
-/* Строка цели: название, балл, две даты, кнопка. Колонки заданы явно
-   (фаза 48): на долях единицы поле балла ужималось до трёх символов
-   и «1400» в него не влезало, а название экзамена слипалось с полем —
-   на экране это читалось как «DuolingoЦел». */
-.goals__row {
-  display: grid;
-  grid-template-columns: minmax(calc(var(--space) * 22), calc(var(--space) * 32)) calc(var(--space) * 24) minmax(calc(var(--space) * 30), 1fr) minmax(calc(var(--space) * 30), 1fr) auto;
-  gap: calc(var(--space) * 3);
-  align-items: center;
-  padding: calc(var(--space) * 3) 0;
-  border-top: 1px solid var(--line);
-}
-
-.goals__score {
-  /* «1400» и «6.5» — четыре знака плюс поле для курсора */
-  min-width: calc(var(--space) * 22);
-}
-
-.goals__save {
-  justify-content: center;
-}
-
-@media (max-width: 900px) {
-  /* на узком экране строка разворачивается в две: слипаться нечему */
-  .goals__row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-  .goals__exam,
-  .goals__save {
-    grid-column: 1 / -1;
-  }
-}
-
-.goals__exam {
-  font-weight: 650;
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space) * 2);
-  flex-wrap: wrap;
-  /* длинное название переносится, а не режется многоточием */
-  overflow-wrap: anywhere;
 }
 
 /* --- Подбор вузов (фаза 40) --- */
@@ -1417,108 +1120,6 @@ body [data-slot='button'][data-variant].essay__opt--wrong {
   background: var(--ink);
   border-color: var(--ink);
   color: var(--surface);
-}
-
-/* Раздача паролей: числа крупно, предупреждение отдельной строкой */
-.handout {
-  display: grid;
-  gap: calc(var(--space) * 3);
-}
-
-.handout__part {
-  display: grid;
-  gap: calc(var(--space) * 1);
-}
-
-.handout__total {
-  font-size: var(--type-h2);
-  font-weight: 600;
-  margin: 0;
-}
-
-.handout__counts {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: calc(var(--space) * 1);
-}
-
-.handout__warn {
-  color: var(--warn);
-  margin: 0;
-}
-
-.handout__check,
-.handout__field {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space) * 2);
-}
-
-.handout__field {
-  display: grid;
-  gap: calc(var(--space) * 1);
-}
-
-/* Мастер импорта (фаза 72): шаги, чипы доменов, таблица соответствий */
-.wizard__steps {
-  display: flex;
-  gap: calc(var(--space) * 2);
-  flex-wrap: wrap;
-  margin-bottom: calc(var(--space) * 4);
-}
-
-.wizard__step {
-  display: inline-flex;
-  gap: calc(var(--space) * 2);
-  align-items: center;
-  padding: calc(var(--space) * 1) calc(var(--space) * 3);
-  border-radius: var(--radius-inrow);
-  border: 1px solid var(--line);
-  color: var(--ink-2);
-  font-size: var(--type-note);
-}
-
-.wizard__step--on {
-  border-color: var(--accent);
-  color: var(--ink);
-}
-
-.wizard__step--done {
-  color: var(--good);
-}
-
-.wizard__chips {
-  display: flex;
-  gap: calc(var(--space) * 2);
-  flex-wrap: wrap;
-  margin-bottom: calc(var(--space) * 3);
-}
-
-.wizard__group {
-  display: grid;
-  gap: calc(var(--space) * 1);
-  max-width: calc(var(--space) * 80);
-  margin-bottom: calc(var(--space) * 3);
-}
-
-/* снятый домен: строки серым, значение остаётся читаемым */
-.wizard__off td {
-  color: var(--ink-2);
-}
-
-.wizard__unknown {
-  margin-top: calc(var(--space) * 3);
-}
-
-.wizard__sum {
-  font-size: var(--type-note);
-}
-
-.wizard__domains {
-  margin: calc(var(--space) * 2) 0 0;
-  padding-left: calc(var(--space) * 6);
 }
 
 /* --- «Пользователи» на телефоне (фаза 75) -----------------------------

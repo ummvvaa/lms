@@ -1,0 +1,61 @@
+/* Мастер импорта (`ImportWizard`, `WizardSteps`): шаги, чипы доменов, таблица соответствий. */
+
+/* Мастер импорта (фаза 72): шаги, чипы доменов, таблица соответствий */
+.wizard__steps {
+  display: flex;
+  gap: calc(var(--space) * 2);
+  flex-wrap: wrap;
+  margin-bottom: calc(var(--space) * 4);
+}
+
+.wizard__step {
+  display: inline-flex;
+  gap: calc(var(--space) * 2);
+  align-items: center;
+  padding: calc(var(--space) * 1) calc(var(--space) * 3);
+  border-radius: var(--radius-inrow);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: var(--type-note);
+}
+
+.wizard__step--on {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.wizard__step--done {
+  color: var(--good);
+}
+
+.wizard__chips {
+  display: flex;
+  gap: calc(var(--space) * 2);
+  flex-wrap: wrap;
+  margin-bottom: calc(var(--space) * 3);
+}
+
+.wizard__group {
+  display: grid;
+  gap: calc(var(--space) * 1);
+  max-width: calc(var(--space) * 80);
+  margin-bottom: calc(var(--space) * 3);
+}
+
+/* снятый домен: строки серым, значение остаётся читаемым */
+.wizard__off td {
+  color: var(--ink-2);
+}
+
+.wizard__unknown {
+  margin-top: calc(var(--space) * 3);
+}
+
+.wizard__sum {
+  font-size: var(--type-note);
+}
+
+.wizard__domains {
+  margin: calc(var(--space) * 2) 0 0;
+  padding-left: calc(var(--space) * 6);
+}

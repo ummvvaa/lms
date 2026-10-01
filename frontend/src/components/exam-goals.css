@@ -1,0 +1,58 @@
+/* Цели по экзаменам (`ExamGoals`). */
+
+/* --- Цели по экзаменам (фаза 39) --- */
+.goals__input {
+  max-width: calc(var(--space) * 40);
+}
+
+.goals__create {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 2);
+  align-items: center;
+  margin: calc(var(--space) * 3) 0;
+}
+
+/* Строка цели: название, балл, две даты, кнопка. Колонки заданы явно
+   (фаза 48): на долях единицы поле балла ужималось до трёх символов
+   и «1400» в него не влезало, а название экзамена слипалось с полем —
+   на экране это читалось как «DuolingoЦел». */
+.goals__row {
+  display: grid;
+  grid-template-columns: minmax(calc(var(--space) * 22), calc(var(--space) * 32)) calc(var(--space) * 24) minmax(calc(var(--space) * 30), 1fr) minmax(calc(var(--space) * 30), 1fr) auto;
+  gap: calc(var(--space) * 3);
+  align-items: center;
+  padding: calc(var(--space) * 3) 0;
+  border-top: 1px solid var(--line);
+}
+
+.goals__score {
+  /* «1400» и «6.5» — четыре знака плюс поле для курсора */
+  min-width: calc(var(--space) * 22);
+}
+
+.goals__save {
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  /* на узком экране строка разворачивается в две: слипаться нечему */
+  .goals__row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .goals__exam,
+  .goals__save {
+    grid-column: 1 / -1;
+  }
+}
+
+.goals__exam {
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  flex-wrap: wrap;
+  /* длинное название переносится, а не режется многоточием */
+  overflow-wrap: anywhere;
+}

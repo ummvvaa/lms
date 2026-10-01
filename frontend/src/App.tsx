@@ -38,6 +38,17 @@ import ConfirmEmail from './screens/ConfirmEmail'
 // стили экранов — сразу и в прежнем порядке, сами экраны — по маршруту
 import './screenStyles'
 import './screens/screens.css'
+// стили общих компонентов, описанные раньше в CSS экранов: место в каскаде —
+// сразу за `screens.css`, откуда они переехали
+import './components/password-rules.css'
+import './components/account-forms.css'
+import './components/rowmenu.css'
+import './components/propose.css'
+import './components/student-queue.css'
+import './components/exam-goals.css'
+import './components/handout.css'
+import './components/import-wizard.css'
+import './components/material-card.css'
 import './components/ui.css'
 import { t } from './i18n'
 

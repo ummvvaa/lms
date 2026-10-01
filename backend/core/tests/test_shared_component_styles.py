@@ -6,9 +6,9 @@
 болезнь, всплывавшая в 69-й, 73-й и 75-й: раскладка есть на одном экране
 и отсутствует на другом, а находится это только глазами.
 
-Унаследованный долг перечислен поимённо (D45): новый такой класс тест
-не пропустит, а старые уходят по мере переноса — список должен только
-уменьшаться.
+Унаследованный долг перечислялся поимённо и перенесён целиком: в CSS
+экранов остались только классы самих экранов. Новый такой класс тест
+не пропустит.
 """
 
 from __future__ import annotations
@@ -22,52 +22,9 @@ SRC = ROOT / "frontend" / "src"
 #: имя класса в духе БЭМ: блок, элемент через `__`, модификатор через `--`
 CLASS = r"[a-z][a-z0-9-]*(?:__[a-z0-9-]+)?(?:--[a-z0-9-]+)?"
 
-#: классы общих компонентов, которые пока описаны в CSS экранов (D45).
-#: Только элементы и модификаторы: голое имя блока («card», «toolbar»)
-#: слишком часто совпадает со словом в строке, чтобы ловить его регуляркой
-LEGACY = frozenset(
-    {
-        "goals__create",
-        "goals__input",
-        "handout__check",
-        "handout__counts",
-        "handout__field",
-        "handout__part",
-        "handout__total",
-        "handout__warn",
-        "mat__bigtitle",
-        "mat__comment",
-        "mat__complain",
-        "mat__desc",
-        "mat__meta",
-        "mat__single",
-        "password-rules__ok",
-        "password-rules__todo",
-        "propose__form",
-        "rowmenu__action",
-        "rowmenu__item",
-        "rowmenu__panel",
-        "rowmenu__sep",
-        "squeue__actions",
-        "squeue__body",
-        "squeue__bulk",
-        "squeue__editinput",
-        "squeue__row",
-        "squeue__what",
-        "toolbar__spacer",
-        "users__check",
-        "users__file",
-        "users__form",
-        "users__link",
-        "users__off",
-        "users__password",
-        "users__wrap",
-        "wizard__domains",
-        "wizard__group",
-        "wizard__steps",
-        "wizard__sum",
-    }
-)
+#: классы общих компонентов, которые пока описаны в CSS экранов. Долг
+#: закрыт: всё перенесено в `components/*.css`, новых тест не пустит
+LEGACY: frozenset[str] = frozenset()
 
 
 def classes_in(path: Path) -> set[str]:

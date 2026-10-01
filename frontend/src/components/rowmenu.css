@@ -1,0 +1,39 @@
+/* Меню строки (`RowMenu`): всё, кроме основного действия; опасное — в конце, за чертой. */
+
+/* Меню строки: всё, кроме основного действия. Опасное — в конце,
+   за чертой и цветом риска: рядом с обычными кнопками его нажимают
+   промахом, а обратного хода у него нет.
+
+   Позиционирование, стрелки и закрытие рисует `DropdownMenu` из shadcn
+   (фаза 32) — здесь остались размеры кнопки и поля пунктов. */
+.rowmenu__button {
+  min-height: calc(var(--space) * 7);
+  padding: 0 calc(var(--space) * 2);
+}
+
+.rowmenu__panel {
+  min-width: calc(var(--space) * 55);
+  padding: calc(var(--space) * 1);
+  box-shadow: var(--shadow-raised);
+}
+
+.rowmenu__item {
+  padding: calc(var(--space) * 2) calc(var(--space) * 2);
+  border-radius: var(--radius-inrow);
+  font-size: var(--type-note);
+}
+
+/* Действие внутри пункта меню (удаление с диалогом): текст пункта,
+   а не кнопка в кнопке. Цвет — от пункта, у опасного он винный */
+.rowmenu__action {
+  all: unset;
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.rowmenu__sep {
+  margin: calc(var(--space) * 1) calc(var(--space) * 1);
+}

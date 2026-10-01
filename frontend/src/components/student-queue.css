@@ -1,0 +1,94 @@
+/* Очередь «От учеников» (`StudentQueue`): у директора и у куратора. */
+
+/* --- Очередь «От учеников» у директора (фаза 37) --- */
+.squeue__row {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--space) * 3);
+  padding: calc(var(--space) * 3) 0;
+  border-top: 1px solid var(--line);
+}
+
+.squeue__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.squeue__what {
+  font-size: var(--type-body);
+}
+
+.squeue__change {
+  font-size: var(--type-note);
+  margin: calc(var(--space) * 1) 0 0;
+}
+
+/* Время подачи табличными цифрами: «14:32» и «16:11» одной ширины, и строка
+   не переносится по-разному от прогона к прогону. Эталон раскладки маскирует
+   само время, но перенос строки маской не спрятать (фаза 61). */
+.squeue__when {
+  font-variant-numeric: tabular-nums;
+}
+
+.squeue__actions {
+  flex: none;
+  display: flex;
+  gap: calc(var(--space) * 2);
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.squeue__bulk {
+  display: flex;
+  gap: calc(var(--space) * 2);
+  align-items: center;
+  margin-top: calc(var(--space) * 3);
+}
+
+.squeue__note {
+  margin: calc(var(--space) * 1) 0 calc(var(--space) * 2);
+  font-size: var(--type-note);
+}
+
+/* Телефон (фаза 61): строка очереди в две линии.
+
+   На узком экране «имя — что изменилось — три кнопки» в один ряд
+   не помещаются: текст сжимается в колонку по одному слову, а «7.0 → 8.5»
+   рвётся на четыре строки. Поэтому сверху — кто и что предложил,
+   снизу — решения во всю ширину. */
+@media (max-width: 759px) {
+  .squeue__row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: calc(var(--space) * 2) calc(var(--space) * 3);
+    padding: calc(var(--space) * 3) 0;
+  }
+
+  .squeue__body {
+    min-width: 0;
+  }
+
+  .squeue__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .squeue__actions [data-slot='button'] {
+    flex: 1;
+    min-width: calc(var(--space) * 24);
+  }
+
+  .squeue__reasons {
+    grid-column: 1 / -1;
+  }
+
+  .squeue__bulk {
+    flex-wrap: wrap;
+  }
+}
+
+.squeue__editinput {
+  margin-top: calc(var(--space) * 1);
+  max-width: calc(var(--space) * 80);
+}

@@ -1,0 +1,50 @@
+/* Внесение данных учеником: форма у ячейки и отклонённое (`PortfolioForms`, «Мои данные», эссе, документы). */
+
+/* --- «Мои данные»: ученик вносит, директор подтверждает (фаза 37) --- */
+.propose__cell {
+  display: grid;
+  gap: calc(var(--space) * 1);
+  justify-items: start;
+}
+
+/* Пояснение рядом с кнопкой внесения: форма откроется здесь же. */
+.propose__hint {
+  font-size: var(--type-note);
+}
+
+.propose__form {
+  margin-top: calc(var(--space) * 3);
+  display: grid;
+  gap: calc(var(--space) * 2);
+}
+
+.propose__note {
+  margin: 0;
+  font-size: var(--type-note);
+}
+
+.propose__field {
+  display: grid;
+  gap: calc(var(--space) * 1);
+}
+
+.propose__label {
+  font-size: var(--type-note);
+}
+
+.propose__actions {
+  display: flex;
+  gap: calc(var(--space) * 2);
+  margin-top: calc(var(--space) * 1);
+}
+
+.propose__declined {
+  margin-bottom: calc(var(--space) * 4);
+}
+
+.propose__declinedlist {
+  margin: calc(var(--space) * 2) 0 0;
+  padding-left: calc(var(--space) * 4);
+  font-size: var(--type-body);
+  line-height: 1.6;
+}

@@ -1,0 +1,43 @@
+/* Раздача паролей (`HandoutDialog`): числа крупно, предупреждение отдельной строкой. */
+
+/* Раздача паролей: числа крупно, предупреждение отдельной строкой */
+.handout {
+  display: grid;
+  gap: calc(var(--space) * 3);
+}
+
+.handout__part {
+  display: grid;
+  gap: calc(var(--space) * 1);
+}
+
+.handout__total {
+  font-size: var(--type-h2);
+  font-weight: 600;
+  margin: 0;
+}
+
+.handout__counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: calc(var(--space) * 1);
+}
+
+.handout__warn {
+  color: var(--warn);
+  margin: 0;
+}
+
+.handout__check,
+.handout__field {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+}
+
+.handout__field {
+  display: grid;
+  gap: calc(var(--space) * 1);
+}

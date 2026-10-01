@@ -1,0 +1,39 @@
+/* Формы учётных записей и паролей: заведение, раздача, ссылка-приглашение (`CredentialsBox`, `EnrollPanel`, `StudyGroups`, мастер импорта). */
+
+/* Экран пользователей */
+.users__form {
+  display: grid;
+  gap: calc(var(--space) * 2);
+}
+
+.users__wrap {
+  overflow-x: auto;
+}
+
+.users__check {
+  display: inline-flex;
+  gap: calc(var(--space) * 1);
+  align-items: center;
+  font-size: var(--type-note);
+  color: var(--ink-2);
+}
+
+.users__off td {
+  opacity: 0.5;
+}
+
+/* Ссылка-приглашение: показывается по нажатию, копируется одной кнопкой.
+   Заметная рамка — чтобы человек не потерял её среди строк таблицы. */
+.users__link {
+  border-color: var(--accent);
+  margin: calc(var(--space) * 2) 0;
+}
+
+.users__file {
+  display: none;
+}
+
+.users__password {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.02em;
+}

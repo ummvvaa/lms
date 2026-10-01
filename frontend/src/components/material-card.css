@@ -1,0 +1,34 @@
+/* Карточка материала (`MaterialCard`): заголовок, описание, сведения, жалоба. */
+
+.mat__bigtitle {
+  margin: calc(var(--space) * 1) 0 calc(var(--space) * 2);
+  font-size: var(--type-screen);
+  line-height: 1.2;
+}
+
+.mat__desc {
+  font-size: var(--type-note);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.mat__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 1);
+  margin-top: calc(var(--space) * 1);
+}
+
+.mat__single {
+  margin-bottom: calc(var(--space) * 4);
+}
+
+.mat__comment {
+  margin: calc(var(--space) * 1) 0 0;
+  font-size: var(--type-note);
+  line-height: 1.45;
+}
+
+.mat__complain {
+  margin-top: calc(var(--space) * 4);
+}
