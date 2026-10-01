@@ -1,5 +1,5 @@
 /** Каркас: тёмное меню по роли на ноутбуке, тёмная полоса и нижний бар на телефоне, область экрана. */
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useJourney, useLocks, useMaterialsState, useNotifications, useUpdatePreferences } from '../api/hooks'
 import { AssistantScreenProvider } from '../assistant/context'
@@ -248,6 +248,9 @@ export default function Shell() {
             {/* граница экрана: упавший раздел показывает сообщение,
                 а меню остаётся на месте */}
             <ErrorBoundary scope="screen">
+              {/* экран грузится своим куском сборки при первом открытии:
+                  пока он едет, на его месте те же серые полосы, что у данных */}
+              <Suspense fallback={<Loading kind="cards" />}>
               {/* закрытый раздел не прячется: он виден приглушённым,
                   а сверху лежит объяснение и кнопка */}
               {me.role === 'curator' ? (
@@ -265,6 +268,7 @@ export default function Shell() {
                   {me.role === 'student' && me.has_admission !== false && locks.isPending ? <Loading kind="cards" /> : <Outlet />}
                 </LockedScreen>
               )}
+              </Suspense>
             </ErrorBoundary>
           </main>
         </div>

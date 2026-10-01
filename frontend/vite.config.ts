@@ -13,6 +13,10 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
+  // Экраны — отдельные куски (`lazy` в `App.tsx`), а стили — одним файлом,
+  // как до разбиения: стиль экрана, приехавший позже, встал бы после общих
+  // и тихо переиграл их при равном весе. Порядок сверяет страж сборки
+  build: { cssCodeSplit: false },
   server: {
     host: '0.0.0.0',
     port: 5173,

@@ -67,9 +67,16 @@
 		file_server
 	}
 
-	# фронт — SPA: неизвестный путь отдаёт index.html, маршрутизация на клиенте
+	# фронт — SPA: неизвестный путь отдаёт index.html, маршрутизация на клиенте.
+	# Куски сборки с хешем в имени не меняются никогда — год в кэше. Страница
+	# сверяется с сервером каждый раз: после выката старых кусков на диске нет,
+	# и закэшированный index.html вёл бы в пустоту. `header` срабатывает до
+	# `try_files`, поэтому смотрит на адрес запроса, а не на подменённый
 	handle {
 		root * /srv/frontend
+		header /assets/* Cache-Control "public, max-age=31536000, immutable"
+		@page not path /assets/*
+		header @page Cache-Control "no-cache"
 		try_files {path} /index.html
 		file_server
 	}

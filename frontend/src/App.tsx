@@ -1,5 +1,5 @@
 /** Роутинг и провайдеры. */
-import { Fragment, useEffect, useMemo, type ReactNode } from 'react'
+import { Fragment, lazy, useEffect, useMemo, type ReactNode } from 'react'
 import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
@@ -34,83 +34,90 @@ import LinkLogin from './screens/LinkLogin'
 import Login from './screens/Login'
 import SetPassword from './screens/SetPassword'
 import ChangePassword from './screens/ChangePassword'
-import Users from './screens/Users'
-import CuratorQueue from './screens/curator/Queue'
-import CuratorStudents from './screens/curator/Students'
-import CuratorTasks from './screens/curator/Tasks'
-import CuratorGroups from './screens/curator/Groups'
-import CuratorDocuments from './screens/curator/Documents'
-import CuratorJournal from './screens/curator/Journal'
-import Attendance from './screens/Attendance'
-import MockImports, { MockResults } from './screens/mocks/MockImports'
-import Dashboard from './screens/dashboards/Dashboard'
-import TableScreen from './screens/TableScreen'
-import ImportScreen from './screens/ImportScreen'
-import MyUniversities from './screens/MyUniversities'
-import Catalog from './screens/Catalog'
-import Directory from './screens/Directory'
-import Archive from './screens/Archive'
-import Onboarding from './screens/Onboarding'
-import Prep from './screens/Prep'
-import Roadmap from './screens/Roadmap'
-import Essays from './screens/Essays'
-import Assistant from './screens/Assistant'
-import Suggestions from './screens/Suggestions'
-import Digest from './screens/Digest'
-import Subjects from './screens/Subjects'
-import SportTypes from './screens/SportTypes'
-import Materials from './screens/Materials'
-import OlympiadGroup from './screens/OlympiadGroup'
-import Spend from './screens/Spend'
-import SchoolSettings from './screens/SchoolSettings'
-import Contacts from './screens/Contacts'
-import TaskTemplates from './screens/TaskTemplates'
-import MyData from './screens/MyData'
 import ConfirmEmail from './screens/ConfirmEmail'
-import Olympiads from './screens/Olympiads'
-import Sport from './screens/Sport'
-import Journey from './screens/Journey'
-import Calendar from './screens/Calendar'
-import ExamKinds from './screens/ExamKinds'
-import Selection from './screens/Selection'
-import Favorites from './screens/Favorites'
-import Plan from './screens/Plan'
-import EssayContent from './screens/EssayContent'
-import Scholarships from './screens/Scholarships'
-import ScholarshipDirectory from './screens/ScholarshipDirectory'
-import Resources from './screens/Resources'
-import Career from './screens/Career'
-import CareerQuestions from './screens/CareerQuestions'
-import HomeCues from './screens/HomeCues'
-import CallRules from './screens/CallRules'
-import Achievements from './screens/Achievements'
-import Badges from './screens/Badges'
-import Profile from './screens/Profile'
-import ScheduleScreen from './screens/academics/ScheduleScreen'
-import Journals from './screens/academics/Journals'
-import Journal from './screens/academics/Journal'
-import LessonScreen from './screens/academics/Lesson'
-import Cohorts from './screens/academics/Cohorts'
-import Teachers from './screens/academics/Teachers'
-import GradesScreen from './screens/academics/GradesScreen'
-import AcademicYear from './screens/academics/AcademicYear'
-import Reports from './screens/academics/Reports'
-import StudentRoute from './screens/academics/StudentRoute'
-import HomeworkReview from './screens/academics/HomeworkReview'
-import HomeworkCheck from './screens/academics/HomeworkCheck'
-import MyHomeworkScreen from './screens/homework/MyHomework'
-import MyHomeworkDetailScreen from './screens/homework/MyHomeworkDetail'
-import OverviewDashboard from './screens/dashboards/OverviewDashboard'
-import Groups from './screens/sections/Groups'
-import Risks from './screens/sections/Risks'
-import Deadlines from './screens/sections/Deadlines'
-import Top30 from './screens/sections/Top30'
-import Mocks from './screens/sections/Mocks'
-import Tracks from './screens/sections/Tracks'
-import Competitions from './screens/sections/Competitions'
+// стили экранов — сразу и в прежнем порядке, сами экраны — по маршруту
+import './screenStyles'
 import './screens/screens.css'
 import './components/ui.css'
 import { t } from './i18n'
+
+// Экраны грузятся по маршруту: одна сборка на все роли весила 2,4 МБ и
+// росла с каждым разделом, а ученик скачивал журналы, импорт и обзор школы.
+// Вход и смена пароля — сразу: они нужны до того, как известна роль
+const Users = lazy(() => import('./screens/Users'))
+const CuratorQueue = lazy(() => import('./screens/curator/Queue'))
+const CuratorStudents = lazy(() => import('./screens/curator/Students'))
+const CuratorTasks = lazy(() => import('./screens/curator/Tasks'))
+const CuratorGroups = lazy(() => import('./screens/curator/Groups'))
+const CuratorDocuments = lazy(() => import('./screens/curator/Documents'))
+const CuratorJournal = lazy(() => import('./screens/curator/Journal'))
+const Attendance = lazy(() => import('./screens/Attendance'))
+const MockImports = lazy(() => import('./screens/mocks/MockImports'))
+const MockResults = lazy(() => import('./screens/mocks/MockImports').then((module) => ({ default: module.MockResults })))
+const Dashboard = lazy(() => import('./screens/dashboards/Dashboard'))
+const TableScreen = lazy(() => import('./screens/TableScreen'))
+const ImportScreen = lazy(() => import('./screens/ImportScreen'))
+const MyUniversities = lazy(() => import('./screens/MyUniversities'))
+const Catalog = lazy(() => import('./screens/Catalog'))
+const Directory = lazy(() => import('./screens/Directory'))
+const Archive = lazy(() => import('./screens/Archive'))
+const Onboarding = lazy(() => import('./screens/Onboarding'))
+const Prep = lazy(() => import('./screens/Prep'))
+const Roadmap = lazy(() => import('./screens/Roadmap'))
+const Essays = lazy(() => import('./screens/Essays'))
+const Assistant = lazy(() => import('./screens/Assistant'))
+const Suggestions = lazy(() => import('./screens/Suggestions'))
+const Digest = lazy(() => import('./screens/Digest'))
+const Subjects = lazy(() => import('./screens/Subjects'))
+const SportTypes = lazy(() => import('./screens/SportTypes'))
+const Materials = lazy(() => import('./screens/Materials'))
+const OlympiadGroup = lazy(() => import('./screens/OlympiadGroup'))
+const Spend = lazy(() => import('./screens/Spend'))
+const SchoolSettings = lazy(() => import('./screens/SchoolSettings'))
+const Contacts = lazy(() => import('./screens/Contacts'))
+const TaskTemplates = lazy(() => import('./screens/TaskTemplates'))
+const MyData = lazy(() => import('./screens/MyData'))
+const Olympiads = lazy(() => import('./screens/Olympiads'))
+const Sport = lazy(() => import('./screens/Sport'))
+const Journey = lazy(() => import('./screens/Journey'))
+const Calendar = lazy(() => import('./screens/Calendar'))
+const ExamKinds = lazy(() => import('./screens/ExamKinds'))
+const Selection = lazy(() => import('./screens/Selection'))
+const Favorites = lazy(() => import('./screens/Favorites'))
+const Plan = lazy(() => import('./screens/Plan'))
+const EssayContent = lazy(() => import('./screens/EssayContent'))
+const Scholarships = lazy(() => import('./screens/Scholarships'))
+const ScholarshipDirectory = lazy(() => import('./screens/ScholarshipDirectory'))
+const Resources = lazy(() => import('./screens/Resources'))
+const Career = lazy(() => import('./screens/Career'))
+const CareerQuestions = lazy(() => import('./screens/CareerQuestions'))
+const HomeCues = lazy(() => import('./screens/HomeCues'))
+const CallRules = lazy(() => import('./screens/CallRules'))
+const Achievements = lazy(() => import('./screens/Achievements'))
+const Badges = lazy(() => import('./screens/Badges'))
+const Profile = lazy(() => import('./screens/Profile'))
+const ScheduleScreen = lazy(() => import('./screens/academics/ScheduleScreen'))
+const Journals = lazy(() => import('./screens/academics/Journals'))
+const Journal = lazy(() => import('./screens/academics/Journal'))
+const LessonScreen = lazy(() => import('./screens/academics/Lesson'))
+const Cohorts = lazy(() => import('./screens/academics/Cohorts'))
+const Teachers = lazy(() => import('./screens/academics/Teachers'))
+const GradesScreen = lazy(() => import('./screens/academics/GradesScreen'))
+const AcademicYear = lazy(() => import('./screens/academics/AcademicYear'))
+const Reports = lazy(() => import('./screens/academics/Reports'))
+const StudentRoute = lazy(() => import('./screens/academics/StudentRoute'))
+const HomeworkReview = lazy(() => import('./screens/academics/HomeworkReview'))
+const HomeworkCheck = lazy(() => import('./screens/academics/HomeworkCheck'))
+const MyHomeworkScreen = lazy(() => import('./screens/homework/MyHomework'))
+const MyHomeworkDetailScreen = lazy(() => import('./screens/homework/MyHomeworkDetail'))
+const OverviewDashboard = lazy(() => import('./screens/dashboards/OverviewDashboard'))
+const Groups = lazy(() => import('./screens/sections/Groups'))
+const Risks = lazy(() => import('./screens/sections/Risks'))
+const Deadlines = lazy(() => import('./screens/sections/Deadlines'))
+const Top30 = lazy(() => import('./screens/sections/Top30'))
+const Mocks = lazy(() => import('./screens/sections/Mocks'))
+const Tracks = lazy(() => import('./screens/sections/Tracks'))
+const Competitions = lazy(() => import('./screens/sections/Competitions'))
 
 const queryClient = new QueryClient({
   defaultOptions: {
