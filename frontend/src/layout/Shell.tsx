@@ -270,17 +270,20 @@ export default function Shell() {
         </div>
 
         {/* Телефон: вместо бокового меню — нижний бар из четырёх разделов
-            роли и «Ещё» со всем меню. От 760px он не показывается */}
-        <MobileNav
-          tabs={tabsFor(me.role, items)}
-          items={items}
-          lockOf={lockOf}
-          unreadFor={unreadFor}
-          open={menuOpen}
-          onOpenChange={setMenuOpen}
-          title={me.role_title}
-          subtitle={user.name}
-        />
+            роли и «Ещё» со всем меню. От 760px его нет и в разметке: спрятанный
+            стилями, он оставался вторым «Разделы» для читалки экрана */}
+        {phone && (
+          <MobileNav
+            tabs={tabsFor(me.role, items)}
+            items={items}
+            lockOf={lockOf}
+            unreadFor={unreadFor}
+            open={menuOpen}
+            onOpenChange={setMenuOpen}
+            title={me.role_title}
+            subtitle={user.name}
+          />
+        )}
 
         {/* Окно поиска на ноутбуке: то же поле, что раньше стояло в шапке,
             только по вызову — иконкой в строке логотипа или Ctrl+K */}

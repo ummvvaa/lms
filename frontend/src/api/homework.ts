@@ -203,11 +203,16 @@ export const fetchFileLink = (id: number, download = false) => get<FileLink>(`/h
 
 export const useFileLink = (id: number | null) =>
   useQuery({
-    queryKey: ['homework', 'link', id],
+    // свой ключ, не под `homework`: общий сброс домашних заданий менял бы
+    // адрес у открытого плеера, и тот начинал сначала
+    queryKey: ['file-link', id],
     queryFn: () => fetchFileLink(id as number),
     enabled: id !== null,
-    // ссылка живёт 5 минут — берём новую раньше
-    staleTime: 3 * 60 * 1000,
+    // ссылка живёт 5 минут; истёкшую просмотр сам просит заново по ошибке
+    // загрузки, а возврат на вкладку новой не берёт — она сбросила бы позицию
+    staleTime: 4 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 
 /* --- Ученик ---------------------------------------------------------------- */

@@ -151,6 +151,12 @@
   --shadow-lg: var(--shadow-raised);
   --shadow-xl: var(--shadow-raised);
 
+  /* Переход без явной длительности (`transition-colors` у поля, флажка,
+     строки таблицы) — отклик на наведение: наш быстрый токен вместо
+     150 мс Tailwind */
+  --default-transition-duration: var(--dur-fast);
+  --default-transition-timing-function: var(--ease-out);
+
   /* `font-heading` есть в разметке shadcn, но своего шрифта у нас нет:
      заголовки идут тем же семейством, что и остальной текст */
   --font-heading: var(--font-sans);

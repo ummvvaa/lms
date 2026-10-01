@@ -114,3 +114,37 @@ def test_reduced_motion_is_respected():
 
     js = (ROOT / "frontend" / "src" / "motion.ts").read_text(encoding="utf-8")
     assert "useReducedMotion" in js, "сценарии движения не спрашивают системную настройку"
+
+
+def _animated_slots() -> dict[str, str]:
+    """Части реестра shadcn, у которых в разметке появление или явная длительность."""
+    out: dict[str, str] = {}
+    for path in sorted((ROOT / "frontend" / "src" / "components" / "ui").glob("*.tsx")):
+        text = path.read_text(encoding="utf-8")
+        for match in re.finditer(r'data-slot="([a-z-]+)"', text):
+            # className той же части: до следующей части или функции
+            tail = re.split(r'data-slot="|\nfunction ', text[match.end() : match.end() + 1500])[0]
+            classes = re.search(r"className=(?:\{cn\(\s*)?['\"]([^'\"]*)['\"]", tail)
+            if classes and re.search(r"\banimate-in\b|\bduration-\d+", classes.group(1)):
+                out[match.group(1)] = path.name
+    return out
+
+
+def test_registry_motion_takes_tokens():
+    """Окна и меню shadcn двигаются нашими токенами, а не числами из утилит.
+
+    Правка в самом компоненте не переживёт `shadcn add`, поэтому длительность
+    назначает `motion.css` по `data-slot`. Новый компонент с появлением —
+    строка в том же правиле.
+    """
+    motion = read("motion.css")
+    slots = _animated_slots()
+    assert {"dialog-content", "dropdown-menu-content", "sheet-content"} <= set(slots), slots
+    missing = sorted(slot for slot in slots if f"[data-slot='{slot}']" not in motion)
+    assert not missing, f"длительность из утилиты, а не из токена: {missing}"
+    for slot in slots:
+        rule = motion.split(f"[data-slot='{slot}']", 1)[1].split("}", 1)[0]
+        assert re.search(r"--tw-duration:\s*var\(--dur-[a-z]+\)", rule), slot
+
+    base = read("base.css")
+    assert "--default-transition-duration: var(--dur-fast)" in base

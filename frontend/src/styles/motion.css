@@ -35,3 +35,24 @@
     background-color: transparent;
   }
 }
+
+/* Окна, меню и подсказки реестра shadcn. Их разметка задаёт длительность
+   утилитами (`duration-100`, `duration-200`), и `shadcn add` перепишет
+   правку в самом компоненте. Здесь — по `data-slot`, вне слоя утилит:
+   стиль без слоя сильнее слоя `utilities` при любом весе. `--tw-duration`
+   читает `animate-in` из tw-animate, `transition-duration` — переход
+   выезжающей панели. Список сверяет страж `test_registry_motion_takes_tokens`. */
+[data-slot='dialog-overlay'],
+[data-slot='dialog-content'],
+[data-slot='dropdown-menu-content'],
+[data-slot='dropdown-menu-sub-content'],
+[data-slot='tooltip-content'],
+[data-slot='sheet-overlay'] {
+  --tw-duration: var(--dur-base);
+  transition-duration: var(--dur-base);
+}
+
+[data-slot='sheet-content'] {
+  --tw-duration: var(--dur-slow);
+  transition-duration: var(--dur-slow);
+}

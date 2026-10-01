@@ -228,6 +228,10 @@ const PHOTO_QUALITY = 0.8
 /** Ширина страницы PDF — A4 в пунктах; высота — по пропорциям снимка. */
 const PAGE_WIDTH = 595.28
 
+/** Ошибка склейки нашими словами: экран показывает её как есть, а чужую —
+ *  общей фразой (сообщение браузера по-английски и ничего не объясняет). */
+export class PhotoError extends Error {}
+
 /** Снимок, развёрнутый по EXIF: сначала `createImageBitmap`, где его нет — через картинку. */
 async function decode(
   file: Blob,
@@ -259,31 +263,50 @@ async function compress(file: Blob): Promise<{ bytes: Uint8Array; width: number;
     canvas.width = width
     canvas.height = height
     const context = canvas.getContext('2d')
-    if (!context) throw new Error(t('Браузер не смог обработать фото — сдайте его файлом'))
+    if (!context) throw new PhotoError(t('Браузер не смог обработать фото — сдайте его файлом'))
     context.drawImage(picture.source, 0, 0, width, height)
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, 'image/jpeg', PHOTO_QUALITY),
     )
-    if (!blob) throw new Error(t('Браузер не смог обработать фото — сдайте его файлом'))
+    if (!blob) throw new PhotoError(t('Браузер не смог обработать фото — сдайте его файлом'))
     return { bytes: new Uint8Array(await blob.arrayBuffer()), width, height }
   } finally {
     picture.done()
   }
 }
 
+/** Что вышло из снимков: PDF из прочитанных и те, что браузер прочесть не смог. */
+export interface PhotoPdf {
+  pdf: Blob | null
+  pages: number
+  /** HEIC вне Safari и битые снимки: их прикладывают отдельными файлами */
+  unreadable: File[]
+}
+
 /** Несколько снимков тетради — один PDF, страница на снимок. Библиотека грузится только здесь. */
-export async function photosToPdf(files: Blob[]): Promise<Blob> {
+export async function photosToPdf(files: File[]): Promise<PhotoPdf> {
+  const photos: { bytes: Uint8Array; width: number; height: number }[] = []
+  const unreadable: File[] = []
+  for (const file of files) {
+    try {
+      photos.push(await compress(file))
+    } catch (error) {
+      if (error instanceof PhotoError) throw error
+      // снимок не декодируется (HEIC в Chrome и Firefox) — не повод терять остальные
+      unreadable.push(file)
+    }
+  }
+  if (photos.length === 0) return { pdf: null, pages: 0, unreadable }
   const { PDFDocument } = await import('@cantoo/pdf-lib')
   const doc = await PDFDocument.create()
-  for (const file of files) {
-    const photo = await compress(file)
+  for (const photo of photos) {
     const image = await doc.embedJpg(photo.bytes)
     const height = (PAGE_WIDTH * photo.height) / photo.width
     const page = doc.addPage([PAGE_WIDTH, height])
     page.drawImage(image, { x: 0, y: 0, width: PAGE_WIDTH, height })
   }
   const bytes = await doc.save()
-  return new Blob([bytes], { type: 'application/pdf' })
+  return { pdf: new Blob([bytes], { type: 'application/pdf' }), pages: photos.length, unreadable }
 }
 
 /* --- Запись звука --------------------------------------------------------------- */

@@ -111,6 +111,12 @@ def test_bar_is_hidden_above_the_phone_width():
     assert ".tabbar {" in phone and "position: fixed" in phone
 
 
+def test_bar_is_not_in_the_markup_above_the_phone_width():
+    """На ноутбуке бара нет и в разметке: иначе читалка находит второе меню «Разделы»."""
+    shell = read("layout", "Shell.tsx")
+    assert re.search(r"\{phone && \(\s*<MobileNav\b", shell), "нижний бар рисуется не только на телефоне"
+
+
 def test_screen_keeps_room_for_the_bar():
     """Под баром не остаётся содержимого, до которого не дотянуться.
 

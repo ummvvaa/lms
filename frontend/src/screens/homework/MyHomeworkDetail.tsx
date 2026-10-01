@@ -39,6 +39,8 @@ import {
   limitsWords,
   minutesPast,
   photosToPdf,
+  PhotoError,
+  type PhotoPdf,
   refuseFile,
   sizeWords,
   spanWords,
@@ -170,22 +172,26 @@ function WorkForm({
     const name = `${data.lesson.subject.replace(/[\s/\\]+/g, '_')}_${t('фото')}.pdf`
     const key = `p${++pendingKey}`
     setPending((current) => [...current, { key, name, size: 0, share: 0, stage: 'pdf' }])
-    let pdf: Blob
+    let made: PhotoPdf
     try {
-      pdf = await photosToPdf(list)
+      made = await photosToPdf(list)
     } catch (error) {
       patch(key, {
         stage: 'failed',
-        error: error instanceof Error ? error.message : t('Фото не склеились — приложите их файлами'),
+        error: error instanceof PhotoError ? error.message : t('Фото не склеились — приложите их файлами'),
       })
       return
     }
-    const refused = refuseFile(Object.assign(pdf, { name }), limits)
-    if (refused) {
-      patch(key, { stage: 'failed', error: `${refused}. ${t('Снимите меньше страниц за раз')}` })
-      return
-    }
-    await upload(key, pdf, name, list.length)
+    if (made.unreadable.length) toast.info(t('Часть фото браузер не читает (например, HEIC) — они приложены отдельными файлами'))
+    if (made.pdf) {
+      const refused = refuseFile(Object.assign(made.pdf, { name }), limits)
+      if (refused) {
+        patch(key, { stage: 'failed', error: `${refused}. ${t('Снимите меньше страниц за раз')}` })
+        return
+      }
+      await upload(key, made.pdf, name, made.pages)
+    } else setPending((rows) => rows.filter((row) => row.key !== key))
+    if (made.unreadable.length) await addFiles(made.unreadable)
   }
 
   const onDrop = (event: DragEvent) => {

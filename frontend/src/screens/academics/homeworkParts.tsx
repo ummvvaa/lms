@@ -7,7 +7,7 @@
  * постранично `pdfjs-dist` (грузится лениво, только когда PDF открыт).
  * Ссылка истекла — плеер или картинка падают с ошибкой, и экран берёт новую.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react'
 import { toast } from 'sonner'
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
 import { fetchFileLink, useFileLink, type HomeworkFile } from '../../api/homework'
@@ -179,20 +179,40 @@ function PdfPages({ url, onBroken }: { url: string; onBroken: () => void }) {
 export function FileView({ file }: { file: HomeworkFile }) {
   const link = useFileLink(file.id)
   const url = link.data?.url
-  // истёкшая ссылка — берём новую, но не бесконечно
+  // истёкшая ссылка — берём новую, но не бесконечно: две неудачи подряд —
+  // и хватит; удачная загрузка счёт сбрасывает, длинной записи хватит ссылок
   const [renewed, setRenewed] = useState(0)
-  const renew = () => {
+  // где стоял плеер, когда ссылка истекла: с новой он продолжает оттуда же
+  const resume = useRef<{ at: number; playing: boolean } | null>(null)
+  const renew = (media?: HTMLMediaElement) => {
     if (renewed >= 2) return
+    if (media && media.currentTime > 0) resume.current = { at: media.currentTime, playing: !media.paused }
     setRenewed((n) => n + 1)
     void link.refetch()
   }
+  const loaded = (media: HTMLMediaElement) => {
+    if (renewed) setRenewed(0)
+    const at = resume.current
+    resume.current = null
+    if (!at) return
+    media.currentTime = at.at
+    // браузер может не дать играть без нажатия — тогда плеер просто ждёт на месте
+    if (at.playing) void media.play().catch(() => undefined)
+  }
+  const player = {
+    controls: true,
+    preload: 'metadata',
+    src: url,
+    onError: (event: SyntheticEvent<HTMLMediaElement>) => renew(event.currentTarget),
+    onLoadedMetadata: (event: SyntheticEvent<HTMLMediaElement>) => loaded(event.currentTarget),
+  } as const
   let body: ReactNode = null
   if (link.error) body = <span className="t-note">{t('Файл не открылся — скачайте его')}</span>
   else if (!url) body = <span className="t-note">{t('Загрузка…')}</span>
-  else if (file.kind === 'pdf') body = <PdfPages url={url} onBroken={renew} />
-  else if (file.kind === 'image') body = <img className="hwfile__img" src={url} alt={file.name} loading="lazy" onError={renew} />
-  else if (file.kind === 'audio') body = <audio className="hwfile__audio" controls preload="metadata" src={url} onError={renew} />
-  else if (file.kind === 'video') body = <video className="hwfile__video" controls preload="metadata" src={url} onError={renew} />
+  else if (file.kind === 'pdf') body = <PdfPages url={url} onBroken={() => renew()} />
+  else if (file.kind === 'image') body = <img className="hwfile__img" src={url} alt={file.name} loading="lazy" onError={() => renew()} />
+  else if (file.kind === 'audio') body = <audio className="hwfile__audio" {...player} />
+  else if (file.kind === 'video') body = <video className="hwfile__video" {...player} />
   return (
     <div className="hwfile">
       <FileLine file={file}>
