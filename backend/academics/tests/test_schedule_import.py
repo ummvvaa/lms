@@ -447,9 +447,10 @@ def test_director_who_teaches_marks_own_lessons_and_nothing_more(short_year, adm
 
     client = login(director)
     assert client.get("/api/auth/me/").json()["teaches"] is True
-    week = client.get("/api/acad/lessons/").json()
+    own = Lesson.objects.filter(teacher=director).order_by("date").first()
+    # неделя первого своего урока, а не сегодняшняя: учебный год файла может ещё не начаться
+    week = client.get("/api/acad/lessons/", {"from": own.date.isoformat()}).json()
     assert week["lessons"] and {row["teacher"]["id"] for row in week["lessons"]} == {director.pk}
-    own = Lesson.objects.filter(teacher=director).first()
     other = Lesson.objects.exclude(teacher=director).exclude(teacher=None).first()
     assert client.get(f"/api/acad/lessons/{own.pk}/").json()["may_mark"] is True
     assert client.get(f"/api/acad/lessons/{other.pk}/").status_code == 404

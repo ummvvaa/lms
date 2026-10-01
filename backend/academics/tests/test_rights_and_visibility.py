@@ -145,7 +145,7 @@ def test_student_reads_own_grades_without_labels_group_averages_or_names(
 
     vault.set_credential(pupils["aliya"], "email", "Секрет-пароль-2026", actor=teacher)
     for path in (
-        "/api/acad/me/grades/",
+        f"/api/acad/me/grades/?period={lesson.date:%Y-%m}",
         "/api/acad/me/lessons/",
         f"/api/acad/lessons/{lesson.pk}/",
         "/api/acad/lessons/",
@@ -157,7 +157,7 @@ def test_student_reads_own_grades_without_labels_group_averages_or_names(
         assert "Сериков" not in body, "чужие имена ученику не уходят"
         assert "password" not in body and "secret" not in body, path
         assert "quarter_grade_avg" not in body and "group_avg" not in body, path
-    mine = as_student.get("/api/acad/me/grades/").json()
+    mine = as_student.get(f"/api/acad/me/grades/?period={lesson.date:%Y-%m}").json()
     assert mine["subjects"][0]["stats"]["fo_avg"] == 7.0
     assert "unexcused_days" not in mine and "excuses" not in mine
 

@@ -149,12 +149,12 @@ def test_risks_for_saltanat_count_only_unexcused(lesson, pupils, teacher, saltan
     marking.save_attendance(
         lesson, [{"student": pupils["aliya"].pk, "mark": "absent"}], actor=teacher, calendar=calendar
     )
-    payload = login(saltanat).get("/api/acad/risks/").json()
+    payload = login(saltanat).get("/api/acad/risks/", {"period": f"{lesson.date:%Y-%m}"}).json()
     assert any(row["id"] == pupils["aliya"].pk for row in payload["rows"])
     marking.add_excuse(
         student=pupils["aliya"], starts=lesson.date, ends=lesson.date, reason="Болезнь", document="certificate"
     )
-    payload = login(saltanat).get("/api/acad/risks/").json()
+    payload = login(saltanat).get("/api/acad/risks/", {"period": f"{lesson.date:%Y-%m}"}).json()
     row = next((r for r in payload["rows"] if r["id"] == pupils["aliya"].pk), None)
     assert row is None or row["attendance"]["absent"] == 0
 

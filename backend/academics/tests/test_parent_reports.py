@@ -30,7 +30,8 @@ def graded(lesson, pupils, teacher, calendar):
 
 @pytest.fixture
 def built(graded, calendar, pupils, admin):
-    start, end = reporting.month_bounds(days(0))
+    # месяц урока, а не сегодняшний: в первые дни месяца урок ещё в прошлом
+    start, end = reporting.month_bounds(graded.date)
     rows = reporting.build_for_period(kind=ReportPeriod.MONTH, start=start, end=end, calendar=calendar, actor=admin)
     return {row.student_id: row for row in rows}
 

@@ -214,7 +214,7 @@ def test_the_percent_is_the_same_on_every_screen(marked, pupils, boston, as_cura
     assert row["stats"]["attendance_pct"] == expected and row["stats"]["late_minutes"] == 10
     cell = row["cells"][[c["lesson"] for c in journal["columns"]].index(marked.pk)]
     assert cell["late_by"] == 10 and cell["arrived"] == "09:00"
-    grades = as_curator.get(f"/api/acad/students/{damir.pk}/grades/").json()
+    grades = as_curator.get(f"/api/acad/students/{damir.pk}/grades/?period={marked.date:%Y-%m}").json()
     assert grades["attendance"]["pct"] == expected
 
     start, end = reporting.month_bounds(marked.date)
