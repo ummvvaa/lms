@@ -10,7 +10,7 @@
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { lastLinkToken } from "../helpers/dev-link";
-import { dropUsers, resetAll } from "../helpers/manage";
+import { dropUsers, resetAll, serviceLog, waitForApi } from "../helpers/manage";
 import { byKey } from "../helpers/roles";
 import { login } from "../helpers/session";
 
@@ -20,9 +20,18 @@ test.describe.configure({ mode: "serial", timeout: 240_000 });
  * Шаг 1 сценария — «очистить базу полностью» — выполняет он сам.
  * Иначе путь начинается не с нуля и проверяет не то, что описан.
  */
-test.beforeAll(() => {
+test.beforeAll(async ({}, testInfo) => {
   resetAll();
   dropUsers("journey.");
+  await waitForApi(testInfo.project.use.baseURL!);
+});
+
+// упавший шаг уносит с собой хвост логов бэкенда и прокси: зависание после
+// обнуления воспроизводится только под нагрузкой полного прогона
+test.afterEach(async ({}, testInfo) => {
+  if (testInfo.status === testInfo.expectedStatus) return;
+  for (const service of ["backend", "frontend"])
+    await testInfo.attach(`лог ${service}`, { body: serviceLog(service), contentType: "text/plain" });
 });
 
 /** Учётные записи, которые заводит сценарий. Пароль ставим через dev-ссылку. */

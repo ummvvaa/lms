@@ -12,7 +12,7 @@
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
-import { dropUsers, resetAll } from "../helpers/manage";
+import { dropUsers, resetAll, serviceLog, waitForApi } from "../helpers/manage";
 import { byKey } from "../helpers/roles";
 import { login } from "../helpers/session";
 
@@ -34,9 +34,18 @@ function step(what: string): void {
   path.push(what);
 }
 
-test.beforeAll(() => {
+test.beforeAll(async ({}, testInfo) => {
   resetAll();
   dropUsers("path.");
+  await waitForApi(testInfo.project.use.baseURL!);
+});
+
+// упавший шаг уносит с собой хвост логов бэкенда и прокси: зависание после
+// обнуления воспроизводится только под нагрузкой полного прогона
+test.afterEach(async ({}, testInfo) => {
+  if (testInfo.status === testInfo.expectedStatus) return;
+  for (const service of ["backend", "frontend"])
+    await testInfo.attach(`лог ${service}`, { body: serviceLog(service), contentType: "text/plain" });
 });
 
 async function as(browser: Browser, role: string): Promise<Page> {

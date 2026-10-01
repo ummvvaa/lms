@@ -22,11 +22,25 @@ import path from "node:path";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail, probePassword } from "../helpers/roles";
-import { markFictional, seedProbeAcademics } from "../helpers/manage";
+import {
+  markFictional,
+  resetAll,
+  seedProbeAcademics,
+} from "../helpers/manage";
 import { lessonsBetween, markLesson } from "../helpers/academics";
 import { apiPatch, apiPost } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
+
+/**
+ * Точечный перегон (`./run.sh --spot …`) сеет с чистой базы: после полного
+ * прогона в ней эталонная или пустая школа, и посев поверх неё давал не те
+ * данные, на которых сценарии зелёные в полном прогоне. В полном прогоне
+ * базу перед посевом уже обнулили `journey` и `path` — второй раз не нужно.
+ */
+test.beforeAll(() => {
+  if (process.env.SEED_FRESH === "1") resetAll();
+});
 
 /** Группы школы — как в прототипе куратора (фаза 60): три группы, один куратор. */
 // параллель — у группы (8–11); поступление только у 11. LISBON — девятая:
@@ -708,10 +722,31 @@ test("ученик и куратор: очередь с резким скачк�
   ).json();
   const already = (queue.results ?? []) as { changes: { field: string }[] }[];
 
-  // резкий скачок: 8.5 против 6.0 в профиле — больше порога школы
-  if (
-    !already.some((row) => row.changes.some((c) => c.field === "ielts_current"))
-  ) {
+  // резкий скачок: 8.5 против 6.0 в профиле — больше порога школы. Скачок
+  // считается от значения в профиле на момент подачи, поэтому 6.0 ставится
+  // перед подачей, а «уже подано» смотрит на нерешённый скачок в очереди,
+  // а не на любое предложение IELTS: `journey` оставляет ученику своё, и
+  // посев сразу после него пропускал подачу — скачка в очереди не было
+  const queueBefore = await as(browser, "curator");
+  const jumpWaits = (
+    (await (
+      await queueBefore.request.get("/api/suggestions/from-students/")
+    ).json()) as { results: { sharp_jump: boolean }[] }
+  ).results.some((row) => row.sharp_jump);
+  await queueBefore.context().close();
+  if (!jumpWaits) {
+    const exam = await as(browser, "director_exam");
+    await apiPost(exam, "/api/batch/save/", {
+      changes: [
+        {
+          student: mine.id,
+          model: "students.ExamProfile",
+          field: "ielts_current",
+          value: "6.0",
+        },
+      ],
+    });
+    await exam.context().close();
     await apiPost(student, "/api/suggestions/propose/", {
       rows: [
         { model: "students.ExamProfile", field: "ielts_current", value: "8.5" },

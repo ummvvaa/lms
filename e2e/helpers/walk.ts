@@ -221,6 +221,8 @@ export function listen(page: Page) {
   const badResponses: string[] = [];
   const requests: string[] = [];
   page.on("console", (message) => {
+    // запись, погашенная обходом (`walkScreen`), — наше действие, не находка
+    if (message.text().includes("ERR_BLOCKED_BY_CLIENT")) return;
     if (message.type() === "error")
       consoleErrors.push(message.text().slice(0, 200));
   });
@@ -617,6 +619,19 @@ export async function walkScreen(
 ): Promise<WalkScreen> {
   const { role, url, width, state, dir, counter } = opts;
   const bag = listen(page);
+  // нажатия не меняют базу: запись гасится, как в съёмке каталога. Иначе
+  // «Скрыть» у справочника оставлял экзамены скрытыми, и соседние сценарии
+  // краснели на пустых списках выбора. Погашенный запрос всё равно считается
+  // ответом на нажатие — кнопка, которая шлёт запись, не «ничего»
+  await page.unroute("**/api/**").catch(() => undefined);
+  await page.route("**/api/**", (route) => {
+    const method = route.request().method();
+    if (["GET", "HEAD", "OPTIONS"].includes(method)) return route.fallback();
+    bag.requests.push(
+      `погашено ${method} ${new URL(route.request().url()).pathname}`,
+    );
+    return route.abort("blockedbyclient");
+  });
   await page.goto(url).catch(() => undefined);
   await settle(page);
 
@@ -769,6 +784,7 @@ export async function walkScreen(
     }
   }
 
+  await page.unroute("**/api/**").catch(() => undefined);
   return {
     role,
     url,

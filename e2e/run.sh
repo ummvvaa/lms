@@ -18,4 +18,14 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# Точечный перегон: ./run.sh --spot tests/curator-cabinet.spec.ts
+# После полного прогона в базе эталонная или пустая школа — сценарии на ней
+# краснеют на данных. Ключ обнуляет базу, сеет заново и гонит указанное.
+# Проекты идут в порядке конфига: сначала посев, потом сценарии
+if [ "${1:-}" = "--spot" ]; then
+  shift
+  SEED_FRESH=1 npx playwright test --project=seed --project=chromium tests/seed.spec.ts "$@"
+  exit $?
+fi
+
 npx playwright test "$@"

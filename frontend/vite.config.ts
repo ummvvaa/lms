@@ -19,7 +19,9 @@ export default defineConfig({
     // в контейнере файловые события не всегда доходят — опрашиваем
     watch: { usePolling: true },
     proxy: {
-      '/api': { target: process.env.VITE_API_TARGET ?? 'http://backend:8000', changeOrigin: true },
+      // ответ бэкенда не пришёл за 30 с — 504 и строка «http proxy error» в логе
+      // контейнера с адресом запроса, а не кнопка, выключенная до таймаута сценария
+      '/api': { target: process.env.VITE_API_TARGET ?? 'http://backend:8000', changeOrigin: true, proxyTimeout: 30_000 },
     },
   },
 })

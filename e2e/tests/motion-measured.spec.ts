@@ -2,13 +2,13 @@
  * Внешний вид и движение интерфейса, проверенные глазами и числами.
  *
  * Каждая анимация из списка фазы подтверждается измерением, а не словом
- * «реализовано»: положение строки на 60-й миллисекунде после сортировки
- * лежит между старым и новым местом; подложка вкладки в промежуточном
- * положении; сетка каркаса при сворачивании меню — тоже. Сверх того:
+ * «реализовано»: после сортировки строка хоть в одном кадре стоит между
+ * старым и новым местом; подложка вкладки — в промежуточном положении;
+ * сетка каркаса при сворачивании меню — тоже. Сверх того:
  * список уведомлений не сдвигает шапку, профиль открывается из меню,
  * упавший экран показывает сообщение вместо белой страницы.
  */
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { apiPatch, apiPost, watch, unlockTable } from "../helpers/session";
 
@@ -38,17 +38,71 @@ async function ensureTemplates(page: Page) {
   }
 }
 
-const rowsY = (page: Page) =>
-  page
-    .locator(".tbl tbody tr")
-    .evaluateAll((els) =>
-      els.map((e) => Math.round(e.getBoundingClientRect().y)),
-    );
 const rowNames = (page: Page) =>
   page.locator(".tbl tbody tr td:first-child").allInnerTexts();
 
+/** Что записывать каждым кадром: строки таблицы, подложку вкладок, сетку каркаса. */
+type Reading = "rows" | "tabs" | "grid";
+
+/**
+ * Нажать и записать значение в каждом кадре — внутри страницы.
+ *
+ * Раньше значение читалось с той стороны на 60-й миллисекунде: под нагрузкой
+ * полного прогона поездка до браузера и обратно занимала дольше перехода,
+ * и выборка попадала уже в конечное положение — ложный красный. Здесь нажатие
+ * и выборки идут в одном вызове, по `requestAnimationFrame`, 600 мс.
+ */
+async function framesAfterClick(
+  page: Page,
+  trigger: Locator,
+  reading: Reading,
+): Promise<string[]> {
+  await trigger.evaluate((el) => el.setAttribute("data-measure", "click"));
+  return page.evaluate(async (kind) => {
+    const read = () => {
+      if (kind === "rows")
+        return [...document.querySelectorAll(".tbl tbody tr")]
+          .map((e) => Math.round(e.getBoundingClientRect().y))
+          .join(",");
+      if (kind === "tabs")
+        return String(
+          Math.round(
+            document.querySelector(".tabs__indicator")!.getBoundingClientRect()
+              .x,
+          ),
+        );
+      return getComputedStyle(document.querySelector(".shell")!)
+        .gridTemplateColumns;
+    };
+    const target = document.querySelector('[data-measure="click"]') as HTMLElement;
+    target.removeAttribute("data-measure");
+    const samples = [read()];
+    target.click();
+    const until = performance.now() + 600;
+    while (performance.now() < until) {
+      await new Promise((done) => requestAnimationFrame(done));
+      samples.push(read());
+    }
+    return samples;
+  }, reading);
+}
+
+/** Был ли кадр между первым и последним — значение не прыгнуло, а ехало. */
+const between = (samples: string[]) =>
+  samples.some(
+    (value) => value !== samples[0] && value !== samples[samples.length - 1],
+  );
+
 test.describe("движение", () => {
   test.use({ storageState: statePath("director_behavior") });
+
+  // свёрнутость меню хранится на сервере: упавший тест не должен оставить
+  // его свёрнутым соседним проверкам шапки
+  test.afterEach(async ({ page }) => {
+    await apiPatch(page, "/api/auth/me/preferences/", {
+      sidebar_collapsed: false,
+    }).catch(() => undefined);
+  });
 
   test("сортировка двигает строки, а не перерисовывает их", async ({
     page,
@@ -59,20 +113,23 @@ test.describe("движение", () => {
       timeout: 15_000,
     });
     const namesBefore = await rowNames(page);
-    const resting = await rowsY(page);
-    await page
-      .locator(".tbl th.tbl__sortable")
-      .filter({ hasText: "Задача" })
-      .click();
-    await page.waitForTimeout(60);
-    const mid = await rowsY(page);
-    await page.waitForTimeout(400);
+    const frames = await framesAfterClick(
+      page,
+      page.locator(".tbl th.tbl__sortable").filter({ hasText: "Задача" }),
+      "rows",
+    );
     const namesAfter = await rowNames(page);
-    // порядок сменился, а на 60-й миллисекунде хотя бы одна строка стояла
-    // не на сетке строк — то есть ехала между старым и новым местом
+    // порядок сменился, а хоть в одном кадре строка стояла не на сетке
+    // строк — то есть ехала между старым и новым местом
     expect(namesAfter).not.toEqual(namesBefore);
-    const moving = mid.some((y) => !resting.includes(y));
-    expect(moving, `строки в покое ${resting} · на 60мс ${mid}`).toBe(true);
+    const resting = frames[0].split(",").map(Number);
+    const moving = frames.some((frame) =>
+      frame
+        .split(",")
+        .map(Number)
+        .some((y) => !resting.includes(y)),
+    );
+    expect(moving, `строки в покое ${frames[0]} · кадры ${frames.join(" | ")}`).toBe(true);
   });
 
   test("подложка вкладок переезжает", async ({ page }) => {
@@ -82,18 +139,10 @@ test.describe("движение", () => {
     await page.goto(`/students/${first.results[0].id}`);
     const indicator = page.locator(".tabs__indicator");
     await expect(indicator).toBeVisible();
-    const x = () =>
-      indicator.evaluate((e) => Math.round(e.getBoundingClientRect().x));
-    const x0 = await x();
     // вкладок у роли две или три: щёлкаем последнюю, не третью
-    await page.locator(".tabs__tab").last().click();
-    await page.waitForTimeout(70);
-    const xMid = await x();
-    await page.waitForTimeout(400);
-    const x1 = await x();
-    expect(x1).not.toEqual(x0);
-    expect(xMid, `x до ${x0} · на 70мс ${xMid} · после ${x1}`).not.toEqual(x0);
-    expect(xMid).not.toEqual(x1);
+    const frames = await framesAfterClick(page, page.locator(".tabs__tab").last(), "tabs");
+    expect(frames[frames.length - 1]).not.toEqual(frames[0]);
+    expect(between(frames), `x по кадрам: ${frames.join(" ")}`).toBe(true);
   });
 
   test("меню сворачивается плавно", async ({ page }) => {
@@ -108,17 +157,14 @@ test.describe("движение", () => {
       await page.getByRole("button", { name: "Развернуть меню" }).click();
       await page.waitForTimeout(500);
     }
-    const c0 = await cols();
-    await page
-      .getByRole("button", { name: /свернуть меню|развернуть меню/i })
-      .click();
-    await page.waitForTimeout(60);
-    const cMid = await cols();
-    await page.waitForTimeout(400);
-    const c1 = await cols();
-    expect(c1).not.toEqual(c0);
-    expect(cMid, `${c0} · ${cMid} · ${c1}`).not.toEqual(c0);
-    expect(cMid).not.toEqual(c1);
+    expect(await cols()).toBeTruthy();
+    const frames = await framesAfterClick(
+      page,
+      page.getByRole("button", { name: /свернуть меню|развернуть меню/i }),
+      "grid",
+    );
+    expect(frames[frames.length - 1]).not.toEqual(frames[0]);
+    expect(between(frames), `сетка по кадрам: ${frames.join(" | ")}`).toBe(true);
     // возвращаем как было — настройка уходит на сервер
     await page
       .getByRole("button", { name: /свернуть меню|развернуть меню/i })
@@ -258,19 +304,16 @@ test.describe("движение", () => {
       timeout: 15_000,
     });
     const namesBefore = await rowNames(page);
-    const resting = await rowsY(page);
-    await page
-      .locator(".tbl th.tbl__sortable")
-      .filter({ hasText: "Задача" })
-      .click();
-    await page.waitForTimeout(40);
-    const mid = await rowsY(page);
-    await page.waitForTimeout(300);
+    const frames = await framesAfterClick(
+      page,
+      page.locator(".tbl th.tbl__sortable").filter({ hasText: "Задача" }),
+      "rows",
+    );
     const namesAfter = await rowNames(page);
-    // порядок сменился, но промежуточного положения не было: строки
-    // встали на сетку сразу
+    // порядок сменился, но промежуточного положения не было ни в одном
+    // кадре: строки встали на сетку сразу
     expect(namesAfter).not.toEqual(namesBefore);
-    expect(mid).toEqual(resting);
+    expect(frames.filter((frame) => frame !== frames[0])).toEqual([]);
     const button = page.getByRole("button", { name: "Завести шаблон" }).first();
     expect(
       await button.evaluate((e) => getComputedStyle(e).transitionDuration),
