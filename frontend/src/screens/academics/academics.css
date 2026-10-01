@@ -61,6 +61,12 @@
   font-size: var(--type-value);
 }
 
+/* Ряд временем (на экране несколько сеток звонков): начало крупно, конец
+   под ним — «10:15» в колонку номера крупным шрифтом не помещалось */
+.wk__slot--time b {
+  font-size: var(--type-body);
+}
+
 .wk__cell {
   display: flex;
   flex-direction: column;
@@ -200,7 +206,7 @@ button.les,
   color: var(--ink-3);
 }
 
-/* день на телефоне: строки по номеру урока */
+/* день на телефоне: строки по времени урока, как ряды недели */
 .dayl {
   display: flex;
   flex-direction: column;

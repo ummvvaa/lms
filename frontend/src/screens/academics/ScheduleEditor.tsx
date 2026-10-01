@@ -111,7 +111,8 @@ export default function ScheduleEditor() {
   const from = start || (today ? weekStart(today) : '')
   const week = useScheduleWeek({ from: from || undefined, view, key: key || undefined })
   const [opened, setOpened] = useState<AcadLesson | null>(null)
-  const [adding, setAdding] = useState<{ date: string; slot: number } | null>(null)
+  // ряд недели — время; номер урока известен, если в это время он один
+  const [adding, setAdding] = useState<{ date: string; slot?: number; starts?: string } | null>(null)
   const [reject, setReject] = useState<number | null>(null)
   const [approve, setApprove] = useState<ScheduleWeek['requests'][number] | null>(null)
 
@@ -153,7 +154,7 @@ export default function ScheduleEditor() {
         // неделя во всю ширину и высоту: без боковой колонки пятница не режется
         <div className="acad__stack">
           <DataCard title={t('Расписание пустое')} empty={t('ни одного урока ещё не заведено')} emptyAction={<Button variant="secondary" size="sm" onClick={() => setAdding({ date: today, slot: 1 })}>{t('Добавить первый урок')}</Button>} />
-          <WeekGrid week={data} perspective="edit" onOpen={setOpened} onAdd={(date, slot) => setAdding({ date, slot })} fill />
+          <WeekGrid week={data} perspective="edit" onOpen={setOpened} onAdd={(date, row) => setAdding({ date, slot: row.slot ?? undefined, starts: row.starts })} fill />
         </div>
       ) : (
         <>
@@ -189,7 +190,7 @@ export default function ScheduleEditor() {
             </div>
             <WeekNav start={from} today={today} onChange={setStart} />
           </div>
-          <WeekGrid week={data} perspective="edit" onOpen={setOpened} onAdd={(date, slot) => setAdding({ date, slot })} conflictIds={data.conflict_ids} fill />
+          <WeekGrid week={data} perspective="edit" onOpen={setOpened} onAdd={(date, row) => setAdding({ date, slot: row.slot ?? undefined, starts: row.starts })} conflictIds={data.conflict_ids} fill />
           <div className="acad__cols acad__cols--even">
             <div className="acad__stack">
               <DataCard title={t('Накладки')} count={data.conflicts.length || undefined} empty={data.conflicts.length === 0 && (data.next_week_conflicts ? t('на этой неделе нет, на следующей — {count}', { count: data.next_week_conflicts }) : t('на этой неделе нет'))}>

@@ -17,7 +17,7 @@ import Icon from '../../layout/icons'
 import { t, tk, tn } from '../../i18n'
 import { usePhone } from '../../phone'
 import { toast } from 'sonner'
-import { markTone, useSetGrade, type AcadDay, type AcadLesson, type AcadMark, type AcadWeek } from '../../api/academics'
+import { markTone, useSetGrade, type AcadDay, type AcadLesson, type AcadMark, type AcadWeek, type AcadWeekRow } from '../../api/academics'
 import { timeInSchoolZone } from '../../lib/dates'
 import { formatDayMonth } from '../../lib/format'
 import './academics.css'
@@ -99,15 +99,19 @@ export function LessonChip({
   perspective,
   conflict = false,
   unmarked = false,
+  number = false,
   onOpen,
 }: {
   lesson: AcadLesson
   perspective: Perspective
   conflict?: boolean
   unmarked?: boolean
+  /** номер урока в карточке: ряд недели — время, а сеток звонков на экране несколько */
+  number?: boolean
   onOpen: (lesson: AcadLesson) => void
 }) {
   const meta = [
+    number ? t('{n} ур.', { n: lesson.slot }) : '',
     perspective === 'teacher' ? '' : (lesson.actual_teacher?.short ?? t('учитель не назначен')),
     lesson.room,
     lesson.cohort.kind === 'group' && perspective === 'group' ? '' : lesson.cohort.short_name,
@@ -124,6 +128,32 @@ export function LessonChip({
         </Chip>
       )}
     </Button>
+  )
+}
+
+/** Ряд недели, в который встаёт урок или тень: время начала, без звонка — номер. */
+function rowOf(starts: string, slot: number): string {
+  return starts || `#${slot}`
+}
+
+/**
+ * Подпись ряда. Одна сетка звонков на экране — номер урока и время начала,
+ * как привыкли; несколько (неделя учителя, кабинета) — время начала и конца:
+ * в 10:15 идёт 4 урок у 8–9 и 1 урок у 10–11, номер тогда — у урока.
+ */
+function RowLabel({ row, mixed }: { row: AcadWeekRow; mixed: boolean }) {
+  if (!row.starts || (!mixed && row.slot !== null))
+    return (
+      <div className="wk__slot">
+        <b className="num">{row.slot}</b>
+        <span className="num">{row.starts}</span>
+      </div>
+    )
+  return (
+    <div className="wk__slot wk__slot--time">
+      <b className="num">{row.starts}</b>
+      <span className="num">{row.ends}</span>
+    </div>
   )
 }
 
@@ -148,6 +178,7 @@ function CellLessons({
   perspective,
   conflicts,
   unmarked,
+  number,
   onOpen,
 }: {
   cellKey: string
@@ -158,6 +189,7 @@ function CellLessons({
   perspective: Perspective
   conflicts: Set<number>
   unmarked: Set<number>
+  number: boolean
   onOpen: (lesson: AcadLesson) => void
 }) {
   const open = expanded.has(cellKey)
@@ -172,6 +204,7 @@ function CellLessons({
           perspective={perspective}
           conflict={conflicts.has(lesson.id)}
           unmarked={unmarked.has(lesson.id)}
+          number={number}
           onOpen={onOpen}
         />
       ))}
@@ -195,6 +228,11 @@ function CellLessons({
 /**
  * Неделя расписания. Сетка на ноутбуке, день на телефоне.
  *
+ * Ряд — время начала урока по звонкам его группы, а не номер урока
+ * (решение владельца, 01.10.2026): у 8–9 первый урок в 8:00, у 10–11 —
+ * в 10:15, по номеру они вставали в один ряд. Ряды собирает сервер
+ * (`week.rows`) по тем же звонкам, что проверка накладок.
+ *
  * Клетка растёт по содержимому: уроки — отдельные блоки друг под другом,
  * больше двух — два и «ещё N». `add` — редактор: пустая клетка предлагает
  * урок, у клетки с уроком — «ещё».
@@ -211,7 +249,7 @@ export function WeekGrid({
   week: AcadWeek
   perspective: Perspective
   onOpen: (lesson: AcadLesson) => void
-  onAdd?: (date: string, slot: number) => void
+  onAdd?: (date: string, row: AcadWeekRow) => void
   conflictIds?: number[]
   unmarkedIds?: number[]
   /** неделя на всю высоту окна: ряды уроков тянутся до низа экрана */
@@ -231,14 +269,13 @@ export function WeekGrid({
       else next.add(key)
       return next
     })
-  const maxSlot = Math.max(6, ...week.lessons.map((lesson) => lesson.slot))
-  const slots = week.slots.filter((slot) => slot <= Math.max(7, maxSlot))
+  const rows = week.rows
   const conflicts = new Set(conflictIds ?? [])
   const unmarked = new Set(unmarkedIds ?? [])
-  const at = (date: string, slot: number) => week.lessons.filter((lesson) => lesson.date === date && lesson.slot === slot)
-  const ghostsAt = (date: string, slot: number) => week.ghosts.filter((ghost) => ghost.date === date && ghost.slot === slot)
-  // «сейчас» — по звонкам группы каждого урока: у 8–9 и 10–11 один номер — разное время
-  const isNow = (day: AcadDay, slot: number) => day.is_today && at(day.date, slot).some((lesson) => lesson.state === 'now')
+  const at = (date: string, key: string) => week.lessons.filter((lesson) => lesson.date === date && rowOf(lesson.starts, lesson.slot) === key)
+  const ghostsAt = (date: string, key: string) => week.ghosts.filter((ghost) => ghost.date === date && rowOf(ghost.starts, ghost.slot) === key)
+  // «сейчас» — по звонкам группы каждого урока
+  const isNow = (day: AcadDay, key: string) => day.is_today && at(day.date, key).some((lesson) => lesson.state === 'now')
 
   if (phone) {
     const day = days.find((row) => row.date === picked) ?? days[0]
@@ -253,19 +290,16 @@ export function WeekGrid({
         />
         <div className="card card-pad">
           <div className="dayl">
-            {slots.map((slot) => {
-              const here = at(day.date, slot)
-              const ghosts = ghostsAt(day.date, slot)
+            {rows.map((row) => {
+              const here = at(day.date, row.key)
+              const ghosts = ghostsAt(day.date, row.key)
               if (!here.length && !ghosts.length && !onAdd) return null
               return (
-                <div key={slot} className={`dayl__row${isNow(day, slot) ? ' dayl__row--now' : ''}`}>
-                  <div className="wk__slot">
-                    <b className="num">{slot}</b>
-                    <span>{week.slots.includes(slot) ? bellOf(week, slot) : ''}</span>
-                  </div>
+                <div key={row.key} className={`dayl__row${isNow(day, row.key) ? ' dayl__row--now' : ''}`}>
+                  <RowLabel row={row} mixed={week.mixed} />
                   <div className="dayl__body">
                     <CellLessons
-                      cellKey={`${day.date}-${slot}`}
+                      cellKey={`${day.date}-${row.key}`}
                       lessons={here}
                       ghosts={ghosts}
                       expanded={expanded}
@@ -273,10 +307,11 @@ export function WeekGrid({
                       perspective={perspective}
                       conflicts={conflicts}
                       unmarked={unmarked}
+                      number={week.mixed}
                       onOpen={onOpen}
                     />
                     {onAdd && day.school_day && (
-                      <Button variant="ghost" className="wk__add" onClick={() => onAdd(day.date, slot)}>
+                      <Button variant="ghost" className="wk__add" onClick={() => onAdd(day.date, row)}>
                         <Icon name="plus" size={14} />
                         {here.length ? t('ещё урок') : t('добавить урок')}
                       </Button>
@@ -309,11 +344,11 @@ export function WeekGrid({
             </span>
           </div>
         ))}
-        {slots.map((slot) => (
+        {rows.map((row) => (
           <WeekRow
-            key={slot}
-            slot={slot}
-            bell={bellOf(week, slot)}
+            key={row.key}
+            row={row}
+            mixed={week.mixed}
             days={days}
             lessonsAt={at}
             ghostsAt={ghostsAt}
@@ -333,8 +368,8 @@ export function WeekGrid({
 }
 
 function WeekRow({
-  slot,
-  bell,
+  row,
+  mixed,
   days,
   lessonsAt,
   ghostsAt,
@@ -347,39 +382,36 @@ function WeekRow({
   onOpen,
   onAdd,
 }: {
-  slot: number
-  bell: string
+  row: AcadWeekRow
+  mixed: boolean
   days: AcadDay[]
-  lessonsAt: (date: string, slot: number) => AcadLesson[]
-  ghostsAt: (date: string, slot: number) => AcadWeek['ghosts']
-  isNow: (day: AcadDay, slot: number) => boolean
+  lessonsAt: (date: string, key: string) => AcadLesson[]
+  ghostsAt: (date: string, key: string) => AcadWeek['ghosts']
+  isNow: (day: AcadDay, key: string) => boolean
   perspective: Perspective
   conflicts: Set<number>
   unmarked: Set<number>
   expanded: Set<string>
   onToggle: (key: string) => void
   onOpen: (lesson: AcadLesson) => void
-  onAdd?: (date: string, slot: number) => void
+  onAdd?: (date: string, row: AcadWeekRow) => void
 }) {
   return (
     <>
-      <div className="wk__slot">
-        <b className="num">{slot}</b>
-        <span>{bell}</span>
-      </div>
+      <RowLabel row={row} mixed={mixed} />
       {days.map((day) => {
-        const here = lessonsAt(day.date, slot)
-        const ghosts = ghostsAt(day.date, slot)
+        const here = lessonsAt(day.date, row.key)
+        const ghosts = ghostsAt(day.date, row.key)
         const canAdd = Boolean(onAdd) && day.school_day
         return (
           <div
             key={day.date}
-            className={`wk__cell${day.is_today ? ' wk__cell--today' : ''}${isNow(day, slot) ? ' wk__cell--now' : ''}${
+            className={`wk__cell${day.is_today ? ' wk__cell--today' : ''}${isNow(day, row.key) ? ' wk__cell--now' : ''}${
               day.school_day ? '' : ' wk__cell--off'
             }`}
           >
             <CellLessons
-              cellKey={`${day.date}-${slot}`}
+              cellKey={`${day.date}-${row.key}`}
               lessons={here}
               ghosts={ghosts}
               expanded={expanded}
@@ -387,10 +419,11 @@ function WeekRow({
               perspective={perspective}
               conflicts={conflicts}
               unmarked={unmarked}
+              number={mixed}
               onOpen={onOpen}
             />
             {canAdd && (
-              <Button variant="ghost" size="icon-sm" className="wk__add" aria-label={t('Добавить урок')} title={t('Добавить урок')} onClick={() => onAdd?.(day.date, slot)}>
+              <Button variant="ghost" size="icon-sm" className="wk__add" aria-label={t('Добавить урок')} title={t('Добавить урок')} onClick={() => onAdd?.(day.date, row)}>
                 <Icon name="plus" size={14} />
               </Button>
             )}
@@ -399,11 +432,6 @@ function WeekRow({
       })}
     </>
   )
-}
-
-function bellOf(week: AcadWeek, slot: number): string {
-  const lesson = week.lessons.find((row) => row.slot === slot)
-  return lesson ? lesson.bell.split('–')[0] : ''
 }
 
 /** Стрелки недели и «К сегодня». */

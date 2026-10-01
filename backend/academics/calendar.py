@@ -221,6 +221,15 @@ class SchoolCalendar:
         """Какие расписания звонков у групп: `None` — общее."""
         return {self.group_schedule.get(g) for g in (groups or [])} or {None}
 
+    def schedule_of(self, groups=None) -> int | None:
+        """Расписание звонков состава из этих групп: `None` — общее. То же правило, что `bells_of`."""
+        ids = self.schedule_ids_of(groups)
+        if len(ids) == 1:
+            found = next(iter(ids))
+            if found is not None and found in self.schedules:
+                return found
+        return None
+
     def bells_of(self, groups=None) -> Bells:
         """Звонки для состава из этих групп. Разные расписания — общее."""
         ids = self.schedule_ids_of(groups)

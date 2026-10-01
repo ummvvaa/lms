@@ -206,6 +206,21 @@ def _lessons_for(user, start: dt.date, end: dt.date, params) -> list[Lesson] | N
     return rows
 
 
+def _view_groups(user, params) -> list[int]:
+    """Группы, выбранные экраном недели: их звонки — ряды сетки, даже пустые."""
+    role = user.role
+    if role == ROLE_STUDENT:
+        student = getattr(user, "student", None)
+        return [student.group_id] if student is not None and student.group_id else []
+    picked = _group_param(params.get("group"))
+    if role == ROLE_CURATOR:
+        mine = curated_group_ids(user)
+        return [picked.pk] if picked is not None and picked.pk in mine else list(mine)
+    if rights.reads_all(role) and picked is not None:
+        return [picked.pk]
+    return []
+
+
 def _group_param(raw) -> StudyGroup | None:
     if raw in (None, "", "all"):
         return None
@@ -249,7 +264,7 @@ def lessons(request):
     if rows is None:
         return _forbid(_("Расписание этой роли не открыто"))
     counts = _counts(rows)
-    ghosts = schedule.moved_ghosts(rows, start, end)
+    ghosts = schedule.moved_ghosts(rows, start, end, calendar)
     if request.user.role == ROLE_TEACHER:
         ghosts = [g for g in ghosts if any(lesson.pk == g["lesson"] for lesson in rows)]
     return Response(
@@ -258,6 +273,7 @@ def lessons(request):
             "to": end,
             "today": today(),
             "slots": calendar.slots,
+            **schedule.week_rows(calendar, rows, _view_groups(request.user, request.query_params)),
             "days": [
                 {
                     "date": day,

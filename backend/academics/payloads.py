@@ -116,6 +116,7 @@ STATUS_WORDS = {
 def lesson_dict(lesson: Lesson, calendar: SchoolCalendar, *, students: int | None = None) -> dict:
     groups = lesson_groups(lesson)
     state = calendar.slot_state(lesson.date, lesson.slot, groups=groups)
+    bell = calendar.bell(lesson.slot, groups)
     return {
         "id": lesson.pk,
         "course": lesson.course_id,
@@ -125,6 +126,9 @@ def lesson_dict(lesson: Lesson, calendar: SchoolCalendar, *, students: int | Non
         "date_words": date_words(lesson.date),
         "slot": lesson.slot,
         "bell": bell_text(calendar, lesson.slot, groups),
+        # ряд недели — время начала по звонкам группы урока; звонка нет — пусто,
+        # и урок встаёт в ряд своего номера
+        "starts": f"{bell[0]:%H:%M}" if bell else "",
         "room": lesson.room,
         "subject": subject_dict(lesson.course.subject),
         "cohort": (

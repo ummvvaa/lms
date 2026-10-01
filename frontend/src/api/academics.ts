@@ -85,6 +85,8 @@ export interface AcadLesson {
   date_words: string
   slot: number
   bell: string
+  /** время начала по звонкам группы урока, «08:00»; звонка нет — пусто */
+  starts: string
   room: string
   subject: AcadSubject
   cohort: AcadCohort
@@ -171,14 +173,27 @@ export interface AcadDay {
   is_today: boolean
 }
 
+/** Ряд недели — время начала урока по звонкам его группы (`key` — «08:00»,
+ *  у урока без звонка — «#5»). `slot` — номер, если в это время он один. */
+export interface AcadWeekRow {
+  key: string
+  starts: string
+  ends: string
+  slot: number | null
+}
+
 export interface AcadWeek {
   from: string
   to: string
   today: string
   slots: number[]
+  /** ряды сетки по времени, собирает сервер по тем же звонкам, что накладки */
+  rows: AcadWeekRow[]
+  /** на экране больше одного расписания звонков: номер пишется у урока */
+  mixed: boolean
   days: AcadDay[]
   lessons: AcadLesson[]
-  ghosts: { lesson: number; date: string; slot: number; moved_to_date: string; moved_to_slot: number }[]
+  ghosts: { lesson: number; date: string; slot: number; starts: string; moved_to_date: string; moved_to_slot: number }[]
 }
 
 export interface AcadConflict {

@@ -88,8 +88,10 @@ def schedule_week(request):
     groups = list(StudyGroup.objects.filter(is_active=True).order_by("code"))
     staff = teachers.teachers()
     shown = rows
+    view_groups: list[int] = []
     if view == "group":
         picked = _group_param(key) or (groups[0] if groups else None)
+        view_groups = [picked.pk] if picked else []
         shown = schedule.for_groups(rows, [picked.pk]) if picked else []
         key = picked.code if picked else ""
     elif view == "teacher":
@@ -118,6 +120,7 @@ def schedule_week(request):
             "to": end,
             "today": today(),
             "slots": calendar.slots,
+            **schedule.week_rows(calendar, shown, view_groups),
             "view": view,
             "key": key,
             "days": [
@@ -132,7 +135,7 @@ def schedule_week(request):
             "lessons": [
                 lesson_dict(lesson, calendar, students=counts.get(lesson.course.cohort_id)) for lesson in shown
             ],
-            "ghosts": schedule.moved_ghosts(shown, start, end),
+            "ghosts": schedule.moved_ghosts(shown, start, end, calendar),
             "conflicts": conflicts,
             "conflict_ids": sorted({c["lesson"] for c in conflicts} | {c["other"] for c in conflicts}),
             "next_week_conflicts": len(next_conflicts),

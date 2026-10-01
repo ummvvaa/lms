@@ -819,22 +819,71 @@ def stale_unmarked(calendar: SchoolCalendar, start: dt.date, end: dt.date) -> li
     ]
 
 
-def moved_ghosts(rows, start: dt.date, end: dt.date) -> list[dict]:
-    """Тени перенесённых уроков на прежнем месте — чтобы неделя показала «перенесён на»."""
+def moved_ghosts(rows, start: dt.date, end: dt.date, calendar: SchoolCalendar | None = None) -> list[dict]:
+    """Тени перенесённых уроков на прежнем месте — чтобы неделя показала «перенесён на».
+
+    `starts` — время прежнего места по звонкам группы урока: тень встаёт
+    в тот же ряд недели, что стоял урок до переноса.
+    """
+    from academics import calendar as school_calendar
+
+    calendar = calendar or school_calendar.load()
     out = []
     for lesson in Lesson.objects.filter(
         status=LessonStatus.MOVED, moved_from_date__gte=start, moved_from_date__lte=end
     ).select_related("course", "course__subject", "course__cohort"):
+        span = span_of(calendar, lesson.moved_from_slot, lesson_groups(lesson)) if lesson.moved_from_slot else None
         out.append(
             {
                 "lesson": lesson.pk,
                 "date": lesson.moved_from_date,
                 "slot": lesson.moved_from_slot,
+                "starts": f"{span[0]:%H:%M}" if span else "",
                 "moved_to_date": lesson.date,
                 "moved_to_slot": lesson.slot,
             }
         )
     return out
+
+
+def week_rows(calendar: SchoolCalendar, lessons, groups=()) -> dict:
+    """Ряды недели по времени начала урока, а не по номеру (решение владельца, 01.10.2026).
+
+    У 8–9 классов первый урок в 8:00, у 10–11 — в 10:15: в неделе учителя
+    или кабинета они стоят в разных рядах, а 4 урок 8–9 и 1 урок 10–11
+    (оба в 10:15) — в одном. Ряды — все звонки расписаний, которые есть
+    на экране: звонки групп показанных уроков и групп, выбранных экраном
+    (`groups`), — пустой звонок своей группы тоже ряд, в него добавляют
+    урок. Время то же, что у проверки накладок (`lesson_span`).
+
+    `slot` у ряда — номер урока, если в это время он один; `mixed` — на
+    экране больше одного расписания звонков, и номер пишется у урока,
+    а не у ряда. Урок, у номера которого нет звонка, встаёт в ряд
+    `#<номер>` в конце дня.
+    """
+    schedules = {calendar.schedule_of(lesson_groups(lesson)) for lesson in lessons}
+    schedules |= {calendar.schedule_of([group]) for group in groups}
+    if not schedules:
+        schedules = {None}
+    at: dict[dt.time, dict[str, set]] = {}
+    for found in schedules:
+        bells = calendar.schedules.get(found, calendar.bells) if found is not None else calendar.bells
+        for slot, (starts, ends) in bells.items():
+            row = at.setdefault(starts, {"slots": set(), "ends": set()})
+            row["slots"].add(slot)
+            row["ends"].add(ends)
+    rows = [
+        {
+            "key": f"{starts:%H:%M}",
+            "starts": f"{starts:%H:%M}",
+            "ends": f"{next(iter(row['ends'])):%H:%M}" if len(row["ends"]) == 1 else "",
+            "slot": next(iter(row["slots"])) if len(row["slots"]) == 1 else None,
+        }
+        for starts, row in sorted(at.items())
+    ]
+    loose = sorted({lesson.slot for lesson in lessons if lesson_span(lesson, calendar) is None})
+    rows += [{"key": f"#{slot}", "starts": "", "ends": "", "slot": slot} for slot in loose]
+    return {"rows": rows, "mixed": len(schedules) > 1}
 
 
 def touches_teacher_or_group(
