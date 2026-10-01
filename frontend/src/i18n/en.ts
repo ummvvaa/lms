@@ -100,6 +100,7 @@ export const en: Record<string, string> = {
   '{n} день|{n} дня|{n} дней': '{n} day|{n} days',
   '{n} дн': '{n} d',
   '{n} ждёт вашего решения. Ничего не применяется само.|{n} ждут вашего решения. Ничего не применяется само.|{n} ждут вашего решения. Ничего не применяется само.': '{n} suggestion awaits your decision. Nothing is applied automatically.|{n} suggestions await your decision. Nothing is applied automatically.',
+  '{n} журнал|{n} журнала|{n} журналов': '{n} gradebook|{n} gradebooks',
   '{n} задача под требования этой программы; выполнено {done}.|{n} задачи под требования этой программы; выполнено {done}.|{n} задач под требования этой программы; выполнено {done}.': '{n} task for this programme\'s requirements; {done} done.|{n} tasks for this programme\'s requirements; {done} done.',
   '{n} мин': '{n} min',
   '{n} мин чтения': '{n} min read',

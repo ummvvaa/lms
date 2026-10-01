@@ -481,7 +481,7 @@ export default function Cohorts() {
       </StatRow>
       <div className="acad__stack">
         <DataCard title={t('Группы')} count={groups.length || undefined} right={<Field kind="text" name="search" label={t('Найти группу')} value={search} onChange={setSearch} />}>
-          <DataTable columns={columns} rows={groups} rowKey={(g) => g.id} empty={t('групп не найдено')} />
+          <DataTable columns={columns} rows={groups} rowKey={(g) => g.id} empty={t('групп не найдено')} fit />
         </DataCard>
         <DataCard
           title={t('Потоки')}
@@ -489,7 +489,7 @@ export default function Cohorts() {
           empty={data.streams.length === 0 && t('потоков нет')}
           emptyAction={data.streams.length === 0 ? <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'stream' })}>{t('Собрать')}</Button> : undefined}
         >
-          <DataTable columns={streamColumns} rows={data.streams} rowKey={(s) => s.id} />
+          <DataTable columns={streamColumns} rows={data.streams} rowKey={(s) => s.id} fit />
         </DataCard>
       </div>
       {dialog?.kind === 'split' && <SplitDrawer groups={data.groups} subjects={data.subjects} initial={dialog.group} onClose={() => setDialog(null)} />}

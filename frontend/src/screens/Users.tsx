@@ -300,11 +300,14 @@ export default function Users() {
       },
     )
 
+  // Таблица в ширину карточки: с шириной 960 px «Выдать пароль» и меню строки
+  // на окне уже 1200 уезжали за край. Роль — под именем и почтой той же
+  // клетки: отдельной колонкой ей не хватало места, и должность резалась
   const columns: Column<ManagedUser>[] = [
     {
       key: 'pick',
       title: '',
-      width: '5%',
+      width: '48px',
       cell: (user) => (
         <Checkbox
           checked={picked.includes(user.id)}
@@ -316,30 +319,33 @@ export default function Users() {
     {
       key: 'person',
       title: t('Человек'),
-      width: '30%',
+      width: 'auto',
       cell: (user) => (
-        <>
-          <b>{user.full_name || t('без имени')}</b>
-          {user.is_probe && (
-            <Chip size="sm">
-              {t('прогон')}
-            </Chip>
-          )}
-          <span className="t-note"> · {user.email || user.login}</span>
-          {!user.is_active && (
-            <Chip size="sm">
-              {t('доступ отключён')}
-            </Chip>
-          )}
-        </>
+        <span className="users__who">
+          <span>
+            <b>{user.full_name || t('без имени')}</b>
+            {user.is_probe && (
+              <Chip size="sm">
+                {t('прогон')}
+              </Chip>
+            )}
+            <span className="t-note"> · {user.email || user.login}</span>
+            {!user.is_active && (
+              <Chip size="sm">
+                {t('доступ отключён')}
+              </Chip>
+            )}
+          </span>
+          <RolePick user={user} />
+        </span>
       ),
       sortBy: (user) => (user.full_name || user.email || user.login || '').toLowerCase(),
     },
-    { key: 'role', title: t('Роль'), width: '19%', cell: (user) => <RolePick user={user} />, sortBy: (user) => user.role },
     {
       key: 'access',
       title: t('Доступ'),
-      width: '10%',
+      hint: t('Доступ'),
+      width: '152px',
       cell: (user) => (user.sees_whole_school ? <Chip tone="info" size="sm">{t('вся школа')}</Chip> : <span className="t-note">{t('свои')}</span>),
       sortBy: (user) => (user.sees_whole_school ? 0 : 1),
     },
@@ -348,15 +354,15 @@ export default function Users() {
       // одно и то же, а склеивать его на экране значило бы завести второй источник правды
       key: 'password',
       title: t('Пароль'),
-      width: '16%',
+      width: '176px',
       cell: (user) => (
-        <Chip tone={STATE_TONE[user.password_state] ?? 'neutral'} size="sm">
+        <Chip tone={STATE_TONE[user.password_state] ?? 'neutral'} size="sm" className="users__state">
           {user.password_state_title}
         </Chip>
       ),
       sortBy: (user) => user.password_state,
     },
-    { key: 'acts', title: '', width: '20%', align: 'right', cell: (user) => <UserActions user={user} /> },
+    { key: 'acts', title: '', width: '184px', actions: true, cell: (user) => <UserActions user={user} /> },
   ]
 
   const closePanel = () => setPanel(null)
@@ -462,7 +468,7 @@ export default function Users() {
               ) : undefined
             }
           >
-            <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} selected={(row) => picked.includes(row.id)} minWidth="960px" />
+            <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} selected={(row) => picked.includes(row.id)} fit />
           </DataCard>
           {/* кто заперт после неудачных попыток входа и кнопка снять */}
           <LoginLocks />

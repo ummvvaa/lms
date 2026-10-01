@@ -252,27 +252,30 @@ export default function Teachers() {
   if (!data) return null
   const unmarkedAll = data.rows.filter((row) => row.unmarked.length)
   const rows = data.rows.filter((row) => (filter === 'all' || (filter === 'unmarked' && row.unmarked.length) || (filter === 'free' && !row.hours)) && (!search || row.full_name.toLowerCase().includes(search.toLowerCase())))
+  // таблица в ширину карточки: числа и кнопка — колонками числом, имя
+  // и полоса отметок делят остаток; с шириной 880 px «Открыть» уходила за край
   const columns: Column<TeacherRow>[] = [
     {
       key: 'name',
       title: t('Учитель'),
-      width: '28%',
+      width: 'auto',
       cell: (row) => (
         <span>
           <b>{row.full_name}</b>
           <br />
-          <span className="t-note">{row.subject_titles || t('предметы не назначены')}</span>
+          {/* число журналов — здесь, а не колонкой: в таблице шириной в карточку
+              колонка «Журналов» отнимала место у имени */}
+          <span className="t-note">{[row.subject_titles || t('предметы не назначены'), row.journals ? tn(row.journals, '{n} журнал|{n} журнала|{n} журналов').replace(' ', '\u00a0') : ''].filter(Boolean).join(' · ')}</span>
         </span>
       ),
       sortBy: (row) => row.full_name,
     },
-    { key: 'hours', title: t('Уроков'), hint: t('Уроков в неделю'), width: '10%', align: 'right', cell: (row) => (row.hours ? <b className="num">{row.hours}</b> : <span className="t-note">{t('нет')}</span>), sortBy: (row) => row.hours },
-    { key: 'journals', title: t('Журналов'), width: '10%', align: 'right', cell: (row) => (row.journals ? <b className="num">{row.journals}</b> : <span className="t-note">{t('нет')}</span>), sortBy: (row) => row.journals },
+    { key: 'hours', title: t('Уроков'), hint: t('Уроков в неделю'), width: '112px', align: 'right', cell: (row) => (row.hours ? <b className="num">{row.hours}</b> : <span className="t-note">{t('нет')}</span>), sortBy: (row) => row.hours },
     {
       key: 'fill',
       title: t('Отмечено'),
       hint: t('Отмечено за неделю'),
-      width: '22%',
+      width: '176px',
       cell: (row) =>
         row.fill === null ? (
           <span className="t-note">{t('уроков не было')}</span>
@@ -284,12 +287,12 @@ export default function Teachers() {
         ),
       sortBy: (row) => row.fill,
     },
-    { key: 'last', title: t('Последняя'), hint: t('Последняя отметка'), width: '16%', cell: (row) => (row.last_marked ? `${dateShort(row.last_marked.date)}, ${t('{slot} урок', { slot: row.last_marked.slot })}` : <span className="t-note">{t('не было')}</span>) },
+    { key: 'last', title: t('Последняя'), hint: t('Последняя отметка'), width: '136px', cell: (row) => (row.last_marked ? `${dateShort(row.last_marked.date)}, ${t('{slot} урок', { slot: row.last_marked.slot })}` : <span className="t-note">{t('не было')}</span>) },
     {
       key: 'act',
       title: '',
-      width: '12%',
-      align: 'right',
+      width: '112px',
+      actions: true,
       cell: (row) => (
         <Button variant="secondary" size="sm" onClick={() => setOpened(row.id)}>
           {t('Открыть')}
@@ -340,7 +343,7 @@ export default function Teachers() {
       </div>
       <div className="acad__stack">
         <div className="card">
-          <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} empty={t('никого не нашлось')} onRowClick={(row) => setOpened(row.id)} minWidth="880px" />
+          <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} empty={t('никого не нашлось')} onRowClick={(row) => setOpened(row.id)} fit />
         </div>
         {unmarkedAll.length > 0 && (
           <DataCard title={t('Не отмечено за неделю')} count={unmarkedAll.length}>

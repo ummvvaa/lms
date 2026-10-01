@@ -30,31 +30,49 @@ export default function Digest() {
 
   const school = data.domain === 'school'
   const columns: Column<Change>[] = [
-    { key: 'when', title: t('Когда'), width: '14%', cell: (row) => <span className="num">{formatDateTime(row.created_at)}</span>, sortBy: (row) => row.created_at },
+    // таблица во всю ширину страницы и в ширину карточки: дата — числом,
+    // текстовые колонки делят остаток; в левой колонке страницы семь колонок
+    // резались многоточием даже на 1440. Домен — подписью под полем, а не
+    // колонкой: седьмая колонка на окне 1024 не помещалась
+    { key: 'when', title: t('Когда'), width: '160px', cell: (row) => <span className="num">{formatDateTime(row.created_at)}</span>, sortBy: (row) => row.created_at },
     ...(school
       ? [
-          { key: 'domain', title: t('Домен'), width: '14%', cell: (row: Change) => row.domain_title || <span className="t-note">{t('учёба')}</span>, sortBy: (row: Change) => row.domain_title ?? '' },
-          { key: 'student', title: t('У кого'), width: '16%', cell: (row: Change) => row.student_title || <span className="t-note">{t('справочник')}</span> },
+          { key: 'student', title: t('У кого'), width: 'auto', cell: (row: Change) => row.student_title || <span className="t-note">{t('справочник')}</span> },
         ]
       : []),
-    { key: 'field', title: t('Поле'), width: school ? '16%' : '22%', cell: (row) => row.field_title },
+    {
+      key: 'field',
+      title: t('Поле'),
+      width: 'auto',
+      cell: (row) =>
+        school ? (
+          <span>
+            {row.field_title}
+            <br />
+            <span className="t-note">{row.domain_title || t('учёба')}</span>
+          </span>
+        ) : (
+          row.field_title
+        ),
+    },
     {
       key: 'change',
       title: t('Было и стало'),
-      width: school ? '22%' : '30%',
+      // самая длинная клетка — два значения со стрелкой: ей доля больше
+      width: '28%',
       cell: (row) => (
         <span className="num">
           <span className="t-note">{row.old_display || t('пусто')}</span> {'→'} <b>{row.new_display || t('пусто')}</b>
         </span>
       ),
     },
-    ...(school ? [] : [{ key: 'source', title: t('Источник'), width: '12%', cell: (row: Change) => <Chip size="sm">{row.source_title}</Chip> }]),
+    ...(school ? [] : [{ key: 'source', title: t('Источник'), width: 'auto', cell: (row: Change) => <Chip size="sm">{row.source_title}</Chip> }]),
     {
       // кто правил и за какой домен (D6): владелец должен видеть,
       // что значение внёс администратор, а не он сам
       key: 'actor',
       title: t('Кто'),
-      width: school ? '18%' : '20%',
+      width: 'auto',
       cell: (row) => (
         <>
           {row.actor_name}
@@ -84,53 +102,56 @@ export default function Digest() {
           />
         </StatRow>
       )}
-      <div className="acad__cols">
-        <div className="acad__stack">
-          <DataCard title={school ? t('За сутки') : t('Что изменилось со вчера')} empty={data.lines.length === 0 && t('со вчера ничего не менялось')}>
-            <Rows>
-              {data.lines.map((line, index) => (
-                <Row key={index} icon="news" title={line} />
-              ))}
-            </Rows>
-          </DataCard>
-          {school && (
-            <DataCard title={t('За неделю')} empty={(data.week_lines ?? []).length === 0 && t('за неделю правок не было')}>
+      <div className="acad__stack">
+        <div className="acad__cols">
+          <div className="acad__stack">
+            <DataCard title={school ? t('За сутки') : t('Что изменилось со вчера')} empty={data.lines.length === 0 && t('со вчера ничего не менялось')}>
               <Rows>
-                {(data.week_lines ?? []).map((line, index) => (
-                  <Row key={index} icon="history" title={line} />
+                {data.lines.map((line, index) => (
+                  <Row key={index} icon="news" title={line} />
                 ))}
               </Rows>
             </DataCard>
-          )}
-          <DataCard title={t('Последние изменения')} count={data.recent.length || undefined} empty={data.recent.length === 0 && t('пока ничего не менялось')}>
-            <DataTable columns={columns} rows={data.recent} rowKey={(row) => `${row.created_at}-${row.field_title}-${row.student_title ?? ''}`} limit={20} minWidth={school ? '880px' : undefined} />
-          </DataCard>
-        </div>
-        <div className="acad__stack">
-          <DataCard title={school ? t('Ждёт решения') : t('Ждёт вашего решения')} count={data.pending.length || undefined} empty={data.pending.length === 0 && t('ничего не ждёт решения')}>
-            {school && (data.pending_lines ?? []).length > 0 && (
-              <Rows>
-                {(data.pending_lines ?? []).map((line, index) => (
-                  <Row key={`line-${index}`} icon="inbox" tone="warn" title={line} />
-                ))}
-              </Rows>
+            {school && (
+              <DataCard title={t('За неделю')} empty={(data.week_lines ?? []).length === 0 && t('за неделю правок не было')}>
+                <Rows>
+                  {(data.week_lines ?? []).map((line, index) => (
+                    <Row key={index} icon="history" title={line} />
+                  ))}
+                </Rows>
+              </DataCard>
             )}
-            <Rows>
-              {data.pending.map((row) => (
-                <Row key={row.id} icon="bulb" tone="warn" title={row.title} note={[row.domain_title, row.text].filter(Boolean).join(' · ')} onOpen={() => navigate(`/suggestions/${row.id}`)} openLabel={t('Открыть')} />
-              ))}
-            </Rows>
-          </DataCard>
-          {school && reports && (
-            <DataCard title={t('Отчёты родителям')} note={t(reports.title)}>
+          </div>
+          <div className="acad__stack">
+            <DataCard title={school ? t('Ждёт решения') : t('Ждёт вашего решения')} count={data.pending.length || undefined} empty={data.pending.length === 0 && t('ничего не ждёт решения')}>
+              {school && (data.pending_lines ?? []).length > 0 && (
+                <Rows>
+                  {(data.pending_lines ?? []).map((line, index) => (
+                    <Row key={`line-${index}`} icon="inbox" tone="warn" title={line} />
+                  ))}
+                </Rows>
+              )}
               <Rows>
-                {reports.statuses.map((row) => (
-                  <Row key={row.code} title={t(row.title)} value={Number(reports[row.code] ?? 0) || null} none={t('нет')} />
+                {data.pending.map((row) => (
+                  <Row key={row.id} icon="bulb" tone="warn" title={row.title} note={[row.domain_title, row.text].filter(Boolean).join(' · ')} onOpen={() => navigate(`/suggestions/${row.id}`)} openLabel={t('Открыть')} />
                 ))}
               </Rows>
             </DataCard>
-          )}
+            {school && reports && (
+              <DataCard title={t('Отчёты родителям')} note={t(reports.title)}>
+                <Rows>
+                  {reports.statuses.map((row) => (
+                    <Row key={row.code} title={t(row.title)} value={Number(reports[row.code] ?? 0) || null} none={t('нет')} />
+                  ))}
+                </Rows>
+              </DataCard>
+            )}
+          </div>
         </div>
+        {/* семь колонок во всю ширину страницы, а не в левой колонке */}
+        <DataCard title={t('Последние изменения')} count={data.recent.length || undefined} empty={data.recent.length === 0 && t('пока ничего не менялось')}>
+          <DataTable columns={columns} rows={data.recent} rowKey={(row) => `${row.created_at}-${row.field_title}-${row.student_title ?? ''}`} limit={20} fit />
+        </DataCard>
       </div>
     </div>
   )

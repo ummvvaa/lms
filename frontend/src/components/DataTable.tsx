@@ -60,6 +60,7 @@ export default function DataTable<T>({
   limit,
   foot,
   minWidth,
+  fit = false,
 }: {
   columns: Column<T>[]
   rows: T[]
@@ -80,6 +81,10 @@ export default function DataTable<T>({
   /** наименьшая ширина таблицы: колонок много — прокрутка внутри карточки,
    *  первая колонка закреплена, шапки не режутся (правило 4, 27.09.2026) */
   minWidth?: string
+  /** таблица всегда в ширину карточки, без прокрутки вбок: текст в клетках
+   *  и шапки переносятся между словами, слово шире колонки ломается, только
+   *  если не влезает целиком. Узкие колонки — числом, текстовые — `auto` */
+  fit?: boolean
 }) {
   const [sort, setSort] = useState<{ key: string; direction: Direction } | null>(null)
   const [open, setOpen] = useState(false)
@@ -119,7 +124,7 @@ export default function DataTable<T>({
     <>
       {/* прокрутка живёт внутри карточки: на узком экране вбок едет таблица,
           а не вся страница */}
-      <Table className={minWidth ? 'tbl tbl--wide' : 'tbl'} containerClassName="tblwrap" style={minWidth ? ({ '--tbl-min': minWidth } as CSSProperties) : undefined}>
+      <Table className={minWidth ? 'tbl tbl--wide' : fit ? 'tbl tbl--fit' : 'tbl'} containerClassName="tblwrap" style={minWidth ? ({ '--tbl-min': minWidth } as CSSProperties) : undefined}>
         <colgroup>
           {columns.map((column) => (
             <col key={column.key} style={{ width: column.width }} />

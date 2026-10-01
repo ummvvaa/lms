@@ -191,12 +191,29 @@
   vertical-align: middle;
 }
 
-/* Столбец состояния: самая длинная подпись — «Ждёт смены пароля»,
-   и обрезать её нельзя. По ней человек читает строку, а «Ждёт смены
-   паро…» ничего не говорит. Ширина колонки задана числом в `colgroup`:
-   `min-width` таблица с `table-layout: fixed` не читает (фаза 69) */
-.users__state {
-  white-space: nowrap;
+/* Клетка «Человек»: имя и почта, под ними — роль. Отдельной колонкой
+   роли не хватало места в таблице шириной в карточку, должность резалась */
+.users__who {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space) * 1);
+  padding-block: calc(var(--space) * 2);
+}
+
+.users__who [data-slot='native-select-wrapper'] {
+  max-width: 100%;
+}
+
+/* Состояние пароля: обрезать подпись нельзя — по ней человек читает
+   строку, а «Ждёт смены паро…» ничего не говорит. Таблица шириной
+   в карточку, и самая длинная подпись («Құпиясөзді өзгертуді күтуде»)
+   переносится внутри чипа, а не режется краем колонки */
+body .tbl [data-slot='badge'].users__state {
+  height: auto;
+  min-height: calc(var(--space) * 5);
+  white-space: normal;
+  line-height: 1.3;
 }
 
 .users__actions {
