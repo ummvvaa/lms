@@ -6,6 +6,11 @@
  * Потоки — компактной таблицей. Разделение группы и сбор потока — в панели
  * справа по шагам: что делим, на сколько, кто куда. Подгруппа открывается
  * из строки — состав правится там же.
+ *
+ * Обе таблицы помещаются в ширину карточки на любом окне: наименьшей ширины
+ * нет, узкие колонки — числом, текстовые делят остаток, длинный список
+ * сворачивается в «+N», кнопки строки стоят одной линией справа. С шириной
+ * 880 px таблица потоков уезжала в прокрутку, и кнопки прятались за краем.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -330,7 +335,8 @@ function SubgroupsLine({ rows, onOpen }: { rows: AcadCohort[]; onOpen: (id: numb
           {cohorts
             .sort((a, b) => (a.number ?? 0) - (b.number ?? 0))
             .map((cohort) => (
-              <Button key={cohort.id} variant="link" size="sm" className="num" onClick={() => onOpen(cohort.id)}>
+              // ссылка без размера `sm`: с ним пять подгрупп занимали пять строк высотой кнопки
+              <Button key={cohort.id} variant="link" className="cohorts__link num" onClick={() => onOpen(cohort.id)}>
                 {`${t('подгр. {number}', { number: cohort.number ?? '' })} · ${t('{count} уч.', { count: cohort.students })}`}
               </Button>
             ))}
@@ -340,15 +346,34 @@ function SubgroupsLine({ rows, onOpen }: { rows: AcadCohort[]; onOpen: (id: numb
   )
 }
 
-/** Список значений через запятую: переносится между значениями, не посреди. */
+/** Сколько значений списка видно сразу, если их больше `LIST_MAX`. */
+const LIST_SHOWN = 3
+const LIST_MAX = 4
+
+/** Список значений через запятую: переносится между значениями, не посреди.
+ *  Длиннее четырёх — первые три и «+N», список раскрывается на месте. */
 function WrapList({ items, sep = ',' }: { items: string[]; sep?: string }) {
+  const [open, setOpen] = useState(false)
+  const long = items.length > LIST_MAX
+  const shown = long && !open ? items.slice(0, LIST_SHOWN) : items
   return (
     <span className="acad__wrapline">
-      {items.map((item, index) => (
+      {shown.map((item, index) => (
         <span key={`${index}-${item}`} className="acad__item">
-          {index < items.length - 1 ? `${item}${sep}` : item}
+          {index < shown.length - 1 ? `${item}${sep}` : item}
         </span>
       ))}
+      {long && (
+        <Button
+          variant="link"
+          className="cohorts__link num"
+          aria-expanded={open}
+          aria-label={open ? t('Свернуть') : t('Показать все {total}', { total: items.length })}
+          onClick={() => setOpen(!open)}
+        >
+          {open ? t('Свернуть') : `+${items.length - LIST_SHOWN}`}
+        </Button>
+      )}
     </span>
   )
 }
@@ -363,22 +388,23 @@ export default function Cohorts() {
   if (!data) return null
   const groups = data.groups.filter((g) => !search || g.code.toLowerCase().includes(search.toLowerCase()))
   const columns: Column<GroupRow>[] = [
-    { key: 'group', title: t('Группа'), width: '12%', cell: (g) => <b>{g.code}</b>, sortBy: (g) => g.code },
-    { key: 'students', title: t('Уч.'), hint: t('Учеников'), width: '8%', align: 'right', cell: (g) => <b className="num">{g.students}</b>, sortBy: (g) => g.students },
+    // узкие колонки — числом: доля от узкой таблицы резала название группы
+    { key: 'group', title: t('Группа'), width: '144px', cell: (g) => <b>{g.code}</b>, sortBy: (g) => g.code },
+    { key: 'students', title: t('Уч.'), hint: t('Учеников'), width: '88px', align: 'right', cell: (g) => <b className="num">{g.students}</b>, sortBy: (g) => g.students },
     {
       key: 'subgroups',
       title: t('Подгруппы'),
-      // забирает всё, что осталось от прочих колонок
+      // текстовые колонки делят поровну всё, что осталось от узких
       width: 'auto',
       cell: (g) => (g.subgroups.length ? <SubgroupsLine rows={g.subgroups} onOpen={(id) => setDialog({ kind: 'sub', id })} /> : <span className="t-note">{t('учится целиком')}</span>),
     },
-    { key: 'streams', title: t('В потоках'), width: '22%', cell: (g) => (g.streams.length ? <WrapList items={g.streams} /> : <span className="t-note">{t('нет')}</span>) },
+    { key: 'streams', title: t('В потоках'), width: 'auto', cell: (g) => (g.streams.length ? <WrapList items={g.streams} /> : <span className="t-note">{t('нет')}</span>) },
     {
       // кнопка в строке не сжимается вместе с таблицей: ширина числом, не долей
       key: 'split',
       title: '',
-      width: '136px',
-      align: 'right',
+      width: '128px',
+      actions: true,
       cell: (g) => (
         <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'split', group: g.code })}>
           {t('Разделить')}
@@ -387,13 +413,13 @@ export default function Cohorts() {
     },
   ]
   const streamColumns: Column<AcadCohort>[] = [
-    // название забирает всё, что осталось от прочих колонок
+    // текстовые колонки делят поровну всё, что осталось от узких
     { key: 'name', title: t('Поток'), width: 'auto', cell: (s) => <b>{s.name}</b>, sortBy: (s) => s.name },
-    { key: 'students', title: t('Учеников'), width: '12%', align: 'right', cell: (s) => <b className="num">{s.students}</b>, sortBy: (s) => s.students },
+    { key: 'students', title: t('Уч.'), hint: t('Учеников'), width: '88px', align: 'right', cell: (s) => <b className="num">{s.students}</b>, sortBy: (s) => s.students },
     {
       key: 'parts',
       title: t('Части'),
-      width: '24%',
+      width: 'auto',
       cell: (s) =>
         s.parts?.length || s.subgroups?.length ? (
           <span className="acad__wrapline">
@@ -408,7 +434,7 @@ export default function Cohorts() {
     {
       key: 'used',
       title: t('В расписании'),
-      width: '24%',
+      width: 'auto',
       cell: (s) => ((s.used as string[] | undefined)?.length ? <WrapList items={s.used as string[]} sep=";" /> : <span className="t-note">{t('не используется')}</span>),
     },
     {
@@ -416,10 +442,10 @@ export default function Cohorts() {
       // иначе на узкой доле колонки они уезжали за край карточки
       key: 'acts',
       title: '',
-      width: '168px',
-      align: 'right',
+      width: '152px',
+      actions: true,
       cell: (s) => (
-        <span className="acad__inline">
+        <>
           <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'stream', stream: s })}>
             {t('Изменить')}
           </Button>
@@ -428,12 +454,12 @@ export default function Cohorts() {
               {t('Удалить поток')}
             </RowMenuItem>
           </RowMenu>
-        </span>
+        </>
       ),
     },
   ]
   return (
-    <div>
+    <div className="cohorts">
       <ScreenHead
         title={t('Подгруппы и потоки')}
         actions={
@@ -455,7 +481,7 @@ export default function Cohorts() {
       </StatRow>
       <div className="acad__stack">
         <DataCard title={t('Группы')} count={groups.length || undefined} right={<Field kind="text" name="search" label={t('Найти группу')} value={search} onChange={setSearch} />}>
-          <DataTable columns={columns} rows={groups} rowKey={(g) => g.id} empty={t('групп не найдено')} minWidth="760px" />
+          <DataTable columns={columns} rows={groups} rowKey={(g) => g.id} empty={t('групп не найдено')} />
         </DataCard>
         <DataCard
           title={t('Потоки')}
@@ -463,7 +489,7 @@ export default function Cohorts() {
           empty={data.streams.length === 0 && t('потоков нет')}
           emptyAction={data.streams.length === 0 ? <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'stream' })}>{t('Собрать')}</Button> : undefined}
         >
-          <DataTable columns={streamColumns} rows={data.streams} rowKey={(s) => s.id} minWidth="880px" />
+          <DataTable columns={streamColumns} rows={data.streams} rowKey={(s) => s.id} />
         </DataCard>
       </div>
       {dialog?.kind === 'split' && <SplitDrawer groups={data.groups} subjects={data.subjects} initial={dialog.group} onClose={() => setDialog(null)} />}

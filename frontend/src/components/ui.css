@@ -1916,6 +1916,24 @@ button.head__pill:hover:not(.head__pill--on) {
   background: var(--surface-2);
 }
 
+/* Кнопки строки (`actions` у колонки): одной линией у правого края. Клетка
+   их не режет и не переносит — «Изменить» и меню строки уезжали за край
+   колонки и прятались под обрезкой клетки */
+.tbl .tbl__acts {
+  text-align: right;
+  overflow: visible;
+}
+
+.tbl__buttons {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
 /* числа и даты — по правому краю, вместе со своим заголовком */
 .tbl .tbl__right {
   text-align: right;
@@ -2263,6 +2281,16 @@ button.head__pill:hover:not(.head__pill--on) {
 
   .tbl tbody tr:hover td {
     background: none;
+  }
+
+  /* Кнопки строки — внизу карточки справа, одной линией; подписи у них нет */
+  .tbl td.tbl__acts {
+    justify-content: flex-end;
+    padding-top: calc(var(--space) * 2);
+  }
+
+  .tbl td.tbl__acts::before {
+    display: none;
   }
 
   /* Карточки таблицы быстрого ввода — те же пары, но своей разметкой:

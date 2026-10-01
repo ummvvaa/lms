@@ -38,6 +38,9 @@ export interface Column<T> {
   cell: (row: T) => ReactNode
   /** по чему сортировать. Не задано — колонка не сортируется */
   sortBy?: (row: T) => string | number | null | undefined
+  /** кнопки строки: одной линией справа, клетка их не режет и не переносит;
+   *  на телефоне — внизу карточки справа. Ширина колонки — числом под кнопки */
+  actions?: boolean
 }
 
 type Direction = 'asc' | 'desc'
@@ -129,6 +132,7 @@ export default function DataTable<T>({
               const className = [
                 't-caps',
                 column.align === 'right' ? 'tbl__right' : '',
+                column.actions ? 'tbl__acts' : '',
                 column.sortBy ? 'tbl__sortable' : '',
               ]
                 .filter(Boolean)
@@ -183,7 +187,7 @@ export default function DataTable<T>({
                 {columns.map((column, index) => (
                   <TableCell
                     key={column.key}
-                    className={column.align === 'right' ? 'tbl__right' : undefined}
+                    className={[column.align === 'right' ? 'tbl__right' : '', column.actions ? 'tbl__acts' : ''].filter(Boolean).join(' ') || undefined}
                     /* подпись колонки едет с ячейкой: на телефоне строка
                        становится карточкой из пар «подпись — значение»,
                        а шапки там нет вовсе. Первая колонка —
@@ -191,7 +195,7 @@ export default function DataTable<T>({
                     data-label={index === 0 ? undefined : column.title}
                     data-head={index === 0 ? '' : undefined}
                   >
-                    {column.cell(item)}
+                    {column.actions ? <span className="tbl__buttons">{column.cell(item)}</span> : column.cell(item)}
                   </TableCell>
                 ))}
               </MotionRow>
