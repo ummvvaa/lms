@@ -61,9 +61,19 @@ services:
     env_file: [.env]
     environment:
       POSTGRES_HOST: postgres
+      # бинд-маунт с Mac не всегда доносит события файлов: опрос, как у runserver
+      WATCHFILES_FORCE_POLLING: "true"
     volumes:
       - ../backend:/app
-    command: ["celery", "-A", "config", "worker", "-l", "info"]
+    # воркер перезапускается при правке .py — иначе задачи идут на старом коде
+    command:
+      - watchfiles
+      - --filter
+      - python
+      - --ignore-paths
+      - media,private,staticfiles
+      - celery -A config worker -l info
+      - /app
     depends_on:
       backend: {condition: service_started}
       redis: {condition: service_healthy}
