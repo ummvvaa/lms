@@ -112,3 +112,18 @@ def test_rows_go_by_the_same_bells_as_the_conflict_check(year, subjects, teacher
         span = schedule.lesson_span(row, calendar)
         assert f"{span[0]:%H:%M}" in {r["key"] for r in built["rows"]}
     assert built["mixed"] is True
+
+
+def test_lesson_form_offers_the_bells_of_the_chosen_group(school, kymbat):
+    """Список «Урок» в формах — звонки группы состава, а не общие."""
+    client = login(kymbat)
+    junior = client.get("/api/acad/bells/", {"cohort": group_cohort(school["kioto"]).pk}).json()["bells"]
+    senior = client.get("/api/acad/bells/", {"cohort": group_cohort(school["cornell"]).pk}).json()["bells"]
+    assert [(row["number"], row["starts"][:5]) for row in junior][:2] == [(1, "08:00"), (2, "08:50")]
+    assert [(row["number"], row["starts"][:5]) for row in senior][:2] == [(1, "10:15"), (2, "11:05")]
+
+
+def test_bells_of_a_group_are_closed_to_those_who_do_not_edit_the_schedule(school, teacher, curator):
+    cohort = group_cohort(school["kioto"]).pk
+    assert login(teacher).get("/api/acad/bells/", {"cohort": cohort}).status_code in (403, 404)
+    assert login(curator).get("/api/acad/bells/", {"cohort": cohort}).status_code in (403, 404)

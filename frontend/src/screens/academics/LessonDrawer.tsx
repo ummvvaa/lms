@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import {
+  useCohortBells,
   useAcadMeta,
   useAllCohorts,
   useCancelLesson,
@@ -51,16 +52,37 @@ function ConflictNote({ conflicts, checked }: { conflicts: AcadConflict[]; check
   )
 }
 
+/**
+ * Список «Урок» по звонкам группы состава: «1 урок · 10:15–10:55» у 10–11
+ * и «1 урок · 8:00–8:40» у 8–9 — то же время, что у сетки недели и проверки
+ * накладок. Общие звонки здесь врали: по ним не учится ни одна группа.
+ * Номер, которого нет в звонках группы, остаётся в списке без времени.
+ */
+export function SlotField({ cohort, value, onChange }: { cohort: number | null; value: string; onChange: (value: string) => void }) {
+  const bells = useCohortBells(cohort).data?.bells ?? []
+  const options = bells.map((b) => ({ value: String(b.number), title: `${t('{n} урок', { n: b.number })} · ${b.starts.slice(0, 5)}–${b.ends.slice(0, 5)}` }))
+  if (value && !options.some((option) => option.value === value)) options.push({ value, title: t('{n} урок', { n: Number(value) }) })
+  return <Field kind="select" name="slot" label={t('Урок')} value={value} onChange={onChange} options={options} />
+}
+
+/** Номер урока, который у звонков состава начинается в это время («10:15»); нет такого — `null`. */
+function slotAt(bells: { number: number; starts: string }[], starts: string): number | null {
+  return bells.find((b) => b.starts.slice(0, 5) === starts)?.number ?? null
+}
+
 /** Форма урока: новый (повтор или разовый) или правка (только этот / этот и следующие). */
 export function LessonForm({
   lesson,
   date: initialDate,
   slot: initialSlot,
+  starts,
   onClose,
 }: {
   lesson?: AcadLesson
   date?: string
   slot?: number
+  /** время ряда недели, из которого добавляют урок: номер берётся по звонкам выбранного состава */
+  starts?: string
   onClose: () => void
 }) {
   const meta = useAcadMeta()
@@ -77,6 +99,8 @@ export function LessonForm({
   const [cohort, setCohort] = useState(String(lesson?.cohort.id ?? ''))
   const [date, setDate] = useState(lesson?.date ?? initialDate ?? meta.data?.today ?? '')
   const [slot, setSlot] = useState(String(lesson?.slot ?? initialSlot ?? 1))
+  // номер выбран руками — время ряда его больше не переставляет
+  const [slotPicked, setSlotPicked] = useState(false)
   const [room, setRoom] = useState(lesson?.room ?? '')
   const [force, setForce] = useState(false)
   const [error, setError] = useState('')
@@ -103,6 +127,14 @@ export function LessonForm({
   useEffect(() => {
     if (!options.some((row) => String(row.id) === cohort)) setCohort(String(options[0]?.id ?? ''))
   }, [options, cohort])
+  // добавляют из ряда недели «10:15»: номер — тот, что у звонков выбранного
+  // состава начинается в это время (у 8–9 это 4 урок, у 10–11 — 1)
+  const bells = useCohortBells(cohort ? Number(cohort) : null).data?.bells
+  useEffect(() => {
+    if (lesson || slotPicked || !starts || !bells) return
+    const found = slotAt(bells, starts)
+    if (found !== null) setSlot(String(found))
+  }, [lesson, slotPicked, starts, bells])
   useEffect(() => {
     if (!cohort || !date || !slot) return
     const timer = window.setTimeout(() => {
@@ -206,7 +238,14 @@ export function LessonForm({
       )}
       <Field.Row>
         <Field kind="date" name="date" label={repeat === 'weekly' && !lesson ? t('Начиная с') : t('Дата')} value={date} onChange={setDate} />
-        <Field kind="select" name="slot" label={t('Урок')} value={slot} onChange={setSlot} options={(meta.data?.bells ?? []).map((b) => ({ value: String(b.number), title: `${t('{n} урок', { n: b.number })} · ${b.starts.slice(0, 5)}–${b.ends.slice(0, 5)}` }))} />
+        <SlotField
+          cohort={cohort ? Number(cohort) : null}
+          value={slot}
+          onChange={(value) => {
+            setSlotPicked(true)
+            setSlot(value)
+          }}
+        />
         <Field kind="text" name="room" label={t('Кабинет')} value={room} onChange={setRoom} placeholder={(meta.data?.rooms ?? []).slice(0, 3).join(', ')} />
       </Field.Row>
       {repeat === 'weekly' && !lesson && date && (
@@ -293,7 +332,6 @@ function SubstituteDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: ()
 }
 
 function MoveDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: () => void }) {
-  const meta = useAcadMeta()
   const move = useMoveLesson()
   const check = useCheckConflicts()
   const [date, setDate] = useState(lesson.date)
@@ -322,7 +360,7 @@ function MoveDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: () => vo
     <Modal title={t('Перенести урок')} note={`${lesson.subject.title} · ${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{n} урок', { n: lesson.slot })}`} onClose={onClose}>
       <Field.Row>
         <Field kind="date" name="date" label={t('Новая дата')} value={date} onChange={setDate} />
-        <Field kind="select" name="slot" label={t('Урок')} value={slot} onChange={setSlot} options={(meta.data?.bells ?? []).map((b) => ({ value: String(b.number), title: `${t('{n} урок', { n: b.number })} · ${b.starts.slice(0, 5)}–${b.ends.slice(0, 5)}` }))} />
+        <SlotField cohort={lesson.cohort.id} value={slot} onChange={setSlot} />
       </Field.Row>
       <Field kind="text" name="reason" label={t('Причина')} value={reason} onChange={setReason} error={error || undefined} />
       <ConflictNote conflicts={conflicts} checked={checked} />

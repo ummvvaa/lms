@@ -73,6 +73,25 @@ def _editor(request) -> Response | None:
 @extend_schema(responses={200: dict})
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+def cohort_bells(request):
+    """Звонки состава — список «Урок» в формах расписания (решение владельца, 01.10.2026).
+
+    Время — по звонкам групп состава, тем же, что у сетки недели и проверки
+    накладок: у 10–11 первый урок в 10:15, а не в 8:30 общих звонков, по
+    которым в школе не учится ни одна группа. Состав не задан — общие звонки.
+    """
+    refusal = _editor(request)
+    if refusal:
+        return refusal
+    calendar = school_calendar.load()
+    cohort = _cohort(_int(request.query_params.get("cohort")))
+    bells = calendar.bells_of(group_ids_of(cohort)) if cohort is not None else calendar.bells
+    return Response({"bells": [{"number": n, "starts": s, "ends": e} for n, (s, e) in sorted(bells.items())]})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 @cached
 def schedule_week(request):
     """Неделя с накладками, изменениями, просьбами и последними правками."""

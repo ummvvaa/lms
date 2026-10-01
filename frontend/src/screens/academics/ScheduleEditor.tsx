@@ -17,7 +17,7 @@ import { Row, Rows, Segmented, ShowAll, StatRow } from '../../components/pattern
 import { counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tn } from '../../i18n'
-import LessonDrawer, { LessonForm } from './LessonDrawer'
+import LessonDrawer, { LessonForm, SlotField } from './LessonDrawer'
 import ScheduleImport from './ScheduleImport'
 import { dateWords, useWeekStart, WeekGrid, WeekNav, weekStart } from './shared'
 import { formatDateTime } from '../../lib/format'
@@ -59,7 +59,6 @@ function RejectDialog({ id, onClose }: { id: number; onClose: () => void }) {
 }
 
 function ApproveDialog({ request, onClose }: { request: ScheduleWeek['requests'][number]; onClose: () => void }) {
-  const meta = useAcadMeta()
   const decide = useDecideRequest()
   const [date, setDate] = useState(request.lesson.date)
   const [slot, setSlot] = useState(String(request.lesson.slot))
@@ -69,7 +68,7 @@ function ApproveDialog({ request, onClose }: { request: ScheduleWeek['requests']
     <Modal title={t('Одобрить перенос')} note={`${request.teacher.full_name}: ${request.wanted || t('на свободное время')} · ${request.reason}`} onClose={onClose}>
       <Field.Row>
         <Field kind="date" name="date" label={t('Новая дата')} value={date} onChange={setDate} />
-        <Field kind="select" name="slot" label={t('Урок')} value={slot} onChange={setSlot} options={(meta.data?.bells ?? []).map((b) => ({ value: String(b.number), title: `${t('{slot} урок', { slot: b.number })} · ${b.starts.slice(0, 5)}` }))} />
+        <SlotField cohort={request.lesson.cohort.id} value={slot} onChange={setSlot} />
       </Field.Row>
       <Field kind="checkbox" name="force" label={t('Перенести даже с накладкой')} checked={force} onChange={setForce} />
       {error && <p className="acad__note">{error}</p>}
@@ -263,7 +262,7 @@ export default function ScheduleEditor() {
         </>
       )}
       {opened && <LessonDrawer lesson={opened} conflicts={openedConflicts} onClose={() => setOpened(null)} />}
-      {adding && <LessonForm date={adding.date} slot={adding.slot} onClose={() => setAdding(null)} />}
+      {adding && <LessonForm date={adding.date} slot={adding.slot} starts={adding.starts} onClose={() => setAdding(null)} />}
       {reject !== null && <RejectDialog id={reject} onClose={() => setReject(null)} />}
       {approve && <ApproveDialog request={approve} onClose={() => setApprove(null)} />}
       <EditDrawer open={importing} onClose={() => setImporting(false)} title={t('Импорт расписания')} className="drawer--wide">

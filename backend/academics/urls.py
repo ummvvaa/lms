@@ -22,6 +22,7 @@ urlpatterns = [
     path("acad/lessons/<int:pk>/delete/", schedule_views.lesson_delete, name="acad-lesson-delete"),
     path("acad/conflicts/", schedule_views.conflicts_check, name="acad-conflicts"),
     path("acad/schedule/", schedule_views.schedule_week, name="acad-schedule"),
+    path("acad/bells/", schedule_views.cohort_bells, name="acad-bells"),
     path("acad/schedule/import/preview/", schedule_views.schedule_import_preview, name="acad-schedule-import-preview"),
     path("acad/schedule/import/apply/", schedule_views.schedule_import_apply, name="acad-schedule-import-apply"),
     # кабинет учителя

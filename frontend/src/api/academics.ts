@@ -586,6 +586,16 @@ export function query(params: Record<string, string | number | null | undefined>
   return pairs.length ? `?${pairs.join('&')}` : ''
 }
 
+/** Звонки состава для списка «Урок» в формах: время — по звонкам его групп,
+ *  как у сетки недели и проверки накладок. Без состава — общие звонки. */
+export function useCohortBells(cohort: number | null) {
+  return useQuery({
+    queryKey: ['acad', 'bells', cohort],
+    queryFn: () => get<{ bells: { number: number; starts: string; ends: string }[] }>(`/acad/bells/${cohort ? `?cohort=${cohort}` : ''}`),
+    staleTime: 60_000,
+  })
+}
+
 export function useAcadMeta(enabled = true) {
   return useQuery({ queryKey: ['acad', 'meta'], queryFn: () => get<AcadMeta>('/acad/meta/'), enabled, staleTime: 60_000 })
 }
