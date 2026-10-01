@@ -167,43 +167,56 @@ def meta(request):
 # --- Уроки --------------------------------------------------------------------
 
 
-def _lessons_for(user, start: dt.date, end: dt.date, params) -> list[Lesson] | None:
-    """Уроки периода в границах роли и фильтров. `None` — роли расписание не открыто."""
+def _screen_filter(user, params):
+    """Фильтр уроков экрана недели в границах роли и выбора: `keep(rows) -> rows`.
+
+    Один фильтр на уроки недели и на тени перенесённых: тень видит тот, кому
+    виден сам урок (группа, учитель, кабинет, ученик), а не вся школа.
+    `None` — роли расписание не открыто.
+    """
     role = user.role
-    rows = list(schedule.lessons_between(start, end))
     if role == ROLE_TEACHER:
-        rows = schedule.for_teacher(rows, user.pk)
-    elif role == ROLE_CURATOR:
+        return lambda rows: schedule.for_teacher(rows, user.pk)
+    if role == ROLE_CURATOR:
         mine = curated_group_ids(user)
         picked = _group_param(params.get("group"))
         wanted = [picked.pk] if picked is not None and picked.pk in mine else mine
-        rows = schedule.for_groups(rows, wanted)
-    elif role == ROLE_STUDENT:
+        return lambda rows: schedule.for_groups(rows, wanted)
+    if role == ROLE_STUDENT:
         student = getattr(user, "student", None)
         if student is None:
-            return []
-        rows = schedule.for_student(rows, student.pk)
-    elif rights.reads_all(role):
+            return lambda rows: []
+        return lambda rows: schedule.for_student(rows, student.pk)
+    if rights.reads_all(role):
         picked = _group_param(params.get("group"))
-        if picked is not None:
-            rows = schedule.for_groups(rows, [picked.pk])
         teacher = _int(params.get("teacher"))
-        if teacher is not None:
-            rows = schedule.for_teacher(rows, teacher)
         room = str(params.get("room") or "").strip()
-        if room:
-            rows = schedule.for_room(rows, room)
         student = _int(params.get("student"))
-        if student is not None:
-            rows = schedule.for_student(rows, student)
-    else:
-        # директор, который ведёт уроки, — только свои; остальным расписания нет
-        from academics.teachers import teaches
 
-        if not teaches(user):
-            return None
-        rows = schedule.for_teacher(rows, user.pk)
-    return rows
+        def keep(rows):
+            if picked is not None:
+                rows = schedule.for_groups(rows, [picked.pk])
+            if teacher is not None:
+                rows = schedule.for_teacher(rows, teacher)
+            if room:
+                rows = schedule.for_room(rows, room)
+            if student is not None:
+                rows = schedule.for_student(rows, student)
+            return rows
+
+        return keep
+    # директор, который ведёт уроки, — только свои; остальным расписания нет
+    from academics.teachers import teaches
+
+    if not teaches(user):
+        return None
+    return lambda rows: schedule.for_teacher(rows, user.pk)
+
+
+def _lessons_for(user, start: dt.date, end: dt.date, params) -> list[Lesson] | None:
+    """Уроки периода в границах роли и фильтров. `None` — роли расписание не открыто."""
+    keep = _screen_filter(user, params)
+    return None if keep is None else keep(list(schedule.lessons_between(start, end)))
 
 
 def _view_groups(user, params) -> list[int]:
@@ -260,13 +273,13 @@ def lessons(request):
         return _create_lesson(request)
     calendar = school_calendar.load()
     start, end = _week_bounds(request.query_params)
-    rows = _lessons_for(request.user, start, end, request.query_params)
-    if rows is None:
+    keep = _screen_filter(request.user, request.query_params)
+    if keep is None:
         return _forbid(_("Расписание этой роли не открыто"))
+    rows = keep(list(schedule.lessons_between(start, end)))
     counts = _counts(rows)
-    ghosts = schedule.moved_ghosts(rows, start, end, calendar)
-    if request.user.role == ROLE_TEACHER:
-        ghosts = [g for g in ghosts if any(lesson.pk == g["lesson"] for lesson in rows)]
+    # тень — у урока, который виден этому экрану, где бы он теперь ни стоял
+    ghosts = schedule.moved_ghosts(start, end, calendar, keep)
     return Response(
         {
             "from": start,

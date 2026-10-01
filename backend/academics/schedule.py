@@ -819,8 +819,14 @@ def stale_unmarked(calendar: SchoolCalendar, start: dt.date, end: dt.date) -> li
     ]
 
 
-def moved_ghosts(rows, start: dt.date, end: dt.date, calendar: SchoolCalendar | None = None) -> list[dict]:
+def moved_ghosts(start: dt.date, end: dt.date, calendar: SchoolCalendar | None = None, keep=None) -> list[dict]:
     """Тени перенесённых уроков на прежнем месте — чтобы неделя показала «перенесён на».
+
+    `keep` — фильтр экрана (группа, учитель, кабинет, ученик), тот же, что
+    у уроков недели: тень видит тот, кому виден сам урок. Без фильтра тени
+    шли по всей школе, и ученик видел переносы чужих групп. Урок мог уехать
+    на другую неделю — поэтому фильтруются сами перенесённые, а не «есть
+    ли урок среди показанных». Кабинет — нынешний: прежний не хранится.
 
     `starts` — время прежнего места по звонкам группы урока: тень встаёт
     в тот же ряд недели, что стоял урок до переноса.
@@ -828,10 +834,15 @@ def moved_ghosts(rows, start: dt.date, end: dt.date, calendar: SchoolCalendar | 
     from academics import calendar as school_calendar
 
     calendar = calendar or school_calendar.load()
+    moved = list(
+        Lesson.objects.filter(status=LessonStatus.MOVED, moved_from_date__gte=start, moved_from_date__lte=end)
+        .select_related("course", "course__subject", "course__cohort", "course__cohort__group", "teacher", "substitute")
+        .order_by("moved_from_date", "moved_from_slot", "id")
+    )
+    if keep is not None:
+        moved = keep(moved)
     out = []
-    for lesson in Lesson.objects.filter(
-        status=LessonStatus.MOVED, moved_from_date__gte=start, moved_from_date__lte=end
-    ).select_related("course", "course__subject", "course__cohort"):
+    for lesson in moved:
         span = span_of(calendar, lesson.moved_from_slot, lesson_groups(lesson)) if lesson.moved_from_slot else None
         out.append(
             {

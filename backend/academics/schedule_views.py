@@ -106,22 +106,24 @@ def schedule_week(request):
     key = str(request.query_params.get("key") or "")
     groups = list(StudyGroup.objects.filter(is_active=True).order_by("code"))
     staff = teachers.teachers()
-    shown = rows
+    # фильтр вида — один на уроки недели и тени переносов
+    keep = None
     view_groups: list[int] = []
     if view == "group":
         picked = _group_param(key) or (groups[0] if groups else None)
         view_groups = [picked.pk] if picked else []
-        shown = schedule.for_groups(rows, [picked.pk]) if picked else []
+        keep = (lambda found: schedule.for_groups(found, [picked.pk])) if picked else (lambda found: [])
         key = picked.code if picked else ""
     elif view == "teacher":
         teacher_id = _int(key) or (staff[0].pk if staff else None)
-        shown = schedule.for_teacher(rows, teacher_id) if teacher_id else []
+        keep = (lambda found: schedule.for_teacher(found, teacher_id)) if teacher_id else (lambda found: [])
         key = str(teacher_id or "")
     elif view == "room":
         rooms = sorted({lesson.room for lesson in rows if lesson.room})
         room = key or (rooms[0] if rooms else "")
-        shown = schedule.for_room(rows, room) if room else []
+        keep = (lambda found: schedule.for_room(found, room)) if room else (lambda found: [])
         key = room
+    shown = keep(rows) if keep is not None else rows
     conflicts = schedule.conflicts_between(start, end)
     next_conflicts = schedule.conflicts_between(start + dt.timedelta(days=7), start + dt.timedelta(days=13))
     counts = {}
@@ -154,7 +156,7 @@ def schedule_week(request):
             "lessons": [
                 lesson_dict(lesson, calendar, students=counts.get(lesson.course.cohort_id)) for lesson in shown
             ],
-            "ghosts": schedule.moved_ghosts(shown, start, end, calendar),
+            "ghosts": schedule.moved_ghosts(start, end, calendar, keep),
             "conflicts": conflicts,
             "conflict_ids": sorted({c["lesson"] for c in conflicts} | {c["other"] for c in conflicts}),
             "next_week_conflicts": len(next_conflicts),

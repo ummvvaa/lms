@@ -127,3 +127,36 @@ def test_bells_of_a_group_are_closed_to_those_who_do_not_edit_the_schedule(schoo
     cohort = group_cohort(school["kioto"]).pk
     assert login(teacher).get("/api/acad/bells/", {"cohort": cohort}).status_code in (403, 404)
     assert login(curator).get("/api/acad/bells/", {"cohort": cohort}).status_code in (403, 404)
+
+
+def test_student_sees_ghosts_of_own_lessons_only(year, subjects, teacher, other_teacher, school, day, make_user):
+    """Тень переноса — у того, кому виден урок: перенос чужой группы ученику не показывается."""
+    calendar = school_calendar.load(year)
+    pupil = make_student(school["cornell"], "Тестова", "Ученица", "pupil-ghost@probe.local", make_user=make_user)
+    mine = lesson(subjects, teacher, school["cornell"], day, 1)
+    other = lesson(subjects, other_teacher, school["kioto"], day, 1)
+    for row in (mine, other):
+        schedule.move(row, date=day, slot=3, reason="Перенос", calendar=calendar, force=True)
+    ghosts = {row["lesson"] for row in week(login(pupil.user), day)["ghosts"]}
+    assert ghosts == {mine.pk}
+
+
+def test_teacher_sees_the_ghost_of_a_lesson_moved_to_another_week(year, subjects, teacher, school, day):
+    """Урок уехал на следующую неделю — на прежнем месте тень всё равно стоит."""
+    calendar = school_calendar.load(year)
+    moved = lesson(subjects, teacher, school["cornell"], day, 1)
+    later = school_day(8, calendar)
+    schedule.move(moved, date=later, slot=2, reason="Перенос", calendar=calendar, force=True)
+    data = week(login(teacher), day)
+    assert [row["lesson"] for row in data["ghosts"]] == [moved.pk]
+    assert data["ghosts"][0]["moved_to_date"] == later.isoformat()
+
+
+def test_editor_week_of_a_group_shows_only_its_ghosts(year, subjects, teacher, other_teacher, school, day, kymbat):
+    calendar = school_calendar.load(year)
+    mine = lesson(subjects, teacher, school["kioto"], day, 1)
+    other = lesson(subjects, other_teacher, school["cornell"], day, 1)
+    for row in (mine, other):
+        schedule.move(row, date=day, slot=3, reason="Перенос", calendar=calendar, force=True)
+    response = login(kymbat).get("/api/acad/schedule/", {"from": day.isoformat(), "view": "group", "key": "KIOTO"})
+    assert {row["lesson"] for row in response.json()["ghosts"]} == {mine.pk}
