@@ -15439,3 +15439,37 @@ msgstr "Fix the errors in the file first"
 #: academics/subgroup_members.py:125
 msgid "Файл не читается: нужен Excel (.xlsx)"
 msgstr "The file cannot be read: an Excel (.xlsx) file is needed"
+
+#: academics/subgroup_members.py:300
+#, python-brace-format
+msgid " — допишите группу в скобках: «{name} (KIOTO)»"
+msgstr " — add the group in brackets: «{name} (KIOTO)»"
+
+#: academics/subgroup_members.py:110
+#, python-brace-format
+msgid "{block}, строка {row}"
+msgstr "{block}, row {row}"
+
+#: academics/subgroup_members.py:360
+#, python-brace-format
+msgid "{where}: в подгруппу {subgroup} ведёт и блок {others}"
+msgstr "{where}: block {others} also leads to subgroup {subgroup}"
+
+#: academics/subgroup_members.py:340
+#, python-brace-format
+msgid "{where}: кабинет {room} у нескольких подгрупп ({names}) — допишите название подгруппы в заголовок блока"
+msgstr "{where}: room {room} belongs to several subgroups ({names}) — add the subgroup name to the block header"
+
+#: academics/subgroup_members.py:325
+#, python-brace-format
+msgid "{where}: нет подгруппы потока с кабинетом {room}"
+msgstr "{where}: no stream subgroup with room {room}"
+
+#: academics/subgroup_members.py:95
+#, python-brace-format
+msgid "«{sheet}», блок «{header}»"
+msgstr "«{sheet}», block «{header}»"
+
+#: academics/subgroup_members.py:230
+msgid "В файле нет ни блоков подгрупп, ни колонок «Подгруппа» и «ФИО» — образец в описании формата"
+msgstr "The file has neither subgroup blocks nor «Подгруппа» and «ФИО» columns — see the sample in the format description"

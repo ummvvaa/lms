@@ -15355,3 +15355,37 @@ msgstr "Алдымен файлдағы қателерді түзетіңіз"
 #: academics/subgroup_members.py:125
 msgid "Файл не читается: нужен Excel (.xlsx)"
 msgstr "Файл оқылмайды: Excel (.xlsx) керек"
+
+#: academics/subgroup_members.py:300
+#, python-brace-format
+msgid " — допишите группу в скобках: «{name} (KIOTO)»"
+msgstr " — топты жақшаға жазыңыз: «{name} (KIOTO)»"
+
+#: academics/subgroup_members.py:110
+#, python-brace-format
+msgid "{block}, строка {row}"
+msgstr "{block}, {row}-жол"
+
+#: academics/subgroup_members.py:360
+#, python-brace-format
+msgid "{where}: в подгруппу {subgroup} ведёт и блок {others}"
+msgstr "{where}: {subgroup} топшасына {others} блогы да апарады"
+
+#: academics/subgroup_members.py:340
+#, python-brace-format
+msgid "{where}: кабинет {room} у нескольких подгрупп ({names}) — допишите название подгруппы в заголовок блока"
+msgstr "{where}: {room} кабинеті бірнеше топшада ({names}) — блок тақырыбына топша атауын жазыңыз"
+
+#: academics/subgroup_members.py:325
+#, python-brace-format
+msgid "{where}: нет подгруппы потока с кабинетом {room}"
+msgstr "{where}: {room} кабинеті бар ағын топшасы жоқ"
+
+#: academics/subgroup_members.py:95
+#, python-brace-format
+msgid "«{sheet}», блок «{header}»"
+msgstr "«{sheet}», «{header}» блогы"
+
+#: academics/subgroup_members.py:230
+msgid "В файле нет ни блоков подгрупп, ни колонок «Подгруппа» и «ФИО» — образец в описании формата"
+msgstr "Файлда топша блоктары да, «Подгруппа» және «ФИО» бағандары да жоқ — үлгі формат сипаттамасында"

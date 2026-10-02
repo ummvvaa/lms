@@ -12,11 +12,12 @@ import io
 import pytest
 from openpyxl import Workbook
 
-from academics.cohorts import make_stream, member_ids
+from academics.cohorts import group_cohort, make_stream, member_ids
 from academics.models import Cohort, CohortKind, CohortMembership, Subject
 from academics.subgroup_members import plan, subgroup_key
 from academics.tests.conftest import login, make_student
 from core.models import AuditLog
+from students.models import StudyGroup
 
 pytestmark = pytest.mark.django_db
 
@@ -30,12 +31,14 @@ def english(subjects, cohorts, pupils):
     eep, ge = make_stream(name="EEP", parts=parts), make_stream(name="GE", parts=parts)
     general = Subject.objects.create(code="ge", title="Английский язык (GE)", short_title="Англ. GE", order=4)
     made = {}
-    for name, stream, subject in (
-        ("EEP-1", eep, subjects["eng"]),
-        ("EEP-2", eep, subjects["eng"]),
-        ("GE-1", ge, general),
+    for name, stream, subject, room in (
+        ("EEP-1", eep, subjects["eng"], "203"),
+        ("EEP-2", eep, subjects["eng"], "204"),
+        ("GE-1", ge, general, "205"),
     ):
-        made[name] = Cohort.objects.create(kind=CohortKind.SUBGROUP, stream=stream, subject=subject, name=name)
+        made[name] = Cohort.objects.create(
+            kind=CohortKind.SUBGROUP, stream=stream, subject=subject, name=name, room=room
+        )
     return made
 
 
@@ -165,3 +168,109 @@ def test_only_schedule_editors_load_members(english, curator, teacher, admin):
     assert upload(login(curator), content).status_code == 403
     assert upload(login(teacher), content).status_code in (403, 404)
     assert upload(login(admin), content).status_code == 200
+
+
+# --- Блоки школы: «учитель, уровень, кабинет» над нумерованным списком ---------
+
+
+def school_book(blocks, *, title="Первая параллель", extra=True) -> bytes:
+    """Книга, как ведёт её школа: блоки рядом и друг под другом, лишние листы рядом.
+
+    `blocks` — (строка заголовка, колонка ФИО, заголовок, [ФИО]).
+    """
+    workbook = Workbook()
+    if extra:
+        test = workbook.active
+        test.title = "Тест "
+        test.append(["Аты-жөні", "Балл", "Деңгейі"])
+        test.append(["Ахметова Алия", 30, "B2"])
+        sheet = workbook.create_sheet(title)
+    else:
+        sheet = workbook.active
+        sheet.title = title
+    for row, column, header, names in blocks:
+        sheet.cell(row=row, column=column, value=header)
+        for index, name in enumerate(names, start=1):
+            sheet.cell(row=row + index, column=column - 1, value=float(index))
+            sheet.cell(row=row + index, column=column, value=name)
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
+
+
+def test_school_blocks_go_to_subgroups_by_room(english, pupils):
+    content = school_book(
+        [
+            (1, 2, "Тестова А, A2, 203 каб", ["Ахметова Алия", "Сериков Дамир"]),
+            (1, 5, "B1, 204 каб", ["Чужестранцев Ерлан"]),
+            (8, 2, "Учебная Б, C1, 205 каб", ["Абдрахман Нурай"]),
+        ]
+    )
+    found = plan(content)
+    assert found.errors == []
+    assert found.wanted == {
+        english["EEP-1"].pk: [pupils["aliya"].pk, pupils["damir"].pk],
+        english["EEP-2"].pk: [pupils["stranger"].pk],
+        english["GE-1"].pk: [pupils["nurai"].pk],
+    }
+    assert found.skipped == ["Тест "], "лист тестов пропущен, а не прочитан как подгруппа"
+
+
+def test_report_shows_which_block_went_where(english, kymbat):
+    content = school_book([(1, 2, "Тестова А, A2, 203 каб", ["Ахметова Алия"])])
+    data = upload(login(kymbat), content).json()
+    assert data["blocks"] == [
+        {
+            "sheet": "Первая параллель",
+            "header": "Тестова А, A2, 203 каб",
+            "subgroup": "EEP-1",
+            "teacher": "",
+            "students": 1,
+        }
+    ]
+    assert data["skipped"] == ["Тест "]
+
+
+def test_room_of_two_subgroups_is_decided_by_the_students(english, subjects, pupils, make_user):
+    """Кабинет 203 есть и у подгруппы другого потока: блок идёт туда, где его ученики."""
+    lisbon = StudyGroup.objects.create(code="LISBON", parallel=9)
+    stray = make_student(lisbon, "Далёкая", "Мира", "mira@example.kz")
+    other = make_stream(name="EEP-9", parts=[group_cohort(lisbon)])
+    nine = Cohort.objects.create(
+        kind=CohortKind.SUBGROUP, stream=other, subject=subjects["eng"], name="EEP-9-1", room="203"
+    )
+    found = plan(
+        school_book(
+            [(1, 2, "A2, 203 каб", ["Ахметова Алия", "Сериков Дамир"]), (1, 5, "A2, 203 каб", ["Далёкая Мира"])]
+        )
+    )
+    assert found.errors == []
+    assert found.wanted == {english["EEP-1"].pk: [pupils["aliya"].pk, pupils["damir"].pk], nine.pk: [stray.pk]}
+
+
+def test_subgroup_named_in_the_header_wins_over_the_room(english, pupils):
+    found = plan(school_book([(1, 2, "EEP-2, Тестова А, A2, 203 каб", ["Ахметова Алия"])]))
+    assert found.wanted == {english["EEP-2"].pk: [pupils["aliya"].pk]}
+
+
+def test_block_without_a_subgroup_or_two_blocks_in_one_are_errors(english):
+    unknown = plan(school_book([(1, 2, "A2, 999 каб", ["Ахметова Алия"])]))
+    assert any("нет подгруппы потока с кабинетом 999" in text for text in unknown.errors)
+    twice = plan(school_book([(1, 2, "A2, 203 каб", ["Ахметова Алия"]), (1, 5, "B1, 203 каб", ["Сериков Дамир"])]))
+    assert any("в подгруппу EEP-1 ведёт и блок" in text for text in twice.errors)
+    assert not twice.ok
+
+
+def test_namesake_is_settled_by_the_group_in_brackets(english, chicago, pupils):
+    twin = make_student(chicago, "Ахметова", "Алия", "aliya.twin@example.kz")
+    blocks = [(1, 2, "A2, 203 каб", ["Ахметова Алия"])]
+    stuck = plan(school_book(blocks))
+    assert any("допишите группу в скобках" in text for text in stuck.errors)
+    found = plan(school_book([(1, 2, "A2, 203 каб", ["Ахметова Алия (CHICAGO)", "Ахметова Алия (BOSTON)"])]))
+    assert found.errors == [], found.errors
+    assert found.wanted == {english["EEP-1"].pk: [twin.pk, pupils["aliya"].pk]}
+
+
+def test_book_without_blocks_or_columns_explains_itself(english):
+    found = plan(school_book([], extra=True))
+    assert any("ни блоков подгрупп, ни колонок" in text for text in found.errors)

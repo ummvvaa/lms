@@ -22,10 +22,20 @@
 - ученики групп потока, которых нет в файле, и подгруппы, которых нет
   в файле, — предупреждения: их состав не трогается.
 
-Раскладка файла: строка заголовков в первых десяти строках листа —
-«Подгруппа», «ФИО» (или «Фамилия» и «Имя»), необязательная «Группа».
-Лист без колонки «Подгруппа», названный как подгруппа («EEP-8-1»), — это
-состав этой подгруппы. Формат для людей — `guides/SUBGROUP_MEMBERS.md`.
+Раскладок файла две, формат для людей — `guides/SUBGROUP_MEMBERS.md`:
+
+- **блоки, как ведёт их школа**: над нумерованным списком ФИО — заголовок
+  «учитель, уровень, кабинет» («Тестова А, A2, 203 каб»), блоки стоят рядом
+  и друг под другом, лист — параллель. Подгруппа блока — по названию
+  в заголовке, если оно есть, иначе по кабинету среди подгрупп потоков;
+  кабинет есть у нескольких подгрупп (201 — в 11.1 и 11.2) — решают
+  группы учеников блока. Кабинеты расписания загрузка не меняет: кабинет
+  в файле только указывает подгруппу. Лист без таких блоков (тесты,
+  уровни, списки класса) пропускается и называется в отчёте;
+- **колонки**: строка заголовков в первых десяти строках листа —
+  «Подгруппа», «ФИО» (или «Фамилия» и «Имя»), необязательная «Группа».
+  Лист без колонки «Подгруппа», названный как подгруппа («EEP-8-1»), —
+  состав этой подгруппы.
 """
 
 from __future__ import annotations
@@ -41,11 +51,14 @@ from django.utils.translation import gettext as _
 from academics import cache
 from academics.calendar import today
 from academics.cohorts import group_ids_of, set_members
-from academics.models import Cohort, CohortKind, CohortMembership
+from academics.models import Cohort, CohortKind, CohortMembership, Course
 from students.models import Student, StudyGroup
 
 #: где искать строку заголовков
 HEADER_ROWS = 10
+
+#: метка пропущенного листа среди находок чтения: в отчёт он идёт не ошибкой
+SKIPPED = "\x00skip:"
 
 #: кириллица, которую пишут вместо латиницы в названиях подгрупп («ЕЕР», «ГЕ»)
 LOOKALIKE = str.maketrans("АВГЕКМНОРСТХ", "ABGEKMHOPCTX")  # i18n-skip: буквы для сравнения названий
@@ -55,6 +68,25 @@ def subgroup_key(name: str) -> str:
     """«ЕЕР 8 – 1» → «EEP8-1»: регистр, пробелы, тире и кириллица не мешают."""
     text = re.sub(r"[‐‑‒–—―]", "-", str(name or "").upper().translate(LOOKALIKE))
     return re.sub(r"\s+", "", text)
+
+
+@dataclass
+class Block:
+    """Блок школы: заголовок «учитель, уровень, кабинет» и нумерованный список под ним."""
+
+    sheet: str
+    row: int
+    header: str
+    room: str
+    #: название подгруппы, если оно написано в заголовке
+    named: str = ""
+    cohort: Cohort | None = None
+    error: str = ""
+    lines: list[Line] = field(default_factory=list)
+
+    @property
+    def where(self) -> str:
+        return _("«{sheet}», блок «{header}»").format(sheet=self.sheet, header=self.header)
 
 
 @dataclass
@@ -69,9 +101,12 @@ class Line:
     cohort: Cohort | None = None
     student: Student | None = None
     error: str = ""
+    block: Block | None = None
 
     @property
     def where(self) -> str:
+        if self.block is not None:
+            return _("{block}, строка {row}").format(block=self.block.where, row=self.row)
         return _("«{sheet}», строка {row}").format(sheet=self.sheet, row=self.row)
 
 
@@ -85,6 +120,9 @@ class Plan:
     #: подгруппа → ученики по файлу
     wanted: dict[int, list[int]] = field(default_factory=dict)
     cohorts: dict[int, Cohort] = field(default_factory=dict)
+    blocks: list[Block] = field(default_factory=list)
+    #: листы, где нет ни колонок, ни блоков: тесты, уровни, списки класса
+    skipped: list[str] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
@@ -119,6 +157,64 @@ def _cell(kinds: dict[str, int], row: list, kind: str) -> str:
     return "" if value is None else str(value).strip()
 
 
+#: кабинет в заголовке блока: «203 каб», «каб. 203»
+ROOM = re.compile(r"(\d{3})\s*каб|каб\.?\s*(\d{3})", re.IGNORECASE)  # i18n-skip: сокращение из файла школы
+
+
+def _number(value) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float) and float(value).is_integer():
+        return int(value)
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    return None
+
+
+def _text(value) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def read_blocks(title: str, rows: list[list], known: set[str]) -> list[Block]:
+    """Блоки листа: номер «1» слева, ФИО справа, нумерация подряд; заголовок — над первой строкой.
+
+    Блок без кабинета и без названия подгруппы в заголовке — не блок
+    подгруппы (лист уровней, где над списком только имя учителя).
+    """
+    blocks: list[Block] = []
+    width = max((len(row) for row in rows), default=0)
+    for column in range(1, width):
+        index = 0
+        while index < len(rows):
+            row = rows[index]
+            left = row[column - 1] if column - 1 < len(row) else None
+            if _number(left) != 1 or not _text(row[column] if column < len(row) else None):
+                index += 1
+                continue
+            header = _text(rows[index - 1][column]) if index > 0 and column < len(rows[index - 1]) else ""
+            names = []
+            while index < len(rows) and column < len(rows[index]) and _number(rows[index][column - 1]) is not None:
+                name = _text(rows[index][column])
+                if not name:
+                    break
+                names.append((index + 1, name))
+                index += 1
+            room = ROOM.search(header)
+            named = next((word for word in re.split(r"[,;\s]+", header) if subgroup_key(word) in known), "")
+            if not room and not named:
+                continue
+            block = Block(
+                sheet=title,
+                row=index - len(names),
+                header=header,
+                room=(room.group(1) or room.group(2)) if room else "",
+                named=named,
+            )
+            block.lines = [Line(sheet=title, row=r, subgroup=named, name=n, group="", block=block) for r, n in names]
+            blocks.append(block)
+    return blocks
+
+
 def read(content: bytes, known: set[str] | None = None) -> tuple[list[Line], list[str]]:
     """Строки файла по листам. Ошибка — когда читать нечего.
 
@@ -142,6 +238,12 @@ def read(content: bytes, known: set[str] | None = None) -> tuple[list[Line], lis
                 found = index, kinds
                 break
         if found is None:
+            # не колонки — значит, блоки школы; нет и их — лист не про подгруппы
+            blocks = read_blocks(sheet.title, rows, known or set())
+            if blocks:
+                lines.extend(line for block in blocks for line in block.lines)
+            else:
+                problems.append(SKIPPED + sheet.title)
             continue
         header, kinds = found
         if "subgroup" not in kinds and known is not None and subgroup_key(sheet.title) not in known:
@@ -161,7 +263,10 @@ def read(content: bytes, known: set[str] | None = None) -> tuple[list[Line], lis
                 Line(sheet=sheet.title, row=offset, subgroup=subgroup, name=name, group=_cell(kinds, row, "group"))
             )
     if not lines:
-        return [], problems or [_("В файле нет строк с колонками «Подгруппа» и «ФИО» — образец в описании формата")]
+        real = [text for text in problems if not text.startswith(SKIPPED)]
+        return [], real or [
+            _("В файле нет ни блоков подгрупп, ни колонок «Подгруппа» и «ФИО» — образец в описании формата")
+        ]
     return lines, problems
 
 
@@ -196,13 +301,33 @@ def plan(content: bytes) -> Plan:
     out = Plan()
     subgroups = _stream_subgroups()
     lines, problems = read(content, set(subgroups))
-    out.errors.extend(problems)
+    out.skipped = [text[len(SKIPPED) :] for text in problems if text.startswith(SKIPPED)]
+    out.errors.extend(text for text in problems if not text.startswith(SKIPPED))
     out.lines = lines
     groups = _groups()
     pupils_of: dict[tuple, list[Student]] = {}
+
+    def pupils(scope: tuple) -> list[Student]:
+        if scope not in pupils_of:
+            pupils_of[scope] = list(Student.objects.filter(group_id__in=scope, is_active=True).select_related("group"))
+        return pupils_of[scope]
+
+    for line in lines:
+        if line.block is not None and all(line.block is not b for b in out.blocks):
+            out.blocks.append(line.block)
+    for block in out.blocks:
+        _resolve_block(block, subgroups, pupils, find)
+    _refuse_shared_subgroups(out.blocks)
+    out.errors.extend(block.error for block in out.blocks if block.error)
+
     seen: dict[int, Line] = {}
     for line in lines:
-        cohort = subgroups.get(subgroup_key(line.subgroup))
+        if line.block is not None:
+            if line.block.cohort is None:
+                continue  # ошибка блока уже названа один раз, по строкам её не повторяем
+            cohort = line.block.cohort
+        else:
+            cohort = subgroups.get(subgroup_key(line.subgroup))
         if cohort is None:
             line.error = _("{where}: подгруппы «{subgroup}» нет среди подгрупп потоков").format(
                 where=line.where, subgroup=line.subgroup or _("пусто")
@@ -212,6 +337,7 @@ def plan(content: bytes) -> Plan:
         if not line.name:
             line.error = _("{where}: не указан ученик").format(where=line.where)
             continue
+        _group_from_name(line, groups)
         if line.group:
             group = _group_of(line.group, groups)
             if group is None:
@@ -220,21 +346,25 @@ def plan(content: bytes) -> Plan:
             scope: tuple = (group.pk,)
         else:
             scope = tuple(group_ids_of(cohort))
-        if scope not in pupils_of:
-            pupils_of[scope] = list(Student.objects.filter(group_id__in=scope, is_active=True).select_related("group"))
-        outcome = find(line.name, students=pupils_of[scope])
+        outcome = find(line.name, students=pupils(scope))
         if not (outcome.is_confident and outcome.best):
             if outcome.is_ambiguous:
-                names = ", ".join(c.full_name for c in outcome.candidates[:3])
-                line.error = _("{where}: «{name}» — похожих учеников несколько: {names}").format(
+                names = ", ".join(
+                    f"{c.full_name} ({c.group_code})" if c.group_code else c.full_name for c in outcome.candidates[:3]
+                )
+                text = _("{where}: «{name}» — похожих учеников несколько: {names}").format(
                     where=line.where, name=line.name, names=names
                 )
+                if not line.group:
+                    # блоки школы без колонки «Группа»: тёзку уточняют группой в скобках
+                    text += _(" — допишите группу в скобках: «{name} (KIOTO)»").format(name=line.name)
+                line.error = text
             else:
                 line.error = _("{where}: ученика «{name}» нет в группах подгруппы").format(
                     where=line.where, name=line.name
                 )
             continue
-        student = next(s for s in pupils_of[scope] if s.pk == outcome.best.student_id)
+        student = next(s for s in pupils(scope) if s.pk == outcome.best.student_id)
         line.student = student
         earlier = seen.get(student.pk)
         if earlier is not None:
@@ -249,6 +379,63 @@ def plan(content: bytes) -> Plan:
     out.errors.extend(line.error for line in lines if line.error)
     _warn_about_the_rest(out, subgroups)
     return out
+
+
+#: «Каирова Диана (OXFORD)» — тёзку уточняют группой в скобках после ФИО
+NAME_WITH_GROUP = re.compile(r"^(?P<name>.*?)\s*[(\[]\s*(?P<group>[^)\]]+?)\s*[)\]]\s*$")
+
+
+def _group_from_name(line: Line, groups: dict[str, StudyGroup]) -> None:
+    """Группа в скобках после ФИО становится группой строки, если это код группы."""
+    if line.group:
+        return
+    match = NAME_WITH_GROUP.match(line.name)
+    if match and _group_of(match["group"], groups) is not None:
+        line.name, line.group = match["name"].strip(), match["group"].strip()
+
+
+def _resolve_block(block: Block, subgroups: dict[str, Cohort], pupils, find) -> None:
+    """Подгруппа блока: названная в заголовке, иначе по кабинету, при нескольких — по ученикам."""
+    if block.named:
+        block.cohort = subgroups[subgroup_key(block.named)]
+        return
+    candidates = [c for c in subgroups.values() if c.room.strip() == block.room]
+    if not candidates:
+        block.error = _("{where}: нет подгруппы потока с кабинетом {room}").format(where=block.where, room=block.room)
+        return
+    if len(candidates) == 1:
+        block.cohort = candidates[0]
+        return
+    # кабинет у нескольких подгрупп (201 — в 11.1 и в 11.2): решают группы учеников блока
+    scores = []
+    for cohort in candidates:
+        known = pupils(tuple(group_ids_of(cohort)))
+        hits = sum(1 for line in block.lines if find(line.name, students=known).is_confident)
+        scores.append((hits, cohort))
+    scores.sort(key=lambda pair: (-pair[0], pair[1].name))
+    if scores[0][0] == 0 or scores[0][0] == scores[1][0]:
+        block.error = _(
+            "{where}: кабинет {room} у нескольких подгрупп ({names}) — допишите название подгруппы в заголовок блока"
+        ).format(where=block.where, room=block.room, names=", ".join(sorted(c.name for c in candidates)))
+        return
+    block.cohort = scores[0][1]
+
+
+def _refuse_shared_subgroups(blocks: list[Block]) -> None:
+    """Два блока в одну подгруппу — ошибка: один из них, значит, не на своём месте."""
+    by_cohort: dict[int, list[Block]] = {}
+    for block in blocks:
+        if block.cohort is not None:
+            by_cohort.setdefault(block.cohort.pk, []).append(block)
+    for same in by_cohort.values():
+        if len(same) < 2:
+            continue
+        for block in same:
+            others = ", ".join(f"«{b.header}»" for b in same if b is not block)
+            block.error = _("{where}: в подгруппу {subgroup} ведёт и блок {others}").format(
+                where=block.where, subgroup=block.cohort.name, others=others
+            )
+            block.cohort = None
 
 
 def alternatives(cohorts) -> list[Cohort]:
@@ -321,7 +508,26 @@ def report(out: Plan, since: dt.date) -> dict:
             }
         )
     rows.sort(key=lambda row: row["name"])
+    teachers = {
+        course.cohort_id: course.teacher.full_name
+        for course in Course.objects.filter(cohort__in=[b.cohort for b in out.blocks if b.cohort]).select_related(
+            "teacher"
+        )
+        if course.teacher_id
+    }
+    blocks = [
+        {
+            "sheet": block.sheet,
+            "header": block.header,
+            "subgroup": block.cohort.name if block.cohort else "",
+            "teacher": teachers.get(block.cohort.pk, "") if block.cohort else "",
+            "students": len(block.lines),
+        }
+        for block in out.blocks
+    ]
     return {
+        "blocks": blocks,
+        "skipped": out.skipped,
         "since": since,
         "lines": len(out.lines),
         "matched": sum(len(ids) for ids in out.wanted.values()),
