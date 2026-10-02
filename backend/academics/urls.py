@@ -41,6 +41,7 @@ urlpatterns = [
     path("acad/cohorts/", schedule_views.cohorts, name="acad-cohorts"),
     path("acad/cohorts/all/", schedule_views.group_cohorts, name="acad-cohorts-all"),
     path("acad/cohorts/split/", schedule_views.cohort_split, name="acad-cohort-split"),
+    path("acad/cohorts/members/", schedule_views.cohort_members_import, name="acad-cohort-members"),
     path("acad/cohorts/stream/", schedule_views.cohort_stream, name="acad-cohort-stream"),
     path("acad/cohorts/<int:pk>/", schedule_views.cohort, name="acad-cohort"),
     path("acad/teachers/", schedule_views.teachers_list, name="acad-teachers"),

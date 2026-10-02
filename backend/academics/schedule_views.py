@@ -570,6 +570,35 @@ def cohort(request, pk: int):
 @extend_schema(request=None, responses={200: dict})
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def cohort_members_import(request):
+    """Состав подгрупп английского файлом школы: проверка, а с `apply` — запись.
+
+    Проверка и запись — один и тот же разбор (`subgroup_members.plan`): что
+    показал предпросмотр, то и запишется. Файл с ошибкой не применяется.
+    """
+    from academics import subgroup_members
+
+    refusal = _editor(request)
+    if refusal:
+        return refusal
+    upload = request.FILES.get("file")
+    if upload is None:
+        return _bad(_("Приложите файл Excel (.xlsx)"))
+    since = _date(request.data.get("since"), subgroup_members.year_start())
+    found = subgroup_members.plan(upload.read())
+    payload = subgroup_members.report(found, since)
+    if str(request.data.get("apply") or "").lower() not in ("1", "true"):
+        return Response(payload)
+    if not found.ok:
+        return Response({**payload, "detail": _("Сначала исправьте ошибки в файле")}, status=http.HTTP_400_BAD_REQUEST)
+    subgroup_members.apply(found, since, actor=request.user)
+    return Response({**payload, "applied": True})
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
 @cached
 def cohort_split(request):
     """Разделить группу на подгруппы по предмету с даты."""

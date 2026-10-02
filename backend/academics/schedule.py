@@ -53,7 +53,7 @@ class Conflict:
 # --- Журнал изменений расписания -------------------------------------------
 
 
-def log_change(text: str, *, actor=None, lesson: Lesson | None = None) -> AuditLog:
+def log_change(text: str, *, actor=None, lesson: Lesson | None = None, source: str = Source.MANUAL) -> AuditLog:
     """Строка «кто и что поменял в расписании» — тем же журналом, что правки."""
     return AuditLog.objects.create(
         actor=actor if getattr(actor, "pk", None) else None,
@@ -64,7 +64,7 @@ def log_change(text: str, *, actor=None, lesson: Lesson | None = None) -> AuditL
         domain_code="academics",
         old_value="",
         new_value=text[:2000],
-        source=Source.MANUAL,
+        source=source,
     )
 
 

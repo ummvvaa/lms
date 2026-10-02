@@ -15294,3 +15294,64 @@ msgstr "Кім жойды (жою сәтінде)"
 #: students/calendar_feed.py:36
 msgid "Дедлайн вуза"
 msgstr "ЖОО дедлайны"
+
+#: academics/subgroup_members.py:270
+#, python-brace-format
+msgid "{group}: нет в файле, английского в расписании у них не будет — {names}"
+msgstr "{group}: файлда жоқ, кестеде олардың ағылшын тілі болмайды — {names}"
+
+#: academics/subgroup_members.py:230
+#, python-brace-format
+msgid "{where}: {name} уже стоит в {subgroup} ({earlier}) — у ученика одна подгруппа"
+msgstr "{where}: {name} {subgroup} ішінде тұр ({earlier}) — оқушының бір ғана топшасы болады"
+
+#: academics/subgroup_members.py:215
+#, python-brace-format
+msgid "{where}: «{name}» — похожих учеников несколько: {names}"
+msgstr "{where}: «{name}» — ұқсас оқушылар бірнешеу: {names}"
+
+#: academics/subgroup_members.py:200
+#, python-brace-format
+msgid "{where}: группы «{group}» нет"
+msgstr "{where}: «{group}» тобы жоқ"
+
+#: academics/subgroup_members.py:195
+#, python-brace-format
+msgid "{where}: не указан ученик"
+msgstr "{where}: оқушы көрсетілмеген"
+
+#: academics/subgroup_members.py:190
+#, python-brace-format
+msgid "{where}: подгруппы «{subgroup}» нет среди подгрупп потоков"
+msgstr "{where}: ағын топшаларының ішінде «{subgroup}» топшасы жоқ"
+
+#: academics/subgroup_members.py:220
+#, python-brace-format
+msgid "{where}: ученика «{name}» нет в группах подгруппы"
+msgstr "{where}: топша топтарында «{name}» оқушысы жоқ"
+
+#: academics/subgroup_members.py:160
+msgid "В файле нет строк с колонками «Подгруппа» и «ФИО» — образец в описании формата"
+msgstr "Файлда «Подгруппа» және «ФИО» бағандары бар жолдар жоқ — үлгі формат сипаттамасында"
+
+#: academics/subgroup_members.py:140
+#, python-brace-format
+msgid "Лист «{sheet}»: нет колонки «Подгруппа», а название листа — не подгруппа"
+msgstr "«{sheet}» парағы: «Подгруппа» бағаны жоқ, ал парақ атауы топша емес"
+
+#: academics/subgroup_members.py:250
+#, python-brace-format
+msgid "Подгрупп нет в файле, их состав не меняется: {names}"
+msgstr "Бұл топшалар файлда жоқ, құрамы өзгермейді: {names}"
+
+#: academics/schedule_views.py:580
+msgid "Приложите файл Excel (.xlsx)"
+msgstr "Excel (.xlsx) файлын тіркеңіз"
+
+#: academics/schedule_views.py:585
+msgid "Сначала исправьте ошибки в файле"
+msgstr "Алдымен файлдағы қателерді түзетіңіз"
+
+#: academics/subgroup_members.py:125
+msgid "Файл не читается: нужен Excel (.xlsx)"
+msgstr "Файл оқылмайды: Excel (.xlsx) керек"

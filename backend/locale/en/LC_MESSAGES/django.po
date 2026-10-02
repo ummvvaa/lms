@@ -15378,3 +15378,64 @@ msgstr "Deleted by, at the time of erasure"
 #: students/calendar_feed.py:36
 msgid "Дедлайн вуза"
 msgstr "University deadline"
+
+#: academics/subgroup_members.py:270
+#, python-brace-format
+msgid "{group}: нет в файле, английского в расписании у них не будет — {names}"
+msgstr "{group}: not in the file, they will have no English in the schedule — {names}"
+
+#: academics/subgroup_members.py:230
+#, python-brace-format
+msgid "{where}: {name} уже стоит в {subgroup} ({earlier}) — у ученика одна подгруппа"
+msgstr "{where}: {name} is already in {subgroup} ({earlier}) — a student has one subgroup"
+
+#: academics/subgroup_members.py:215
+#, python-brace-format
+msgid "{where}: «{name}» — похожих учеников несколько: {names}"
+msgstr "{where}: «{name}» — several similar students: {names}"
+
+#: academics/subgroup_members.py:200
+#, python-brace-format
+msgid "{where}: группы «{group}» нет"
+msgstr "{where}: there is no group «{group}»"
+
+#: academics/subgroup_members.py:195
+#, python-brace-format
+msgid "{where}: не указан ученик"
+msgstr "{where}: no student given"
+
+#: academics/subgroup_members.py:190
+#, python-brace-format
+msgid "{where}: подгруппы «{subgroup}» нет среди подгрупп потоков"
+msgstr "{where}: there is no stream subgroup «{subgroup}»"
+
+#: academics/subgroup_members.py:220
+#, python-brace-format
+msgid "{where}: ученика «{name}» нет в группах подгруппы"
+msgstr "{where}: no student «{name}» in the subgroup's groups"
+
+#: academics/subgroup_members.py:160
+msgid "В файле нет строк с колонками «Подгруппа» и «ФИО» — образец в описании формата"
+msgstr "The file has no rows with «Подгруппа» and «ФИО» columns — see the sample in the format description"
+
+#: academics/subgroup_members.py:140
+#, python-brace-format
+msgid "Лист «{sheet}»: нет колонки «Подгруппа», а название листа — не подгруппа"
+msgstr "Sheet «{sheet}»: no «Подгруппа» column, and the sheet name is not a subgroup"
+
+#: academics/subgroup_members.py:250
+#, python-brace-format
+msgid "Подгрупп нет в файле, их состав не меняется: {names}"
+msgstr "These subgroups are not in the file, their members stay as they are: {names}"
+
+#: academics/schedule_views.py:580
+msgid "Приложите файл Excel (.xlsx)"
+msgstr "Attach an Excel (.xlsx) file"
+
+#: academics/schedule_views.py:585
+msgid "Сначала исправьте ошибки в файле"
+msgstr "Fix the errors in the file first"
+
+#: academics/subgroup_members.py:125
+msgid "Файл не читается: нужен Excel (.xlsx)"
+msgstr "The file cannot be read: an Excel (.xlsx) file is needed"
