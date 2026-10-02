@@ -60,6 +60,30 @@ function Report({ data }: { data: SubgroupMembersReport }) {
         </Block>
       )}
 
+      {/* файл школы — блоками: какой блок в какую подгруппу лёг, чтобы
+          было видно, что кабинет указал верно */}
+      {data.blocks.length > 0 && (
+        <Block title={t('Блоки файла')} count={data.blocks.length}>
+          <Rows>
+            <ShowAll limit={12}>
+              {data.blocks.map((block) => (
+                <Row
+                  key={`${block.sheet}|${block.header}|${block.subgroup}`}
+                  icon={block.subgroup ? 'check' : 'alert'}
+                  tone={block.subgroup ? 'good' : 'bad'}
+                  title={block.subgroup ? `${block.header} → ${block.subgroup}` : block.header}
+                  note={[block.sheet, tn(block.students, '{n} строка|{n} строки|{n} строк'), block.teacher].filter(Boolean).join(' · ')}
+                />
+              ))}
+            </ShowAll>
+          </Rows>
+        </Block>
+      )}
+
+      {data.skipped.length > 0 && (
+        <p className="acad__note">{t('Пропущены листы без подгрупп: {sheets}', { sheets: data.skipped.map((name) => `«${name.trim()}»`).join(', ') })}</p>
+      )}
+
       {/* строками, а не таблицей: в узкой панели колонка названия
           ломала «EEP-11.2-1» по букве */}
       {data.subgroups.length > 0 && (
@@ -114,7 +138,7 @@ export default function SubgroupMembersImport({ onClose }: { onClose: () => void
       open
       onClose={onClose}
       title={t('Состав подгрупп английского')}
-      sub={t('Excel с колонками «Подгруппа», «ФИО» и «Группа». У ученика одна подгруппа — EEP или GE.')}
+      sub={t('Файл школы: блоки «учитель, уровень, кабинет» со списком ФИО — подгруппа по кабинету. У ученика одна подгруппа — EEP или GE.')}
       footer={
         <>
           <Button

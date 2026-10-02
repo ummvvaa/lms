@@ -1326,6 +1326,10 @@ export interface SubgroupMembersReport {
   warnings: string[]
   ok: boolean
   applied?: boolean
+  /** блоки файла школы и подгруппа, в которую лёг каждый: глазами видно, что кабинет указал верно */
+  blocks: { sheet: string; header: string; subgroup: string; teacher: string; students: number }[]
+  /** листы без блоков и колонок: тесты, уровни, списки класса */
+  skipped: string[]
 }
 
 function membersBody(file: File, since: string, apply: boolean): FormData {
