@@ -101,7 +101,7 @@ def test_student_in_two_subgroups_is_an_error_and_nothing_is_written(english, ky
     rows = (*FULL, ("GE-1", "Ахметова Алия", "BOSTON"))
     response = upload(client, book(*rows), apply="true")
     assert response.status_code == 400
-    assert any("у ученика одна подгруппа" in text for text in response.json()["errors"])
+    assert any("У ученика одна подгруппа" in text for text in response.json()["errors"])
     assert not CohortMembership.objects.filter(cohort__in=english.values()).exists()
 
 
@@ -116,7 +116,7 @@ def test_unknown_subgroup_student_or_group_is_named(english, kymbat):
     ).json()
     texts = " ".join(data["errors"])
     assert "подгруппы «EEP-9» нет" in texts
-    assert "ученика «Несуществующий Ученик» нет" in texts
+    assert "ученик «Несуществующий Ученик» не найден" in texts
     assert "группы «LONDON» нет" in texts
     assert data["ok"] is False
 
@@ -160,7 +160,8 @@ def test_without_group_column_the_student_is_found_in_the_stream_groups(english,
 def test_namesakes_are_not_guessed(english, boston, kymbat):
     make_student(boston, "Ахметова", "Алия", "aliya2@example.kz")
     data = upload(login(kymbat), book(("EEP-1", "Ахметова Алия", "BOSTON"))).json()
-    assert any("похожих учеников несколько" in text for text in data["errors"])
+    # тёзки в одной группе: скобки не помогут, нужно полное ФИО
+    assert any("подходят несколько" in text and "ФИО полностью" in text for text in data["errors"]), data["errors"]
 
 
 def test_only_schedule_editors_load_members(english, curator, teacher, admin):
@@ -265,7 +266,8 @@ def test_namesake_is_settled_by_the_group_in_brackets(english, chicago, pupils):
     twin = make_student(chicago, "Ахметова", "Алия", "aliya.twin@example.kz")
     blocks = [(1, 2, "A2, 203 каб", ["Ахметова Алия"])]
     stuck = plan(school_book(blocks))
-    assert any("допишите группу в скобках" in text for text in stuck.errors)
+    # подсказка называет группы самих тёзок, а не образец
+    assert any("одну из: BOSTON, CHICAGO" in text for text in stuck.errors), stuck.errors
     found = plan(school_book([(1, 2, "A2, 203 каб", ["Ахметова Алия (CHICAGO)", "Ахметова Алия (BOSTON)"])]))
     assert found.errors == [], found.errors
     assert found.wanted == {english["EEP-1"].pk: [twin.pk, pupils["aliya"].pk]}
@@ -274,3 +276,49 @@ def test_namesake_is_settled_by_the_group_in_brackets(english, chicago, pupils):
 def test_book_without_blocks_or_columns_explains_itself(english):
     found = plan(school_book([], extra=True))
     assert any("ни блоков подгрупп, ни колонок" in text for text in found.errors)
+
+
+def test_student_of_another_group_is_named_with_its_group(english, subjects, year):
+    """Ученик не из групп подгруппы: ошибка говорит его группу; группа в скобках — явное согласие."""
+    from academics.cohorts import groups_on
+    from academics.subgroup_members import apply
+
+    lisbon = StudyGroup.objects.create(code="LISBON", parallel=11)
+    stray = make_student(lisbon, "Далёкая", "Мира", "mira@example.kz")
+    stuck = plan(school_book([(1, 2, "A2, 203 каб", ["Далёкая Мира"])]))
+    assert any(
+        "ученик LISBON, а EEP-1 собрана из групп BOSTON, CHICAGO" in text and "«Далёкая Мира (LISBON)»" in text
+        for text in stuck.errors
+    ), stuck.errors
+
+    found = plan(school_book([(1, 2, "A2, 203 каб", ["Далёкая Мира (LISBON)"])]))
+    assert found.errors == [], found.errors
+    assert found.wanted == {english["EEP-1"].pk: [stray.pk]}
+    assert any("встанет и в неделю LISBON" in text for text in found.warnings)
+    apply(found, year.starts)
+    assert lisbon.pk in groups_on(english["EEP-1"]), "урок подгруппы стоит в неделе группы ученика"
+
+
+def test_missing_name_suggests_only_students_not_yet_in_the_file(english, pupils):
+    found = plan(school_book([(1, 2, "A2, 203 каб", ["Ахметова Алия", "Сериков Данияр", "Ахметова Алина"])]))
+    texts = " ".join(found.errors)
+    # Дамира в файле ещё нет — он похожий; Алия уже стоит — её не предлагают
+    assert "«Сериков Данияр» не найден. Похожие из тех, кого ещё нет в файле: Сериков Дамир (BOSTON)" in texts
+    assert "«Ахметова Алина» не найден — напишите ФИО как в LMS" in texts
+    assert "Ахметова Алия (BOSTON)" not in texts
+    assert not found.ok
+    # фамилия по отцу против фамилии в LMS: сходство ФИО низкое, общее имя — подсказка
+    other = plan(school_book([(1, 2, "A2, 203 каб", ["Ахметова Алия", "Тестұлы Дамир"])]))
+    assert any(
+        "Похожие из тех, кого ещё нет в файле: Сериков Дамир (BOSTON)" in text for text in other.errors
+    ), other.errors
+
+
+def test_same_line_twice_in_a_subgroup_counts_once(english, pupils):
+    found = plan(school_book([(1, 2, "A2, 203 каб", ["Ахметова Алия", "Сериков Дамир", "ахметова  Алия"])]))
+    assert found.errors == [], found.errors
+    assert found.wanted == {english["EEP-1"].pk: [pupils["aliya"].pk, pupils["damir"].pk]}
+    assert any("стоит второй раз" in text and "учтён один раз" in text for text in found.warnings)
+    # иначе написанная строка, похожая на того же ученика, — ошибка с обеими записями
+    other = plan(school_book([(1, 2, "A2, 203 каб", ["Ахметова Алия", "Ахметова Алияя"])]))
+    assert any("«Ахметова Алияя» — тот же ученик, что «Ахметова Алия»" in text for text in other.errors), other.errors

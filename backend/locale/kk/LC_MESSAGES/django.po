@@ -15300,16 +15300,6 @@ msgstr "ЖОО дедлайны"
 msgid "{group}: нет в файле, английского в расписании у них не будет — {names}"
 msgstr "{group}: файлда жоқ, кестеде олардың ағылшын тілі болмайды — {names}"
 
-#: academics/subgroup_members.py:230
-#, python-brace-format
-msgid "{where}: {name} уже стоит в {subgroup} ({earlier}) — у ученика одна подгруппа"
-msgstr "{where}: {name} {subgroup} ішінде тұр ({earlier}) — оқушының бір ғана топшасы болады"
-
-#: academics/subgroup_members.py:215
-#, python-brace-format
-msgid "{where}: «{name}» — похожих учеников несколько: {names}"
-msgstr "{where}: «{name}» — ұқсас оқушылар бірнешеу: {names}"
-
 #: academics/subgroup_members.py:200
 #, python-brace-format
 msgid "{where}: группы «{group}» нет"
@@ -15324,11 +15314,6 @@ msgstr "{where}: оқушы көрсетілмеген"
 #, python-brace-format
 msgid "{where}: подгруппы «{subgroup}» нет среди подгрупп потоков"
 msgstr "{where}: ағын топшаларының ішінде «{subgroup}» топшасы жоқ"
-
-#: academics/subgroup_members.py:220
-#, python-brace-format
-msgid "{where}: ученика «{name}» нет в группах подгруппы"
-msgstr "{where}: топша топтарында «{name}» оқушысы жоқ"
 
 #: academics/subgroup_members.py:160
 msgid "В файле нет строк с колонками «Подгруппа» и «ФИО» — образец в описании формата"
@@ -15355,11 +15340,6 @@ msgstr "Алдымен файлдағы қателерді түзетіңіз"
 #: academics/subgroup_members.py:125
 msgid "Файл не читается: нужен Excel (.xlsx)"
 msgstr "Файл оқылмайды: Excel (.xlsx) керек"
-
-#: academics/subgroup_members.py:300
-#, python-brace-format
-msgid " — допишите группу в скобках: «{name} (KIOTO)»"
-msgstr " — топты жақшаға жазыңыз: «{name} (KIOTO)»"
 
 #: academics/subgroup_members.py:110
 #, python-brace-format
@@ -15389,3 +15369,48 @@ msgstr "«{sheet}», «{header}» блогы"
 #: academics/subgroup_members.py:230
 msgid "В файле нет ни блоков подгрупп, ни колонок «Подгруппа» и «ФИО» — образец в описании формата"
 msgstr "Файлда топша блоктары да, «Подгруппа» және «ФИО» бағандары да жоқ — үлгі формат сипаттамасында"
+
+#: academics/subgroup_members.py:380
+#, python-brace-format
+msgid "{where}: «{name}» стоит второй раз ({earlier}) — учтён один раз"
+msgstr "{where}: «{name}» екінші рет тұр ({earlier}) — бір рет есептелді"
+
+#: academics/subgroup_members.py:389
+#, python-brace-format
+msgid "{where}: «{name}» из {group}, а эта группа не входит в {subgroup}: урок подгруппы встанет и в неделю {group}"
+msgstr "{where}: «{name}» {group} тобынан, ал бұл топ {subgroup} құрамына кірмейді: топша сабағы {group} аптасында да тұрады"
+
+#: academics/subgroup_members.py:422
+#, python-brace-format
+msgid "{where}: «{name}» — тот же ученик, что «{earlier_name}» ({earlier}, {subgroup}): {student}. У ученика одна подгруппа; если это разные ученики, напишите ФИО как в LMS"
+msgstr "{where}: «{name}» — «{earlier_name}» ({earlier}, {subgroup}) жолымен бір оқушы: {student}. Оқушының бір ғана топшасы болады; бұлар әртүрлі оқушылар болса, аты-жөнін LMS-тегідей жазыңыз"
+
+#: academics/subgroup_members.py:446
+#, python-brace-format
+msgid "{where}: «{name}» — подходят несколько: {names}. Допишите в скобках группу нужного ученика — одну из: {groups}"
+msgstr "{where}: «{name}» — бірнеше оқушы сәйкес келеді: {names}. Жақшаға керекті оқушының тобын жазыңыз — мыналардың бірі: {groups}"
+
+#: academics/subgroup_members.py:450
+#, python-brace-format
+msgid "{where}: «{name}» — подходят несколько: {names}. Напишите ФИО полностью, как в LMS"
+msgstr "{where}: «{name}» — бірнеше оқушы сәйкес келеді: {names}. Аты-жөнін LMS-тегідей толық жазыңыз"
+
+#: academics/subgroup_members.py:460
+#, python-brace-format
+msgid "{where}: «{name}» — ученик {found}, а не {written}: исправьте группу"
+msgstr "{where}: «{name}» — {found} оқушысы, {written} емес: топты түзетіңіз"
+
+#: academics/subgroup_members.py:464
+#, python-brace-format
+msgid "{where}: «{name}» — ученик {found}, а {subgroup} собрана из групп {groups}. Если ученик ходит сюда, допишите группу: «{name} ({found})»; если нет — перенесите строку в его подгруппу"
+msgstr "{where}: «{name}» — {found} оқушысы, ал {subgroup} мына топтардан құралған: {groups}. Оқушы осында барса, топты жазыңыз: «{name} ({found})»; бармаса — жолды өз топшасына көшіріңіз"
+
+#: academics/subgroup_members.py:477
+#, python-brace-format
+msgid "{where}: ученик «{name}» не найден. Похожие из тех, кого ещё нет в файле: {names} — если это кто-то из них, напишите ФИО как в LMS"
+msgstr "{where}: «{name}» оқушысы табылмады. Файлда әлі жоқтардың ішінде ұқсастары: {names} — солардың бірі болса, аты-жөнін LMS-тегідей жазыңыз"
+
+#: academics/subgroup_members.py:482
+#, python-brace-format
+msgid "{where}: ученик «{name}» не найден — напишите ФИО как в LMS; если ученика в LMS нет, заведите его или уберите строку"
+msgstr "{where}: «{name}» оқушысы табылмады — аты-жөнін LMS-тегідей жазыңыз; оқушы LMS-те жоқ болса, оны тіркеңіз немесе жолды алып тастаңыз"

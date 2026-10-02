@@ -10,13 +10,19 @@
 
 - подгруппа — по названию, только подгруппа внутри потока; кириллица,
   похожая на латиницу («ЕЕР-8-1», «ГЕ-10.1-2»), и пробелы не мешают;
-- ученик — по ФИО среди учеников своей группы (колонка «Группа») или,
-  если её нет, среди групп потока подгруппы; неуверенное совпадение —
-  ошибка строки с кандидатами, молча не угадывается;
+- ученик — по ФИО среди учеников своей группы (колонка «Группа» или группа
+  в скобках после ФИО) или, если её нет, среди групп потока подгруппы;
+  неуверенное совпадение — ошибка строки, молча не угадывается. Ошибка
+  говорит, что написать: у тёзок — группу в скобках из их групп, ученику
+  другой группы — что подгруппа собрана не из неё, ненайденному — похожих
+  из тех, кого файл ещё никуда не поставил. Группа в скобках не из
+  подгруппы — явное слово файла: ученик записывается, урок подгруппы
+  встаёт и в неделю его группы (предупреждение);
 - у ученика одна подгруппа английского — EEP или GE: второй раз в файле —
-  ошибка; подгруппы потоков из одного набора групп (EEP-8 и GE-8)
-  взаимоисключающие, и при применении ученик уходит из прежней, даже если
-  её нет в файле;
+  ошибка, кроме той же записи дважды в одной подгруппе (повтор учитывается
+  один раз, предупреждение); подгруппы потоков из одного набора групп
+  (EEP-8 и GE-8) взаимоисключающие, и при применении ученик уходит
+  из прежней, даже если её нет в файле;
 - любая ошибка строки останавливает применение: состав либо верный
   целиком, либо не пишется вовсе;
 - ученики групп потока, которых нет в файле, и подгруппы, которых нет
@@ -320,7 +326,16 @@ def plan(content: bytes) -> Plan:
     _refuse_shared_subgroups(out.blocks)
     out.errors.extend(block.error for block in out.blocks if block.error)
 
+    codes = {group.pk: group.code for group in groups.values()}
+    groups_of: dict[int, tuple] = {}
+
+    def groups_of_cohort(cohort: Cohort) -> tuple:
+        if cohort.pk not in groups_of:
+            groups_of[cohort.pk] = tuple(group_ids_of(cohort))
+        return groups_of[cohort.pk]
+
     seen: dict[int, Line] = {}
+    unresolved: list[tuple[Line, tuple]] = []
     for line in lines:
         if line.block is not None:
             if line.block.cohort is None:
@@ -338,6 +353,7 @@ def plan(content: bytes) -> Plan:
             line.error = _("{where}: не указан ученик").format(where=line.where)
             continue
         _group_from_name(line, groups)
+        group = None
         if line.group:
             group = _group_of(line.group, groups)
             if group is None:
@@ -345,40 +361,143 @@ def plan(content: bytes) -> Plan:
                 continue
             scope: tuple = (group.pk,)
         else:
-            scope = tuple(group_ids_of(cohort))
+            scope = groups_of_cohort(cohort)
         outcome = find(line.name, students=pupils(scope))
         if not (outcome.is_confident and outcome.best):
-            if outcome.is_ambiguous:
-                names = ", ".join(
-                    f"{c.full_name} ({c.group_code})" if c.group_code else c.full_name for c in outcome.candidates[:3]
-                )
-                text = _("{where}: «{name}» — похожих учеников несколько: {names}").format(
-                    where=line.where, name=line.name, names=names
-                )
-                if not line.group:
-                    # блоки школы без колонки «Группа»: тёзку уточняют группой в скобках
-                    text += _(" — допишите группу в скобках: «{name} (KIOTO)»").format(name=line.name)
-                line.error = text
-            else:
-                line.error = _("{where}: ученика «{name}» нет в группах подгруппы").format(
-                    where=line.where, name=line.name
-                )
+            # объясняется после прохода: похожих ищем среди тех, кого файл ещё никуда не поставил
+            unresolved.append((line, scope))
             continue
         student = next(s for s in pupils(scope) if s.pk == outcome.best.student_id)
         line.student = student
         earlier = seen.get(student.pk)
         if earlier is not None:
+            if earlier.cohort.pk == cohort.pk and _same_spelling(earlier.name, line.name):
+                # та же запись дважды в одной подгруппе — повтор в файле, ученик учтётся один раз
+                out.warnings.append(
+                    _("{where}: «{name}» стоит второй раз ({earlier}) — учтён один раз").format(
+                        where=line.where, name=line.name, earlier=earlier.where
+                    )
+                )
+                continue
             # у ученика одна подгруппа английского — EEP или GE, не обе
-            line.error = _("{where}: {name} уже стоит в {subgroup} ({earlier}) — у ученика одна подгруппа").format(
-                where=line.where, name=student.full_name, subgroup=earlier.cohort.name, earlier=earlier.where
-            )
+            line.error = _twice(line, earlier, student.full_name)
             continue
+        if group is not None and group.pk not in groups_of_cohort(cohort):
+            # группа в скобках не из подгруппы — явное слово файла: ученик ходит сюда из другой параллели
+            out.warnings.append(
+                _(
+                    "{where}: «{name}» из {group}, а эта группа не входит в {subgroup}: "
+                    "урок подгруппы встанет и в неделю {group}"
+                ).format(where=line.where, name=line.name, group=group.code, subgroup=cohort.name)
+            )
         seen[student.pk] = line
         out.cohorts[cohort.pk] = cohort
         out.wanted.setdefault(cohort.pk, []).append(student.pk)
+    everyone: list[Student] = []
+    for line, scope in unresolved:
+        if not everyone:
+            everyone = list(Student.objects.filter(is_active=True).select_related("group"))
+        line.error = _explain_missing(line, scope, pupils(scope), everyone, seen, codes, find)
     out.errors.extend(line.error for line in lines if line.error)
     _warn_about_the_rest(out, subgroups)
     return out
+
+
+def _names(candidates) -> str:
+    return ", ".join(f"{c.full_name} ({c.group_code})" if c.group_code else c.full_name for c in candidates[:3])
+
+
+def _same_spelling(one: str, other: str) -> bool:
+    """Одна и та же запись: регистр, «ё» и лишние пробелы не в счёт."""
+
+    def norm(text: str) -> str:
+        return " ".join(text.casefold().replace("ё", "е").split())  # i18n-skip: буквы для сравнения записей
+
+    return norm(one) == norm(other)
+
+
+def _twice(line: Line, earlier: Line, student: str) -> str:
+    return _(
+        "{where}: «{name}» — тот же ученик, что «{earlier_name}» ({earlier}, {subgroup}): {student}. "
+        "У ученика одна подгруппа; если это разные ученики, напишите ФИО как в LMS"
+    ).format(
+        where=line.where,
+        name=line.name,
+        earlier_name=earlier.name,
+        earlier=earlier.where,
+        subgroup=earlier.cohort.name,
+        student=student,
+    )
+
+
+def _similar_free(name: str, free: list[Student], find) -> str:
+    """Похожие среди тех, кого файл ещё никуда не поставил: по сходству ФИО и по общему слову.
+
+    В файле школы фамилию пишут то по отцу, то по паспорту («Тестұлы Дамир»
+    против «Сериков Дамир»), и сходство всего ФИО тогда низкое; общее имя
+    или фамилия у ученика без подгруппы — уже подсказка.
+    """
+    from suggestions.name_matching import tokens
+
+    picked = [(c.full_name, c.group_code) for c in find(name, students=free).candidates]
+    words = set(tokens(name))
+    for student in free:
+        pair = (student.full_name, student.group.code if student.group_id else None)
+        if pair not in picked and words & set(tokens(student.full_name)):
+            picked.append(pair)
+    return ", ".join(f"{full} ({code})" if code else full for full, code in picked[:5])
+
+
+def _explain_missing(line: Line, scope: tuple, known, everyone, seen: dict[int, Line], codes, find) -> str:
+    """Почему строка не сопоставилась и что написать в файле, чтобы сопоставилась.
+
+    Молча ученик не угадывается никогда: здесь только текст ошибки.
+    """
+    from suggestions.name_matching import CONFIDENT
+
+    inside = find(line.name, students=known)
+    best = inside.best
+    if best is not None and best.confidence >= CONFIDENT:
+        # двое почти одинаково похожих — тёзки: решает группа или полное ФИО
+        close = [c for c in inside.candidates if best.confidence - c.confidence < 0.08]
+        groups = sorted({c.group_code for c in close if c.group_code})
+        if len(groups) > 1 and not line.group:
+            return _(
+                "{where}: «{name}» — подходят несколько: {names}. "
+                "Допишите в скобках группу нужного ученика — одну из: {groups}"
+            ).format(where=line.where, name=line.name, names=_names(close), groups=", ".join(groups))
+        return _("{where}: «{name}» — подходят несколько: {names}. Напишите ФИО полностью, как в LMS").format(
+            where=line.where, name=line.name, names=_names(close)
+        )
+    outside = find(line.name, students=[s for s in everyone if s.group_id not in scope])
+    if outside.is_confident and outside.best and outside.best.group_code:
+        found = outside.best
+        earlier = seen.get(found.student_id)
+        if earlier is not None:
+            return _twice(line, earlier, found.full_name)
+        if line.group:
+            return _("{where}: «{name}» — ученик {found}, а не {written}: исправьте группу").format(
+                where=line.where, name=line.name, found=found.group_code, written=line.group
+            )
+        return _(
+            "{where}: «{name}» — ученик {found}, а {subgroup} собрана из групп {groups}. "
+            "Если ученик ходит сюда, допишите группу: «{name} ({found})»; если нет — перенесите строку в его подгруппу"
+        ).format(
+            where=line.where,
+            name=line.name,
+            found=found.group_code,
+            subgroup=line.cohort.name,
+            groups=", ".join(sorted(codes[pk] for pk in scope if pk in codes)),
+        )
+    if free := _similar_free(line.name, [s for s in known if s.pk not in seen], find):
+        return _(
+            "{where}: ученик «{name}» не найден. Похожие из тех, кого ещё нет в файле: {names} — "
+            "если это кто-то из них, напишите ФИО как в LMS"
+        ).format(where=line.where, name=line.name, names=free)
+    return _(
+        "{where}: ученик «{name}» не найден — напишите ФИО как в LMS; "
+        "если ученика в LMS нет, заведите его или уберите строку"
+    ).format(where=line.where, name=line.name)
 
 
 #: «Каирова Диана (OXFORD)» — тёзку уточняют группой в скобках после ФИО

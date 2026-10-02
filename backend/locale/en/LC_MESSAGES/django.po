@@ -15384,16 +15384,6 @@ msgstr "University deadline"
 msgid "{group}: нет в файле, английского в расписании у них не будет — {names}"
 msgstr "{group}: not in the file, they will have no English in the schedule — {names}"
 
-#: academics/subgroup_members.py:230
-#, python-brace-format
-msgid "{where}: {name} уже стоит в {subgroup} ({earlier}) — у ученика одна подгруппа"
-msgstr "{where}: {name} is already in {subgroup} ({earlier}) — a student has one subgroup"
-
-#: academics/subgroup_members.py:215
-#, python-brace-format
-msgid "{where}: «{name}» — похожих учеников несколько: {names}"
-msgstr "{where}: «{name}» — several similar students: {names}"
-
 #: academics/subgroup_members.py:200
 #, python-brace-format
 msgid "{where}: группы «{group}» нет"
@@ -15408,11 +15398,6 @@ msgstr "{where}: no student given"
 #, python-brace-format
 msgid "{where}: подгруппы «{subgroup}» нет среди подгрупп потоков"
 msgstr "{where}: there is no stream subgroup «{subgroup}»"
-
-#: academics/subgroup_members.py:220
-#, python-brace-format
-msgid "{where}: ученика «{name}» нет в группах подгруппы"
-msgstr "{where}: no student «{name}» in the subgroup's groups"
 
 #: academics/subgroup_members.py:160
 msgid "В файле нет строк с колонками «Подгруппа» и «ФИО» — образец в описании формата"
@@ -15439,11 +15424,6 @@ msgstr "Fix the errors in the file first"
 #: academics/subgroup_members.py:125
 msgid "Файл не читается: нужен Excel (.xlsx)"
 msgstr "The file cannot be read: an Excel (.xlsx) file is needed"
-
-#: academics/subgroup_members.py:300
-#, python-brace-format
-msgid " — допишите группу в скобках: «{name} (KIOTO)»"
-msgstr " — add the group in brackets: «{name} (KIOTO)»"
 
 #: academics/subgroup_members.py:110
 #, python-brace-format
@@ -15473,3 +15453,48 @@ msgstr "«{sheet}», block «{header}»"
 #: academics/subgroup_members.py:230
 msgid "В файле нет ни блоков подгрупп, ни колонок «Подгруппа» и «ФИО» — образец в описании формата"
 msgstr "The file has neither subgroup blocks nor «Подгруппа» and «ФИО» columns — see the sample in the format description"
+
+#: academics/subgroup_members.py:380
+#, python-brace-format
+msgid "{where}: «{name}» стоит второй раз ({earlier}) — учтён один раз"
+msgstr "{where}: «{name}» is listed a second time ({earlier}) — counted once"
+
+#: academics/subgroup_members.py:389
+#, python-brace-format
+msgid "{where}: «{name}» из {group}, а эта группа не входит в {subgroup}: урок подгруппы встанет и в неделю {group}"
+msgstr "{where}: «{name}» is from {group}, and this group is not part of {subgroup}: the subgroup's lesson will also appear in the {group} week"
+
+#: academics/subgroup_members.py:422
+#, python-brace-format
+msgid "{where}: «{name}» — тот же ученик, что «{earlier_name}» ({earlier}, {subgroup}): {student}. У ученика одна подгруппа; если это разные ученики, напишите ФИО как в LMS"
+msgstr "{where}: «{name}» is the same student as «{earlier_name}» ({earlier}, {subgroup}): {student}. A student has one subgroup; if these are different students, write the full name as in the LMS"
+
+#: academics/subgroup_members.py:446
+#, python-brace-format
+msgid "{where}: «{name}» — подходят несколько: {names}. Допишите в скобках группу нужного ученика — одну из: {groups}"
+msgstr "{where}: «{name}» matches several students: {names}. Add the right student's group in brackets — one of: {groups}"
+
+#: academics/subgroup_members.py:450
+#, python-brace-format
+msgid "{where}: «{name}» — подходят несколько: {names}. Напишите ФИО полностью, как в LMS"
+msgstr "{where}: «{name}» matches several students: {names}. Write the full name as in the LMS"
+
+#: academics/subgroup_members.py:460
+#, python-brace-format
+msgid "{where}: «{name}» — ученик {found}, а не {written}: исправьте группу"
+msgstr "{where}: «{name}» is a student of {found}, not {written}: correct the group"
+
+#: academics/subgroup_members.py:464
+#, python-brace-format
+msgid "{where}: «{name}» — ученик {found}, а {subgroup} собрана из групп {groups}. Если ученик ходит сюда, допишите группу: «{name} ({found})»; если нет — перенесите строку в его подгруппу"
+msgstr "{where}: «{name}» is a student of {found}, while {subgroup} is made up of {groups}. If the student attends it, add the group: «{name} ({found})»; if not, move the row to the student's own subgroup"
+
+#: academics/subgroup_members.py:477
+#, python-brace-format
+msgid "{where}: ученик «{name}» не найден. Похожие из тех, кого ещё нет в файле: {names} — если это кто-то из них, напишите ФИО как в LMS"
+msgstr "{where}: student «{name}» not found. Similar students not yet in the file: {names} — if it is one of them, write the name as in the LMS"
+
+#: academics/subgroup_members.py:482
+#, python-brace-format
+msgid "{where}: ученик «{name}» не найден — напишите ФИО как в LMS; если ученика в LMS нет, заведите его или уберите строку"
+msgstr "{where}: student «{name}» not found — write the name as in the LMS; if the student is not in the LMS, add them or remove the row"
