@@ -1471,7 +1471,7 @@ def curator_home(request):
     blocks = []
     absent_now: list[str] = []
     for group in groups:
-        rows = [lesson for lesson in today_rows if group.pk in group_ids_of(lesson.course.cohort)]
+        rows = [lesson for lesson in today_rows if group.pk in schedule.touched_groups(lesson)]
         live = [lesson for lesson in rows if lesson.is_live]
         ids = list(Student.objects.filter(group=group, is_active=True).values_list("pk", flat=True))
         marks = marking.marks_map(live, ids)

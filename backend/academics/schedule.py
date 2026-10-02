@@ -769,9 +769,17 @@ def student_lessons(student_id: int, start: dt.date, end: dt.date) -> list[Lesso
 
 
 def for_groups(rows, group_ids: list[int]):
-    """Уроки, чей состав задевает эти группы."""
+    """Уроки, чей состав задевает эти группы на дату урока (`cohorts.groups_on`)."""
     wanted = set(group_ids)
-    return [lesson for lesson in rows if wanted & set(group_ids_of(lesson.course.cohort))]
+    return [lesson for lesson in rows if wanted & set(touched_groups(lesson))]
+
+
+def touched_groups(lesson) -> list[int]:
+    """Группы, которых касается урок на экранах групп: у подгруппы потока с составом —
+    группы её учеников. Звонки урока считаются по `calendar.lesson_groups`."""
+    from academics.cohorts import groups_on
+
+    return groups_on(lesson.course.cohort, lesson.date)
 
 
 def for_teacher(rows, teacher_id: int):

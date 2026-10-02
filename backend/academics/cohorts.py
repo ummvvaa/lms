@@ -80,6 +80,28 @@ def group_ids_of(cohort: Cohort) -> list[int]:
     return out
 
 
+def groups_on(cohort: Cohort, on: dt.date | None = None) -> list[int]:
+    """Группы, которых урок состава касается на дату.
+
+    Подгруппа внутри потока (английский EEP-8-1 из четырёх групп) с составом
+    касается только групп своих учеников: иначе в неделе каждой группы
+    стояли все подгруппы потока в одно время. Пока состав не задан, —
+    группы потока, как раньше: до загрузки списка урок не пропадает.
+    """
+    if cohort.kind == CohortKind.SUBGROUP and not cohort.group_id and cohort.stream_id:
+        day = on or today()
+        store = cache.current()
+        if store is not None:
+            found = store.roster.member_groups(cohort.pk, day)
+        else:
+            ids = member_ids(cohort, day)
+            by_student = dict(Student.objects.filter(pk__in=ids).values_list("pk", "group_id"))
+            found = list(dict.fromkeys(by_student[sid] for sid in ids if by_student.get(sid)))
+        if found:
+            return found
+    return group_ids_of(cohort)
+
+
 def kind_title(cohort: Cohort) -> str:
     return {CohortKind.GROUP: _("вся группа"), CohortKind.SUBGROUP: _("подгруппа"), CohortKind.STREAM: _("поток")}[
         CohortKind(cohort.kind)

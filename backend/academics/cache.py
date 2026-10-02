@@ -113,6 +113,15 @@ class Roster:
                     out.append(gid)
         return out
 
+    def member_groups(self, cohort_id: int, on: dt.date) -> list[int]:
+        """Группы учеников состава на дату — по порядку, без повторов."""
+        out: list[int] = []
+        for sid in self.members(cohort_id, on):
+            group_id = self.students[sid][0]
+            if group_id is not None and group_id not in out:
+                out.append(group_id)
+        return out
+
     def cohorts_of_student(self, student_id: int, on: dt.date) -> list[int]:
         found = self.students.get(student_id)
         if found is None:
