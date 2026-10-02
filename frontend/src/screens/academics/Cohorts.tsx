@@ -33,6 +33,7 @@ import RowMenu, { RowMenuItem } from '../../components/RowMenu'
 import { Segmented, StatRow } from '../../components/patterns'
 import DataTable, { type Column } from '../../components/DataTable'
 import WizardSteps from '../../components/WizardSteps'
+import SubgroupMembersImport from './SubgroupMembersImport'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tk } from '../../i18n'
@@ -382,7 +383,7 @@ export default function Cohorts() {
   const { data, isLoading, error } = useCohorts()
   const remove = useDeleteCohort()
   const [search, setSearch] = useState('')
-  const [dialog, setDialog] = useState<{ kind: 'split'; group: string } | { kind: 'stream'; stream?: AcadCohort } | { kind: 'sub'; id: number } | null>(null)
+  const [dialog, setDialog] = useState<{ kind: 'split'; group: string } | { kind: 'stream'; stream?: AcadCohort } | { kind: 'sub'; id: number } | { kind: 'members' } | null>(null)
   if (isLoading) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
@@ -464,6 +465,10 @@ export default function Cohorts() {
         title={t('Подгруппы и потоки')}
         actions={
           <>
+            {/* английский: кто в какой подгруппе — списком школы, а не галочками по одному */}
+            <Button variant="outline" size="sm" onClick={() => setDialog({ kind: 'members' })}>
+              {t('Загрузить состав')}
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setDialog({ kind: 'stream' })}>
               {t('Собрать поток')}
             </Button>
@@ -495,6 +500,7 @@ export default function Cohorts() {
       {dialog?.kind === 'split' && <SplitDrawer groups={data.groups} subjects={data.subjects} initial={dialog.group} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'stream' && <StreamDrawer stream={dialog.stream} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'sub' && <SubgroupDrawer id={dialog.id} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'members' && <SubgroupMembersImport onClose={() => setDialog(null)} />}
     </div>
   )
 }

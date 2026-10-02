@@ -28,7 +28,8 @@ import { dateWords } from './shared'
 
 type Section = ScheduleImportReport['sections'][number]
 
-function Block({ title, count, children }: { title: string; count?: number; children: ReactNode }) {
+/** Раздел отчёта загрузки: заголовок, число и строки — общий для загрузок учебной части. */
+export function Block({ title, count, children }: { title: string; count?: number; children: ReactNode }) {
   return (
     <section className="acad__import-block">
       <div className="row-between">

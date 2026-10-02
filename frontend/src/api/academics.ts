@@ -1314,6 +1314,45 @@ function importBody(file: File, fingerprint?: string): FormData {
   return body
 }
 
+/** Проверка и запись состава подгрупп файлом школы (`/acad/cohorts/members/`). */
+export interface SubgroupMembersReport {
+  /** с какой даты запишется состав: по умолчанию начало учебного года */
+  since: string
+  lines: number
+  matched: number
+  subgroups: { id: number; name: string; stream: string; subject: string; students: number; joined: number; left: number }[]
+  errors: string[]
+  errors_total: number
+  warnings: string[]
+  ok: boolean
+  applied?: boolean
+}
+
+function membersBody(file: File, since: string, apply: boolean): FormData {
+  const body = new FormData()
+  body.append('file', file)
+  if (since) body.append('since', since)
+  if (apply) body.append('apply', 'true')
+  return body
+}
+
+export function useSubgroupMembersCheck() {
+  return useMutation({
+    mutationFn: ({ file, since }: { file: File; since: string }) =>
+      api<SubgroupMembersReport>('/acad/cohorts/members/', { method: 'POST', body: membersBody(file, since, false) }),
+  })
+}
+
+export function useSubgroupMembersApply() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ file, since }: { file: File; since: string }) =>
+      api<SubgroupMembersReport>('/acad/cohorts/members/', { method: 'POST', body: membersBody(file, since, true) }),
+    // составы меняют неделю групп, журналы и посещаемость — вся учебная часть
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['acad'] }),
+  })
+}
+
 export function useScheduleImportPreview() {
   return useMutation({
     mutationFn: (file: File) =>
