@@ -11,6 +11,7 @@ from __future__ import annotations
 import datetime as dt
 
 import pytest
+from django.db.models.signals import post_save
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -19,6 +20,7 @@ from academics.cohorts import group_cohort, split_group
 from academics.models import (
     AcademicYear,
     Bell,
+    BellSchedule,
     GradingScale,
     Quarter,
     ReportSettings,
@@ -42,6 +44,8 @@ from students.models import (
 )
 
 TODAY = timezone.localdate()
+#: расписание звонков года фикстуры: по нему живёт каждая группа теста
+TEST_BELLS = "Звонки"
 
 
 def days(n: int) -> dt.date:
@@ -73,13 +77,46 @@ def year(db) -> AcademicYear:
     year = AcademicYear.objects.create(title="2026–2027", starts=days(-60), ends=days(260), is_current=True)
     Quarter.objects.create(year=year, number=1, title="1 четверть", starts=days(-60), ends=days(40))
     Quarter.objects.create(year=year, number=2, title="2 четверть", starts=days(50), ends=days(120))
+    bells = BellSchedule.objects.create(year=year, title=TEST_BELLS)
     for number, starts, ends in school_calendar.DEFAULT_BELLS:
         Bell.objects.create(
-            year=year, number=number, starts=dt.time.fromisoformat(starts), ends=dt.time.fromisoformat(ends)
+            year=year,
+            schedule=bells,
+            number=number,
+            starts=dt.time.fromisoformat(starts),
+            ends=dt.time.fromisoformat(ends),
         )
     GradingScale.objects.create(year=year)
     ReportSettings.objects.create(year=year)
-    return year
+    # общей сетки звонков нет: группы тестов заводятся по одной и после года,
+    # поэтому каждая сразу живёт по звонкам года фикстуры; тест про свои
+    # звонки переназначает группу сам (`give_bells`)
+    bells.groups.add(*StudyGroup.objects.all())
+
+    def join(sender, instance, created, **kwargs):
+        if created:
+            bells.groups.add(instance)
+
+    post_save.connect(join, sender=StudyGroup, weak=False, dispatch_uid="test-bells-of-the-year")
+    yield year
+    post_save.disconnect(sender=StudyGroup, dispatch_uid="test-bells-of-the-year")
+
+
+def give_bells(year, title: str, groups, rows) -> BellSchedule:
+    """Свои звонки группам: из прежнего расписания группа уходит, как на экране года."""
+    found = BellSchedule.objects.create(year=year, title=title)
+    for number, starts, ends in rows:
+        Bell.objects.create(
+            year=year,
+            schedule=found,
+            number=number,
+            starts=dt.time.fromisoformat(starts),
+            ends=dt.time.fromisoformat(ends),
+        )
+    for other in BellSchedule.objects.filter(year=year).exclude(pk=found.pk):
+        other.groups.remove(*groups)
+    found.groups.set(groups)
+    return found
 
 
 @pytest.fixture

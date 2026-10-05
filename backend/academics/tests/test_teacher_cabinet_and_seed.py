@@ -75,7 +75,7 @@ def test_reminder_goes_to_the_bell_once_per_lesson_ten_minutes_after_the_bell(
     lesson = create_once(
         subject=subjects["alg"], teacher=teacher, cohort=cohorts["boston"], date=days(0), slot=1, room="204"
     )
-    starts = calendar.bell(1)[0]
+    starts = calendar.bell(1, [cohorts["boston"].group_id])[0]
     tz = timezone.get_current_timezone()
     early = dt.datetime.combine(days(0), starts, tzinfo=tz) + dt.timedelta(minutes=5)
     late = early + dt.timedelta(minutes=10)
@@ -95,7 +95,9 @@ def test_reminder_delay_is_a_school_setting(year, subjects, teacher, cohorts, ca
 
     SchoolRule.objects.create(code="unmarked_remind_minutes", value=20)
     create_once(subject=subjects["alg"], teacher=teacher, cohort=cohorts["boston"], date=days(0), slot=1, room="204")
-    starts = dt.datetime.combine(days(0), calendar.bell(1)[0], tzinfo=timezone.get_current_timezone())
+    starts = dt.datetime.combine(
+        days(0), calendar.bell(1, [cohorts["boston"].group_id])[0], tzinfo=timezone.get_current_timezone()
+    )
     monkeypatch.setattr(tasks.timezone, "localtime", lambda: starts + dt.timedelta(minutes=15))
     assert tasks.remind_unmarked() == 0
     monkeypatch.setattr(tasks.timezone, "localtime", lambda: starts + dt.timedelta(minutes=20))

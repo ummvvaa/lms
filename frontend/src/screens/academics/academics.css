@@ -556,6 +556,11 @@ body [data-slot='button'][data-variant].acad__heatcell {
   padding: 0;
 }
 
+/* Ошибка «группам не назначены звонки» над сеткой недели */
+.acad__nobells {
+  margin-bottom: var(--gap-block);
+}
+
 /* --- Общее ------------------------------------------------------------------- */
 .acad__cols {
   display: grid;

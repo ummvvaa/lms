@@ -127,7 +127,6 @@ def meta_payload(user) -> dict:
             for q in calendar.quarters
         ],
         "current_quarter": (calendar.current_quarter().number if calendar.current_quarter() else None),
-        "bells": [{"number": n, "starts": s, "ends": e} for n, (s, e) in sorted(calendar.bells.items())],
         "scale": {
             "weight_fo": scale.weight_fo,
             "weight_sor": scale.weight_sor,
@@ -288,6 +287,18 @@ def lessons(request):
             "today": today(),
             "slots": calendar.slots,
             **schedule.week_rows(calendar, rows, _view_groups(request.user, request.query_params)),
+            # ученику ошибка настройки школы не показывается: у его урока просто нет времени
+            "no_bells": (
+                []
+                if request.user.role == ROLE_STUDENT
+                else schedule.groups_without_bells(
+                    calendar,
+                    [
+                        *_view_groups(request.user, request.query_params),
+                        *(g for lesson in rows for g in lesson_groups(lesson)),
+                    ],
+                )
+            ),
             "days": [
                 {
                     "date": day,

@@ -304,26 +304,48 @@ def conflicts_for(
     return out
 
 
-def bells_conflicts(cohort: Cohort) -> list[Conflict]:
-    """Группы состава живут по разным звонкам — предупреждение, как накладка."""
-    from academics import calendar as school_calendar
+def bells_problem(groups: list[int], calendar: SchoolCalendar, *, cohort_name: str = "") -> str:
+    """Почему у урока этих групп нет времени; пустая строка — время есть.
 
-    groups = group_ids_of(cohort)
-    if len(groups) < 2:
-        return []
-    calendar = school_calendar.load()
-    ids = calendar.schedule_ids_of(groups)
-    if len(ids) < 2:
-        return []
+    Общей сетки звонков нет (решение владельца, 05.10.2026): группе звонки
+    не назначены, у групп потока они разные или у состава нет групп — у урока
+    нет времени, и это ошибка, которую видно в «Расписании» и в накладках.
+    """
+    if calendar.schedule_of(groups) is not None:
+        return ""
+    if not groups:
+        return _("У состава {cohort} нет групп: время урока взять неоткуда").format(cohort=cohort_name)
     from students.models import StudyGroup
 
     codes = {row.pk: row.code for row in StudyGroup.objects.filter(pk__in=groups)}
+    bare = calendar.without_bells(groups)
+    if len(bare) == len(groups):
+        names = ", ".join(sorted(str(codes.get(g, g)) for g in bare))
+        return _("Не назначены звонки: {groups}. Назначьте их в «Учебном годе»").format(groups=names)
     parts = []
     for group_id in groups:
-        schedule_id = calendar.group_schedule.get(group_id)
-        title = calendar.schedule_titles.get(schedule_id, _("общее")) if schedule_id else _("общее")
-        parts.append(f"{codes.get(group_id, group_id)} — «{title}»")
-    return [Conflict("bells", _("У групп состава разные звонки: {groups}").format(groups=", ".join(parts)), None, None)]
+        title = calendar.schedule_titles.get(calendar.group_schedule.get(group_id))
+        label = f"«{title}»" if title and group_id not in bare else _("не назначены")
+        parts.append(f"{codes.get(group_id, group_id)} — {label}")
+    return _("У групп состава разные звонки: {groups}").format(groups=", ".join(parts))
+
+
+def bells_conflicts(cohort: Cohort) -> list[Conflict]:
+    """У урока состава нет времени — предупреждение, как накладка."""
+    from academics import calendar as school_calendar
+
+    text = bells_problem(group_ids_of(cohort), school_calendar.load(), cohort_name=cohort.name)
+    return [Conflict("bells", text, None, None)] if text else []
+
+
+def groups_without_bells(calendar: SchoolCalendar, group_ids) -> list[str]:
+    """Коды групп из этих, которым не назначены звонки, — строка ошибки экрана."""
+    bare = calendar.without_bells(sorted(set(group_ids)))
+    if not bare:
+        return []
+    from students.models import StudyGroup
+
+    return sorted(StudyGroup.objects.filter(pk__in=bare).values_list("code", flat=True))
 
 
 def conflicts_between(start: dt.date, end: dt.date) -> list[dict]:
@@ -357,6 +379,17 @@ def conflicts_between(start: dt.date, end: dt.date) -> list[dict]:
                     if found is not None:
                         when = time_words(_later(a_span, b_span), a.slot)
                         out.append({"date": date, "slot": a.slot, "time": when, **found.as_dict()})
+        # урок без времени — тоже накладка: одна запись на состав, на первом его уроке периода
+        seen: set[int] = set()
+        for lesson in rows:
+            cohort = lesson.course.cohort
+            if cohort.pk in seen or lesson_span(lesson, calendar) is not None:
+                continue
+            seen.add(cohort.pk)
+            text = bells_problem(lesson_groups(lesson), calendar, cohort_name=cohort.name)
+            if text:
+                found = Conflict("bells", text, lesson.pk, None)
+                out.append({"date": lesson.date, "slot": lesson.slot, "time": "", **found.as_dict()})
         return out
 
 
@@ -882,12 +915,13 @@ def week_rows(calendar: SchoolCalendar, lessons, groups=()) -> dict:
     """
     schedules = {calendar.schedule_of(lesson_groups(lesson)) for lesson in lessons}
     schedules |= {calendar.schedule_of([group]) for group in groups}
-    if not schedules:
-        schedules = {None}
+    schedules.discard(None)
+    if not schedules and not lessons and not groups:
+        # экран без уроков и без выбранной группы: ряды — звонки всех расписаний школы
+        schedules = set(calendar.schedules)
     at: dict[dt.time, dict[str, set]] = {}
     for found in schedules:
-        bells = calendar.schedules.get(found, calendar.bells) if found is not None else calendar.bells
-        for slot, (starts, ends) in bells.items():
+        for slot, (starts, ends) in calendar.schedules[found].items():
             row = at.setdefault(starts, {"slots": set(), "ends": set()})
             row["slots"].add(slot)
             row["ends"].add(ends)

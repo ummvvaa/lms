@@ -993,7 +993,7 @@ class _Writer:
                     _("{schedule}: в LMS есть уроки сверх файла — {numbers}").format(schedule=title, numbers=numbers),
                 )
             groups = [g for g in self.groups.values() if g.parallel in parallels]
-            others = BellSchedule.objects.filter(year=self.year, is_default=False).exclude(pk=schedule.pk)
+            others = BellSchedule.objects.filter(year=self.year).exclude(pk=schedule.pk)
             for other in others:
                 other.groups.remove(*groups)
             if set(schedule.groups.values_list("pk", flat=True)) != {g.pk for g in groups}:

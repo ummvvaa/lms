@@ -1672,10 +1672,6 @@ msgstr "Кабинет {room} бір уақытта екі сабаққа бер
 msgid "У {first} и {second} общие ученики"
 msgstr "{first} және {second} құрамдарында ортақ оқушылар бар"
 
-#: academics/schedule.py:324
-msgid "общее"
-msgstr "жалпы"
-
 #: academics/schedule.py:326
 #, python-brace-format
 msgid "У групп состава разные звонки: {groups}"
@@ -2176,10 +2172,6 @@ msgstr "Алдымен оқу жылын құрыңыз"
 #, python-brace-format
 msgid "{number} четверть: начало позже конца"
 msgstr "{number}-тоқсан: басталуы аяқталуынан кеш"
-
-#: academics/schedule_views.py:1372
-msgid "Общее расписание звонков не удаляется"
-msgstr "Жалпы қоңырау кестесі жойылмайды"
 
 #: academics/schedule_views.py:1391
 #, python-brace-format
@@ -16116,3 +16108,17 @@ msgstr "0 — ереже өшірулі. «Тәуекелдерде» таңда
 #: core/school_rules.py
 msgid "опоздание|опоздания|опозданий"
 msgstr "кешігу"
+
+#: academics/schedule.py
+#, python-brace-format
+msgid "У состава {cohort} нет групп: время урока взять неоткуда"
+msgstr "{cohort} құрамында топ жоқ: сабақ уақытын алатын жер жоқ"
+
+#: academics/schedule.py
+#, python-brace-format
+msgid "Не назначены звонки: {groups}. Назначьте их в «Учебном годе»"
+msgstr "Қоңырау кестесі тағайындалмаған: {groups}. Оны «Оқу жылы» бөлімінде тағайындаңыз"
+
+#: academics/schedule.py
+msgid "не назначены"
+msgstr "тағайындалмаған"

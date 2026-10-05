@@ -19,7 +19,7 @@ from academics import calendar as school_calendar
 from academics import cohorts as composing
 from academics import rights, schedule, teachers
 from academics.cache import cached
-from academics.calendar import DEFAULT_BELLS, lesson_groups, period_choices, scale_of, today, week_start
+from academics.calendar import lesson_groups, period_choices, scale_of, today, week_start
 from academics.cohorts import group_ids_of, member_ids
 from academics.models import (
     AcademicYear,
@@ -77,16 +77,25 @@ def cohort_bells(request):
     """Звонки состава — список «Урок» в формах расписания (решение владельца, 01.10.2026).
 
     Время — по звонкам групп состава, тем же, что у сетки недели и проверки
-    накладок: у 10–11 первый урок в 10:15, а не в 8:30 общих звонков, по
-    которым в школе не учится ни одна группа. Состав не задан — общие звонки.
+    накладок: у 10–11 первый урок в 10:15, у 8–9 — в 8:00. Общей сетки нет:
+    состав не выбран — список пуст; у состава нет одного расписания звонков —
+    список пуст и `problem` говорит, почему (форма показывает это ошибкой поля).
     """
     refusal = _editor(request)
     if refusal:
         return refusal
     calendar = school_calendar.load()
     cohort = _cohort(_int(request.query_params.get("cohort")))
-    bells = calendar.bells_of(group_ids_of(cohort)) if cohort is not None else calendar.bells
-    return Response({"bells": [{"number": n, "starts": s, "ends": e} for n, (s, e) in sorted(bells.items())]})
+    if cohort is None:
+        return Response({"bells": [], "problem": ""})
+    groups = group_ids_of(cohort)
+    bells = calendar.bells_of(groups)
+    return Response(
+        {
+            "bells": [{"number": n, "starts": s, "ends": e} for n, (s, e) in sorted(bells.items())],
+            "problem": schedule.bells_problem(groups, calendar, cohort_name=cohort.name),
+        }
+    )
 
 
 @extend_schema(responses={200: dict})
@@ -142,6 +151,9 @@ def schedule_week(request):
             "today": today(),
             "slots": calendar.slots,
             **schedule.week_rows(calendar, shown, view_groups),
+            "no_bells": schedule.groups_without_bells(
+                calendar, [*view_groups, *(g for lesson in shown for g in lesson_groups(lesson))]
+            ),
             "view": view,
             "key": key,
             "days": [
@@ -158,7 +170,8 @@ def schedule_week(request):
             ],
             "ghosts": schedule.moved_ghosts(start, end, calendar, keep),
             "conflicts": conflicts,
-            "conflict_ids": sorted({c["lesson"] for c in conflicts} | {c["other"] for c in conflicts}),
+            # у записи «уроку негде взять время» второго урока нет
+            "conflict_ids": sorted({c[side] for c in conflicts for side in ("lesson", "other")} - {None}),
             "next_week_conflicts": len(next_conflicts),
             "changes": [lesson_dict(lesson, calendar) for lesson in schedule.changed_between(start, end)],
             "requests": [
@@ -1256,8 +1269,11 @@ def year_payload() -> dict:
             {"id": h.pk, "date": h.date, "title": h.title, "name": stored_text.localize(h.title)}
             for h in (year.holidays.all() if year else [])
         ],
-        "bells": [{"number": n, "starts": s, "ends": e} for n, (s, e) in sorted(calendar.bells.items())],
         "bell_schedules": bell_schedules_payload(year),
+        # группе без звонков негде взять время урока: экран года называет таких поимённо
+        "groups_without_bells": schedule.groups_without_bells(
+            calendar, StudyGroup.objects.filter(is_active=True).values_list("pk", flat=True)
+        ),
         "scale": {
             "weight_fo": scale.weight_fo,
             "weight_sor": scale.weight_sor,
@@ -1309,15 +1325,13 @@ def bell_schedules_payload(year) -> list[dict]:
     """Расписания звонков года карточками: название, звонки, группы."""
     if year is None:
         return []
-    school_calendar.default_schedule(year)
     out = []
-    for row in year.bell_schedules.prefetch_related("groups", "bells").order_by("-is_default", "title"):
+    for row in year.bell_schedules.prefetch_related("groups", "bells").order_by("title"):
         out.append(
             {
                 "id": row.pk,
                 "title": row.title,
                 "name": stored_text.localize(row.title),
-                "is_default": row.is_default,
                 "groups": sorted(group.code for group in row.groups.all()),
                 "bells": [
                     {"number": b.number, "starts": b.starts, "ends": b.ends}
@@ -1359,7 +1373,7 @@ def _save_bell_schedule(year, raw: dict) -> BellSchedule:
             Bell.objects.update_or_create(
                 schedule=row, number=number, defaults={"year": year, "starts": starts, "ends": ends}
             )
-    if "groups" in raw and not row.is_default:
+    if "groups" in raw:
         codes = [str(code) for code in (raw.get("groups") or [])]
         groups = list(StudyGroup.objects.filter(code__in=codes, is_active=True))
         # группа живёт по одному расписанию: из прежнего она уходит
@@ -1419,17 +1433,12 @@ def _save_year(data: dict, *, actor) -> None:
                 Holiday.objects.get_or_create(  # i18n-skip: название по умолчанию — данные школы в базе
                     year=year, date=day, defaults={"title": str(raw.get("title") or "Праздник")[:80]}
                 )
-    if "bells" in data:
-        # прежний вид записи: звонки года — это общее расписание
-        _save_bell_schedule(year, {"id": school_calendar.default_schedule(year).pk, "bells": data["bells"]})
     if "bell_schedules" in data:
         for raw in data["bell_schedules"] or []:
             _save_bell_schedule(year, raw)
     if data.get("drop_bell_schedule"):
-        row = BellSchedule.objects.filter(year=year, pk=_int(data["drop_bell_schedule"]), is_default=False).first()
-        if row is None:
-            raise ValueError(_("Общее расписание звонков не удаляется"))
-        row.delete()
+        # группы удалённого расписания остаются без звонков — экран года и «Расписание» скажут об этом
+        BellSchedule.objects.filter(year=year, pk=_int(data["drop_bell_schedule"])).delete()
     if "scale" in data:
         raw = data["scale"] or {}
         scale, _created = GradingScale.objects.get_or_create(year=year)
@@ -1494,16 +1503,6 @@ def _save_year(data: dict, *, actor) -> None:
                     "soch_max": _int(raw.get("soch_max"), 25),
                     "is_active": bool(raw.get("is_active", True)),
                 },
-            )
-    default = school_calendar.default_schedule(year)
-    if default.bells.count() == 0:
-        for number, starts, ends in DEFAULT_BELLS:
-            Bell.objects.create(
-                year=year,
-                schedule=default,
-                number=number,
-                starts=dt.time.fromisoformat(starts),
-                ends=dt.time.fromisoformat(ends),
             )
     schedule.log_change(stored_text.store(stored_text.YEAR_SETTINGS), actor=actor)
 

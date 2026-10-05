@@ -55,14 +55,16 @@ function ConflictNote({ conflicts, checked }: { conflicts: AcadConflict[]; check
 /**
  * Список «Урок» по звонкам группы состава: «1 урок · 10:15–10:55» у 10–11
  * и «1 урок · 8:00–8:40» у 8–9 — то же время, что у сетки недели и проверки
- * накладок. Общие звонки здесь врали: по ним не учится ни одна группа.
- * Номер, которого нет в звонках группы, остаётся в списке без времени.
+ * накладок. Общей сетки нет: у состава без звонков список пуст, а поле
+ * говорит, почему. Номер, которого нет в звонках группы, остаётся в списке
+ * без времени.
  */
 export function SlotField({ cohort, value, onChange }: { cohort: number | null; value: string; onChange: (value: string) => void }) {
-  const bells = useCohortBells(cohort).data?.bells ?? []
+  const found = useCohortBells(cohort).data
+  const bells = found?.bells ?? []
   const options = bells.map((b) => ({ value: String(b.number), title: `${t('{n} урок', { n: b.number })} · ${b.starts.slice(0, 5)}–${b.ends.slice(0, 5)}` }))
   if (value && !options.some((option) => option.value === value)) options.push({ value, title: t('{n} урок', { n: Number(value) }) })
-  return <Field kind="select" name="slot" label={t('Урок')} value={value} onChange={onChange} options={options} />
+  return <Field kind="select" name="slot" label={t('Урок')} value={value} onChange={onChange} options={options} error={found?.problem || undefined} />
 }
 
 /** Номер урока, который у звонков состава начинается в это время («10:15»); нет такого — `null`. */

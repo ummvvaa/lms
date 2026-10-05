@@ -13,10 +13,10 @@ from dataclasses import dataclass, field
 from django.utils import timezone
 from django.utils.translation import gettext, gettext_noop
 
-from academics.models import AcademicYear, Bell, BellSchedule, Break, GradingScale, Quarter, ReportSettings
+from academics.models import AcademicYear, BellSchedule, Break, GradingScale, Quarter, ReportSettings
 from core import stored_text
 
-#: Уроков в дне по умолчанию — для звонков посева и пустого года
+#: Звонки по умолчанию — заготовка новой сетки звонков и звонки посева
 DEFAULT_BELLS: tuple[tuple[int, str, str], ...] = (
     (1, "08:30", "09:15"),
     (2, "09:25", "10:10"),
@@ -169,25 +169,22 @@ def report_settings_of(year: AcademicYear | None) -> ReportSettings:
 Bells = dict[int, tuple[dt.time, dt.time]]
 
 
-def _default_bells() -> Bells:
-    return {n: (dt.time.fromisoformat(s), dt.time.fromisoformat(e)) for n, s, e in DEFAULT_BELLS}
-
-
 @dataclass(frozen=True)
 class SchoolCalendar:
     """Год целиком в памяти: учебные дни считаются без запросов в цикле.
 
-    Звонков у школы несколько (решение владельца, 27.09.2026): `bells` —
-    общее расписание, `schedules` — все по номеру, `group_schedule` — какое
-    расписание у группы, если не общее. Время урока берётся из звонков его
-    группы (`groups=`); без группы — общее.
+    Звонки — у расписаний звонков, расписание — у группы; общей сетки на
+    всех нет (решение владельца, 05.10.2026): `schedules` — звонки по номеру
+    расписания, `group_schedule` — какое расписание у группы. Время урока
+    берётся из звонков его групп (`groups=`). У группы без расписания, у
+    состава без групп и у потока из групп с разными звонками времени нет —
+    это видимая ошибка в «Расписании» и в накладках, а не молчаливая подмена.
     """
 
     year: AcademicYear | None
     quarters: tuple[Quarter, ...]
     breaks: tuple[Break, ...]
     holidays: frozenset[dt.date]
-    bells: Bells
     schedules: dict[int, Bells] = field(default_factory=dict)
     schedule_titles: dict[int, str] = field(default_factory=dict)
     group_schedule: dict[int, int] = field(default_factory=dict)
@@ -218,11 +215,11 @@ class SchoolCalendar:
         return self.quarters[-1] if self.quarters else None
 
     def schedule_ids_of(self, groups) -> set[int | None]:
-        """Какие расписания звонков у групп: `None` — общее."""
+        """Какие расписания звонков у групп: `None` — группе звонки не назначены."""
         return {self.group_schedule.get(g) for g in (groups or [])} or {None}
 
     def schedule_of(self, groups=None) -> int | None:
-        """Расписание звонков состава из этих групп: `None` — общее. То же правило, что `bells_of`."""
+        """Расписание звонков состава из этих групп; `None` — одного расписания у них нет."""
         ids = self.schedule_ids_of(groups)
         if len(ids) == 1:
             found = next(iter(ids))
@@ -231,13 +228,13 @@ class SchoolCalendar:
         return None
 
     def bells_of(self, groups=None) -> Bells:
-        """Звонки для состава из этих групп. Разные расписания — общее."""
-        ids = self.schedule_ids_of(groups)
-        if len(ids) == 1:
-            found = next(iter(ids))
-            if found is not None:
-                return self.schedules.get(found, self.bells)
-        return self.bells
+        """Звонки состава из этих групп. Нет одного расписания на всех — звонков нет."""
+        found = self.schedule_of(groups)
+        return self.schedules[found] if found is not None else {}
+
+    def without_bells(self, groups) -> list[int]:
+        """Группы из этих, которым звонки не назначены."""
+        return [g for g in (groups or []) if self.group_schedule.get(g) not in self.schedules]
 
     def bell(self, slot: int, groups=None) -> tuple[dt.time, dt.time] | None:
         return self.bells_of(groups).get(slot)
@@ -273,54 +270,36 @@ class SchoolCalendar:
 
     @property
     def slots(self) -> list[int]:
-        numbers = set(self.bells)
+        numbers: set[int] = set()
         for rows in self.schedules.values():
             numbers.update(rows)
         return sorted(numbers) or [n for n, _s, _e in DEFAULT_BELLS]
-
-
-def default_schedule(year: AcademicYear) -> BellSchedule:
-    """Общее расписание звонков года — заводится при первом обращении."""
-    found = year.bell_schedules.filter(is_default=True).first()
-    if found is None:
-        found = BellSchedule.objects.create(year=year, title="Общее", is_default=True)  # i18n-skip: данные в базе
-        Bell.objects.filter(year=year, schedule__isnull=True).update(schedule=found)
-    return found
 
 
 def load(year: AcademicYear | None = None) -> SchoolCalendar:
     """Собрать календарь года одним набором запросов."""
     year = year or current_year()
     if year is None:
-        return SchoolCalendar(year=None, quarters=(), breaks=(), holidays=frozenset(), bells=_default_bells())
+        return SchoolCalendar(year=None, quarters=(), breaks=(), holidays=frozenset())
     schedules: dict[int, Bells] = {}
     titles: dict[int, str] = {}
-    default_id = None
     for row in year.bell_schedules.all():
         schedules[row.pk] = {}
         titles[row.pk] = row.title
-        if row.is_default:
-            default_id = row.pk
     for bell in year.bells.all():
-        key = bell.schedule_id if bell.schedule_id in schedules else default_id
-        if key is None:
-            continue
-        schedules[key][bell.number] = (bell.starts, bell.ends)
-    bells = schedules.get(default_id) or _default_bells()
-    if default_id is not None and not schedules.get(default_id):
-        schedules[default_id] = bells
+        if bell.schedule_id in schedules:
+            schedules[bell.schedule_id][bell.number] = (bell.starts, bell.ends)
     group_schedule = {
         group_id: schedule_id
-        for schedule_id, group_id in BellSchedule.groups.through.objects.filter(
-            bellschedule__year=year, bellschedule__is_default=False
-        ).values_list("bellschedule_id", "studygroup_id")
+        for schedule_id, group_id in BellSchedule.groups.through.objects.filter(bellschedule__year=year).values_list(
+            "bellschedule_id", "studygroup_id"
+        )
     }
     return SchoolCalendar(
         year=year,
         quarters=tuple(year.quarters.order_by("number")),
         breaks=tuple(year.breaks.all()),
         holidays=frozenset(year.holidays.values_list("date", flat=True)),
-        bells=bells,
         schedules=schedules,
         schedule_titles=titles,
         group_schedule=group_schedule,

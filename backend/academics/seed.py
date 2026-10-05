@@ -24,6 +24,7 @@ from academics.models import (
     AcademicYear,
     Attendance,
     Bell,
+    BellSchedule,
     Break,
     Cohort,
     CohortKind,
@@ -277,6 +278,7 @@ def seed(*, password: str = "", actor=None) -> dict:
     subjects = _subjects()
     teachers = _teachers(subjects, password)
     groups = {code: StudyGroup.objects.get_or_create(code=code, defaults={"parallel": 11})[0] for code in GROUPS}
+    _assign_bells(year, groups.values())
     students = _students(groups, rng)
     _curators(groups, password)
     _review_accounts(students, password)
@@ -294,6 +296,20 @@ def seed(*, password: str = "", actor=None) -> dict:
     }
 
 
+def _bell_schedule(year: AcademicYear) -> BellSchedule:
+    """Звонки посева — одно расписание на все его группы: общей сетки у школы нет."""
+    # название — данные посева в базе, не подпись интерфейса
+    return BellSchedule.objects.get_or_create(year=year, title="Звонки посева")[0]  # i18n-skip: данные посева
+
+
+def _assign_bells(year: AcademicYear, groups) -> None:
+    """Группа живёт по одному расписанию звонков: своё, если назначено, иначе звонки посева."""
+    assigned = set(
+        BellSchedule.groups.through.objects.filter(bellschedule__year=year).values_list("studygroup_id", flat=True)
+    )
+    _bell_schedule(year).groups.add(*[group for group in groups if group.pk not in assigned])
+
+
 def _year() -> AcademicYear:
     year = AcademicYear.objects.filter(is_current=True).first()
     if year is None:
@@ -309,7 +325,7 @@ def _year() -> AcademicYear:
     for title, starts, ends in BREAKS:
         Break.objects.get_or_create(year=year, title=title, defaults={"starts": _date(starts), "ends": _date(ends)})
     Holiday.objects.get_or_create(year=year, date=_date("2026-12-16"), defaults={"title": "День Независимости"})
-    schedule = school_calendar.default_schedule(year)
+    schedule = _bell_schedule(year)
     if not schedule.bells.exists():
         for number, starts, ends in school_calendar.DEFAULT_BELLS:
             Bell.objects.create(
@@ -821,6 +837,7 @@ def seed_probe(*, actor=None) -> dict:
         raise SeedRefused("Учётной записи учителя прогона нет: сначала create_probe_users")
     year = _year()
     subjects = _subjects()
+    _assign_bells(year, StudyGroup.objects.filter(is_active=True, archived_at__isnull=True))
     calendar = school_calendar.load(year)
     other = _user(PROBE_OTHER, "Прогон Второй учитель", Role.TEACHER, "")
     staff = {PROBE_TEACHER: teacher, PROBE_OTHER: other}

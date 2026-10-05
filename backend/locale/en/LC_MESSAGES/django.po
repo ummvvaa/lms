@@ -1677,10 +1677,6 @@ msgstr "Room {room} is double-booked"
 msgid "У {first} и {second} общие ученики"
 msgstr "{first} and {second} share students"
 
-#: academics/schedule.py:324
-msgid "общее"
-msgstr "general"
-
 #: academics/schedule.py:326
 #, python-brace-format
 msgid "У групп состава разные звонки: {groups}"
@@ -2175,10 +2171,6 @@ msgstr "Create the school year first"
 #, python-brace-format
 msgid "{number} четверть: начало позже конца"
 msgstr "Term {number}: the start is after the end"
-
-#: academics/schedule_views.py:1372
-msgid "Общее расписание звонков не удаляется"
-msgstr "The general bell schedule cannot be deleted"
 
 #: academics/schedule_views.py:1391
 #, python-brace-format
@@ -16200,3 +16192,17 @@ msgstr "0 — the rule is off. This many late arrivals in the period picked in �
 #: core/school_rules.py
 msgid "опоздание|опоздания|опозданий"
 msgstr "late arrival|late arrivals"
+
+#: academics/schedule.py
+#, python-brace-format
+msgid "У состава {cohort} нет групп: время урока взять неоткуда"
+msgstr "The roster {cohort} has no groups, so the lesson has no time"
+
+#: academics/schedule.py
+#, python-brace-format
+msgid "Не назначены звонки: {groups}. Назначьте их в «Учебном годе»"
+msgstr "No bell schedule assigned: {groups}. Assign one in School year"
+
+#: academics/schedule.py
+msgid "не назначены"
+msgstr "not assigned"

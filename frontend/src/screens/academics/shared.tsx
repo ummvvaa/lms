@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Chip, type Tone } from '../../components/ui'
 import Field from '../../components/Field'
-import { Segmented } from '../../components/patterns'
+import { Row, Rows, Segmented } from '../../components/patterns'
 import { Button } from '../../components/ui/button'
 import Icon from '../../layout/icons'
 import { t, tk, tn } from '../../i18n'
@@ -237,7 +237,39 @@ function CellLessons({
  * больше двух — два и «ещё N». `add` — редактор: пустая клетка предлагает
  * урок, у клетки с уроком — «ещё».
  */
-export function WeekGrid({
+/**
+ * Группам экрана не назначены звонки — ошибка над сеткой недели (решение
+ * владельца, 05.10.2026): общей сетки нет, у уроков таких групп нет времени,
+ * и они стоят в конце дня по номеру. Тот, кто составляет расписание, уходит
+ * отсюда в «Учебный год»; остальным сказано, кто назначает.
+ */
+function NoBells({ groups, editor }: { groups: string[]; editor: boolean }) {
+  if (!groups.length) return null
+  return (
+    <div className="card card-pad acad__nobells">
+      <Rows>
+        <Row
+          icon="alert"
+          tone="bad"
+          title={t('Не назначены звонки: {groups}', { groups: groups.join(', ') })}
+          note={editor ? t('У уроков этих групп нет времени начала. Звонки назначаются в «Учебном годе».') : t('У уроков этих групп нет времени начала. Звонки назначают администратор и академический директор.')}
+          to={editor ? '/academic-year' : undefined}
+        />
+      </Rows>
+    </div>
+  )
+}
+
+export function WeekGrid(props: Parameters<typeof WeekTable>[0]) {
+  return (
+    <>
+      <NoBells groups={props.week.no_bells ?? []} editor={props.perspective === 'edit'} />
+      <WeekTable {...props} />
+    </>
+  )
+}
+
+function WeekTable({
   week,
   perspective,
   onOpen,

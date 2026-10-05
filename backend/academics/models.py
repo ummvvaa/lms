@@ -206,17 +206,16 @@ class BellSchedule(models.Model):
     """Расписание звонков. У школы их может быть несколько (решение владельца, 27.09.2026).
 
     Разные классы начинают уроки в разное время, поэтому звонки живут
-    не у года, а у расписания звонков; каждое назначается группам, одно —
-    общее по умолчанию для всех групп без своего. Время урока берётся
-    из звонков его группы; поток из групп с разными звонками при сохранении
-    урока — предупреждение, как накладка.
+    не у года, а у расписания звонков; каждое назначается группам. Общего
+    расписания «для всех остальных» нет (решение владельца, 05.10.2026):
+    время урока берётся из звонков его группы, группа без звонков и поток
+    из групп с разными звонками — ошибка в «Расписании» и в накладках.
     """
 
     year = models.ForeignKey(
         AcademicYear, verbose_name=gettext_lazy("Учебный год"), related_name="bell_schedules", on_delete=models.CASCADE
     )
     title = models.CharField(gettext_lazy("Название"), max_length=60)
-    is_default = models.BooleanField(gettext_lazy("Общее по умолчанию"), default=False)
     groups = models.ManyToManyField(
         "students.StudyGroup", verbose_name=gettext_lazy("Группы"), related_name="bell_schedules", blank=True
     )
@@ -224,12 +223,7 @@ class BellSchedule(models.Model):
     class Meta:
         verbose_name = gettext_lazy("Расписание звонков")
         verbose_name_plural = gettext_lazy("Расписания звонков")
-        ordering = ("year", "-is_default", "title")
-        constraints = [
-            models.UniqueConstraint(
-                fields=("year",), condition=models.Q(is_default=True), name="one_default_bell_schedule"
-            )
-        ]
+        ordering = ("year", "title")
 
     def __str__(self) -> str:
         return self.title

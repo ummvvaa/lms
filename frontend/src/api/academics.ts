@@ -146,7 +146,6 @@ export interface AcadMeta {
   year: { id: number; title: string; starts: string; ends: string } | null
   quarters: { id: number; number: number; title: string; starts: string; ends: string; closed: boolean; current: boolean }[]
   current_quarter: number | null
-  bells: { number: number; starts: string; ends: string }[]
   scale: {
     weight_fo: number
     weight_sor: number
@@ -193,6 +192,8 @@ export interface AcadWeek {
   rows: AcadWeekRow[]
   /** на экране больше одного расписания звонков: номер пишется у урока */
   mixed: boolean
+  /** группы экрана, которым не назначены звонки: у их уроков нет времени. Ученику не приходит */
+  no_bells?: string[]
   days: AcadDay[]
   lessons: AcadLesson[]
   ghosts: { lesson: number; date: string; slot: number; starts: string; moved_to_date: string; moved_to_slot: number }[]
@@ -529,9 +530,8 @@ export interface GroupGrades {
 export interface BellSchedule {
   id: number
   title: string
-  /** название на языке интерфейса («Общее» по умолчанию переводится); `title` — как записано */
+  /** название на языке интерфейса; `title` — как записано */
   name?: string
-  is_default: boolean
   groups: string[]
   bells: { number: number; starts: string; ends: string }[]
 }
@@ -554,9 +554,10 @@ export interface YearScreen {
   /** `title` — как записано (для правки), `name` — на языке интерфейса (для показа) */
   breaks: { id: number; title: string; name?: string; starts: string; ends: string }[]
   holidays: { id: number; date: string; title: string; name?: string }[]
-  bells: { number: number; starts: string; ends: string }[]
-  /** расписания звонков карточками: общее и назначенные группам (27.09.2026) */
+  /** расписания звонков карточками: у каждого свои группы, общего на всех нет (05.10.2026) */
   bell_schedules: BellSchedule[]
+  /** активные группы, которым звонки не назначены: у их уроков нет времени */
+  groups_without_bells: string[]
   scale: AcadMeta['scale']
   reports: {
     cadence: string
@@ -591,11 +592,12 @@ export function query(params: Record<string, string | number | null | undefined>
 }
 
 /** Звонки состава для списка «Урок» в формах: время — по звонкам его групп,
- *  как у сетки недели и проверки накладок. Без состава — общие звонки. */
+ *  как у сетки недели и проверки накладок. Без состава список пуст; `problem` —
+ *  почему у состава нет звонков (группе не назначены, у групп потока разные). */
 export function useCohortBells(cohort: number | null) {
   return useQuery({
     queryKey: ['acad', 'bells', cohort],
-    queryFn: () => get<{ bells: { number: number; starts: string; ends: string }[] }>(`/acad/bells/${cohort ? `?cohort=${cohort}` : ''}`),
+    queryFn: () => get<{ bells: { number: number; starts: string; ends: string }[]; problem?: string }>(`/acad/bells/${cohort ? `?cohort=${cohort}` : ''}`),
     staleTime: 60_000,
   })
 }

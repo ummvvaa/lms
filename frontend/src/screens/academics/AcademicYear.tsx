@@ -1,6 +1,7 @@
 /**
- * Учебный год: четверти и каникулы, расписания звонков карточками
- * (общее и назначенные группам — решение владельца, 27.09.2026), шкала
+ * Учебный год: четверти и каникулы, расписания звонков карточками — у
+ * каждого свои группы, общего на всех нет (решение владельца, 05.10.2026);
+ * группы без звонков названы строкой ошибки. Шкала
  * оценивания, настройки отчётов родителям, закрытие четверти.
  * Казахские названия предметов — для отчётов родителям на казахском (30.09.2026).
  */
@@ -92,12 +93,12 @@ function BellsDialog({ schedule, onClose }: { schedule?: BellSchedule; onClose: 
   const [error, setError] = useState('')
   const codes = (groups.data?.results ?? []).map((g) => g.code)
   const submit = () => {
-    if (!schedule?.is_default && !title.trim()) {
+    if (!title.trim()) {
       setError(t('Нужно название'))
       return
     }
     save.mutate(
-      { bell_schedules: [{ id: schedule?.id, title: schedule?.is_default ? undefined : title.trim(), bells: rows, groups: schedule?.is_default ? undefined : [...picked] }] },
+      { bell_schedules: [{ id: schedule?.id, title: title.trim(), bells: rows, groups: [...picked] }] },
       {
         onSuccess: () => {
           toast.success(t('Звонки сохранены'))
@@ -109,7 +110,7 @@ function BellsDialog({ schedule, onClose }: { schedule?: BellSchedule; onClose: 
   }
   return (
     <Modal title={schedule ? schedule.title : t('Новое расписание звонков')} onClose={onClose} wide>
-      {!schedule?.is_default && <Field kind="text" name="title" label={t('Название')} value={title} onChange={setTitle} placeholder={t('Например: вторая смена')} autoFocus />}
+      <Field kind="text" name="title" label={t('Название')} value={title} onChange={setTitle} placeholder={t('Например: вторая смена')} autoFocus />
       {rows.map((b, i) => (
         <Field.Row key={b.number}>
           <Field.Static label={t('Урок')}>{String(b.number)}</Field.Static>
@@ -117,28 +118,24 @@ function BellsDialog({ schedule, onClose }: { schedule?: BellSchedule; onClose: 
           <Field kind="text" name={`e${b.number}`} label={t('Конец')} value={b.ends} onChange={(v) => setRows((old) => old.map((row, j) => (j === i ? { ...row, ends: v } : row)))} placeholder="09:15" />
         </Field.Row>
       ))}
-      {!schedule?.is_default && (
-        <>
-          <span className="t-caps">{t('Группы')}</span>
-          <div className="acad__checklist">
-            {codes.map((code) => (
-              <Field
-                key={code}
-                kind="checkbox"
-                name={`g${code}`}
-                label={code}
-                checked={picked.has(code)}
-                onChange={(on) => {
-                  const next = new Set(picked)
-                  if (on) next.add(code)
-                  else next.delete(code)
-                  setPicked(next)
-                }}
-              />
-            ))}
-          </div>
-        </>
-      )}
+      <span className="t-caps">{t('Группы')}</span>
+      <div className="acad__checklist">
+        {codes.map((code) => (
+          <Field
+            key={code}
+            kind="checkbox"
+            name={`g${code}`}
+            label={code}
+            checked={picked.has(code)}
+            onChange={(on) => {
+              const next = new Set(picked)
+              if (on) next.add(code)
+              else next.delete(code)
+              setPicked(next)
+            }}
+          />
+        ))}
+      </div>
       {error && <Chip tone="bad">{error}</Chip>}
       <div className="acad__actions">
         <Button onClick={submit} disabled={save.isPending}>
@@ -336,7 +333,7 @@ function BellsCard({ schedule, onEdit, onDrop }: { schedule: BellSchedule; onEdi
   return (
     <DataCard
       title={schedule.name ?? schedule.title}
-      note={schedule.is_default ? t('все группы без своего расписания') : schedule.groups.length ? schedule.groups.join(', ') : t('группы не назначены')}
+      note={schedule.groups.length ? schedule.groups.join(', ') : t('группы не назначены')}
       right={
         <span className="acad__inline">
           <Button variant="link" size="sm" onClick={onEdit}>
@@ -411,16 +408,27 @@ export default function AcademicYear() {
               ))}
             </Rows>
           </DataCard>
+          {/* общей сетки нет: группе без звонков негде взять время урока — это ошибка, и она названа */}
+          {(data.groups_without_bells.length > 0 || schedules.length === 0) && (
+            <DataCard title={t('Звонки')} empty={schedules.length === 0 && data.groups_without_bells.length === 0 && t('расписаний звонков нет')}>
+              {data.groups_without_bells.length > 0 && (
+                <Rows>
+                  <Row
+                    icon="alert"
+                    tone="bad"
+                    title={t('Не назначены звонки: {groups}', { groups: data.groups_without_bells.join(', ') })}
+                    note={t('У уроков этих групп нет времени начала. Отметьте группы в расписании звонков или добавьте новое.')}
+                  />
+                </Rows>
+              )}
+            </DataCard>
+          )}
           {schedules.map((schedule) => (
             <BellsCard
               key={schedule.id}
               schedule={schedule}
               onEdit={() => setDialog({ bells: schedule })}
-              onDrop={
-                schedule.is_default
-                  ? undefined
-                  : () => save.mutate({ drop_bell_schedule: schedule.id }, { onSuccess: () => toast.success(t('Расписание звонков удалено')), onError: (e) => toast.error(e.message) })
-              }
+              onDrop={() => save.mutate({ drop_bell_schedule: schedule.id }, { onSuccess: () => toast.success(t('Расписание звонков удалено')), onError: (e) => toast.error(e.message) })}
             />
           ))}
         </div>
