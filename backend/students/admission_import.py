@@ -187,9 +187,8 @@ def read_sheets(uploaded, *, group: str = "") -> list[tuple[str, list[str], list
     name = (getattr(uploaded, "name", "") or "").lower()
     if name.endswith(".csv"):
         # у CSV листов нет: файл считается одним листом группы, которую
-        # человек выбрал на первом шаге (фаза 72)
-        if not group:
-            raise FileRejected(_("Для CSV укажите группу: у файла нет листов, а лист — это группа"))
+        # человек выбрал на первом шаге (фаза 72). Без группы CSV читается
+        # только списком с почтой или логином — это решает разбор (`parse`)
         return [(group, *_read_csv(uploaded))]
     if not name.endswith((".xlsx", ".xlsm")):
         raise FileRejected(_("Файл читается из книги Excel (.xlsx) или CSV: лист — это группа"))
@@ -221,7 +220,10 @@ def _read_csv(uploaded) -> tuple[list[str], list[list]]:
 
     uploaded.seek(0)
     raw = uploaded.read()
-    text = raw.decode("utf-8-sig") if isinstance(raw, bytes) else str(raw)
+    try:
+        text = raw.decode("utf-8-sig") if isinstance(raw, bytes) else str(raw)
+    except UnicodeDecodeError as error:
+        raise FileRejected(_("CSV не в кодировке UTF-8: сохраните файл как «CSV UTF-8» и загрузите снова")) from error
     sample = text[:2048]
     try:
         dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
@@ -268,32 +270,40 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
     out: list[Sheet] = []
     for sheet_name, header, body in sheets_raw:
         sheet = Sheet(name=sheet_name, group_code=_text(sheet_name).upper())
-        group = _group_of(sheet_name)
-        if group is None:
-            sheet.error = _("Группы «{group}» нет в системе — лист пропущен целиком").format(group=sheet.group_code)
-            out.append(sheet)
-            continue
-        if own_groups is not None and group.pk not in own_groups:
-            sheet.error = _("Группа «{group}» — не ваша группа: куратор загружает только свои — лист пропущен").format(
-                group=sheet.group_code
-            )
-            out.append(sheet)
-            continue
-        sheet.group_id = group.pk
         columns = registry.read_columns(header)
         sheet.columns = [spec.key for spec in registry.ALL_COLUMNS if spec.key in columns]
         sheet.unknown = registry.unknown_columns(header, columns)
         # колонки ФИО нет, а колонка с почтой или логином есть — лист-список:
-        # ученика находит ключ, точным совпадением по всей школе
+        # ученика находит ключ, точным совпадением по всей школе, и группа
+        # листу не нужна — имя листа может быть любым, CSV идёт без группы
         sheet.by_key = "name" not in columns and registry.STUDENT_KEY.key in columns
-        if "name" not in columns and not sheet.by_key:
-            sheet.error = _(
-                "На листе нет колонки «{column}» и нет колонки с почтой или логином ученика — лист пропущен целиком"
-            ).format(column=registry.spec_of("name").title)
-            out.append(sheet)
-            continue
+        group = None
+        if sheet.by_key:
+            sheet.group_code = ""
+        else:
+            if not _text(sheet_name):
+                raise FileRejected(_("Для CSV с колонкой ФИО укажите группу: у файла нет листов, а лист — это группа"))
+            group = _group_of(sheet_name)
+            if group is None:
+                sheet.error = _("Группы «{group}» нет в системе — лист пропущен целиком").format(group=sheet.group_code)
+                out.append(sheet)
+                continue
+            if own_groups is not None and group.pk not in own_groups:
+                sheet.error = _(
+                    "Группа «{group}» — не ваша группа: куратор загружает только свои — лист пропущен"
+                ).format(group=sheet.group_code)
+                out.append(sheet)
+                continue
+            sheet.group_id = group.pk
+            if "name" not in columns:
+                sheet.error = _(
+                    "На листе нет колонки «{column}» и нет колонки с почтой или логином ученика — "
+                    "лист пропущен целиком"
+                ).format(column=registry.spec_of("name").title)
+                out.append(sheet)
+                continue
 
-        students = list(Student.objects.filter(group=group, is_active=True).select_related("group"))
+        students = list(Student.objects.filter(group=group, is_active=True).select_related("group")) if group else []
         as_card = registry.card_keys(sheet.columns) if sheet.by_key else ()
         match_key = registry.STUDENT_KEY.key if sheet.by_key else "name"
         seen: dict[int, int] = {}
@@ -511,7 +521,9 @@ def preview_payload(sheets: list[Sheet]) -> dict:
         # шаг «Что заполняем» (фаза 72): колонки, нераспознанное, группы
         "columns": columns_payload(sheets),
         "unknown_columns": unknown_payload(sheets),
-        "groups": [sheet.group_code for sheet in sheets if not sheet.error],
+        "groups": [sheet.group_code for sheet in sheets if not sheet.error and sheet.group_code],
+        # листы-списки: ученик по почте или логину, группа им не нужна
+        "list_rows": sum(len(sheet.rows) for sheet in sheets if sheet.by_key),
         # по умолчанию выбраны все домены, для которых нашлись колонки
         "domains": found_domains(sheets),
         "counts": {

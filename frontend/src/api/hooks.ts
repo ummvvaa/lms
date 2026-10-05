@@ -5327,6 +5327,8 @@ export interface AdmissionPreview {
   }[]
   unknown_columns: string[]
   groups: string[]
+  /** строк в листах-списках: ученик найден по почте или логину, группа листу не нужна */
+  list_rows: number
   /** домены, для которых нашлись колонки, и те из них, что можно этому человеку */
   domains: string[]
   writable_domains: string[]
@@ -5335,6 +5337,8 @@ export interface AdmissionPreview {
     group_code: string
     group: number | null
     error: string
+    /** лист-список: колонки ФИО нет, ученик ищется по почте или логину */
+    by_key: boolean
     ready: number
     skipped: number
     rows: {
@@ -5353,6 +5357,10 @@ export interface AdmissionPreview {
       links: { doc_type: string; url: string }[]
       has_email_password: boolean
       has_common_app_password: boolean
+      /** значения полей профилей («как в карточке») — подписью и текстом */
+      fields: { key: string; title: string; value: string }[]
+      /** что из значений строки заменит уже записанное */
+      overwrites: { key: string; title: string; old: string; new: string }[]
       warnings: string[]
       error: string
       skip: boolean
@@ -5369,6 +5377,8 @@ export interface AdmissionPreview {
     attempts: number
     links: number
     passwords: number
+    /** сколько уже записанных значений заменит файл */
+    overwrites: number
   }
 }
 

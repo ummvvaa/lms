@@ -10039,11 +10039,6 @@ msgstr ""
 msgid "Нужна ссылка целиком, с https://"
 msgstr "Enter the full link, starting with https://"
 
-#: students/admission_import.py:173
-msgid "Для CSV укажите группу: у файла нет листов, а лист — это группа"
-msgstr ""
-"For a CSV, specify the group: the file has no sheets, and a sheet is a group"
-
 #: students/admission_import.py:176
 msgid "Файл читается из книги Excel (.xlsx) или CSV: лист — это группа"
 msgstr ""
@@ -16234,3 +16229,11 @@ msgstr "the student is not in your group: a curator uploads only their own group
 #: students/import_registry.py
 msgid "Ученик (почта или логин)"
 msgstr "Student (email or login)"
+
+#: students/admission_import.py
+msgid "Для CSV с колонкой ФИО укажите группу: у файла нет листов, а лист — это группа"
+msgstr "For a CSV with a name column choose the group: the file has no sheets, and a sheet is a group"
+
+#: students/admission_import.py
+msgid "CSV не в кодировке UTF-8: сохраните файл как «CSV UTF-8» и загрузите снова"
+msgstr "The CSV is not in UTF-8: save the file as “CSV UTF-8” and upload it again"

@@ -95,6 +95,20 @@ export default function ImportWizard() {
     if (file) run(file, fixList(next))
   }
 
+  // одна кривая строка не держит файл: все строки с ошибкой пропускаются разом,
+  // остальные загружаются — так работала вкладка «Поля по CSV»
+  const skipAllBad = () => {
+    if (!preview || !file) return
+    const next = { ...fixes }
+    for (const sheet of preview.sheets)
+      for (const row of sheet.rows) {
+        const key = `${sheet.name}:${row.index}`
+        if (row.error && !row.skip) next[key] = { key, skip: true }
+      }
+    setFixes(next)
+    run(file, fixList(next))
+  }
+
   const applyAll = () => {
     if (!file) return
     apply.mutate(
@@ -134,7 +148,7 @@ export default function ImportWizard() {
       {step === 1 && (
         <DataCard
           title={t('Файл')}
-          note={t('Книга Excel: лист — учебная группа, строка — ученик. CSV — одна группа, её выбирают здесь')}
+          note={t('Таблица с ФИО: лист книги Excel — учебная группа, для CSV группу выбирают здесь. Список с почтой или логином ученика — любой лист или CSV, группа не нужна')}
         >
           <div className="toolbar">
             <Button
@@ -149,13 +163,13 @@ export default function ImportWizard() {
               {t('Шаблон')}
             </Button>
             <span className="muted">
-              {t('Формат: колонки узнаются по заголовкам, пустая ячейка ничего не стирает — guides/ADMISSION_IMPORT.md в репозитории')}
+              {t('Формат: колонки узнаются по заголовкам, пустая ячейка ничего не стирает — guides/ADMISSION_IMPORT.md и guides/FIELDS_IMPORT.md в репозитории')}
             </span>
           </div>
           <label className="wizard__group">
             <span className="eyebrow">{t('Группа для CSV')}</span>
             <SelectField aria-label={t('Группа для CSV')} value={group} onChange={(e) => setGroup(e.target.value)}>
-              <option value="">{t('— для книги Excel не нужна —')}</option>
+              <option value="">{t('— для книги Excel и списка по почте не нужна —')}</option>
               {(groups.data?.results ?? []).map((row) => (
                 <option key={row.id} value={row.code}>
                   {row.code}
@@ -196,9 +210,17 @@ export default function ImportWizard() {
                 <Chip tone="neutral" className="num">
                   {t('Строк:')} {counts.rows}
                 </Chip>
-                <Chip tone={preview.groups.length ? 'good' : 'warn'}>
-                  {t('Группы:')} {preview.groups.join(', ') || t('не распознаны')}
-                </Chip>
+                {/* у списка по почте или логину групп нет: предупреждать о них незачем */}
+                {(preview.groups.length > 0 || !preview.list_rows) && (
+                  <Chip tone={preview.groups.length ? 'good' : 'warn'}>
+                    {t('Группы:')} {preview.groups.join(', ') || t('не распознаны')}
+                  </Chip>
+                )}
+                {preview.list_rows > 0 && (
+                  <Chip tone="good" className="num">
+                    {t('Список по почте или логину:')} {preview.list_rows}
+                  </Chip>
+                )}
                 {counts.sheets_skipped > 0 && (
                   <Chip tone="warn" className="num">
                     {t('Листов без группы:')} {counts.sheets_skipped}
@@ -299,11 +321,21 @@ export default function ImportWizard() {
                 {t('Строк с ошибкой:')} {counts.errors}
               </Chip>
             )}
+            {counts.overwrites > 0 && (
+              <Chip tone="info" className="num">
+                {t('Перезапишется:')} {counts.overwrites}
+              </Chip>
+            )}
             <label className="users__check">
               <Checkbox checked={onlyBad} onCheckedChange={(on) => setOnlyBad(Boolean(on))} />
               {t('только с ошибками')}
             </label>
             <span className="toolbar__spacer" />
+            {errorsLeft > 0 && (
+              <Button size="sm" variant="outline" disabled={check.isPending} onClick={skipAllBad}>
+                {t('Пропустить строки с ошибкой')}
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={() => setStep(2)}>
               {t('Назад')}
             </Button>
@@ -324,11 +356,13 @@ export default function ImportWizard() {
                   <Chip tone="warn">{sheet.error}</Chip>
                 ) : (
                   <span className="muted">
-                    {t('группа {group} · готово {ready} · пропуск {skipped}', {
-                      group: sheet.group_code,
-                      ready: sheet.ready,
-                      skipped: sheet.skipped,
-                    })}
+                    {sheet.by_key
+                      ? t('список по почте или логину · готово {ready} · пропуск {skipped}', { ready: sheet.ready, skipped: sheet.skipped })
+                      : t('группа {group} · готово {ready} · пропуск {skipped}', {
+                          group: sheet.group_code,
+                          ready: sheet.ready,
+                          skipped: sheet.skipped,
+                        })}
                   </span>
                 )}
               </h3>
@@ -336,7 +370,7 @@ export default function ImportWizard() {
                 <DataTable
                   columns={[
                     { key: 'n', title: t('Строка'), width: '8%', align: 'right', cell: (row: SheetRow) => <span className="num">{row.index}</span> },
-                    { key: 'raw', title: t('ФИО в таблице'), width: '20%', cell: (row: SheetRow) => row.raw_name },
+                    { key: 'raw', title: sheet.by_key ? t('Почта или логин в файле') : t('ФИО в таблице'), width: '20%', cell: (row: SheetRow) => row.raw_name },
                     {
                       key: 'student',
                       title: t('Ученик'),
@@ -348,6 +382,9 @@ export default function ImportWizard() {
                           <div className="aimp__fix">
                             {row.student_name ? (
                               <span>{row.student_name}</span>
+                            ) : row.candidates.length === 0 ? (
+                              // по почте или логину ученик либо найден, либо нет: выбирать не из кого
+                              <span className="t-note">{t('не найден')}</span>
                             ) : (
                               <SelectField aria-label={t('Кому отнести строку')} value={String(fixes[key]?.student ?? '')} onChange={(event) => setFix(key, { key, student: event.target.value ? Number(event.target.value) : null })}>
                                 <option value="">{t('— выберите ученика —')}</option>
@@ -378,6 +415,7 @@ export default function ImportWizard() {
                           row.scores.map((score) => `${score.exam} ${score.value}`).join(' · '),
                           row.links.length ? tn(row.links.length, '{n} ссылка|{n} ссылки|{n} ссылок') : '',
                           row.has_email_password || row.has_common_app_password ? t('пароли есть') : '',
+                          ...row.fields.map((field) => `${field.title}: ${field.value}`),
                         ]
                           .filter(Boolean)
                           .join(' · ') || <span className="t-note">{t('ничего')}</span>,
@@ -396,6 +434,11 @@ export default function ImportWizard() {
                           {row.warnings.map((warning) => (
                             <div key={warning} className="t-note">
                               {warning}
+                            </div>
+                          ))}
+                          {row.overwrites.map((change) => (
+                            <div key={change.key} className="t-note">
+                              {t('Перезапишется: {field} {old} → {new}', { field: change.title, old: change.old, new: change.new })}
                             </div>
                           ))}
                         </>

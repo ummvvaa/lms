@@ -149,3 +149,50 @@ def test_list_sheet_reads_table_fields_like_the_card_and_guesses_nothing(klass, 
 def test_sheet_with_neither_names_nor_key_is_skipped_with_words(klass, admin):
     sheets = admission_import.parse(book({"Chicago": (["ielts", "sat"], [["6.5", "1300"]])}), actor=admin)
     assert "нет колонки с почтой или логином" in sheets[0].error and sheets[0].rows == []
+
+
+# --- Лист без группы -------------------------------------------------------------------
+
+
+def csv_file(text: str, name: str = "fields.csv"):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    return SimpleUploadedFile(name, text.encode("utf-8"), content_type="text/csv")
+
+
+def test_list_sheet_needs_no_group(klass, stranger, admin):
+    """Лист-список называется как угодно: учеников двух групп находит ключ."""
+    uploaded = book({"Лист1": (["email", "ielts"], [[klass[0].email, "6.5"], [stranger.email, "7.0"]])})
+    sheets = admission_import.parse(uploaded, actor=admin)
+    assert not sheets[0].error and sheets[0].group_id is None
+    assert [row.student for row in rows_of(sheets)] == [klass[0].pk, stranger.pk]
+    payload = admission_import.preview_payload(sheets)
+    assert payload["groups"] == [] and payload["list_rows"] == 2 and payload["counts"]["ready"] == 2
+
+
+def test_csv_list_loads_without_choosing_a_group(klass, admin):
+    """CSV со списком (ключ — почта) грузится без выбора группы, с любым разделителем."""
+    record = admission_import.apply(csv_file(f"email;ielts\n{klass[0].email};6.5\n"), actor=admin)
+    klass[0].exam.refresh_from_db()
+    assert str(klass[0].exam.ielts_current) == "6.5" and record.students_updated == 1
+
+
+def test_csv_with_names_still_asks_for_the_group(klass, admin):
+    with pytest.raises(admission_import.FileRejected, match="укажите группу"):
+        admission_import.parse(csv_file(f"ФИО,ielts\n{klass[0].full_name},6.5\n"), actor=admin)
+    sheets = admission_import.parse(csv_file(f"ФИО,ielts\n{klass[0].full_name},6.5\n"), group="CHICAGO", actor=admin)
+    assert rows_of(sheets)[0].student == klass[0].pk
+
+
+def test_csv_in_a_wrong_encoding_is_refused_with_words(klass, admin):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    broken = SimpleUploadedFile("f.csv", "почта,ielts\nx@y.kz,6\n".encode("cp1251"), content_type="text/csv")
+    with pytest.raises(admission_import.FileRejected, match="UTF-8"):
+        admission_import.parse(broken, actor=admin)
+
+
+def test_table_sheet_of_an_unknown_group_is_still_skipped(klass, admin):
+    """Таблица с ФИО по-прежнему привязана к группе листа."""
+    sheets = admission_import.parse(book({"Лист1": (["ФИО", "ielts"], [[klass[0].full_name, "6.5"]])}), actor=admin)
+    assert "нет в системе" in sheets[0].error
