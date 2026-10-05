@@ -718,10 +718,6 @@ msgstr "Public holiday"
 msgid "Праздники"
 msgstr "Public holidays"
 
-#: academics/models.py:219
-msgid "Общее по умолчанию"
-msgstr "Default (general)"
-
 #: academics/models.py:221 academics/schedule_import.py:848
 #: roadmap/models.py:85
 msgid "Группы"
@@ -10678,89 +10674,11 @@ msgstr ""
 msgid "пропущено: {count}"
 msgstr "skipped: {count}"
 
-#: students/import_reading.py:215 students/import_reading.py:453
-msgid "ученик — по этой колонке ищем карточку"
-msgstr "student — this column is used to find the record"
-
-#: students/import_reading.py:254
-msgid "ГГГГ-ММ-ДД"
-msgstr "YYYY-MM-DD"
-
-#: students/import_reading.py:255
-msgid "ДД.ММ.ГГГГ"
-msgstr "DD.MM.YYYY"
-
-#: students/import_reading.py:256
-msgid "ДД/ММ/ГГГГ"
-msgstr "DD/MM/YYYY"
-
-#: students/import_reading.py:315
-#, python-brace-format
-msgid "«{column}»: значение вне допустимого ({range}) в {rows}"
-msgstr "“{column}”: value out of range ({range}) in {rows}"
-
-#: students/import_reading.py:328
-#, python-brace-format
-msgid "«{column}»: пусто в {rows} — эти строки не изменятся"
-msgstr "“{column}”: empty in {rows} — these rows will not change"
-
 #: students/import_reading.py:342
 #, python-brace-format
 msgid ""
 "«{column}»: в одном столбце разные форматы дат ({formats}) — проверьте файл"
 msgstr "“{column}”: the column mixes date formats ({formats}) — check the file"
-
-#: students/import_reading.py:357
-#, python-brace-format
-msgid "Один и тот же ученик встречается дважды: {rows}"
-msgstr "The same student appears twice: {rows}"
-
-#: students/import_reading.py:374
-#, python-brace-format
-msgid "строках {rows} и ещё {rest}"
-msgstr "rows {rows} and {rest} more"
-
-#: students/import_reading.py:376
-#, python-brace-format
-msgid "строке {row}"
-msgstr "row {row}"
-
-#: students/import_reading.py:377
-#, python-brace-format
-msgid "строках {rows}"
-msgstr "rows {rows}"
-
-#: students/import_reading.py:475
-#, python-brace-format
-msgid "Строк в файле: {count}."
-msgstr "Rows in the file: {count}."
-
-#: students/import_reading.py:479
-#, python-brace-format
-msgid "Загружу: {columns}."
-msgstr "Will load: {columns}."
-
-#: students/import_reading.py:483
-#, python-brace-format
-msgid "Колонку «{column}» пропущу: поле «{field}» ведёт домен «{domain}»."
-msgstr ""
-"Column “{column}” will be skipped: field “{field}” belongs to the “{domain}” "
-"domain."
-
-#: students/import_reading.py:490
-#, python-brace-format
-msgid "Не распознал колонки: {columns}."
-msgstr "Columns not recognised: {columns}."
-
-#: students/import_reading.py:491
-#, python-brace-format
-msgid "Привяжется к существующим ученикам строк: {count}."
-msgstr "Rows that will link to existing students: {count}."
-
-#: students/import_reading.py:493
-#, python-brace-format
-msgid "Не нашлись в базе: {count}."
-msgstr "Not found in the database: {count}."
 
 #: students/import_registry.py:58
 msgid "текст"
@@ -10943,10 +10861,6 @@ msgstr "{column}: the registry cannot parse type “{kind}”"
 msgid "{column}: {warning}"
 msgstr "{column}: {warning}"
 
-#: students/import_service.py:125 students/import_service.py:273
-msgid "Не выбран домен — сначала укажите, чьи данные в файле"
-msgstr "No domain selected — first specify whose data is in the file"
-
 #: students/import_service.py:132
 msgid ""
 "Не указано, в какой колонке искать ученика. Выберите «Ученик (почта или "
@@ -10956,11 +10870,6 @@ msgstr ""
 "The column to find the student by is not set. Choose “Student (email or "
 "login)” for the column with the email or login — that is how each row finds "
 "its student"
-
-#: students/import_service.py:162
-#, python-brace-format
-msgid "«{domain}» ведётся только у 11 параллели — строка пропущена"
-msgstr "“{domain}” is kept for Grade 11 only — row skipped"
 
 #: students/import_service.py:178
 #, python-brace-format
@@ -11858,11 +11767,6 @@ msgid ""
 msgstr ""
 "Files are uploaded by the administrator. Data is entered by hand in the table"
 " or by pasting text into the assistant"
-
-#: students/views.py:317
-#, python-brace-format
-msgid "Сначала выберите домен, чьи данные в файле: {titles}"
-msgstr "First choose the domain whose data is in the file: {titles}"
 
 #: students/views.py:390 students/views.py:408
 msgid "Учётные записи заводит администратор"

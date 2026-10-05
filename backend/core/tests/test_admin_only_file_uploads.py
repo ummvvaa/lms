@@ -19,7 +19,7 @@ from accounts.models import Role
 from core.domains import ALL_DIRECTORS, FILE_UPLOADERS, ROLE_ADMIN, can_upload_files, can_write_for
 from core.models import AuditLog, ImportBatch
 from core.onboarding import build as build_checklist
-from students.import_service import apply_preview
+from core.tests.list_files import load_list as apply_preview
 from students.serializers import AuditEntrySerializer
 from suggestions import commands
 from suggestions.engine import apply_suggestion, create_suggestion
@@ -106,8 +106,6 @@ def test_admin_crosses_the_border_only_for_the_chosen_domain():
 
 #: Все точки, через которые в систему попадает файл с данными.
 FILE_ENDPOINTS = [
-    ("/api/import/preview/", "multipart"),
-    ("/api/import/apply/", "json"),
     ("/api/contacts/import/preview/", "multipart"),
     ("/api/contacts/import/apply/", "json"),
     ("/api/competitions/import/preview/", "multipart"),
@@ -131,18 +129,6 @@ def test_every_file_endpoint_refuses_every_director(api, make_user, path, fmt):
         response = api.post(path, payload, format=fmt)
         assert response.status_code == 403, (path, role, response.data)
         assert "администратор" in str(response.data.get("detail", "")).lower(), (path, role)
-
-
-@pytest.mark.django_db
-def test_admin_must_choose_a_domain_before_uploading(api, admin, student):
-    """Без домена загрузки нет: файл ни к чьим полям не привязан."""
-    api.force_authenticate(admin)
-    preview = api.post("/api/import/preview/", {"file": csv_file(f"email,ielts\n{student.email},6.5\n")}, "multipart")
-    assert preview.status_code == 400
-    assert "домен" in preview.data["detail"]
-
-    applied = api.post("/api/import/apply/", {"rows": exam_rows(student, "6.5")}, format="json")
-    assert applied.status_code == 400
 
 
 @pytest.mark.django_db

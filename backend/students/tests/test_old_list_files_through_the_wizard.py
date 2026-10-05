@@ -1,13 +1,13 @@
 """Старые файлы-списки дают через мастер те же записи и тот же журнал, что давала вкладка «Поля по CSV».
 
 Вкладка с ручным сопоставлением колонок убрана: её файлы — ключ ученика
-по почте или логину, произвольные заголовки, один домен на файл — теперь
-принимает мастер. Здесь прежний движок (`import_service`) и мастер
-(`admission_import`) получают один и тот же файл на одной и той же базе;
-сравниваются значения профилей, строки журнала (поле, было, стало, источник,
-домен, «за кого», пачка загрузки) и результат отмены загрузки. Эти тесты
-написаны до удаления прежнего движка и прошли на нём; после удаления
-`run_old` читает его записанный результат — см. `EXPECTED`.
+по почте или логину, произвольные заголовки, один домен на файл — принимает
+мастер. До удаления прежнего движка (`import_service.build_preview` и
+`apply_preview`) этот файл гонял его и мастер на одном и том же файле и одной
+базе и сравнивал значения профилей, журнал, пачки загрузки и результат отмены —
+шесть случаев совпали (коммит `12c928b`). След прежнего движка записан ниже,
+в `EXPECTED`: журнал импорта (ученик, поле, было, стало, источник, домен,
+«за кого», домен пачки) и пачки. Мастер обязан давать его и дальше.
 """
 
 # ruff: noqa: F811 — фикстуры таблицы поступления приходят импортом и стоят параметрами тестов
@@ -91,14 +91,6 @@ def sandbox(run) -> dict:
 def as_csv(header: list[str], rows: list[list[str]], name: str = "list.csv") -> SimpleUploadedFile:
     text = "\n".join(",".join(line) for line in [header, *rows]) + "\n"
     return SimpleUploadedFile(name, text.encode("utf-8"), content_type="text/csv")
-
-
-def run_old(header, rows, mapping, domain, actor, name="list.csv"):
-    """Как грузила вкладка: предпросмотр по ручному сопоставлению, затем строки без ошибок."""
-    from students.import_service import apply_preview, build_preview
-
-    preview = build_preview(header=header, rows=rows, mapping=mapping, domain_code=domain)
-    apply_preview(preview_rows=preview.ready_rows, domain_code=domain, actor=actor, file_name=name)
 
 
 def run_wizard(header, rows, assigned, domain, actor, name="list.csv"):
@@ -218,13 +210,150 @@ CASES = [
 ]
 
 
+#: след прежнего движка на тех же файлах — записан до его удаления
+EXPECTED: dict[str, dict] = {
+    "ключ по почте": {
+        "journal": [
+            ("serikov65@example.kz", "ExamProfile.hours_per_week", "", "6", "import", "exam", True, "exam"),
+            ("serikov65@example.kz", "ExamProfile.ielts_current", "6.0", "7.0", "import", "exam", True, "exam"),
+            ("serikov65@example.kz", "ExamProfile.sat_current", "", "1350", "import", "exam", True, "exam"),
+            ("stranger65@example.kz", "ExamProfile.hours_per_week", "", "3", "import", "exam", True, "exam"),
+            ("stranger65@example.kz", "ExamProfile.ielts_current", "", "6.5", "import", "exam", True, "exam"),
+        ],
+        "batches": [("exam", "students", "list.csv", 2, "applied")],
+    },
+    "ключ по логину": {
+        "journal": [
+            (
+                "erzhanova65@example.kz",
+                "AdmissionProfile.target_country",
+                "США",
+                "Германия",
+                "import",
+                "admission",
+                True,
+                "admission",
+            ),
+            (
+                "erzhanova65@example.kz",
+                "AdmissionProfile.target_level",
+                "",
+                "master",
+                "import",
+                "admission",
+                True,
+                "admission",
+            ),
+            (
+                "stranger65@example.kz",
+                "AdmissionProfile.has_application_account",
+                "нет",
+                "да",
+                "import",
+                "admission",
+                True,
+                "admission",
+            ),
+            (
+                "stranger65@example.kz",
+                "AdmissionProfile.target_country",
+                "",
+                "Канада",
+                "import",
+                "admission",
+                True,
+                "admission",
+            ),
+            (
+                "stranger65@example.kz",
+                "AdmissionProfile.target_level",
+                "",
+                "bachelor",
+                "import",
+                "admission",
+                True,
+                "admission",
+            ),
+        ],
+        "batches": [("admission", "students", "list.csv", 2, "applied")],
+    },
+    "произвольный заголовок с ручным назначением": {
+        "journal": [
+            ("serikov65@example.kz", "ExamProfile.ielts_current", "6.0", "7.5", "import", "exam", True, "exam"),
+            ("serikov65@example.kz", "ExamProfile.ielts_target", "", "8.0", "import", "exam", True, "exam"),
+            ("stranger65@example.kz", "ExamProfile.ielts_current", "", "5.5", "import", "exam", True, "exam"),
+            ("stranger65@example.kz", "ExamProfile.ielts_target", "", "6.5", "import", "exam", True, "exam"),
+        ],
+        "batches": [("exam", "students", "list.csv", 2, "applied")],
+    },
+    "дисциплина у девятиклассника": {
+        "journal": [
+            ("j65@example.kz", "BehaviorProfile.remarks_count", "0", "3", "import", "behavior", True, "behavior"),
+            ("j65@example.kz", "BehaviorProfile.status", "", "critical", "import", "behavior", True, "behavior"),
+            (
+                "serikov65@example.kz",
+                "BehaviorProfile.status",
+                "",
+                "can_execute",
+                "import",
+                "behavior",
+                True,
+                "behavior",
+            ),
+        ],
+        "batches": [("behavior", "students", "list.csv", 2, "applied")],
+    },
+    "экзамены у девятиклассника": {
+        "journal": [
+            ("serikov65@example.kz", "ExamProfile.ielts_current", "6.0", "6.5", "import", "exam", True, "exam"),
+        ],
+        "batches": [("exam", "students", "list.csv", 1, "applied")],
+    },
+    "телефон и почта Common App списком": {
+        "journal": [
+            (
+                "serikov65@example.kz",
+                "AdmissionProfile.common_app_email",
+                "",
+                "ca@example.org",
+                "import",
+                "admission",
+                True,
+                "admission",
+            ),
+            (
+                "serikov65@example.kz",
+                "AdmissionProfile.student_phone",
+                "",
+                "8 707 000 00 00",
+                "import",
+                "admission",
+                True,
+                "admission",
+            ),
+        ],
+        "batches": [("admission", "students", "list.csv", 1, "applied")],
+    },
+}
+
+
+def import_journal(loaded: dict) -> list[tuple]:
+    """Строки журнала с источником «импорт» — без того, кто и когда: это и сверяется."""
+    return [
+        (e[0], e[1].split(".")[-1] + "." + e[2], e[3], e[4], e[5], e[6], e[7], e[9])
+        for e in loaded["journal"]
+        if e[5] == "import"
+    ]
+
+
 @pytest.mark.parametrize("name", CASES)
 def test_wizard_gives_the_same_records_and_journal_as_the_old_tab(name, school, admin):
     case = cases(school)[name]
-    old = sandbox(lambda: run_old(case["header"], case["rows"], case["mapping"], case["domain"], admin))
+    before = state()
     new = sandbox(lambda: run_wizard(case["header"], case["rows"], case["assigned"], case["domain"], admin))
-    assert old["journal"], "прежний движок ничего не записал — случай ничего не проверяет"
-    assert new["state"] == old["state"], "значения профилей разошлись"
-    assert new["journal"] == old["journal"], "журнал изменений разошёлся"
-    assert new["batches"] == old["batches"], "пачки загрузки разошлись"
-    assert new["after_revert"] == old["after_revert"], "отмена загрузки вернула разное"
+    assert import_journal(new) == EXPECTED[name]["journal"], "журнал изменений разошёлся с прежним движком"
+    assert new["batches"] == EXPECTED[name]["batches"], "пачки загрузки разошлись с прежним движком"
+    # значения профилей — ровно то, что записано в журнале, и отмена возвращает прежнее
+    changed = {key for key in new["state"] if new["state"][key] != before.get(key)}
+    assert len(changed) == len({(e[0], e[1]) for e in EXPECTED[name]["journal"]})
+    assert new["after_revert"] == before, "отмена загрузки не вернула прежние значения"

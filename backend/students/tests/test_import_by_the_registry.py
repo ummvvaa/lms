@@ -369,35 +369,15 @@ def test_every_profile_field_is_in_the_registry():
         assert domain_of_field(label, name).code == spec.domain, target
 
 
-def test_field_list_of_the_old_tab_comes_from_the_registry():
-    """Список «куда положить колонку» и сопоставление — из реестра: своего списка у вкладки нет."""
-    from students.import_reading import catalogue, rules_mapping
-
-    for code in ("behavior", "admission", "exam", "talent", "sport"):
-        targets = {row["target"] for row in catalogue(code)}
-        assert targets == {t for t, spec in import_registry.FIELD_TARGETS.items() if spec.domain == code}
-    assert catalogue("documents") == []
+def test_wizard_offers_every_registry_column_for_manual_assignment():
+    """Список «куда положить колонку» — весь реестр: своего списка полей у экрана нет."""
+    offered = {row["key"]: row for row in admission_import.assignable_payload()}
+    assert set(offered) == set(import_registry.BY_KEY)
+    assert offered["ielts_current"]["domain"] == "exam" and offered["ielts_current"]["title"] == "Текущий балл IELTS"
+    assert offered["student_key"]["title"] == "Ученик (почта или логин)" and offered["student_key"]["domain"] == ""
     # написание колонки из реестра узнаётся целиком, а не по вхождению
-    columns = {column.title: column.target for column in rules_mapping(["email", "ielts", "ielts цель"], "exam")}
-    assert columns == {
-        "email": "student",
-        "ielts": "students.ExamProfile.ielts_current",
-        "ielts цель": "students.ExamProfile.ielts_target",
-    }
-
-
-@pytest.mark.django_db
-def test_field_outside_the_registry_is_not_loaded_by_the_list_file():
-    """Попытка экзамена — поле домена экзаменов, но не поле профиля: файл со списком её не пишет."""
-    from students.import_service import build_preview
-
-    preview = build_preview(
-        header=["email", "балл"],
-        rows=[["nobody@example.kz", "7.0"]],
-        mapping={"email": "student", "балл": "students.ExamAttempt.total_score"},
-        domain_code="exam",
-    )
-    assert preview.rows == [] and preview.matched == 0
+    found = import_registry.read_columns(["email", "ielts", "ielts цель"])
+    assert found == {"student_key": 0, "ielts_current": 1, "ielts_target": 2}
 
 
 def test_the_fields_doc_table_matches_the_registry():

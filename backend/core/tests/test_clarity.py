@@ -16,7 +16,7 @@ from accounts.passwords import set_password
 from core.audit import ValueRejected, coerce
 from core.domains import spec_of_field
 from core.onboarding import build as build_checklist
-from students.import_service import apply_preview, build_preview
+from students import admission_import
 from students.models import (
     AdmissionProfile,
     BehaviorProfile,
@@ -112,41 +112,51 @@ def test_registry_has_no_english_left_in_titles():
 # --- ошибки импорта -------------------------------------------------------
 
 
-def _preview(learners, values):
-    header = ["email", "ielts"]
-    rows = [[person.email, value] for person, value in zip(learners, values, strict=False)]
-    return build_preview(
-        header=header,
-        rows=rows,
-        mapping={"email": "student", "ielts": "students.ExamProfile.ielts_current"},
-        domain_code="exam",
-    )
+def _list_file(learners, values, header=("email", "ielts")):
+    """Файл-список мастера импорта: ключ — почта, по строке на ученика."""
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    lines = [",".join(header)] + [
+        ",".join([person.email, *value]) if isinstance(value, list | tuple) else f"{person.email},{value}"
+        for person, value in zip(learners, values, strict=False)
+    ]
+    return SimpleUploadedFile("баллы.csv", ("\n".join(lines) + "\n").encode("utf-8"), content_type="text/csv")
+
+
+def _skip_errors(sheets) -> dict:
+    return {
+        f"{sheet.name}:{row.index}": admission_import.Fix(skip=True)
+        for sheet in sheets
+        for row in sheet.rows
+        if row.error
+    }
 
 
 @pytest.mark.django_db
 def test_one_bad_row_does_not_reject_the_whole_file(learners):
-    preview = _preview(learners, ["7.0", "12.5", "6.5"])
-    payload = preview.as_dict()
+    sheets = admission_import.parse(_list_file(learners, ["7.0", "12.5", "6.5"]))
+    payload = admission_import.preview_payload(sheets)
 
-    assert payload["broken"] == 1
-    assert payload["ready"] == 2
-    problem = payload["problems"][0]
-    # строка, колонка, что не так и как исправить
-    assert problem["row"] == 3
-    assert problem["column"] == "ielts"
-    assert "12.5" in problem["message"]
-    assert problem["hint"] == "от 0 до 9 баллов"
-    assert problem["student_name"] == learners[1].full_name
+    assert payload["counts"]["errors"] == 1
+    assert payload["counts"]["ready"] == 2
+    good, bad, _last = payload["sheets"][0]["rows"]
+    # строка, поле, что не так и как исправить
+    assert bad["index"] == 2 and not good["error"]
+    assert "Текущий балл IELTS" in bad["error"] and "12.5" in bad["error"]
+    assert "от 0 до 9 баллов" in bad["error"]
+    assert bad["student_name"] == learners[1].full_name
 
 
 @pytest.mark.django_db
 def test_correct_rows_apply_while_broken_ones_wait(learners):
-    preview = _preview(learners, ["7.0", "12.5", "6.5"])
     director = make_user("clear.exam@school.kz", Role.DIRECTOR_EXAM)
+    sheets = admission_import.parse(_list_file(learners, ["7.0", "12.5", "6.5"]), actor=director)
 
-    result = apply_preview(preview_rows=preview.ready_rows, domain_code="exam", actor=director, file_name="баллы.csv")
+    record = admission_import.apply(
+        _list_file(learners, ["7.0", "12.5", "6.5"]), actor=director, fixes=_skip_errors(sheets)
+    )
 
-    assert result["applied"] == 2
+    assert record.students_updated == 2 and record.rows_skipped == 1
     learners[0].exam.refresh_from_db()
     learners[1].exam.refresh_from_db()
     assert learners[0].exam.ielts_current == Decimal("7.0")
@@ -156,25 +166,21 @@ def test_correct_rows_apply_while_broken_ones_wait(learners):
 
 @pytest.mark.django_db
 def test_missing_key_column_explains_what_to_pick(learners):
-    preview = build_preview(
-        header=["email", "ielts"],
-        rows=[["a@b.kz", "7.0"]],
-        mapping={"ielts": "students.ExamProfile.ielts_current"},
-        domain_code="exam",
-    )
-    assert any("Ученик (почта или логин)" in message for message in preview.errors)
+    sheets = admission_import.parse(_list_file(learners, ["7.0"], header=("кто", "ielts")))
+    assert "нет колонки «ФИО»" in sheets[0].error and "почтой или логином" in sheets[0].error
+    # и мастер даёт её назначить: в списке выбора есть «Ученик (почта или логин)»
+    titles = [row["title"] for row in admission_import.assignable_payload()]
+    assert "Ученик (почта или логин)" in titles
 
 
 @pytest.mark.django_db
-def test_foreign_column_suggests_picking_another_field(learners):
-    preview = build_preview(
-        header=["email", "посещаемость"],
-        rows=[[learners[0].email, "90"]],
-        mapping={"email": "student", "посещаемость": "students.BehaviorProfile.attendance_percent"},
-        domain_code="exam",
-    )
-    assert any("не из домена" in message for message in preview.errors)
-    assert any("Выберите" in message for message in preview.errors)
+def test_column_of_a_domain_that_was_not_chosen_is_named_in_the_report(learners):
+    admin = make_user("clear.admin2@school.kz", Role.ADMIN)
+    uploaded = _list_file(learners, [["7.0", "90"]], header=("email", "ielts", "Посещаемость занятий"))
+    record = admission_import.apply(uploaded, actor=admin, domains=["exam"])
+    learners[0].behavior.refresh_from_db()
+    assert learners[0].behavior.attendance_percent != 90
+    assert "пропущена: домен «Профиль и дисциплина» не выбран" in record.report
 
 
 # --- «Начало работы» ------------------------------------------------------

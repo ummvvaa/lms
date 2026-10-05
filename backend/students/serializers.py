@@ -586,15 +586,6 @@ class AttemptBulkSerializer(serializers.Serializer):
     rows = serializers.ListField(child=serializers.DictField(), allow_empty=False, max_length=500)
 
 
-class ImportApplySerializer(serializers.Serializer):
-    rows = serializers.ListField(child=serializers.JSONField())
-    #: домен, за который идёт загрузка: проверяется во вьюхе по реестру
-    domain = serializers.CharField(required=False, allow_blank=True, max_length=32)
-    #: имя файла нужно истории загрузок: «отменить импорт» без него
-    #: превращается в выбор из одинаковых безымянных строк
-    file_name = serializers.CharField(required=False, allow_blank=True, max_length=250)
-
-
 class StudentDocumentSerializer(serializers.ModelSerializer):
     """Документ портфолио: метаданные без прямой ссылки на файл.
 

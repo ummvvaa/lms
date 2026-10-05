@@ -64,7 +64,6 @@ from students.serializers import (
     ExamAttemptSerializer,
     ExamGoalSerializer,
     ExamProfileSerializer,
-    ImportApplySerializer,
     ImportPreviewRequestSerializer,
     ParentContactSerializer,
     SportProfileSerializer,
@@ -309,81 +308,6 @@ def _deny_file_upload(request):
     return None
 
 
-def _chosen_domain(request):
-    """Домен, за который администратор грузит файл. Без него загрузки нет.
-
-    Возвращает `(код домена, None)` либо `(None, ответ 400)`.
-    """
-    from core.domains import DOMAINS
-
-    code = str(request.data.get("domain") or "").strip()
-    if code in DOMAINS:
-        return code, None
-    titles = ", ".join(f"«{d.title}»" for d in DOMAINS.values())
-    return None, Response(
-        {"detail": _("Сначала выберите домен, чьи данные в файле: {titles}").format(titles=titles)},
-        status=status.HTTP_400_BAD_REQUEST,
-    )
-
-
-@extend_schema(request=ImportPreviewRequestSerializer, responses={200: dict})
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-@parser_classes([MultiPartParser, FormParser])
-def import_preview(request):
-    """Предпросмотр импорта: сопоставление колонок и отчёт о конфликтах.
-
-    Только администратор, и только за выбранный домен: чужие для этого
-    домена колонки отсекает `build_preview`, а не интерфейс.
-    """
-    import json
-
-    from students.import_service import build_preview, read_table
-
-    denied = _deny_file_upload(request)
-    if denied:
-        return denied
-    domain_code, problem = _chosen_domain(request)
-    if problem:
-        return problem
-
-    uploaded = request.FILES.get("file")
-    if uploaded is None:
-        return Response({"detail": _("Файл не приложен")}, status=status.HTTP_400_BAD_REQUEST)
-
-    header, rows = read_table(uploaded)
-    raw_mapping = request.data.get("mapping") or "{}"
-    mapping = json.loads(raw_mapping) if isinstance(raw_mapping, str) else raw_mapping
-
-    if not mapping:
-        # первый шаг: читаем файл и объясняем словами, что будет загружено.
-        # Сопоставление — предложение: человек переназначает любую колонку
-        from students.import_reading import read
-
-        reading = read(header=header, rows=rows, domain_code=domain_code, actor=request.user)
-        return Response(
-            {
-                "columns": header,
-                "total_rows": len(rows),
-                "rows": [],
-                "matched": reading.matched,
-                "unmatched": [],
-                "reading": reading.as_dict(),
-            }
-        )
-
-    preview = build_preview(header=header, rows=rows, mapping=mapping, domain_code=domain_code)
-    payload = preview.as_dict()
-    # объяснение пересобираем и на втором шаге: сопоставление могло
-    # измениться руками, и текст обязан говорить о нём, а не о прежнем
-    from students.import_reading import read
-
-    payload["reading"] = read(
-        header=header, rows=rows, domain_code=domain_code, actor=request.user, mapping=mapping
-    ).as_dict()
-    return Response(payload)
-
-
 @extend_schema(request=ImportPreviewRequestSerializer, responses={200: dict})
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -511,31 +435,6 @@ def competitions_apply(request):
             file_name=str(request.data.get("file_name", ""))[:250],
         )
     )
-
-
-@extend_schema(request=ImportApplySerializer, responses={200: dict})
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def import_apply(request):
-    """Применение предпросмотренного импорта — администратором, за выбранный домен."""
-    from students.import_service import apply_preview
-
-    denied = _deny_file_upload(request)
-    if denied:
-        return denied
-    domain_code, problem = _chosen_domain(request)
-    if problem:
-        return problem
-
-    serializer = ImportApplySerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    result = apply_preview(
-        preview_rows=serializer.validated_data["rows"],
-        domain_code=domain_code,
-        actor=request.user,
-        file_name=serializer.validated_data.get("file_name", ""),
-    )
-    return Response(result)
 
 
 class StudentScopedViewSet(DeclaredAudience, ArchiveDeleteMixin, viewsets.ModelViewSet):

@@ -716,10 +716,6 @@ msgstr "Мереке"
 msgid "Праздники"
 msgstr "Мерекелер"
 
-#: academics/models.py:219
-msgid "Общее по умолчанию"
-msgstr "Әдепкі жалпы кесте"
-
 #: academics/models.py:221 academics/schedule_import.py:848
 #: roadmap/models.py:85
 msgid "Группы"
@@ -10633,32 +10629,6 @@ msgstr "хаттар жіберілмеді — құпиясөздер тізі�
 msgid "пропущено: {count}"
 msgstr "өткізілді: {count}"
 
-#: students/import_reading.py:215 students/import_reading.py:453
-msgid "ученик — по этой колонке ищем карточку"
-msgstr "оқушы — карточка осы баған бойынша ізделеді"
-
-#: students/import_reading.py:254
-msgid "ГГГГ-ММ-ДД"
-msgstr "ЖЖЖЖ-АА-КК"
-
-#: students/import_reading.py:255
-msgid "ДД.ММ.ГГГГ"
-msgstr "КК.АА.ЖЖЖЖ"
-
-#: students/import_reading.py:256
-msgid "ДД/ММ/ГГГГ"
-msgstr "КК/АА/ЖЖЖЖ"
-
-#: students/import_reading.py:315
-#, python-brace-format
-msgid "«{column}»: значение вне допустимого ({range}) в {rows}"
-msgstr "«{column}»: {rows} мән рұқсат етілген шектен тыс ({range})"
-
-#: students/import_reading.py:328
-#, python-brace-format
-msgid "«{column}»: пусто в {rows} — эти строки не изменятся"
-msgstr "«{column}»: {rows} бос — бұл жолдар өзгермейді"
-
 #: students/import_reading.py:342
 #, python-brace-format
 msgid ""
@@ -10666,57 +10636,6 @@ msgid ""
 msgstr ""
 "«{column}»: бір бағанда күннің әртүрлі форматтары бар ({formats}) — файлды "
 "тексеріңіз"
-
-#: students/import_reading.py:357
-#, python-brace-format
-msgid "Один и тот же ученик встречается дважды: {rows}"
-msgstr "Бір оқушы екі рет кездеседі: {rows}"
-
-#: students/import_reading.py:374
-#, python-brace-format
-msgid "строках {rows} и ещё {rest}"
-msgstr "{rows} жолдарда және тағы {rest} жолда"
-
-#: students/import_reading.py:376
-#, python-brace-format
-msgid "строке {row}"
-msgstr "{row}-жолда"
-
-#: students/import_reading.py:377
-#, python-brace-format
-msgid "строках {rows}"
-msgstr "{rows} жолдарда"
-
-#: students/import_reading.py:475
-#, python-brace-format
-msgid "Строк в файле: {count}."
-msgstr "Файлдағы жолдар: {count}."
-
-#: students/import_reading.py:479
-#, python-brace-format
-msgid "Загружу: {columns}."
-msgstr "Жүктелетін бағандар: {columns}."
-
-#: students/import_reading.py:483
-#, python-brace-format
-msgid "Колонку «{column}» пропущу: поле «{field}» ведёт домен «{domain}»."
-msgstr ""
-"«{column}» бағаны өткізіледі: «{field}» өрісін «{domain}» домені жүргізеді."
-
-#: students/import_reading.py:490
-#, python-brace-format
-msgid "Не распознал колонки: {columns}."
-msgstr "Танылмаған бағандар: {columns}."
-
-#: students/import_reading.py:491
-#, python-brace-format
-msgid "Привяжется к существующим ученикам строк: {count}."
-msgstr "Бар оқушыларға байланатын жолдар: {count}."
-
-#: students/import_reading.py:493
-#, python-brace-format
-msgid "Не нашлись в базе: {count}."
-msgstr "Базада табылмағандар: {count}."
 
 #: students/import_registry.py:58
 msgid "текст"
@@ -10901,10 +10820,6 @@ msgstr "{column}: реестр «{kind}» түрін талдай алмайды
 msgid "{column}: {warning}"
 msgstr "{column}: {warning}"
 
-#: students/import_service.py:125 students/import_service.py:273
-msgid "Не выбран домен — сначала укажите, чьи данные в файле"
-msgstr "Домен таңдалмаған — алдымен файлда кімнің деректері екенін көрсетіңіз"
-
 #: students/import_service.py:132
 msgid ""
 "Не указано, в какой колонке искать ученика. Выберите «Ученик (почта или "
@@ -10914,11 +10829,6 @@ msgstr ""
 "Оқушыны қай бағаннан іздеу керегі көрсетілмеген. Пошта немесе логин тұрған "
 "бағанға «Оқушы (пошта немесе логин)» мәнін таңдаңыз — әр жол өз оқушысын сол "
 "арқылы табады"
-
-#: students/import_service.py:162
-#, python-brace-format
-msgid "«{domain}» ведётся только у 11 параллели — строка пропущена"
-msgstr "«{domain}» тек 11-сыныпта жүргізіледі — жол өткізіп жіберілді"
 
 #: students/import_service.py:178
 #, python-brace-format
@@ -11815,11 +11725,6 @@ msgid ""
 msgstr ""
 "Файлдарды әкімші жүктейді. Деректер кестеде қолмен немесе көмекшіге мәтін қою"
 " арқылы енгізіледі"
-
-#: students/views.py:317
-#, python-brace-format
-msgid "Сначала выберите домен, чьи данные в файле: {titles}"
-msgstr "Алдымен файлда кімнің деректері екенін — доменді таңдаңыз: {titles}"
 
 #: students/views.py:390 students/views.py:408
 msgid "Учётные записи заводит администратор"

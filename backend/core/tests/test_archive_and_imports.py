@@ -18,8 +18,8 @@ from core.archive import archive, collect, preview, restore
 from core.audit import apply_changes
 from core.imports import revert_batch
 from core.models import ArchiveEntry, AuditLog, ImportBatch
+from core.tests.list_files import load_list as apply_preview
 from roadmap.models import Essay, Task
-from students.import_service import apply_preview
 from students.models import (
     AdmissionProfile,
     BehaviorProfile,
@@ -382,7 +382,7 @@ def test_new_upload_records_who_did_it(exam_director, learner):
     Старые записи так и останутся безымянными — их автора уже не узнать,
     и врать про него нельзя.
     """
-    from students.import_service import apply_preview
+    from core.tests.list_files import load_list as apply_preview
 
     result = apply_preview(
         preview_rows=[
@@ -412,7 +412,7 @@ def test_history_cleanup_keeps_the_journal(client, make_user, exam_director, lea
     """
     from django.utils import timezone
 
-    from students.import_service import apply_preview
+    from core.tests.list_files import load_list as apply_preview
 
     result = apply_preview(
         preview_rows=[
