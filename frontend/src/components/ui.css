@@ -1932,6 +1932,48 @@ button.head__pill:hover:not(.head__pill--on) {
   white-space: normal;
 }
 
+/* Вертикальная шапка (`vertical` у колонки): двадцать предметов в ширину
+   карточки — колонка уже любого названия, и перенос по словам оставлял от
+   шапки кашу. Название стоит снизу вверх и читается целиком, длинное — в две
+   строки; остальные шапки ряда прижаты к низу. Значения таких колонок — по
+   центру, поля клетки малые */
+.tbl--vhead th {
+  vertical-align: bottom;
+  padding-top: calc(var(--space) * 3);
+  padding-bottom: calc(var(--space) * 3);
+}
+
+/* на телефоне строка — карточка из пар «подпись — значение», узких клеток там нет */
+@media (min-width: 760px) {
+  .tbl th.tbl__vcol,
+  .tbl td.tbl__vcol {
+    padding-left: calc(var(--space) * 1);
+    padding-right: calc(var(--space) * 1);
+    text-align: center;
+  }
+}
+
+.tbl th.tbl__vcol {
+  overflow: visible;
+}
+
+.tbl__vert {
+  display: inline-block;
+  /* высота — по названию, но не выше 144: длиннее — вторая строка */
+  height: max-content;
+  max-height: calc(var(--space) * 36);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: normal;
+  text-align: left;
+  line-height: 1.25;
+}
+
+.tbl__vcol .tbl__caret {
+  display: block;
+  margin: calc(var(--space) * 1) 0 0;
+}
+
 /* Кнопки строки (`actions` у колонки): одной линией у правого края. Клетка
    их не режет и не переносит — «Изменить» и меню строки уезжали за край
    колонки и прятались под обрезкой клетки */

@@ -17,7 +17,7 @@ import Icon from '../../layout/icons'
 import { t, tk, tn } from '../../i18n'
 import { usePhone } from '../../phone'
 import { toast } from 'sonner'
-import { markTone, useSetGrade, type AcadDay, type AcadLesson, type AcadMark, type AcadWeek, type AcadWeekRow } from '../../api/academics'
+import { markTone, useSetGrade, type AcadDay, type AcadLesson, type AcadMark, type AcadSubject, type AcadWeek, type AcadWeekRow } from '../../api/academics'
 import { timeInSchoolZone } from '../../lib/dates'
 import { formatDayMonth } from '../../lib/format'
 import './academics.css'
@@ -458,6 +458,20 @@ export function WeekNav({ start, today, onChange }: { start: string; today: stri
 }
 
 /** Переключатель периода: неделя, месяц, четверти года. */
+/** Сколько предметов встаёт в ширину карточки с обычной шапкой; больше — шапка вертикальная. */
+const SUBJECTS_FLAT = 8
+
+/**
+ * Шапка колонки предмета в таблицах успеваемости (школа и группа куратора).
+ * Колонки предметов делят ширину поровну (`auto`); полное название — в
+ * подсказке. Когда предметов много, шапка встаёт вертикально: двадцать
+ * названий по горизонтали наезжали друг на друга (05.10.2026).
+ */
+export function subjectHead(subject: AcadSubject, total: number): { title: string; hint: string; width: string; vertical: boolean; align?: 'right' } {
+  const vertical = total > SUBJECTS_FLAT
+  return { title: subject.short_title, hint: subject.title, width: 'auto', vertical, align: vertical ? undefined : 'right' }
+}
+
 export function PeriodSwitch({
   value,
   periods,

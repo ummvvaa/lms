@@ -4,7 +4,7 @@
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { gradeTone, useSchoolGrades, useSchoolGradesCell } from '../../api/academics'
+import { gradeTone, useSchoolGrades, useSchoolGradesCell, type SchoolGrades as SchoolGradesData } from '../../api/academics'
 import EditDrawer from '../../components/EditDrawer'
 import { ExportPreview } from '../../components/ExportPreview'
 import DataTable, { type Column } from '../../components/DataTable'
@@ -12,7 +12,9 @@ import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tn } from '../../i18n'
-import { dateWords, PeriodSwitch } from './shared'
+import { dateWords, PeriodSwitch, subjectHead } from './shared'
+
+type HeatRow = SchoolGradesData['heat'][number]
 
 function CellDrawer({ params, onClose }: { params: { group: string; subject: number; period: string }; onClose: () => void }) {
   const navigate = useNavigate()
@@ -51,6 +53,27 @@ export default function SchoolGrades() {
         </div>
       </div>
     )
+  // таблица в ширину карточки при любом числе предметов: колонки предметов
+  // делят место поровну, шапка длинного ряда стоит вертикально (`subjectHead`)
+  const heat: Column<HeatRow>[] = [
+    { key: 'group', title: t('Группа'), width: '136px', cell: (row) => <b>{row.group}</b> },
+    ...data.subjects.map((subject, index) => ({
+      key: `s${subject.id}`,
+      ...subjectHead(subject, data.subjects.length),
+      cell: (row: HeatRow) => {
+        const c = row.cells[index]
+        if (!c || c.pct === null) return <span className="t-note">{t('нет')}</span>
+        // число без знака процента: единица названа в подзаголовке экрана и в легенде,
+        // а «100 %» шире колонки при двадцати предметах
+        return (
+          <Button variant="ghost" size="sm" className="acad__heatcell" aria-label={`${row.group}, ${subject.title}: ${c.pct} %`} onClick={() => setCell({ group: row.group, subject: c.subject, period: data.period.code })}>
+            <Chip tone={(c.tone || 'neutral') as Tone}>{String(c.pct)}</Chip>
+          </Button>
+        )
+      },
+    })),
+    { key: 'att', title: t('Посещ.'), hint: t('Посещаемость'), width: '104px', align: 'right', cell: (row) => (row.attendance !== null ? <b className="num">{`${row.attendance} %`}</b> : <span className="t-note">{t('нет')}</span>) },
+  ]
   return (
     <div>
       <ScreenHead
@@ -82,36 +105,7 @@ export default function SchoolGrades() {
           </span>
         }
       >
-        <div className="heat__scroll">
-          <div className="heat" style={{ gridTemplateColumns: `minmax(0, 1.4fr) repeat(${data.subjects.length + 1}, minmax(0, 1fr))` }}>
-            <div className="heat__cell heat__cell--head">{t('Группа')}</div>
-            {data.subjects.map((s) => (
-              <div key={s.id} className="heat__cell heat__cell--head">
-                {s.short_title}
-              </div>
-            ))}
-            <div className="heat__cell heat__cell--head">{t('Посещ.')}</div>
-            {data.heat.map((row) => (
-              <div key={row.group} className="heat__row">
-                <div className="heat__cell heat__cell--name">{row.group}</div>
-                {row.cells.map((c) => (
-                  <div key={c.subject} className="heat__cell">
-                    {c.pct === null ? (
-                      <span className="t-note">{t('нет')}</span>
-                    ) : (
-                      <Button variant="ghost" size="sm" onClick={() => setCell({ group: row.group, subject: c.subject, period: data.period.code })}>
-                        <Chip tone={(c.tone || 'neutral') as Tone}>{`${c.pct} %`}</Chip>
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                <div className="heat__cell">
-                  <b className="num">{row.attendance !== null ? `${row.attendance} %` : t('нет')}</b>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <DataTable columns={heat} rows={data.heat} rowKey={(row) => row.group} fit />
       </DataCard>
       <div className="acad__cols acad__cols--even">
         <div className="acad__stack">

@@ -35,6 +35,10 @@ export interface Column<T> {
   width: string
   /** числа и даты — вправо, текст — влево. Заголовок встаёт так же */
   align?: 'left' | 'right'
+  /** шапка стоит вертикально: колонок много, а названия длинные (предметы) —
+   *  название читается целиком без наведения, колонка узкая; значения по
+   *  центру, поля клетки малые */
+  vertical?: boolean
   cell: (row: T) => ReactNode
   /** по чему сортировать. Не задано — колонка не сортируется */
   sortBy?: (row: T) => string | number | null | undefined
@@ -125,12 +129,13 @@ export default function DataTable<T>({
   const shown = cut ? sorted.slice(0, limit) : sorted
   const headIndex = Math.max(0, columns.findIndex((column) => column.phone === 'head'))
   const showFoot = foot !== undefined || (limit !== undefined && sorted.length > limit)
+  const tableClass = [minWidth ? 'tbl tbl--wide' : fit ? 'tbl tbl--fit' : 'tbl', columns.some((column) => column.vertical) ? 'tbl--vhead' : ''].filter(Boolean).join(' ')
 
   return (
     <>
       {/* прокрутка живёт внутри карточки: на узком экране вбок едет таблица,
           а не вся страница */}
-      <Table className={minWidth ? 'tbl tbl--wide' : fit ? 'tbl tbl--fit' : 'tbl'} containerClassName="tblwrap" style={minWidth ? ({ '--tbl-min': minWidth } as CSSProperties) : undefined}>
+      <Table className={tableClass} containerClassName="tblwrap" style={minWidth ? ({ '--tbl-min': minWidth } as CSSProperties) : undefined}>
         <colgroup>
           {columns.map((column) => (
             <col key={column.key} style={{ width: column.width }} />
@@ -143,6 +148,7 @@ export default function DataTable<T>({
               const className = [
                 't-caps',
                 column.align === 'right' ? 'tbl__right' : '',
+                column.vertical ? 'tbl__vcol' : '',
                 column.actions ? 'tbl__acts' : '',
                 column.sortBy ? 'tbl__sortable' : '',
               ]
@@ -156,7 +162,7 @@ export default function DataTable<T>({
                   aria-sort={active ? (sort!.direction === 'asc' ? 'ascending' : 'descending') : undefined}
                   onClick={column.sortBy ? () => toggle(column.key) : undefined}
                 >
-                  {column.title}
+                  {column.vertical ? <span className="tbl__vert">{column.title}</span> : column.title}
                   {column.sortBy && (
                     <span className="tbl__caret" aria-hidden="true">
                       {active ? (sort!.direction === 'asc' ? '↑' : '↓') : '↕'}
@@ -198,7 +204,7 @@ export default function DataTable<T>({
                 {columns.map((column, index) => (
                   <TableCell
                     key={column.key}
-                    className={[column.align === 'right' ? 'tbl__right' : '', column.actions ? 'tbl__acts' : ''].filter(Boolean).join(' ') || undefined}
+                    className={[column.align === 'right' ? 'tbl__right' : '', column.vertical ? 'tbl__vcol' : '', column.actions ? 'tbl__acts' : ''].filter(Boolean).join(' ') || undefined}
                     /* подпись колонки едет с ячейкой: на телефоне строка
                        становится карточкой из пар «подпись — значение»,
                        а шапки там нет вовсе. Заголовку карточки подпись

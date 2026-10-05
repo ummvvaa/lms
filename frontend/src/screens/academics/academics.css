@@ -548,45 +548,12 @@ body [data-slot='button'][data-variant].les--conflict {
   gap: calc(var(--space) * 1.5);
 }
 
-/* --- Тепловая карта ---------------------------------------------------------- */
-.heat {
-  display: grid;
-  gap: 1px;
-  background: var(--line);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-row);
-  overflow: hidden;
-}
-
-.heat__row {
-  display: contents;
-}
-
-.heat__cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--touch);
-  padding: calc(var(--space) * 1.5);
-  background: var(--surface);
-  font-size: var(--type-body);
-}
-
-.heat__cell--head {
-  color: var(--ink-3);
-  font-size: var(--type-caps);
-  letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
-  font-weight: 600;
-}
-
-.heat__cell--name {
-  justify-content: flex-start;
-  font-weight: 700;
-}
-
-.heat__scroll {
-  overflow-x: auto;
+/* --- Тепловая карта ----------------------------------------------------------
+   «Группы и предметы» — общая таблица в ширину карточки. Кнопка клетки —
+   только её метка: поля кнопки реестра шире колонки при двадцати предметах */
+body [data-slot='button'][data-variant].acad__heatcell {
+  height: auto;
+  padding: 0;
 }
 
 /* --- Общее ------------------------------------------------------------------- */

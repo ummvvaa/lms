@@ -14,7 +14,7 @@ import { Button } from '../../components/ui/button'
 import { plural, t, tn } from '../../i18n'
 import GroupSwitch from '../curator/GroupSwitch'
 import { useGroup, useMyGroups } from '../curator/state'
-import { PeriodSwitch } from './shared'
+import { PeriodSwitch, subjectHead } from './shared'
 
 type GradeRow = GroupGrades['rows'][number]
 
@@ -41,15 +41,11 @@ export default function CuratorGrades() {
     )
   const columns: Column<GradeRow>[] = [
     { key: 'name', title: t('Ученик'), width: '200px', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
-    // колонка предмета не уже 96 px: короткое название из справочника («Геом.», «Англ.»)
-    // читается целиком, полное — в подсказке; таблица шире карточки едет
-    // внутри неё, ученик закреплён слева (правило 4, 27.09.2026)
+    // таблица в ширину карточки, как у школы: колонки предметов делят место
+    // поровну, шапка длинного ряда стоит вертикально, полное название — в подсказке
     ...data.subjects.map((subject, index) => ({
       key: `s${subject.id}`,
-      title: subject.short_title,
-      hint: subject.title,
-      width: '96px',
-      align: 'right' as const,
+      ...subjectHead(subject, data.subjects.length),
       cell: (row: GradeRow) => {
         const cell = row.cells[index]
         if (!cell) return null
@@ -63,7 +59,7 @@ export default function CuratorGrades() {
       key: 'att',
       title: t('Посещ.'),
       hint: t('Посещаемость'),
-      width: '96px',
+      width: '104px',
       align: 'right',
       cell: (row) => (row.attendance_pct === null ? <span className="t-note">{t('нет')}</span> : <b className={`num${row.attendance_pct < data.attendance_below ? ' text-bad' : ''}`}>{row.attendance_pct} %</b>),
       sortBy: (row) => row.attendance_pct,
@@ -90,7 +86,7 @@ export default function CuratorGrades() {
         <Kpi label={t('Не отмечено учителями')} value={data.kpis.unmarked || null} none={t('всё отмечено')} note={tn(data.kpis.unmarked_days, 'за {n} день|за {n} дня|за {n} дней')} tone={data.kpis.unmarked ? 'warn' : undefined} />
       </StatRow>
       <div className="card">
-        <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={(row) => navigate(`/students/${row.id}?tab=grades`)} minWidth={`${200 + 96 + data.subjects.length * 96}px`} />
+        <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={(row) => navigate(`/students/${row.id}?tab=grades`)} fit />
       </div>
       <div className="acad__cols acad__cols--even">
         <div className="acad__stack">
