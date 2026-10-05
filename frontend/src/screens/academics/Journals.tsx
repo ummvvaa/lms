@@ -1,7 +1,7 @@
 /**
  * Журналы учителя списком: ученики, уроки, средний ФО, СОР.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useTeacherJournals, type TeacherJournals } from '../../api/academics'
 import DataTable, { type Column } from '../../components/DataTable'
 import { counted, DataCard, ErrorNote, Loading, ScreenHead, withNumbers } from '../../components/ui'

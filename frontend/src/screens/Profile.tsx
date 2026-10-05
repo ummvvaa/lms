@@ -8,7 +8,7 @@
  * Язык и тема хранятся в профиле на сервере — те же, что в меню по аватару.
  */
 import { useEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router'
 import { ApiError } from '../api/client'
 import { useTeacherProfile } from '../api/academics'
 import { useJourney, useUpdatePreferences } from '../api/hooks'

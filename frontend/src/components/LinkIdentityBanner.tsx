@@ -9,7 +9,7 @@
  * и на компьютере.
  */
 import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router'
 import { useLinkIdentity, useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'

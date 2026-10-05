@@ -6,7 +6,7 @@
  * повторно из шапки: «Как начать».
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import type { Role } from '../api/types'
 import { t, tk } from '../i18n'
 import { Button } from './ui/button'

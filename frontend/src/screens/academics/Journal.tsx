@@ -10,7 +10,7 @@
  * на чтение (сервер говорит `may_edit`).
  */
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import {
   foTone,

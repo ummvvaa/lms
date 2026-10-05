@@ -20,7 +20,7 @@
  * виден с замком, а не пропадает.
  */
 import { useRef, type PointerEvent as ReactPointerEvent } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink } from 'react-router'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet'
 import { t } from '../i18n'
 import Icon from './icons'

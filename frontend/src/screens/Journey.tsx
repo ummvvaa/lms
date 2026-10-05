@@ -7,7 +7,7 @@
  * «пропустил» — как подсказка первого входа, в localStorage.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useJourney, useMyTasks, useNotifications, usePortfolio, type JourneyStep } from '../api/hooks'
 import Progress from '../components/Progress'
 import { Row, Rows } from '../components/patterns'

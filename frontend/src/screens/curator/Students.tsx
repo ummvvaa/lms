@@ -10,7 +10,7 @@
  * такой пересчёт соврал бы.
  */
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import { useCuratorStudents, type CuratorStudentRow } from '../../api/hooks'
 import DataTable, { type Column } from '../../components/DataTable'
 import { ExportPreview } from '../../components/ExportPreview'

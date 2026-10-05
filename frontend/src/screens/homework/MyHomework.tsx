@@ -6,7 +6,7 @@
  * учителя, правило после срока и «Сдать». Сколько одноклассников сдали,
  * ученик не видит нигде. ДЗ без сдачи живут в уроке и в расписании.
  */
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import { useMyHomework, type MyHomework, type StudentState } from '../../api/homework'
 import { useAuth } from '../../auth/AuthContext'
 import { Row, Rows, Segmented } from '../../components/patterns'

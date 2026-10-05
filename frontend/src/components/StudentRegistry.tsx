@@ -7,7 +7,7 @@
  * нет домена» — пункт меню вёл в тупик.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useStudents } from '../api/hooks'
 import AddStudent from './AddStudent'
 import DataTable from './DataTable'

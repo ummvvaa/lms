@@ -6,7 +6,7 @@
  * доменам, кто, что и у кого, что ждёт решения, учёба и отчёты родителям
  * по статусам (решение владельца, 27.09.2026).
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useDigest, type Digest as DigestData } from '../api/hooks'
 import DataTable, { type Column } from '../components/DataTable'
 import { Row, Rows, StatRow } from '../components/patterns'

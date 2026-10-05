@@ -21,7 +21,7 @@
  * и одно устройство на семью — обычное дело.
  */
 import { useMemo, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import Icon from '../layout/icons'
 import { usePhone } from '../phone'
 import { t, tn } from '../i18n'

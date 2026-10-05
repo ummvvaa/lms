@@ -8,7 +8,7 @@
  * о замене, отмене или переносе.
  */
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import { Chip, type Tone } from '../../components/ui'
 import Field from '../../components/Field'
 import { Row, Rows, Segmented } from '../../components/patterns'

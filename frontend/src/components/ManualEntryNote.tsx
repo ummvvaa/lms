@@ -7,7 +7,7 @@
  * что сделает человек без кнопки, — напишет, что она пропала; поэтому
  * здесь не «доступ запрещён», а объяснение, куда идти.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'
 import { IMPORT_ROLES } from '../layout/nav'

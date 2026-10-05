@@ -8,7 +8,7 @@
  * экзамены. Колонки собирает `CabinetBoard` (фаза 80): пустая карточка —
  * одна строка внизу короткой колонки, список длиннее пяти строк свёрнут.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useCabinet, usePendingOnboarding, useStudentQueue } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'

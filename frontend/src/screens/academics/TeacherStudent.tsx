@@ -3,7 +3,7 @@
  * предметам, последние уроки, уважительные причины. Больше ничего —
  * заметки кураторов, документы и поступление учителю не видны.
  */
-import { useParams } from 'react-router-dom'
+import { useParams } from 'react-router'
 import { useAcadMeta, useTeacherStudent } from '../../api/academics'
 import EnglishLevel from './EnglishLevel'
 import { Row, Rows, StatRow } from '../../components/patterns'

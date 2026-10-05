@@ -1,6 +1,6 @@
 /** Каркас: тёмное меню по роли на ноутбуке, тёмная полоса и нижний бар на телефоне, область экрана. */
 import { Suspense, useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router'
 import { useJourney, useLocks, useMaterialsState, useNotifications, useUpdatePreferences } from '../api/hooks'
 import { AssistantScreenProvider } from '../assistant/context'
 import AssistantWidget from '../components/AssistantWidget'

@@ -7,7 +7,7 @@
  * может напомнить учителю, Кымбат и администратор — открыть правку.
  */
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { useAcadMeta, useLessonDetail, useRemindLesson, useSaveAttendance, type RosterRow } from '../../api/academics'
 import { useAuth } from '../../auth/AuthContext'

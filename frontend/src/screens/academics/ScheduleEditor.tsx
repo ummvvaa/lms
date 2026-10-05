@@ -6,7 +6,7 @@
  * Образец — `route(['kymbat', 'admin'], '/schedule')` референса.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useAcadMeta, useDecideRequest, useScheduleWeek, type AcadLesson, type ScheduleWeek } from '../../api/academics'
 import { useAuth } from '../../auth/AuthContext'

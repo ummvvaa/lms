@@ -9,7 +9,7 @@
  * Все числа считает сервер (`students.attention`, `academics`): главная,
  * чипы над таблицей и карточка обязаны показывать одно и то же.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useCuratorHome } from '../../api/academics'
 import { useHomeworkOverview } from '../../api/homework'
 import { useCuratorOverview } from '../../api/hooks'

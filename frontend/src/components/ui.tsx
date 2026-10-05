@@ -9,7 +9,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { animate, useReducedMotion } from 'motion/react'
 import { t, tk } from '../i18n'
 import { DURATION, EASE } from '../motion'

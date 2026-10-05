@@ -7,7 +7,7 @@
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import {
   useCollections,
   useDirectoryEntries,

@@ -3,7 +3,7 @@
  * и отмены, кто ведёт у группы. Нажатие на урок — факты и кто отсутствовал,
  * неотмеченный урок можно напомнить учителю.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useAcadLessons, useAcadMeta, type AcadLesson } from '../../api/academics'
 import { Row, Rows } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'

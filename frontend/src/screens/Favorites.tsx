@@ -3,7 +3,7 @@
  * Те же строки, что в каталоге; из избранного программа добавляется
  * в свой список одной кнопкой.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useAddToMyList, useFavorites } from '../api/hooks'
 import { Row, Rows } from '../components/patterns'

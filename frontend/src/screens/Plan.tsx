@@ -7,7 +7,7 @@
  * Задачи — левая колонка по этапам, справа дедлайн, требования и стратегия.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { useMyUniversities, usePlan, usePlanActions, usePlanPreview, usePlanTasks, usePlans, type ApplicationPlan } from '../api/hooks'
 import Field from '../components/Field'

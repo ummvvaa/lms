@@ -12,7 +12,7 @@
  */
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import {
   useAssignTask,

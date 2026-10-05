@@ -7,7 +7,7 @@
  * На телефоне — лента ближайших, месяц крупными клетками по выбору.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useCalendar, type CalendarEvent } from '../api/hooks'
 import CalendarCell, { type CalendarCellTone } from '../components/CalendarCell'
 import { isoOf, shortDate, weekdays } from '../components/CalendarCard'

@@ -3,7 +3,7 @@
  * журналы без оценок. Нажатие на ячейку — ученики группы по предмету.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { gradeTone, useSchoolGrades, useSchoolGradesCell, type SchoolGrades as SchoolGradesData } from '../../api/academics'
 import EditDrawer from '../../components/EditDrawer'
 import { ExportPreview } from '../../components/ExportPreview'

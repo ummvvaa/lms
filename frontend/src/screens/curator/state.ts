@@ -16,7 +16,7 @@
  * печатала «AMSTERDAM · 0 учеников».
  */
 import { useCallback, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import { useCuratorProfile, type CuratorGroup } from '../../api/hooks'
 import { useAuth } from '../../auth/AuthContext'
 

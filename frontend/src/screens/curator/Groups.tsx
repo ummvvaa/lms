@@ -6,7 +6,7 @@
  * можно: назначение — право администратора (фаза 60), и плашка внизу
  * говорит об этом словами, а не молчанием отсутствующей кнопки.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useCuratorOverview } from '../../api/hooks'
 import Notice from '../../components/Notice'
 import { Row, Rows } from '../../components/patterns'

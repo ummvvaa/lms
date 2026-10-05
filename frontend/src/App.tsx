@@ -2,7 +2,7 @@
 import { Fragment, lazy, useEffect, useMemo, useReducer, type ReactNode } from 'react'
 import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router'
 import { useMaterialsState } from './api/hooks'
 import { isNetworkError } from './api/client'
 import ConnectionBanner from './components/ConnectionBanner'
@@ -392,7 +392,9 @@ function Routing() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      {/* переходы без `startTransition`, как в шестой версии: пока грузится кусок
+          экрана, человек видит заглушку загрузки, а не прежний экран без отклика */}
+      <BrowserRouter useTransitions={false}>
         <AuthProvider>
           <PersonalSettings>
             <Routing />

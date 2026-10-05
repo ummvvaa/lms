@@ -18,7 +18,7 @@
  * (`?section=`): ссылку на него можно переслать, «Назад» ведёт к списку.
  */
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import {
   useResetSchoolRule,

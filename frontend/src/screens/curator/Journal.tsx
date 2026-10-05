@@ -5,7 +5,7 @@
  * Не редактируется; выгружается тем же кодом XLSX.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useCuratorJournal, type JournalRow } from '../../api/hooks'
 import DataTable, { type Column } from '../../components/DataTable'
 import { ExportPreview } from '../../components/ExportPreview'

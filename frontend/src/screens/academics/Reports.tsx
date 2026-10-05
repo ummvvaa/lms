@@ -15,7 +15,7 @@
  * Word, архив группы собирается в очереди.
  */
 import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { fetchFile, saveBlob } from '../../api/client'
 import {

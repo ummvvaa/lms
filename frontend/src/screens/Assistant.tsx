@@ -6,7 +6,7 @@
  * интерфейс не выполняет (см. `docs/DEFECTS.md`, B4).
  */
 import { useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import {
   useApplySuggestion,
   useCommands,

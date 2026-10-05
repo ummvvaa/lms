@@ -3,7 +3,7 @@
  * домашние задания недели (со ссылкой на сдачу в LMS), замены и отмены,
  * ближайшие СОР и СОЧ. Ярлыков и чужих учеников здесь нет.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useAcadLessons, useAcadMeta, type AcadLesson } from '../../api/academics'
 import { Row, Rows } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'

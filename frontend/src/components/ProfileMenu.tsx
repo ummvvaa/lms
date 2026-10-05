@@ -16,7 +16,7 @@
  * точкой на аватаре.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import Icon from '../layout/icons'
 import { useNotifications, useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'

@@ -6,7 +6,7 @@
  * телефон, не открывая карточку.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useContactRows, useContacts, useStudents } from '../api/hooks'
 import DeleteButton from '../components/DeleteButton'
 import Empty from '../components/Empty'

@@ -3,7 +3,7 @@
  * кому нужна помощь, журналы учителей с неотмеченными уроками.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useGroupGrades, useRemindTeacher, type GroupGrades } from '../../api/academics'
 import DataTable, { type Column } from '../../components/DataTable'

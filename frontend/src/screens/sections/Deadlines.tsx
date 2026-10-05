@@ -1,7 +1,7 @@
 /** Дедлайны — отдельный экран директора по поступлению (инвариант №4: дата живёт у вуза). */
 import { useDashboard, usePlanAttention } from '../../api/hooks'
 import { Button } from '../../components/ui/button'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import Empty from '../../components/Empty'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import { Chip, ErrorNote, Loading, ScreenHead } from '../../components/ui'

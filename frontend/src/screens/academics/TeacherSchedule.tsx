@@ -4,7 +4,7 @@
  * Нажатие на урок открывает отметку. «Попросить перенос» уходит Кымбат.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useAcadLessons, useAcadMeta, useRequests, useSendRequest, useTeacherProfile, type AcadLesson } from '../../api/academics'
 import Field from '../../components/Field'

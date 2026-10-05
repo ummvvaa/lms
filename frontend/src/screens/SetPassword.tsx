@@ -3,7 +3,7 @@
  * Требования показаны заранее — человек не должен угадывать их по отказам.
  */
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Field from '../components/Field'

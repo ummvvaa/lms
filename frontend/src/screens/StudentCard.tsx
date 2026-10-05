@@ -3,7 +3,7 @@
  * Свой домен редактируется, чужие показаны с подписью «ведёт: <имя>».
  */
 import { useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import {
   useBatchSave,
   useDomainMeta,

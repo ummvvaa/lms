@@ -6,7 +6,7 @@
  * олимпиады, соревнования) и последние оценки. Всё считает сервер
  * (`academics/junior_home.py`); поступления здесь нет ни строкой.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { gradeTone, useMyHome } from '../../api/academics'
 import { Row, Rows, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'

@@ -5,7 +5,7 @@
  * материал без подтверждённых прав помечен отдельно: неопубликованные
  * задания олимпиад и сканы чужих учебников школе хранить у себя не стоит.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useCabinet } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'

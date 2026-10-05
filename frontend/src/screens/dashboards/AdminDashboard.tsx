@@ -6,7 +6,7 @@
  * кнопками прямо в строках: выслать приглашение, выпустить пароль,
  * снять блокировку входа.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useBulkUsers, useCabinet, useInviteUsers, useUnlockLogin } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'

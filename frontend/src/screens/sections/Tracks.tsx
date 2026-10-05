@@ -1,5 +1,5 @@
 /** Треки — отдельный экран директора талантов: распределение и те, у кого трека нет. */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useDashboard } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import { Bar, ErrorNote, ListPanel, Loading, ScreenHead } from '../../components/ui'

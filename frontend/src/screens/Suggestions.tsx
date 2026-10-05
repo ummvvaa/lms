@@ -4,7 +4,7 @@
  * Раньше предложение можно было открыть только сразу после разбора: закрыл
  * вкладку — потерял. Здесь оно живёт до решения человека.
  */
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import { useSuggestions } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import Empty from '../components/Empty'

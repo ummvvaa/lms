@@ -12,7 +12,7 @@
  * сотрудникам.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useAcadRisks, type RiskRow } from '../../api/academics'
 import { useDashboard } from '../../api/hooks'
 import DataTable, { type Column } from '../../components/DataTable'

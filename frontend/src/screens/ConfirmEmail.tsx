@@ -6,7 +6,7 @@
  * заново не нужно, если человек уже в системе.
  */
 import { useEffect, useRef } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router'
 import { useConfirmIdentity } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'

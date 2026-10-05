@@ -9,7 +9,7 @@
  * (`may_change`), а если нельзя — словами почему (`change_note`).
  */
 import { useRef, useState, type DragEvent, type ReactNode } from 'react'
-import { Navigate, useParams } from 'react-router-dom'
+import { Navigate, useParams } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {

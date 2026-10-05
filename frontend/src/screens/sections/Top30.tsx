@@ -1,5 +1,5 @@
 /** TOP-30 — отдельный экран академического директора: кандидаты по IELTS и по SAT. */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useDashboard } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import { ErrorNote, ListPanel, Loading, ScreenHead } from '../../components/ui'

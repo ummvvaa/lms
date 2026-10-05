@@ -6,7 +6,7 @@
  * и исчезает совсем, когда выполнено всё: напоминать о сделанном — шум.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useGettingStarted } from '../api/hooks'
 import { usePhone } from '../phone'
 import { Button } from './ui/button'

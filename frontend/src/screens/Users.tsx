@@ -13,7 +13,7 @@
  * предметы и кабинет учителя — на экране «Учителя».
  */
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import {
   useBulkUsers,

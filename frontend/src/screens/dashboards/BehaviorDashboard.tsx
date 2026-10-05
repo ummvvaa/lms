@@ -9,7 +9,7 @@
  * Посещаемость и замечания она по-прежнему вносит сама: этого ученик
  * про себя не рассказывает.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useCabinet } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'

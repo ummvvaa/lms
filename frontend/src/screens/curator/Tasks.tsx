@@ -6,7 +6,7 @@
  * и на доску, и закрыть её он может сам. Здесь — фильтры и действия
  * куратора: закрыть, отменить, вернуть.
  */
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import { useCuratorOverview, useCuratorTaskStatus, useCuratorTasks } from '../../api/hooks'
 import { Rows, Segmented } from '../../components/patterns'
 import { DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'

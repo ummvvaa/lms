@@ -12,7 +12,7 @@
  * векторный, перекрашивается вместе с темой и обрезается краем карточки.
  */
 import { Children, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import Icon, { type IconName } from '../layout/icons'
 import { Button } from './ui/button'
 import { toneOf, type Tone } from './ui'

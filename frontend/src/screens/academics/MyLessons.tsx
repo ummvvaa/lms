@@ -4,7 +4,7 @@
  * учителя целиком у него нет — только своя неделя, а урок открывается
  * и отмечается как у учителя. Сервер отдаёт ему только его уроки.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useAcadLessons, useAcadMeta } from '../../api/academics'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'

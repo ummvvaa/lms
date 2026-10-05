@@ -8,7 +8,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { Chip, counted, EmptyNote } from './ui'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router'
 import {
   useApplySuggestion,
   useAssistantAsk,

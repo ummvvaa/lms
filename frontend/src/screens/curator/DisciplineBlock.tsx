@@ -11,7 +11,7 @@
  * школы; кто именно — решает сервер, экран только показывает или прячет форму.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useAddRemark, useDropRemark, type CuratorCard as Card } from '../../api/hooks'
 import Field from '../../components/Field'

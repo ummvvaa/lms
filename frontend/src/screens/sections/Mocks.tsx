@@ -10,7 +10,7 @@
  * и открытые ответы учеников (Writing, Speaking), которые проверяются руками.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useDashboard } from '../../api/hooks'
 import ExamGoals from '../../components/ExamGoals'
 import TheoryManager from '../../components/TheoryManager'

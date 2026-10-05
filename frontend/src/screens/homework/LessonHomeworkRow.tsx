@@ -7,7 +7,7 @@
  * задания» (`/homework/my/` отдаёт урок каждого задания) — ссылка ведёт
  * прямо в него; новых запросов к серверу не нужно.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import type { AcadLesson } from '../../api/academics'
 import { useMyHomework, type MyHomework } from '../../api/homework'
 import { Row, Rows, ShowAll } from '../../components/patterns'

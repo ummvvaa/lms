@@ -7,7 +7,7 @@
  * это не допрос.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useAnswerOnboarding, useOnboarding, useSkipOnboarding } from '../api/hooks'
 import { Bar, Chip, ErrorNote, Loading } from '../components/ui'
 import './onboarding.css'

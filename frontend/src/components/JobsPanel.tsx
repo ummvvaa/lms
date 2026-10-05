@@ -9,7 +9,7 @@
  * прячет строку, сама операция при этом продолжается. Про конец скажет
  * колокольчик, даже если человек ушёл на другой экран.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useJobActions, useJobs } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'

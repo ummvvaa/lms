@@ -9,7 +9,7 @@
  * Внутренних ярлыков здесь нет — их не отдаёт даже API (инвариант №7).
  */
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useMyLessons } from '../../api/academics'
 import {
   useCalendar,

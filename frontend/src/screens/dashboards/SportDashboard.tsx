@@ -5,7 +5,7 @@
  * с точками, справа список соревнований с числом участников. Не поданная
  * заявка помечена янтарным: это единственное, что здесь горит.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useCabinet } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import CalendarCard from '../../components/CalendarCard'

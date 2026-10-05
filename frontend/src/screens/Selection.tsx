@@ -10,7 +10,7 @@
  * (инвариант №11): это закреплено тестом по текстам экрана.
  */
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import {
   useActiveSelection,

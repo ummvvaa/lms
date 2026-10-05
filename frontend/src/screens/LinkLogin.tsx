@@ -1,6 +1,6 @@
 /** Приземление одноразовой ссылки: гасим токен и заводим сессию. */
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'
 

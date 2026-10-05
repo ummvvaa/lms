@@ -6,7 +6,7 @@
  * справа — справочник, который она ведёт сама, и формулы статусов,
  * которые школа так и не задала.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import {
   useCabinet,
   usePendingAdditions,

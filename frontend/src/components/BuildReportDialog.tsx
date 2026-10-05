@@ -10,7 +10,7 @@
  * `REPORT_ROLES`, право держит сервер.
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useBuildReports, type BuildReportsInput, type ReportGroup, type ReportTemplate } from '../api/academics'
 import { useStudents } from '../api/hooks'

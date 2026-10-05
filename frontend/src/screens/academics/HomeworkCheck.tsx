@@ -13,7 +13,7 @@
  * открывает сразу его работу. На телефоне — либо список, либо работа.
  */
 import { Fragment, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { downloadFile } from '../../api/client'
 import { useCheckSubmission, useReviewDetail, type HomeworkSubmission, type ReviewDetail, type ReviewStudent } from '../../api/homework'

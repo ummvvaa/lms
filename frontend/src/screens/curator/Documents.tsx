@@ -9,7 +9,7 @@
  * учеников, число на главной и корзина не расходятся.
  */
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { useAssignTask, useCuratorDocuments, useRemindDocuments, type DocumentCell } from '../../api/hooks'
 import DataTable, { type Column } from '../../components/DataTable'

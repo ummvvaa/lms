@@ -8,7 +8,7 @@
  * меню работает, профиль открывается, чужих данных нет.
  */
 import type { ReactNode } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router'
 import { useCuratorProfile } from '../../api/hooks'
 import Empty from '../../components/Empty'
 import { ErrorNote, Loading } from '../../components/ui'

@@ -13,7 +13,7 @@
  * дело не в шагах, а в данных других детей (инвариант №7).
  */
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import type { SectionLock } from '../api/hooks'
 import { Dimmed } from './patterns'
 import { t } from '../i18n'

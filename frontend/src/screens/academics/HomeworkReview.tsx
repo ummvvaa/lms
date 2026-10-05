@@ -7,7 +7,7 @@
  * и администратор видят задания всей школы, учитель — своих уроков
  * (решает сервер). На телефоне таблица — списком.
  */
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import { useReviewList, type ReviewItem, type ReviewTab } from '../../api/homework'
 import { useAuth } from '../../auth/AuthContext'
 import DataTable, { type Column } from '../../components/DataTable'

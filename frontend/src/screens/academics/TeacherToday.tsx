@@ -6,7 +6,7 @@
  * на телефоне: открыть текущий урок и отметить отсутствующих — кнопка
  * «Отметить N урок» стоит первой.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useTeacherToday } from '../../api/academics'
 import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'

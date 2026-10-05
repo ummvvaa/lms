@@ -9,7 +9,7 @@
  * на ноутбуке и снизу на телефоне. Отдельного колокольчика больше нет:
  * непрочитанное считается точкой на аватаре и числом в пункте меню.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useMarkNotificationsRead, useNotifications } from '../api/hooks'
 import { t } from '../i18n'
 import { usePhone } from '../phone'

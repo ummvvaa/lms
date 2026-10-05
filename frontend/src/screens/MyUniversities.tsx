@@ -6,7 +6,7 @@
  * (инвариант №11). Внутренних ярлыков здесь нет (инвариант №7).
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useCatalog, useChangeTier, useMyUniversities, useRemoveFromMyList, useSetPriority } from '../api/hooks'
 import ConfirmDialog from '../components/ConfirmDialog'

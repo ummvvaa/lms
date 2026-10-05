@@ -2,7 +2,7 @@
  * Блок «Учёба» на дашборде Кымбат и администратора: уроки сегодня,
  * не отмечено, замены, накладки на следующей неделе, просьбы, отчёты.
  */
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useAcadDashboard, useRemindAllTeachers } from '../../api/academics'
 import { Row, Rows } from '../../components/patterns'
