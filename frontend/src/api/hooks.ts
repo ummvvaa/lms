@@ -5318,6 +5318,8 @@ export interface AdmissionPreview {
   columns: {
     key: string
     title: string
+    /** как колонка названа в файле: по этому заголовку её переназначают */
+    header: string
     field_title: string
     domain: string
     domain_title: string
@@ -5326,6 +5328,8 @@ export interface AdmissionPreview {
     rows_with_data: number
   }[]
   unknown_columns: string[]
+  /** куда можно положить колонку файла — весь реестр соответствий: ученик, колонки таблицы, поля профилей */
+  assignable: { key: string; title: string; domain: string; domain_title: string }[]
   groups: string[]
   /** строк в листах-списках: ученик найден по почте или логину, группа листу не нужна */
   list_rows: number
@@ -5389,6 +5393,8 @@ export interface AdmissionDraft {
   group?: string
   /** выбранные домены; пусто — все найденные (фаза 71) */
   domains?: string[]
+  /** назначения человека: заголовок файла → ключ колонки реестра, пустой ключ — «не загружать» */
+  assigned?: Record<string, string>
 }
 
 const admissionForm = (draft: AdmissionDraft): FormData => {
@@ -5397,6 +5403,7 @@ const admissionForm = (draft: AdmissionDraft): FormData => {
   if (draft.fixes?.length) form.append('fixes', JSON.stringify(draft.fixes))
   if (draft.group) form.append('group', draft.group)
   if (draft.domains) form.append('domains', JSON.stringify(draft.domains))
+  if (draft.assigned && Object.keys(draft.assigned).length) form.append('assigned', JSON.stringify(draft.assigned))
   return form
 }
 

@@ -62,6 +62,8 @@ export default function ImportWizard() {
   const [preview, setPreview] = useState<AdmissionPreview | null>(null)
   const [chosen, setChosen] = useState<string[]>([])
   const [fixes, setFixes] = useState<Record<string, Fix>>({})
+  // назначения человека: заголовок файла → колонка реестра; пусто — «не загружать»
+  const [assigned, setAssigned] = useState<Record<string, string>>({})
   const [onlyBad, setOnlyBad] = useState(false)
   const [report, setReport] = useState<AdmissionImportReport | null>(null)
   const check = useAdmissionPreview()
@@ -70,16 +72,17 @@ export default function ImportWizard() {
 
   const fixList = (next = fixes): Fix[] => Object.values(next).filter((fix) => fix.skip || fix.student)
 
-  const run = (selected: File, nextFixes: Fix[] = [], forGroup = group) => {
+  const run = (selected: File, nextFixes: Fix[] = [], forGroup = group, nextAssigned = assigned, resetDomains = false) => {
     setReport(null)
     check.mutate(
-      { file: selected, fixes: nextFixes, group: forGroup },
+      { file: selected, fixes: nextFixes, group: forGroup, assigned: nextAssigned },
       {
         onSuccess: (data) => {
           setPreview(data)
           setFile(selected)
-          // по умолчанию выбраны все найденные домены — из тех, что можно этому человеку
-          if (!chosen.length) setChosen(data.writable_domains)
+          // по умолчанию выбраны все найденные домены — из тех, что можно этому человеку;
+          // новый файл и новое назначение колонки пересобирают выбор: домены могли смениться
+          setChosen((old) => (resetDomains || !old.length ? data.writable_domains : old))
         },
         onError: (error) => {
           setPreview(null)
@@ -93,6 +96,14 @@ export default function ImportWizard() {
     const next = { ...fixes, [key]: { ...fix, key } }
     setFixes(next)
     if (file) run(file, fixList(next))
+  }
+
+  // колонку, которую мастер не узнал или узнал не так, человек назначает сам:
+  // файл разбирается заново, домены пересчитываются
+  const assign = (header: string, key: string) => {
+    const next = { ...assigned, [header]: key }
+    setAssigned(next)
+    if (file) run(file, fixList(), group, next, true)
   }
 
   // одна кривая строка не держит файл: все строки с ошибкой пропускаются разом,
@@ -112,7 +123,7 @@ export default function ImportWizard() {
   const applyAll = () => {
     if (!file) return
     apply.mutate(
-      { file, fixes: fixList(), group, domains: chosen },
+      { file, fixes: fixList(), group, domains: chosen, assigned },
       {
         onSuccess: (data) => {
           setReport(data)
@@ -140,6 +151,17 @@ export default function ImportWizard() {
 
   const counts = preview?.counts
   const errorsLeft = counts ? counts.errors : 0
+  // строки ручного назначения: неузнанные заголовки и те, что человек уже назначил
+  const assignRows = useMemo(() => [...new Set([...Object.keys(assigned), ...(preview?.unknown_columns ?? [])])], [assigned, preview])
+  // список выбора — весь реестр сервера, по доменам; «Ученик» и ФИО — отдельной группой
+  const assignGroups = useMemo(() => {
+    const groups = new Map<string, { key: string; title: string }[]>()
+    for (const option of preview?.assignable ?? []) {
+      const title = option.domain_title || t('Ученик')
+      groups.set(title, [...(groups.get(title) ?? []), option])
+    }
+    return [...groups.entries()].map(([title, options]) => ({ title, options }))
+  }, [preview])
 
   return (
     <>
@@ -186,7 +208,8 @@ export default function ImportWizard() {
                 if (selected) {
                   setFixes({})
                   setChosen([])
-                  run(selected, [])
+                  setAssigned({})
+                  run(selected, [], group, {}, true)
                 }
               }}
             />
@@ -227,7 +250,8 @@ export default function ImportWizard() {
                   </Chip>
                 )}
                 <span className="toolbar__spacer" />
-                <Button size="sm" onClick={() => setStep(2)} disabled={counts.rows === 0}>
+                {/* строк нет, но есть неузнанные колонки — дальше можно: колонку ученика назначают на шаге 2 */}
+                <Button size="sm" onClick={() => setStep(2)} disabled={counts.rows === 0 && preview.unknown_columns.length === 0}>
                   {t('Дальше')}
                 </Button>
               </div>
@@ -262,8 +286,22 @@ export default function ImportWizard() {
 
           <DataTable
             columns={[
-              { key: 'title', title: t('Колонка в файле'), width: '26%', cell: (column: WizardColumn) => column.title },
-              { key: 'field', title: t('Поле'), width: '24%', cell: (column: WizardColumn) => column.field_title },
+              { key: 'title', title: t('Колонка в файле'), width: '26%', cell: (column: WizardColumn) => column.header || column.title },
+              {
+                key: 'field',
+                title: t('Поле'),
+                width: '24%',
+                cell: (column: WizardColumn) => (
+                  <span className="acad__wrapline">
+                    {column.field_title}
+                    {column.header && !(column.header in assigned) && (
+                      <Button variant="link" size="sm" onClick={() => assign(column.header, column.key)}>
+                        {t('Переназначить')}
+                      </Button>
+                    )}
+                  </span>
+                ),
+              },
               { key: 'domain', title: t('Домен'), width: '16%', cell: (column: WizardColumn) => column.domain_title },
               { key: 'owner', title: t('Владелец'), width: '14%', cell: (column: WizardColumn) => column.owner },
               {
@@ -288,11 +326,41 @@ export default function ImportWizard() {
             rowKey={(column) => column.key}
           />
 
-          {preview.unknown_columns.length > 0 && (
-            <p className="muted wizard__unknown">
-              {t('Не распознаны, будут пропущены:')}{' '}
-              {preview.unknown_columns.map((title) => `«${title}»`).join(', ')}
-            </p>
+          {/* колонки, которые мастер не узнал, и те, что человек взялся переназначить:
+              у каждой — список всего реестра соответствий; без назначения колонка пропускается */}
+          {assignRows.length > 0 && (
+            <>
+              <p className="muted wizard__unknown">
+                {t('Эти колонки мастер не узнал или вы переназначаете их сами. Выберите, куда положить колонку; без выбора она будет пропущена.')}
+              </p>
+              <DataTable
+                fit
+                columns={[
+                  { key: 'header', title: t('Колонка в файле'), width: '40%', cell: (header: string) => header },
+                  {
+                    key: 'target',
+                    title: t('Куда положить'),
+                    width: '60%',
+                    cell: (header: string) => (
+                      <SelectField aria-label={header} value={assigned[header] ?? ''} disabled={check.isPending} onChange={(event) => assign(header, event.target.value)}>
+                        <option value="">{t('— не загружать —')}</option>
+                        {assignGroups.map((group) => (
+                          <optgroup key={group.title} label={group.title}>
+                            {group.options.map((option) => (
+                              <option key={option.key} value={option.key}>
+                                {option.title}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </SelectField>
+                    ),
+                  },
+                ]}
+                rows={assignRows}
+                rowKey={(header) => header}
+              />
+            </>
           )}
 
           <div className="toolbar">

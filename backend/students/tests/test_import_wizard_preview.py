@@ -44,6 +44,7 @@ def test_step_two_shows_exactly_the_registry(klass, asem):
     assert phone == {
         "key": "phone",
         "title": "Номер телефона",
+        "header": "Номер телефона",
         "field_title": "Телефон ученика",
         "domain": "admission",
         "domain_title": "Поступление",

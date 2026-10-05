@@ -196,3 +196,48 @@ def test_table_sheet_of_an_unknown_group_is_still_skipped(klass, admin):
     """Таблица с ФИО по-прежнему привязана к группе листа."""
     sheets = admission_import.parse(book({"Лист1": (["ФИО", "ielts"], [[klass[0].full_name, "6.5"]])}), actor=admin)
     assert "нет в системе" in sheets[0].error
+
+
+# --- Ручное назначение колонки ---------------------------------------------------------
+
+
+def test_person_assigns_a_column_the_wizard_did_not_recognise(klass, admin):
+    """Произвольный заголовок назначается полю руками — слово человека главнее распознавания."""
+    student = klass[0]
+    header = ["кто", "балл за пробник", "Статус", "мусор"]
+    uploaded = book({"Лист1": (header, [[student.email, "6.5", "B", "x"]])})
+    assert "нет колонки с почтой" in admission_import.parse(uploaded, actor=admin)[0].error
+    assigned = {"кто": "student_key", "балл за пробник": "ielts_current", "Статус": "admission_status", "мусор": ""}
+    sheets = admission_import.parse(uploaded, actor=admin, assigned=assigned)
+    assert sheets[0].by_key and sheets[0].columns == ["student_key", "admission_status", "ielts_current"]
+    assert sheets[0].unknown == ["мусор"]
+    admission_import.apply(uploaded, actor=admin, assigned=assigned)
+    student.exam.refresh_from_db()
+    student.admission.refresh_from_db()
+    assert str(student.exam.ielts_current) == "6.5" and student.admission.status == "B"
+
+
+def test_assignment_overrides_what_the_wizard_recognised(klass, admin):
+    """«ielts» мастер кладёт в текущий балл; человек переназначил в цель — в цель и ляжет."""
+    student = klass[0]
+    uploaded = book({"Лист1": (["email", "ielts"], [[student.email, "7.5"]])})
+    admission_import.apply(uploaded, actor=admin, assigned={"ielts": "ielts_target"})
+    student.exam.refresh_from_db()
+    assert str(student.exam.ielts_target) == "7.5" and student.exam.ielts_current is None
+
+
+def test_preview_endpoint_takes_assignments_and_offers_the_registry(klass, admin):
+    import json
+
+    student = klass[0]
+    uploaded = book({"Лист1": (["кто", "балл"], [[student.email, "6.5"]])})
+    client = login(admin)
+    answer = client.post(
+        "/api/admission-imports/preview/",
+        {"file": uploaded, "assigned": json.dumps({"кто": "student_key", "балл": "ielts_current", "x": "нет такого"})},
+        format="multipart",
+    ).json()
+    assert [column["key"] for column in answer["columns"]] == ["ielts_current"]
+    assert answer["columns"][0]["header"] == "балл" and answer["counts"]["ready"] == 1
+    keys = {row["key"] for row in answer["assignable"]}
+    assert {"name", "student_key", "phone", "ielts_1", "ielts_current", "sport_rank"} <= keys

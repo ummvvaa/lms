@@ -149,6 +149,8 @@ class Sheet:
     columns: list[str] = field(default_factory=list)
     #: лист-список: колонки ФИО нет, ученик ищется по почте или логину
     by_key: bool = False
+    #: ключ колонки реестра → заголовок в файле, как он написан
+    headers: dict[str, str] = field(default_factory=dict)
     #: заголовки, которых реестр не знает
     unknown: list[str] = field(default_factory=list)
 
@@ -245,8 +247,19 @@ def _group_of(sheet_name: str):
     return StudyGroup.objects.filter(code__iexact=code).first()
 
 
-def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", actor=None) -> list[Sheet]:
+def parse(
+    uploaded,
+    *,
+    fixes: dict[str, Fix] | None = None,
+    group: str = "",
+    actor=None,
+    assigned: dict[str, str] | None = None,
+) -> list[Sheet]:
     """Разобрать книгу целиком, ничего не записывая.
+
+    `assigned` — назначения человека «заголовок файла → ключ колонки реестра»
+    (пустой ключ — «не загружать»): колонку, которую мастер не узнал или узнал
+    не так, человек назначает сам, и его слово главнее распознавания.
 
     Разбираются все колонки, какие нашлись: выбор доменов — дело
     применения и отчёта, разбор о нём не знает. Куратор загружает только
@@ -270,8 +283,9 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
     out: list[Sheet] = []
     for sheet_name, header, body in sheets_raw:
         sheet = Sheet(name=sheet_name, group_code=_text(sheet_name).upper())
-        columns = registry.read_columns(header)
+        columns = registry.read_columns(header, assigned=assigned)
         sheet.columns = [spec.key for spec in registry.ALL_COLUMNS if spec.key in columns]
+        sheet.headers = {key: header[index] for key, index in columns.items()}
         sheet.unknown = registry.unknown_columns(header, columns)
         # колонки ФИО нет, а колонка с почтой или логином есть — лист-список:
         # ученика находит ключ, точным совпадением по всей школе, и группа
@@ -280,6 +294,13 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
         group = None
         if sheet.by_key:
             sheet.group_code = ""
+        elif "name" not in columns:
+            # ни ФИО, ни ключа: лист не к кому отнести — колонку ученика человек назначит сам
+            sheet.error = _(
+                "На листе нет колонки «{column}» и нет колонки с почтой или логином ученика — лист пропущен целиком"
+            ).format(column=registry.spec_of("name").title)
+            out.append(sheet)
+            continue
         else:
             if not _text(sheet_name):
                 raise FileRejected(_("Для CSV с колонкой ФИО укажите группу: у файла нет листов, а лист — это группа"))
@@ -295,13 +316,6 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
                 out.append(sheet)
                 continue
             sheet.group_id = group.pk
-            if "name" not in columns:
-                sheet.error = _(
-                    "На листе нет колонки «{column}» и нет колонки с почтой или логином ученика — "
-                    "лист пропущен целиком"
-                ).format(column=registry.spec_of("name").title)
-                out.append(sheet)
-                continue
 
         students = list(Student.objects.filter(group=group, is_active=True).select_related("group")) if group else []
         as_card = registry.card_keys(sheet.columns) if sheet.by_key else ()
@@ -470,6 +484,8 @@ def columns_payload(sheets: list[Sheet]) -> list[dict]:
             {
                 "key": spec.key,
                 "title": str(spec.title),
+                # как колонка названа в файле: по этому заголовку человек её переназначает
+                "header": next((sheet.headers[spec.key] for sheet in sheets if spec.key in sheet.headers), ""),
                 "field_title": _field_title(spec),
                 "domain": spec.domain,
                 "domain_title": domain.title if domain else "",
@@ -503,6 +519,24 @@ def _field_title(spec) -> str:
     return str(spec.title)
 
 
+def assignable_payload() -> list[dict]:
+    """Куда человек может положить колонку файла: весь реестр — ученик, колонки таблицы, поля профилей."""
+    from core.domains import DOMAINS
+
+    out = []
+    for spec in registry.ALL_COLUMNS:
+        domain = DOMAINS.get(spec.domain)
+        out.append(
+            {
+                "key": spec.key,
+                "title": str(spec.title) if spec.target == registry.MATCH else _field_title(spec),
+                "domain": spec.domain,
+                "domain_title": domain.title if domain else "",
+            }
+        )
+    return out
+
+
 def unknown_payload(sheets: list[Sheet]) -> list[str]:
     """Нераспознанные заголовки всего файла — поимённо, без повторов."""
     seen: list[str] = []
@@ -521,6 +555,8 @@ def preview_payload(sheets: list[Sheet]) -> dict:
         # шаг «Что заполняем» (фаза 72): колонки, нераспознанное, группы
         "columns": columns_payload(sheets),
         "unknown_columns": unknown_payload(sheets),
+        # список выбора для ручного назначения колонки — из реестра
+        "assignable": assignable_payload(),
         "groups": [sheet.group_code for sheet in sheets if not sheet.error and sheet.group_code],
         # листы-списки: ученик по почте или логину, группа им не нужна
         "list_rows": sum(len(sheet.rows) for sheet in sheets if sheet.by_key),
@@ -569,7 +605,15 @@ def _line(sheet: str, row, student: str, kind: str, text: str, code: str) -> str
 
 
 @transaction.atomic
-def apply(uploaded, *, actor, fixes: dict[str, Fix] | None = None, domains: list[str] | None = None, group: str = ""):
+def apply(
+    uploaded,
+    *,
+    actor,
+    fixes: dict[str, Fix] | None = None,
+    domains: list[str] | None = None,
+    group: str = "",
+    assigned: dict[str, str] | None = None,
+):
     """Записать разобранное одной транзакцией и вернуть отчёт-запись.
 
     Половина таблицы записанной хуже, чем отказ: строки с ошибками
@@ -582,7 +626,7 @@ def apply(uploaded, *, actor, fixes: dict[str, Fix] | None = None, domains: list
     """
     from students.models import AdmissionImport
 
-    sheets = parse(uploaded, fixes=fixes, group=group, actor=actor)
+    sheets = parse(uploaded, fixes=fixes, group=group, actor=actor, assigned=assigned)
     chosen = list(domains) if domains is not None else found_domains(sheets)
     first_student: int | None = None
     today = timezone.localdate()

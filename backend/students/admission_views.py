@@ -287,6 +287,29 @@ def _fixes(raw) -> dict[str, admission_import.Fix]:
     return out
 
 
+def _assigned(raw) -> dict[str, str]:
+    """Назначения человека с шага «Что заполняем»: заголовок файла → ключ колонки реестра.
+
+    Пустой ключ — «не загружать». Незнакомый ключ отбрасывается: назначить
+    колонку можно только тому, что есть в реестре соответствий.
+    """
+    from students import import_registry
+
+    if not raw:
+        return {}
+    try:
+        rows = json.loads(raw) if isinstance(raw, str) else raw
+    except ValueError:
+        return {}
+    if not isinstance(rows, dict):
+        return {}
+    return {
+        str(title).strip(): str(key or "")
+        for title, key in rows.items()
+        if str(title).strip() and (not key or str(key) in import_registry.BY_KEY)
+    }
+
+
 @extend_schema(request=None, responses={200: dict})
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -304,6 +327,7 @@ def admission_preview(request):
             fixes=_fixes(request.data.get("fixes")),
             group=str(request.data.get("group") or ""),
             actor=request.user,
+            assigned=_assigned(request.data.get("assigned")),
         )
     except admission_import.FileRejected as error:
         return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
@@ -338,6 +362,7 @@ def admission_apply(request):
             fixes=_fixes(request.data.get("fixes")),
             domains=chosen,
             group=str(request.data.get("group") or ""),
+            assigned=_assigned(request.data.get("assigned")),
         )
     except admission_import.FileRejected as error:
         return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
