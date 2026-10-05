@@ -110,7 +110,14 @@ def revert_batch(batch: ImportBatch, *, actor=None) -> dict:
             continue
 
         try:
-            value = coerce(instance, entry.field_name, entry.old_value or None)
+            if entry.old_value:
+                value = coerce(instance, entry.field_name, entry.old_value)
+            else:
+                # до загрузки поле было пустым. Пустота текстового поля — пустая
+                # строка, а не NULL: возврат в NULL ронял отмену на первом же
+                # тексте, который загрузка вписала в пустое место
+                field = instance._meta.get_field(entry.field_name)
+                value = None if field.null else field.get_default()
         except ValueRejected as error:
             skipped.append({"entry": entry.pk, "field_title": _title(entry), "reason": str(error)})
             continue
