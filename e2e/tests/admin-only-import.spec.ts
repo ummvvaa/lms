@@ -53,7 +53,7 @@ let uploadedFor: Row;
 let previous: string | null = null;
 let batchId = 0;
 
-test("директор: «Импорт» с мастером, в таблице кнопки нет, старый путь по API — отказ", async ({
+test("директор: «Импорт» с мастером, в таблице кнопки нет, прежнего пути по API нет", async ({
   browser,
 }) => {
   const page = await as(browser, "director_exam");
