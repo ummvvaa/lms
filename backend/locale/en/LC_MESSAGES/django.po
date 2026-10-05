@@ -16242,3 +16242,7 @@ msgstr "The CSV is not in UTF-8: save the file as “CSV UTF-8” and upload it 
 #, python-brace-format
 msgid "«{domain}» ведётся только у 11 параллели — значения пропущены"
 msgstr "“{domain}” is kept only for grade 11 — the values are skipped"
+
+#: students/admission_import.py
+msgid "Значения полей профилей можно отменить целиком: «История загрузок» → «Отменить»"
+msgstr "Profile field values can be reverted as a whole: Upload history → Cancel"

@@ -275,3 +275,39 @@ def test_junior_row_with_only_closed_domains_is_an_error_as_before(junior, admin
     uploaded = book({"Лист1": (["email", "ielts", "Целевая страна"], [[junior.email, "6.5", "Канада"]])})
     row = rows_of(admission_import.parse(uploaded, actor=admin))[0]
     assert row.error == "поступление ведётся только у 11 параллели — строка пропущена"
+
+
+# --- Отмена загрузки -------------------------------------------------------------------
+
+
+def test_field_values_are_loaded_as_a_batch_per_domain_and_can_be_reverted(klass, admin):
+    """Поля профилей идут пачкой на домен: её отменяют целиком, как загрузку вкладки «Поля по CSV»."""
+    from core.imports import revert_batch
+    from core.models import ImportBatch
+
+    student = klass[0]
+    student.exam.ielts_current = "6.0"
+    student.exam.save(update_fields=["ielts_current"])
+    uploaded = book({"Лист1": (["email", "ielts", "Целевая страна"], [[student.email, "7.0", "Канада"]])})
+    record = admission_import.apply(uploaded, actor=admin)
+    batches = {batch.domain_code: batch for batch in ImportBatch.objects.all()}
+    assert set(batches) == {"exam", "admission"} and batches["exam"].file_name == record.file_name
+    assert batches["exam"].rows_updated == 1 and batches["exam"].audit_entries.count() == 1
+    assert "можно отменить целиком" in record.report
+
+    revert_batch(batches["exam"], actor=admin)
+    student.exam.refresh_from_db()
+    student.admission.refresh_from_db()
+    # экзамены вернулись, поступление — отдельная пачка — осталось
+    assert str(student.exam.ielts_current) == "6.0" and student.admission.target_country == "Канада"
+
+
+def test_table_columns_of_the_admission_table_stay_outside_the_batch(klass, asem):
+    """Таблица поступления пишет как раньше: пачки и обещания отмены у неё нет."""
+    from core.models import ImportBatch
+
+    uploaded = book(
+        {"Chicago": (["ФИО", "Номер телефона", "IELTS-1"], [[klass[0].full_name, "8 707 389 63 73", "6.5"]])}
+    )
+    record = admission_import.apply(uploaded, actor=asem)
+    assert ImportBatch.objects.count() == 0 and "можно отменить" not in record.report

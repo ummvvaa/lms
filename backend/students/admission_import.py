@@ -650,6 +650,7 @@ def apply(
     chosen = list(domains) if domains is not None else found_domains(sheets)
     first_student: int | None = None
     today = timezone.localdate()
+    batches = _Batches(actor=actor, file_name=getattr(uploaded, "name", "") or "")
     report: list[str] = []
     students_updated = 0
     attempts = links = passwords = skipped = 0
@@ -676,7 +677,7 @@ def apply(
                 code = "manual" if row.skip else "row"
                 report.append(_line(sheet.name, row.index, row.raw_name, KIND_SKIP, reason, code))
                 continue
-            outcome = _apply_row(row, actor=actor, today=today, domains=chosen)
+            outcome = _apply_row(row, actor=actor, today=today, domains=chosen, batches=batches)
             if first_student is None:
                 first_student = row.student
             students_updated += 1 if outcome["changed"] else 0
@@ -694,6 +695,10 @@ def apply(
         title = DOMAINS[code].title if code in DOMAINS else code
         text = _("{domain}: записано значений — {count}").format(domain=title, count=written.get(code, 0))
         report.append(_line("—", "—", "—", KIND_DOMAIN, text, "written"))
+
+    if batches.close(rows_total=sum(1 for sheet in sheets for row in sheet.rows if not row.error and not row.skip)):
+        text = _("Значения полей профилей можно отменить целиком: «История загрузок» → «Отменить»")
+        report.append(_line("—", "—", "—", KIND_DOMAIN, text, "revert"))
 
     record = AdmissionImport.objects.create(
         uploaded_by=actor if getattr(actor, "pk", None) else None,
@@ -713,7 +718,41 @@ def apply(
     return record
 
 
-def _apply_row(row: Row, *, actor, today: dt.date, domains: list[str]) -> dict:
+class _Batches:
+    """Загрузки-пачки для полей профилей — по одной на домен, как у вкладки «Поля по CSV».
+
+    Всё, что мастер пишет в поля профилей «как в карточке», ссылается на
+    `ImportBatch` своего домена: по этой ссылке загрузку отменяет целиком
+    и администратор, и директор домена (`core.imports.revert_batch`).
+    Попытки, документы и пароли таблицы поступления в пачку не входят —
+    их отмена поля не вернёт, и обещать её нельзя.
+    """
+
+    def __init__(self, *, actor, file_name: str) -> None:
+        self.actor = actor if getattr(actor, "pk", None) else None
+        self.file_name = file_name
+        self.rows: dict[str, object] = {}
+        self.students: dict[str, set[int]] = {}
+
+    def of(self, domain: str, student_id: int):
+        from core.models import ImportBatch
+
+        if domain not in self.rows:
+            self.rows[domain] = ImportBatch.objects.create(
+                actor=self.actor, file_name=self.file_name, kind=ImportBatch.Kind.STUDENTS, domain_code=domain
+            )
+        self.students.setdefault(domain, set()).add(student_id)
+        return self.rows[domain]
+
+    def close(self, *, rows_total: int) -> bool:
+        for domain, batch in self.rows.items():
+            batch.rows_total = rows_total
+            batch.rows_updated = len(self.students.get(domain, ()))
+            batch.save(update_fields=["rows_total", "rows_updated"])
+        return bool(self.rows)
+
+
+def _apply_row(row: Row, *, actor, today: dt.date, domains: list[str], batches: _Batches | None = None) -> dict:
     """Записать одну строку по реестру: профили, пароли, документы, попытки."""
     from core.audit import apply_changes
     from core.domains import Source
@@ -753,7 +792,7 @@ def _apply_row(row: Row, *, actor, today: dt.date, domains: list[str]) -> dict:
         changed |= bool(apply_changes(exam_profile, exam_changes, actor=actor, source=Source.IMPORT))
         by_domain["exam"] = by_domain.get("exam", 0) + len(exam_changes)
 
-    fields = _apply_fields(row, student=student, actor=actor, domains=domains, as_card=as_card)
+    fields = _apply_fields(row, student=student, actor=actor, domains=domains, as_card=as_card, batches=batches)
     for code, count in fields.items():
         by_domain[code] = by_domain.get(code, 0) + count
     changed |= bool(fields)
@@ -771,7 +810,9 @@ def _apply_row(row: Row, *, actor, today: dt.date, domains: list[str]) -> dict:
     return {"changed": changed, "attempts": attempts, "links": links, "passwords": passwords, "by_domain": by_domain}
 
 
-def _apply_fields(row: Row, *, student, actor, domains: list[str], as_card: tuple[str, ...] = ()) -> dict[str, int]:
+def _apply_fields(
+    row: Row, *, student, actor, domains: list[str], as_card: tuple[str, ...] = (), batches: _Batches | None = None
+) -> dict[str, int]:
     """Поля профилей «как в карточке»: значение приводит `coerce`, пишет `apply_changes`.
 
     Возвращает, сколько значений записано в каждый домен. Профиля нет —
@@ -801,10 +842,11 @@ def _apply_fields(row: Row, *, student, actor, domains: list[str], as_card: tupl
                 continue
         if not clean:
             continue
-        apply_changes(instance, clean, actor=actor, source=Source.IMPORT)
-        for name in clean:
-            domain = values[name][1]
-            written[domain] = written.get(domain, 0) + 1
+        # профиль принадлежит одному домену: его пачка — у всех полей модели одна
+        domain = next(iter(values.values()))[1]
+        batch = batches.of(domain, student.pk) if batches is not None else None
+        apply_changes(instance, clean, actor=actor, source=Source.IMPORT, import_batch=batch)
+        written[domain] = written.get(domain, 0) + len(clean)
     return written
 
 
