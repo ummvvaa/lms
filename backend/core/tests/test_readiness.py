@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from django.test import override_settings
 
 from core.readiness import compute
-
-WEIGHTS = {"exam": 35.0, "admission": 25.0, "talent": 20.0, "behavior": 10.0, "sport": 10.0}
 
 
 @pytest.fixture
@@ -27,7 +24,6 @@ def filled(student):
 
 
 @pytest.mark.django_db
-@override_settings(READINESS_WEIGHTS=WEIGHTS)
 def test_score_is_weighted_average(filled):
     result = compute(filled)
     assert 0 <= result.score <= 100
@@ -37,7 +33,6 @@ def test_score_is_weighted_average(filled):
 
 
 @pytest.mark.django_db
-@override_settings(READINESS_WEIGHTS=WEIGHTS)
 def test_weakest_is_by_recoverable_points_not_lowest_percent(filled):
     """Слабое звено — где больше восстановимых баллов, а не где меньше процент.
 
@@ -71,17 +66,62 @@ def test_weakest_is_by_recoverable_points_not_lowest_percent(filled):
 
 
 @pytest.mark.django_db
-@override_settings(READINESS_WEIGHTS={"exam": 80.0, "admission": 5.0, "talent": 5.0, "behavior": 5.0, "sport": 5.0})
-def test_weights_come_from_settings(filled):
-    """Веса не зашиты в код: другой набор — другой результат."""
+def test_weights_come_from_school_rules(filled, set_rules):
+    """Веса не зашиты в код: администратор задал другой набор — другой результат."""
+    balanced = compute(filled)
+    set_rules(
+        readiness_w_exam=80, readiness_w_admission=5, readiness_w_talent=5, readiness_w_behavior=5, readiness_w_sport=5
+    )
     heavy_exam = compute(filled)
-    with override_settings(READINESS_WEIGHTS=WEIGHTS):
-        balanced = compute(filled)
     assert heavy_exam.score != balanced.score
 
 
 @pytest.mark.django_db
-@override_settings(READINESS_WEIGHTS=WEIGHTS)
+def test_floors_targets_and_points_come_from_school_rules(filled, set_rules):
+    """Планки, цели и баллы внутри доменов — те же правила школы, не константы."""
+    from students.models import Activity, ActivityCategory
+
+    for i in range(4):
+        Activity.objects.create(student=filled, category=ActivityCategory.PROJECT, title=f"Проект {i}")
+    filled.refresh_from_db()
+    parts = {p.code: p.value for p in compute(filled).parts}
+    # IELTS (6 − 4) / (8 − 4) = 50 %, SAT (1200 − 800) / (1400 − 800) = 67 %; 4 активности из 8; Common App — 25 из 100
+    assert round(parts["exam"]) == 58 and parts["talent"] == 50 and parts["admission"] == 25
+
+    set_rules(readiness_ielts_floor=5.0, readiness_sat_floor=1000, readiness_talent_target=4)
+    set_rules(
+        readiness_points_list=10, readiness_points_common_app=60, readiness_points_account=10, readiness_points_ready=20
+    )
+    parts = {p.code: p.value for p in compute(filled).parts}
+    # IELTS (6 − 5) / (8 − 5) = 33 %, SAT (1200 − 1000) / (1400 − 1000) = 50 %
+    assert round(parts["exam"]) == 42 and parts["talent"] == 100 and parts["admission"] == 60
+
+
+@pytest.mark.django_db
+def test_rules_are_read_once_for_a_list_of_students(filled, group):
+    """Снимок готовности идёт циклом по ученикам: правила школы читаются одним запросом на расчёт."""
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    from core.tasks import snapshot_readiness
+    from students.models import AdmissionProfile, BehaviorProfile, ExamProfile, Student
+
+    for index in range(4):
+        other = Student.objects.create(
+            last_name=f"Ученик{index}",
+            first_name="Правил",
+            email=f"rules{index}@example.kz",
+            group=group,
+            graduation_year=2027,
+        )
+        for model in (ExamProfile, AdmissionProfile, BehaviorProfile):
+            model.objects.create(student=other)
+    with CaptureQueriesContext(connection) as queries:
+        assert snapshot_readiness() == 5
+    assert sum("core_schoolrule" in query["sql"] for query in queries.captured_queries) == 1
+
+
+@pytest.mark.django_db
 def test_missing_sport_does_not_cap_the_score(student):
     """У неспортсмена потолок должен оставаться 100, а не 90."""
     student.exam.ielts_current = "8.0"
@@ -107,14 +147,12 @@ def test_missing_sport_does_not_cap_the_score(student):
 
 
 @pytest.mark.django_db
-@override_settings(READINESS_WEIGHTS=WEIGHTS)
 def test_empty_student_scores_zero(student):
     result = compute(student)
     assert result.score == 0
 
 
 @pytest.mark.django_db
-@override_settings(READINESS_WEIGHTS=WEIGHTS)
 def test_snapshot_task_writes_rows(filled):
     from core.models import ReadinessSnapshot
     from core.tasks import snapshot_readiness

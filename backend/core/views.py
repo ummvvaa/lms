@@ -206,9 +206,9 @@ def cabinet(request):
 @permission_classes([IsAuthenticated])
 def readiness_config(request):
     """Веса Readiness Score — чтобы фронт подписывал графики теми же числами."""
-    from django.conf import settings
+    from core.readiness import readiness_rules
 
-    return Response({"weights": settings.READINESS_WEIGHTS})
+    return Response({"weights": readiness_rules().weights})
 
 
 @extend_schema(responses={200: dict})

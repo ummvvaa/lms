@@ -11,7 +11,7 @@ def snapshot_readiness() -> int:
     """Снять недельный срез готовности по активным ученикам 11 — у 8–10 её нет."""
     from core.models import ReadinessSnapshot
     from core.parallels import admission_students
-    from core.readiness import compute
+    from core.readiness import compute, readiness_rules
     from students.models import Student
 
     today = timezone.localdate()
@@ -20,8 +20,10 @@ def snapshot_readiness() -> int:
     )
 
     created = 0
+    # правила школы — одним запросом на весь снимок, не на каждого ученика
+    rules = readiness_rules()
     for student in students:
-        result = compute(student)
+        result = compute(student, rules)
         values = {p.code: round(p.value, 1) for p in result.parts}
         ReadinessSnapshot.objects.update_or_create(
             student=student,

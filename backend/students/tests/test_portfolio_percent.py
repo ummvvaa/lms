@@ -38,6 +38,28 @@ def test_server_sends_percents_not_fractions(pupil):
 
 
 @pytest.mark.django_db
+def test_section_weights_come_from_school_rules(pupil, set_rules):
+    """Веса разделов — правила школы: заполнены только баллы — процент равен весу раздела «Академические»."""
+    from decimal import Decimal
+
+    from students.models import ExamProfile
+    from students.portfolio import state
+
+    ExamProfile.objects.create(student=pupil, gpa=Decimal("3.5"), ielts_current=Decimal("6.5"), sat_current=1300)
+    pupil.refresh_from_db()
+    assert state(pupil)["percent"] == 25
+    set_rules(
+        portfolio_w_profile=10,
+        portfolio_w_academics=60,
+        portfolio_w_achievements=10,
+        portfolio_w_olympiads=5,
+        portfolio_w_sport=5,
+        portfolio_w_documents=10,
+    )
+    assert state(pupil)["percent"] == 60
+
+
+@pytest.mark.django_db
 def test_sixty_seven_from_the_server_stays_sixty_seven(pupil):
     """67 с сервера — «67 %» у обеих ролей: экран умножать не должен."""
     for screen in ("screens/MyData.tsx", "screens/curator/Card.tsx"):

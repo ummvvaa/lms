@@ -218,15 +218,16 @@ def explain_list(*, student_ids: list[int], actor, role: str) -> Outcome:
     roster = Roster(students)
 
     facts = []
+    readiness_by = _readiness_by(students)
     for student in students:
         pairs = _domain_facts(student, code)
-        readiness = _readiness_of(student)
+        readiness = readiness_by[student.pk].score
         facts.append(  # i18n-skip: факты для промпта модели
             f"{roster.label(student)}: {', '.join(f'{k} — {v}' for k, v in pairs.items()) or 'данных нет'}"
             f"; готовность {readiness}%"
         )
 
-    offline = _offline_list_summary(students, code, roster)
+    offline = _offline_list_summary(students, readiness_by)
     text = _ask(  # i18n-skip: промпт модели
         purpose="explain_list",
         actor=actor,
@@ -242,20 +243,24 @@ def explain_list(*, student_ids: list[int], actor, role: str) -> Outcome:
     return Outcome(text=roster.restore(text.text), offline=text.offline, detail=text.detail)
 
 
-def _readiness_of(student: Student) -> int:
-    from core.readiness import compute
+def _readiness_by(students) -> dict:
+    """Готовность списка учеников: правила школы — одним запросом, расчёт — один раз на ученика."""
+    from core.readiness import compute, readiness_rules
 
-    return int(compute(student).score)
+    rules = readiness_rules()
+    return {student.pk: compute(student, rules) for student in students}
 
 
-def _offline_list_summary(students, code: str, roster: Roster) -> str:
+def _offline_list_summary(students, readiness_by: dict) -> str:
     """Тот же ответ правилами: числа и имена, без литературы."""
-    scored = sorted(students, key=lambda s: _readiness_of(s))
+    scored = sorted(students, key=lambda s: readiness_by[s.pk].score)
     lowest = scored[:3]
-    average = round(sum(_readiness_of(s) for s in students) / len(students))
+    average = round(sum(readiness_by[s.pk].score for s in students) / len(students))
     lines = [
         _("В списке {people}, средняя готовность — {average}%.").format(people=people(len(students)), average=average),
-        _("Ниже всех: {students}.").format(students=listing([f"{s.full_name} ({_readiness_of(s)}%)" for s in lowest])),
+        _("Ниже всех: {students}.").format(
+            students=listing([f"{s.full_name} ({readiness_by[s.pk].score}%)" for s in lowest])
+        ),
         _("С них и стоит начать: у остальных запас больше."),
     ]
     return " ".join(lines)
@@ -341,10 +346,11 @@ def focus_today(*, actor, role: str, limit: int = 5, student_ids: list[int] | No
     if not students:
         return Outcome(text=_("Учеников в базе нет — заводит их администратор"), offline=True)
 
-    ranked = sorted(students, key=_readiness_of)[:limit]
+    readiness_by = _readiness_by(students)
+    ranked = sorted(students, key=lambda s: readiness_by[s.pk].score)[:limit]
     roster = Roster(ranked)
 
-    reasons = [_focus_reason(student) for student in ranked]
+    reasons = [_focus_reason(student, readiness_by[student.pk]) for student in ranked]
     offline_lines = [f"{student.full_name} — {reason}" for student, reason in zip(ranked, reasons, strict=True)]
 
     answer = _ask(  # i18n-skip: промпт модели
@@ -355,7 +361,7 @@ def focus_today(*, actor, role: str, limit: int = 5, student_ids: list[int] | No
         user=(
             f"Домен: {domain.title if domain else 'общий'}.\n"
             + "\n".join(
-                f"{roster.label(student)}: готовность {_readiness_of(student)}%, {reason}"
+                f"{roster.label(student)}: готовность {readiness_by[student.pk].score}%, {reason}"
                 for student, reason in zip(ranked, reasons, strict=True)
             )
             + "\n\nПо каждому дай одну фразу: почему смотреть на него сегодня. Формат: «ученик N — причина»."
@@ -371,11 +377,8 @@ def focus_today(*, actor, role: str, limit: int = 5, student_ids: list[int] | No
     )
 
 
-def _focus_reason(student: Student) -> str:
+def _focus_reason(student: Student, result) -> str:
     """Почему на него смотреть — по настоящим данным, без ярлыков."""
-    from core.readiness import compute
-
-    result = compute(student)
     weakest = str(result.weakest.title) if result.weakest else _("готовность")
     overdue = student.tasks.filter(status__in=("todo", "in_progress"), due_date__lt=timezone.localdate()).count()
     parts = [_("слабее всего — {part}").format(part=weakest.lower())]

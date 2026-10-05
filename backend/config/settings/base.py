@@ -334,55 +334,12 @@ XP_LEVEL_STEP = int(env("XP_LEVEL_STEP", "100"))
 #: категорий подбора — и потолок списка вузов: настройки администратора
 #: (`core.school_rules`, раздел «Соответствие вузам»), не здесь
 
-# --- Readiness Score -----------------------------------------------------
-# Веса конфигурируемы: школа подкручивает их без выката кода.
-# Сумма должна давать 100; вес отсутствующего домена расходится по остальным.
-
-READINESS_WEIGHTS = {
-    "exam": float(env("READINESS_W_EXAM", "35")),
-    "admission": float(env("READINESS_W_ADMISSION", "25")),
-    "talent": float(env("READINESS_W_TALENT", "20")),
-    "behavior": float(env("READINESS_W_BEHAVIOR", "10")),
-    "sport": float(env("READINESS_W_SPORT", "10")),
-}
-
-# --- Портфолио (фаза 38) --------------------------------------------------
-#: Вес разделов процента заполнения. Это «сколько ученик о себе рассказал»,
-#: а не готовность к подаче — с Readiness не путать. Формула конфигурируема.
-PORTFOLIO_WEIGHTS = {
-    "profile": float(env("PORTFOLIO_W_PROFILE", "20")),
-    "academics": float(env("PORTFOLIO_W_ACADEMICS", "25")),
-    "achievements": float(env("PORTFOLIO_W_ACHIEVEMENTS", "20")),
-    "olympiads": float(env("PORTFOLIO_W_OLYMPIADS", "10")),
-    "sport": float(env("PORTFOLIO_W_SPORT", "10")),
-    "documents": float(env("PORTFOLIO_W_DOCUMENTS", "15")),
-}
+#: Готовность ученика (веса доменов, стартовые планки, цели, баллы внутри
+#: доменов) и веса разделов портфолио — настройки администратора
+#: (`core.school_rules`, разделы «Готовность» и «Портфолио»), не здесь
 
 #: Пороги кабинета куратора (корзины «кого дёргать», резкий скачок, сроки
 #: документов) — настройки администратора (`core.school_rules`), не здесь
-
-#: Стартовые планки: прогресс считается от них к личной цели ученика.
-READINESS_BASELINES = {
-    "IELTS_FLOOR": float(env("READINESS_IELTS_FLOOR", "4.0")),
-    "SAT_FLOOR": float(env("READINESS_SAT_FLOOR", "800")),
-}
-
-READINESS_ADMISSION = {
-    "TARGET_UNIVERSITIES": int(env("READINESS_TARGET_UNIVERSITIES", "3")),
-    "POINTS_LIST": 25.0,
-    "POINTS_COMMON_APP": 25.0,
-    "POINTS_ACCOUNT": 10.0,
-    "POINTS_READY": 40.0,
-}
-
-READINESS_TALENT_TARGET = int(env("READINESS_TALENT_TARGET", "8"))
-
-READINESS_SPORT = {
-    "TARGET_COMPETITIONS": int(env("READINESS_SPORT_COMPETITIONS", "3")),
-    "POINTS_COMPETITIONS": 60.0,
-    "POINTS_CERTIFICATE": 25.0,
-    "POINTS_LEADERSHIP": 15.0,
-}
 
 # --- Модель (LLM) --------------------------------------------------------
 # Ключа нет — система работает в офлайн-режиме: разбор идёт правилами.

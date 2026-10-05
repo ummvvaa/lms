@@ -220,6 +220,31 @@ FORMER_CONSTANTS = {
     "match_tier_match": 70,
     "match_tier_reach": 45,
     "student_list_limit": 15,
+    # готовность: веса доменов, планки, цели, баллы внутри поступления и спорта
+    "readiness_w_exam": 35,
+    "readiness_w_admission": 25,
+    "readiness_w_talent": 20,
+    "readiness_w_behavior": 10,
+    "readiness_w_sport": 10,
+    "readiness_ielts_floor": 4.0,
+    "readiness_sat_floor": 800,
+    "readiness_target_universities": 3,
+    "readiness_talent_target": 8,
+    "readiness_sport_competitions": 3,
+    "readiness_points_list": 25,
+    "readiness_points_common_app": 25,
+    "readiness_points_account": 10,
+    "readiness_points_ready": 40,
+    "readiness_points_competitions": 60,
+    "readiness_points_certificate": 25,
+    "readiness_points_leadership": 15,
+    # портфолио: веса разделов
+    "portfolio_w_profile": 20,
+    "portfolio_w_academics": 25,
+    "portfolio_w_achievements": 20,
+    "portfolio_w_olympiads": 10,
+    "portfolio_w_sport": 10,
+    "portfolio_w_documents": 15,
 }
 
 
@@ -278,6 +303,12 @@ FORMER_SETTINGS = (
     "MATCH_FLOORS",
     "MATCH_TIERS",
     "STUDENT_LIST_LIMIT",
+    "READINESS_WEIGHTS",
+    "READINESS_BASELINES",
+    "READINESS_ADMISSION",
+    "READINESS_TALENT_TARGET",
+    "READINESS_SPORT",
+    "PORTFOLIO_WEIGHTS",
 )
 
 

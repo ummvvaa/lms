@@ -15992,3 +15992,139 @@ msgstr "There is no such group of rules"
 #: core/school_rules.py
 msgid "«{group}»: нужны значения всех правил группы"
 msgstr "“{group}”: values of all rules in the group are required"
+
+#: core/school_rules.py
+msgid "Готовность"
+msgstr "Readiness"
+
+#: core/school_rules.py
+msgid "Веса доменов в проценте готовности ученика, стартовые планки, цели и баллы внутри доменов"
+msgstr "Domain weights in a student's readiness percentage, starting floors, targets and points inside the domains"
+
+#: core/school_rules.py
+msgid "Веса разделов в проценте заполнения портфолио"
+msgstr "Section weights in the portfolio completion percentage"
+
+#: core/school_rules.py
+msgid "Веса доменов в готовности"
+msgstr "Domain weights in readiness"
+
+#: core/school_rules.py
+msgid "Сколько весит каждый домен в проценте готовности ученика. Вес домена без данных (например, спорта у неспортсмена) поровну расходится по остальным"
+msgstr "How much each domain weighs in a student's readiness percentage. The weight of a domain with no data (for example, sport for a non-athlete) is split equally among the rest"
+
+#: core/school_rules.py
+msgid "Баллы внутри «Поступления»"
+msgstr "Points inside “Admission”"
+
+#: core/school_rules.py
+msgid "Из чего складываются 100 баллов домена «Поступление» в готовности"
+msgstr "What makes up the 100 points of the “Admission” domain in readiness"
+
+#: core/school_rules.py
+msgid "Баллы внутри «Спорта»"
+msgstr "Points inside “Sport”"
+
+#: core/school_rules.py
+msgid "Из чего складываются 100 баллов домена «Спорт» в готовности"
+msgstr "What makes up the 100 points of the “Sport” domain in readiness"
+
+#: core/school_rules.py
+msgid "Веса разделов портфолио"
+msgstr "Portfolio section weights"
+
+#: core/school_rules.py
+msgid "Сколько весит каждый раздел в проценте заполнения портфолио. Это «сколько ученик о себе рассказал», а не готовность к подаче"
+msgstr "How much each section weighs in the portfolio completion percentage. This is “how much the student has told about themselves”, not readiness to apply"
+
+#: core/school_rules.py
+msgid "Вес экзаменов"
+msgstr "Exams weight"
+
+#: core/school_rules.py
+msgid "Вес поступления"
+msgstr "Admission weight"
+
+#: core/school_rules.py
+msgid "Вес портфолио в готовности"
+msgstr "Portfolio weight in readiness"
+
+#: core/school_rules.py
+msgid "Вес учебной дисциплины"
+msgstr "Study discipline weight"
+
+#: core/school_rules.py
+msgid "Вес спорта"
+msgstr "Sport weight"
+
+#: core/school_rules.py
+msgid "Список вузов собран"
+msgstr "University list is built"
+
+#: core/school_rules.py
+msgid "Полный балл — когда в списке столько вузов, сколько задано целью; меньше — пропорционально"
+msgstr "Full points when the list has as many universities as the target says; fewer — proportionally"
+
+#: core/school_rules.py
+msgid "Есть Common App"
+msgstr "Has Common App"
+
+#: core/school_rules.py
+msgid "Есть аккаунт подачи"
+msgstr "Has an application account"
+
+#: core/school_rules.py
+msgid "Заявки готовы или поданы"
+msgstr "Applications are ready or submitted"
+
+#: core/school_rules.py
+msgid "Полный балл — когда готовых, поданных или принятых заявок столько, сколько задано целью"
+msgstr "Full points when there are as many ready, submitted or accepted applications as the target says"
+
+#: core/school_rules.py
+msgid "Полный балл — когда соревнований столько, сколько задано целью; меньше — пропорционально"
+msgstr "Full points when there are as many competitions as the target says; fewer — proportionally"
+
+#: core/school_rules.py
+msgid "Есть сертификат соревнования"
+msgstr "Has a competition certificate"
+
+#: core/school_rules.py
+msgid "Есть роль лидера"
+msgstr "Has a leadership role"
+
+#: core/school_rules.py
+msgid "Стартовая планка IELTS в готовности"
+msgstr "IELTS starting floor in readiness"
+
+#: core/school_rules.py
+msgid "Стартовая планка SAT в готовности"
+msgstr "SAT starting floor in readiness"
+
+#: core/school_rules.py
+msgid "Прогресс по экзаменам считается от этой планки к личной цели ученика, а не от нуля"
+msgstr "Exam progress is counted from this floor to the student's personal target, not from zero"
+
+#: core/school_rules.py
+msgid "Цель по списку вузов"
+msgstr "University list target"
+
+#: core/school_rules.py
+msgid "Столько вузов в списке и столько готовых заявок дают полный балл домена «Поступление»"
+msgstr "This many universities on the list and this many ready applications give full points in the “Admission” domain"
+
+#: core/school_rules.py
+msgid "Цель по активностям"
+msgstr "Activities target"
+
+#: core/school_rules.py
+msgid "Столько активностей в портфолио дают 100 % домена «Портфолио» в готовности"
+msgstr "This many activities in the portfolio give 100% of the “Portfolio” domain in readiness"
+
+#: core/school_rules.py
+msgid "Цель по соревнованиям"
+msgstr "Competitions target"
+
+#: core/school_rules.py
+msgid "Столько соревнований дают полный балл за соревнования в домене «Спорт»"
+msgstr "This many competitions give full points for competitions in the “Sport” domain"

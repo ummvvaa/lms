@@ -49,6 +49,8 @@ DEADLINES = "deadlines"
 REMINDERS = "reminders"
 FILES = "files"
 MATCH = "match"
+READINESS = "readiness"
+PORTFOLIO = "portfolio"
 AI = "ai"
 
 SECTIONS: tuple[Section, ...] = (
@@ -93,6 +95,16 @@ SECTIONS: tuple[Section, ...] = (
         gettext_lazy("Веса и планки процента соответствия, границы категорий подбора, потолок списка вузов"),
     ),
     Section(
+        READINESS,
+        gettext_lazy("Готовность"),
+        gettext_lazy("Веса доменов в проценте готовности ученика, стартовые планки, цели и баллы внутри доменов"),
+    ),
+    Section(
+        PORTFOLIO,
+        gettext_lazy("Портфолио"),
+        gettext_lazy("Веса разделов в проценте заполнения портфолио"),
+    ),
+    Section(
         AI,
         gettext_lazy("ИИ"),
         gettext_lazy("Сколько школа готова тратить на модель в месяц"),
@@ -118,6 +130,12 @@ class Group:
 #: Соответствие: веса позиций и границы категорий подбора
 MATCH_WEIGHTS = "match_weights"
 MATCH_TIERS = "match_tiers"
+#: Готовность: веса доменов и баллы внутри поступления и спорта
+READINESS_WEIGHTS = "readiness_weights"
+READINESS_ADMISSION = "readiness_admission"
+READINESS_SPORT = "readiness_sport"
+#: Портфолио: веса разделов процента заполнения
+PORTFOLIO_WEIGHTS = "portfolio_weights"
 
 GROUPS: tuple[Group, ...] = (
     Group(
@@ -138,6 +156,36 @@ GROUPS: tuple[Group, ...] = (
         ),
         MATCH,
         check="descending",
+    ),
+    Group(
+        READINESS_WEIGHTS,
+        gettext_lazy("Веса доменов в готовности"),
+        gettext_lazy(
+            "Сколько весит каждый домен в проценте готовности ученика. Вес домена без данных "
+            "(например, спорта у неспортсмена) поровну расходится по остальным"
+        ),
+        READINESS,
+    ),
+    Group(
+        READINESS_ADMISSION,
+        gettext_lazy("Баллы внутри «Поступления»"),
+        gettext_lazy("Из чего складываются 100 баллов домена «Поступление» в готовности"),
+        READINESS,
+    ),
+    Group(
+        READINESS_SPORT,
+        gettext_lazy("Баллы внутри «Спорта»"),
+        gettext_lazy("Из чего складываются 100 баллов домена «Спорт» в готовности"),
+        READINESS,
+    ),
+    Group(
+        PORTFOLIO_WEIGHTS,
+        gettext_lazy("Веса разделов портфолио"),
+        gettext_lazy(
+            "Сколько весит каждый раздел в проценте заполнения портфолио. Это «сколько ученик о себе рассказал», "
+            "а не готовность к подаче"
+        ),
+        PORTFOLIO,
     ),
 )
 
@@ -263,6 +311,35 @@ MATCH_TIER_MATCH = "match_tier_match"
 MATCH_TIER_REACH = "match_tier_reach"
 #: Потолок списка вузов у одного ученика
 STUDENT_LIST_LIMIT = "student_list_limit"
+#: Готовность: веса доменов (сумма 100)
+READINESS_W_EXAM = "readiness_w_exam"
+READINESS_W_ADMISSION = "readiness_w_admission"
+READINESS_W_TALENT = "readiness_w_talent"
+READINESS_W_BEHAVIOR = "readiness_w_behavior"
+READINESS_W_SPORT = "readiness_w_sport"
+#: Стартовые планки: прогресс считается от них к личной цели ученика
+READINESS_IELTS_FLOOR = "readiness_ielts_floor"
+READINESS_SAT_FLOOR = "readiness_sat_floor"
+#: Цели: сколько вузов, активностей и соревнований дают полный балл
+READINESS_TARGET_UNIVERSITIES = "readiness_target_universities"
+READINESS_TALENT_TARGET = "readiness_talent_target"
+READINESS_SPORT_COMPETITIONS = "readiness_sport_competitions"
+#: Баллы внутри домена «Поступление» (сумма 100)
+READINESS_POINTS_LIST = "readiness_points_list"
+READINESS_POINTS_COMMON_APP = "readiness_points_common_app"
+READINESS_POINTS_ACCOUNT = "readiness_points_account"
+READINESS_POINTS_READY = "readiness_points_ready"
+#: Баллы внутри домена «Спорт» (сумма 100)
+READINESS_POINTS_COMPETITIONS = "readiness_points_competitions"
+READINESS_POINTS_CERTIFICATE = "readiness_points_certificate"
+READINESS_POINTS_LEADERSHIP = "readiness_points_leadership"
+#: Портфолио: веса разделов процента заполнения (сумма 100)
+PORTFOLIO_W_PROFILE = "portfolio_w_profile"
+PORTFOLIO_W_ACADEMICS = "portfolio_w_academics"
+PORTFOLIO_W_ACHIEVEMENTS = "portfolio_w_achievements"
+PORTFOLIO_W_OLYMPIADS = "portfolio_w_olympiads"
+PORTFOLIO_W_SPORT = "portfolio_w_sport"
+PORTFOLIO_W_DOCUMENTS = "portfolio_w_documents"
 
 RULES: tuple[Rule, ...] = (
     # --- Посещаемость ---
@@ -994,6 +1071,258 @@ RULES: tuple[Rule, ...] = (
         50,
         section=MATCH,
     ),
+    # --- Готовность ---
+    Rule(
+        READINESS_W_EXAM,
+        gettext_lazy("Вес экзаменов"),
+        "",
+        "%",
+        35,
+        0,
+        100,
+        section=READINESS,
+        group=READINESS_WEIGHTS,
+    ),
+    Rule(
+        READINESS_W_ADMISSION,
+        gettext_lazy("Вес поступления"),
+        "",
+        "%",
+        25,
+        0,
+        100,
+        section=READINESS,
+        group=READINESS_WEIGHTS,
+    ),
+    Rule(
+        READINESS_W_TALENT,
+        gettext_lazy("Вес портфолио в готовности"),
+        "",
+        "%",
+        20,
+        0,
+        100,
+        section=READINESS,
+        group=READINESS_WEIGHTS,
+    ),
+    Rule(
+        READINESS_W_BEHAVIOR,
+        gettext_lazy("Вес учебной дисциплины"),
+        "",
+        "%",
+        10,
+        0,
+        100,
+        section=READINESS,
+        group=READINESS_WEIGHTS,
+    ),
+    Rule(
+        READINESS_W_SPORT,
+        gettext_lazy("Вес спорта"),
+        "",
+        "%",
+        10,
+        0,
+        100,
+        section=READINESS,
+        group=READINESS_WEIGHTS,
+    ),
+    Rule(
+        READINESS_POINTS_LIST,
+        gettext_lazy("Список вузов собран"),
+        gettext_lazy("Полный балл — когда в списке столько вузов, сколько задано целью; меньше — пропорционально"),
+        POINTS,
+        25,
+        0,
+        100,
+        section=READINESS,
+        group=READINESS_ADMISSION,
+    ),
+    Rule(
+        READINESS_POINTS_COMMON_APP,
+        gettext_lazy("Есть Common App"),
+        "",
+        POINTS,
+        25,
+        0,
+        100,
+        section=READINESS,
+        group=READINESS_ADMISSION,
+    ),
+    Rule(
+        READINESS_POINTS_ACCOUNT,
+        gettext_lazy("Есть аккаунт подачи"),
+        "",
+        POINTS,
+        10,
+        0,
+        100,
+        section=READINESS,
+        group=READINESS_ADMISSION,
+    ),
+    Rule(
+        READINESS_POINTS_READY,
+        gettext_lazy("Заявки готовы или поданы"),
+        gettext_lazy("Полный балл — когда готовых, поданных или принятых заявок столько, сколько задано целью"),
+        POINTS,
+        40,
+        0,
+        100,
+        section=READINESS,
+        group=READINESS_ADMISSION,
+    ),
+    Rule(
+        READINESS_POINTS_COMPETITIONS,
+        gettext_lazy("Соревнования"),
+        gettext_lazy("Полный балл — когда соревнований столько, сколько задано целью; меньше — пропорционально"),
+        POINTS,
+        60,
+        0,
+        100,
+        section=READINESS,
+        group=READINESS_SPORT,
+    ),
+    Rule(
+        READINESS_POINTS_CERTIFICATE,
+        gettext_lazy("Есть сертификат соревнования"),
+        "",
+        POINTS,
+        25,
+        0,
+        100,
+        section=READINESS,
+        group=READINESS_SPORT,
+    ),
+    Rule(
+        READINESS_POINTS_LEADERSHIP,
+        gettext_lazy("Есть роль лидера"),
+        "",
+        POINTS,
+        15,
+        0,
+        100,
+        section=READINESS,
+        group=READINESS_SPORT,
+    ),
+    Rule(
+        READINESS_IELTS_FLOOR,
+        gettext_lazy("Стартовая планка IELTS в готовности"),
+        gettext_lazy("Прогресс по экзаменам считается от этой планки к личной цели ученика, а не от нуля"),
+        POINTS,
+        4.0,
+        0.0,
+        9.0,
+        section=READINESS,
+        kind="decimal",
+        step=0.5,
+    ),
+    Rule(
+        READINESS_SAT_FLOOR,
+        gettext_lazy("Стартовая планка SAT в готовности"),
+        gettext_lazy("Прогресс по экзаменам считается от этой планки к личной цели ученика, а не от нуля"),
+        POINTS,
+        800,
+        400,
+        1600,
+        section=READINESS,
+    ),
+    Rule(
+        READINESS_TARGET_UNIVERSITIES,
+        gettext_lazy("Цель по списку вузов"),
+        gettext_lazy("Столько вузов в списке и столько готовых заявок дают полный балл домена «Поступление»"),
+        PIECES,
+        3,
+        1,
+        20,
+        section=READINESS,
+    ),
+    Rule(
+        READINESS_TALENT_TARGET,
+        gettext_lazy("Цель по активностям"),
+        gettext_lazy("Столько активностей в портфолио дают 100 % домена «Портфолио» в готовности"),
+        PIECES,
+        8,
+        1,
+        50,
+        section=READINESS,
+    ),
+    Rule(
+        READINESS_SPORT_COMPETITIONS,
+        gettext_lazy("Цель по соревнованиям"),
+        gettext_lazy("Столько соревнований дают полный балл за соревнования в домене «Спорт»"),
+        PIECES,
+        3,
+        1,
+        20,
+        section=READINESS,
+    ),
+    # --- Портфолио ---
+    Rule(
+        PORTFOLIO_W_PROFILE,
+        gettext_lazy("Профиль поступления"),
+        "",
+        "%",
+        20,
+        0,
+        100,
+        section=PORTFOLIO,
+        group=PORTFOLIO_WEIGHTS,
+    ),
+    Rule(
+        PORTFOLIO_W_ACADEMICS,
+        gettext_lazy("Академические результаты"),
+        "",
+        "%",
+        25,
+        0,
+        100,
+        section=PORTFOLIO,
+        group=PORTFOLIO_WEIGHTS,
+    ),
+    Rule(
+        PORTFOLIO_W_ACHIEVEMENTS,
+        gettext_lazy("Достижения"),
+        "",
+        "%",
+        20,
+        0,
+        100,
+        section=PORTFOLIO,
+        group=PORTFOLIO_WEIGHTS,
+    ),
+    Rule(
+        PORTFOLIO_W_OLYMPIADS,
+        gettext_lazy("Олимпиады"),
+        "",
+        "%",
+        10,
+        0,
+        100,
+        section=PORTFOLIO,
+        group=PORTFOLIO_WEIGHTS,
+    ),
+    Rule(
+        PORTFOLIO_W_SPORT,
+        gettext_lazy("Спорт"),
+        "",
+        "%",
+        10,
+        0,
+        100,
+        section=PORTFOLIO,
+        group=PORTFOLIO_WEIGHTS,
+    ),
+    Rule(
+        PORTFOLIO_W_DOCUMENTS,
+        gettext_lazy("Документы"),
+        "",
+        "%",
+        15,
+        0,
+        100,
+        section=PORTFOLIO,
+        group=PORTFOLIO_WEIGHTS,
+    ),
     # --- ИИ ---
     Rule(
         LLM_MONTHLY_LIMIT,
@@ -1049,6 +1378,22 @@ FORMER_ENV: dict[str, str] = {
     "MATCH_TIER_MATCH": MATCH_TIER_MATCH,
     "MATCH_TIER_REACH": MATCH_TIER_REACH,
     "STUDENT_LIST_LIMIT": STUDENT_LIST_LIMIT,
+    "READINESS_W_EXAM": READINESS_W_EXAM,
+    "READINESS_W_ADMISSION": READINESS_W_ADMISSION,
+    "READINESS_W_TALENT": READINESS_W_TALENT,
+    "READINESS_W_BEHAVIOR": READINESS_W_BEHAVIOR,
+    "READINESS_W_SPORT": READINESS_W_SPORT,
+    "READINESS_IELTS_FLOOR": READINESS_IELTS_FLOOR,
+    "READINESS_SAT_FLOOR": READINESS_SAT_FLOOR,
+    "READINESS_TARGET_UNIVERSITIES": READINESS_TARGET_UNIVERSITIES,
+    "READINESS_TALENT_TARGET": READINESS_TALENT_TARGET,
+    "READINESS_SPORT_COMPETITIONS": READINESS_SPORT_COMPETITIONS,
+    "PORTFOLIO_W_PROFILE": PORTFOLIO_W_PROFILE,
+    "PORTFOLIO_W_ACADEMICS": PORTFOLIO_W_ACADEMICS,
+    "PORTFOLIO_W_ACHIEVEMENTS": PORTFOLIO_W_ACHIEVEMENTS,
+    "PORTFOLIO_W_OLYMPIADS": PORTFOLIO_W_OLYMPIADS,
+    "PORTFOLIO_W_SPORT": PORTFOLIO_W_SPORT,
+    "PORTFOLIO_W_DOCUMENTS": PORTFOLIO_W_DOCUMENTS,
 }
 
 

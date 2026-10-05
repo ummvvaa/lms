@@ -42,33 +42,10 @@ LOGIN_IP_FAILURES = 100
 LOGIN_TRUSTED_NETWORKS = []
 SESSION_TOUCH_MINUTES = 15
 
-#: Readiness: веса доменов, стартовые планки и цели.
-READINESS_WEIGHTS = {"exam": 35.0, "admission": 25.0, "talent": 20.0, "behavior": 10.0, "sport": 10.0}
-
-#: Портфолио: веса разделов процента заполнения (фаза 38).
-PORTFOLIO_WEIGHTS = {
-    "profile": 20.0,
-    "academics": 25.0,
-    "achievements": 20.0,
-    "olympiads": 10.0,
-    "sport": 10.0,
-    "documents": 15.0,
-}
-READINESS_BASELINES = {"IELTS_FLOOR": 4.0, "SAT_FLOOR": 800.0}
-READINESS_ADMISSION = {
-    "TARGET_UNIVERSITIES": 3,
-    "POINTS_LIST": 25.0,
-    "POINTS_COMMON_APP": 25.0,
-    "POINTS_ACCOUNT": 10.0,
-    "POINTS_READY": 40.0,
-}
-READINESS_TALENT_TARGET = 8
-READINESS_SPORT = {
-    "TARGET_COMPETITIONS": 3,
-    "POINTS_COMPETITIONS": 60.0,
-    "POINTS_CERTIFICATE": 25.0,
-    "POINTS_LEADERSHIP": 15.0,
-}
+#: Формулы (соответствие, готовность, портфолио) здесь не задаются: это
+#: правила школы (`core.school_rules`), окружение в них не протекает. Тест,
+#: которому нужно другое значение, подменяет правило фикстурой `set_rules`;
+#: умолчания поимённо сторожит `test_defaults_equal_the_former_constants`.
 
 #: Сроки ссылок и временных паролей: на них смотрят проверки входа.
 # двое суток на ссылку и на пароль (фаза 69) — те же числа, что в бою

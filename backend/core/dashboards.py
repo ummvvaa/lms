@@ -377,7 +377,7 @@ def sport_dashboard() -> dict:
 
 def school_overview() -> dict:
     """Сводный вид директора школы: вся школа в нескольких цифрах."""
-    from core.readiness import compute
+    from core.readiness import compute, readiness_rules
 
     # готовность к подаче считается только у 11: у 8–10 поступления нет
     students = list(
@@ -386,7 +386,8 @@ def school_overview() -> dict:
         .prefetch_related("universities", "activities", "competitions")
     )
     total = _active().count()
-    scores = [compute(s).score for s in students] if students else []
+    rules = readiness_rules()
+    scores = [compute(s, rules).score for s in students]
 
     exam = ExamProfile.objects.filter(GRADUATE, student__is_active=True).aggregate(
         ielts=Avg("ielts_current"), sat=Avg("sat_current")

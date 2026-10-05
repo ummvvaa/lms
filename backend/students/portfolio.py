@@ -2,8 +2,8 @@
 
 Процент заполнения — это «сколько ученик о себе рассказал», а не
 готовность к подаче: с Readiness Score его не путать. Считается по
-заполненности разделов, веса — в настройках (`PORTFOLIO_WEIGHTS`),
-школа меняет формулу без выката.
+заполненности разделов, веса — правила школы (`core.school_rules`,
+раздел «Портфолио»): администратор меняет формулу с экрана.
 
 Внесённое учеником и ещё не подтверждённое тоже считается заполненным:
 свою часть он сделал, решение директора не должно держать процент на нуле.
@@ -15,8 +15,19 @@ from django.conf import settings
 from django.utils.translation import get_language
 from django.utils.translation import gettext as _
 
+from core import school_rules
 from core.domains import ROLE_STUDENT
 from students.models import Activity, DocumentType, Student, StudentDocument
+
+#: раздел портфолио → правило школы с его весом в проценте заполнения (сумма 100)
+WEIGHT_RULES = {
+    "profile": school_rules.PORTFOLIO_W_PROFILE,
+    "academics": school_rules.PORTFOLIO_W_ACADEMICS,
+    "achievements": school_rules.PORTFOLIO_W_ACHIEVEMENTS,
+    "olympiads": school_rules.PORTFOLIO_W_OLYMPIADS,
+    "sport": school_rules.PORTFOLIO_W_SPORT,
+    "documents": school_rules.PORTFOLIO_W_DOCUMENTS,
+}
 
 #: Типы документов, из которых складывается чек-лист готовности.
 #: «Прочее» в готовность не входит: это ящик для остального.
@@ -81,8 +92,6 @@ def documents_checklist(student: Student) -> list[dict]:
     for row in rows:
         latest[row.doc_type] = row
     out = []
-    from core import school_rules
-
     expiring_days = school_rules.value(school_rules.DOCUMENT_EXPIRING_DAYS)
     for code in REQUIRED_DOCUMENTS:
         row = latest.get(code)
@@ -109,7 +118,8 @@ def documents_checklist(student: Student) -> list[dict]:
 
 def _sections(student: Student) -> list[dict]:
     """Разделы портфолио: доля заполненного и подсказка следующего шага."""
-    weights = settings.PORTFOLIO_WEIGHTS
+    values = school_rules.values()
+    weights = {code: float(values[rule]) for code, rule in WEIGHT_RULES.items()}
 
     admission = getattr(student, "admission", None)
     pending_admission = _pending_fields(student, "students.AdmissionProfile")

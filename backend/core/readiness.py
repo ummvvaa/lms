@@ -1,8 +1,10 @@
 """Readiness Score — единый процент готовности ученика.
 
 Считается на бэкенде в одном модуле и отдаётся вычисляемым полем.
-Веса берутся из настроек (`READINESS_WEIGHTS`), а не зашиты в код:
-школа их подкручивает без выката.
+Веса доменов, стартовые планки, цели и баллы внутри доменов — правила школы
+(`core.school_rules`, раздел «Готовность»), а не код: администратор меняет
+их с экрана. Правила читаются одним запросом на расчёт; цикл по ученикам
+читает их один раз (`readiness_rules`) и передаёт в `compute`.
 
 Слабое звено определяется по количеству восстановимых баллов —
 `(100 − значение) × вес`, а не по самому низкому проценту. Домен
@@ -14,10 +16,62 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
-from django.conf import settings
 from django.utils.translation import gettext_lazy
 
+from core import school_rules
 from students.models import Student
+
+#: домен → правило школы с его весом; сумма 100, вес домена без данных расходится по остальным
+WEIGHT_RULES = {
+    "exam": school_rules.READINESS_W_EXAM,
+    "admission": school_rules.READINESS_W_ADMISSION,
+    "talent": school_rules.READINESS_W_TALENT,
+    "behavior": school_rules.READINESS_W_BEHAVIOR,
+    "sport": school_rules.READINESS_W_SPORT,
+}
+
+
+@dataclass(frozen=True)
+class ReadinessRules:
+    """Правила школы для расчёта готовности."""
+
+    weights: dict[str, float]
+    #: стартовые планки: прогресс считается от них к личной цели ученика
+    ielts_floor: float
+    sat_floor: float
+    #: цели: столько вузов, активностей и соревнований дают полный балл
+    target_universities: int
+    talent_target: int
+    sport_competitions: int
+    #: баллы внутри «Поступления» (сумма 100)
+    points_list: float
+    points_common_app: float
+    points_account: float
+    points_ready: float
+    #: баллы внутри «Спорта» (сумма 100)
+    points_competitions: float
+    points_certificate: float
+    points_leadership: float
+
+
+def readiness_rules() -> ReadinessRules:
+    """Правила расчёта одним запросом."""
+    values = school_rules.values()
+    return ReadinessRules(
+        weights={code: float(values[rule]) for code, rule in WEIGHT_RULES.items()},
+        ielts_floor=float(values[school_rules.READINESS_IELTS_FLOOR]),
+        sat_floor=float(values[school_rules.READINESS_SAT_FLOOR]),
+        target_universities=int(values[school_rules.READINESS_TARGET_UNIVERSITIES]),
+        talent_target=int(values[school_rules.READINESS_TALENT_TARGET]),
+        sport_competitions=int(values[school_rules.READINESS_SPORT_COMPETITIONS]),
+        points_list=float(values[school_rules.READINESS_POINTS_LIST]),
+        points_common_app=float(values[school_rules.READINESS_POINTS_COMMON_APP]),
+        points_account=float(values[school_rules.READINESS_POINTS_ACCOUNT]),
+        points_ready=float(values[school_rules.READINESS_POINTS_READY]),
+        points_competitions=float(values[school_rules.READINESS_POINTS_COMPETITIONS]),
+        points_certificate=float(values[school_rules.READINESS_POINTS_CERTIFICATE]),
+        points_leadership=float(values[school_rules.READINESS_POINTS_LEADERSHIP]),
+    )
 
 
 def _f(value) -> float | None:
@@ -79,48 +133,45 @@ class Readiness:
         }
 
 
-def _exam_value(student: Student) -> float | None:
+def _exam_value(student: Student, rules: ReadinessRules) -> float | None:
     """Прогресс от стартовой планки к личной цели, а не голое отношение к цели."""
     profile = getattr(student, "exam", None)
     if profile is None:
         return None
-    cfg = settings.READINESS_BASELINES
     parts: list[float] = []
 
     ielts, ielts_target = _f(profile.ielts_current), _f(profile.ielts_target)
-    if ielts is not None and ielts_target and ielts_target > cfg["IELTS_FLOOR"]:
-        parts.append(clamp((ielts - cfg["IELTS_FLOOR"]) / (ielts_target - cfg["IELTS_FLOOR"])))
+    if ielts is not None and ielts_target and ielts_target > rules.ielts_floor:
+        parts.append(clamp((ielts - rules.ielts_floor) / (ielts_target - rules.ielts_floor)))
 
     sat, sat_target = _f(profile.sat_current), _f(profile.sat_target)
-    if sat is not None and sat_target and sat_target > cfg["SAT_FLOOR"]:
-        parts.append(clamp((sat - cfg["SAT_FLOOR"]) / (sat_target - cfg["SAT_FLOOR"])))
+    if sat is not None and sat_target and sat_target > rules.sat_floor:
+        parts.append(clamp((sat - rules.sat_floor) / (sat_target - rules.sat_floor)))
 
     return (sum(parts) / len(parts)) * 100 if parts else None
 
 
-def _admission_value(student: Student) -> float | None:
+def _admission_value(student: Student, rules: ReadinessRules) -> float | None:
     profile = getattr(student, "admission", None)
     if profile is None:
         return None
-    cfg = settings.READINESS_ADMISSION
     rows = list(student.universities.all())
     ready = sum(1 for r in rows if r.application_status in ("ready", "submitted", "accepted"))
 
-    value = clamp(len(rows) / cfg["TARGET_UNIVERSITIES"]) * cfg["POINTS_LIST"]
-    value += cfg["POINTS_COMMON_APP"] if profile.has_common_app else 0
-    value += cfg["POINTS_ACCOUNT"] if profile.has_application_account else 0
-    value += clamp(ready / cfg["TARGET_UNIVERSITIES"]) * cfg["POINTS_READY"]
+    value = clamp(len(rows) / rules.target_universities) * rules.points_list
+    value += rules.points_common_app if profile.has_common_app else 0
+    value += rules.points_account if profile.has_application_account else 0
+    value += clamp(ready / rules.target_universities) * rules.points_ready
     return value
 
 
-def _talent_value(student: Student) -> float | None:
+def _talent_value(student: Student, rules: ReadinessRules) -> float | None:
     if not hasattr(student, "talent"):
         return None
-    target = settings.READINESS_TALENT_TARGET
-    return clamp(student.activities.count() / target) * 100
+    return clamp(student.activities.count() / rules.talent_target) * 100
 
 
-def _behavior_value(student: Student) -> float | None:
+def _behavior_value(student: Student, rules: ReadinessRules) -> float | None:
     profile = getattr(student, "behavior", None)
     if profile is None:
         return None
@@ -131,18 +182,17 @@ def _behavior_value(student: Student) -> float | None:
     return sum(parts) / len(parts) if parts else None
 
 
-def _sport_value(student: Student) -> float | None:
+def _sport_value(student: Student, rules: ReadinessRules) -> float | None:
     """Спорт есть не у всех — у кого нет, его вес разойдётся по остальным."""
     profile = getattr(student, "sport", None)
     if profile is None or profile.sport_type_id is None:
         return None
-    cfg = settings.READINESS_SPORT
     competitions = list(student.competitions.all())
-    value = clamp(len(competitions) / cfg["TARGET_COMPETITIONS"]) * cfg["POINTS_COMPETITIONS"]
+    value = clamp(len(competitions) / rules.sport_competitions) * rules.points_competitions
     if any(c.has_certificate for c in competitions):
-        value += cfg["POINTS_CERTIFICATE"]
+        value += rules.points_certificate
     if profile.leadership_role:
-        value += cfg["POINTS_LEADERSHIP"]
+        value += rules.points_leadership
     return clamp(value, 0, 100)
 
 
@@ -156,13 +206,15 @@ CALCULATORS = (
 )
 
 
-def compute(student: Student) -> Readiness:
+def compute(student: Student, rules: ReadinessRules | None = None) -> Readiness:
     """Посчитать готовность одного ученика.
 
     Домены без данных исключаются, их вес поровну расходится по остальным —
-    иначе у неспортсмена потолок готовности был бы 90%.
+    иначе у неспортсмена потолок готовности был бы 90%. Цикл по ученикам
+    передаёт `rules` сам: правила школы читаются один раз, а не на каждого.
     """
-    weights: dict[str, float] = dict(settings.READINESS_WEIGHTS)
+    rules = rules or readiness_rules()
+    weights = rules.weights
 
     raw: list[tuple[str, str, float]] = []
     skipped: list[tuple[str, str]] = []
@@ -170,7 +222,7 @@ def compute(student: Student) -> Readiness:
     for code, lazy_title, calc in CALCULATORS:
         # подпись — на языке ответа: дальше она уходит строкой в JSON и в промпты
         title = str(lazy_title)
-        value = calc(student)
+        value = calc(student, rules)
         if value is None:
             missing_weight += weights.get(code, 0.0)
             skipped.append((code, title))
