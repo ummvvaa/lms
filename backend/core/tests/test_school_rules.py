@@ -206,6 +206,20 @@ FORMER_CONSTANTS = {
     "practice_size": 10,
     "practice_weak_share": 60,
     "llm_monthly_limit": 0,
+    # формулы (задача 2): веса, планки и границы соответствия, потолок списка вузов
+    "match_w_gpa": 30,
+    "match_w_english": 30,
+    "match_w_standardized": 25,
+    "match_w_portfolio": 15,
+    "match_floor_gpa": 2.0,
+    "match_floor_ielts": 5.0,
+    "match_floor_toefl": 45,
+    "match_floor_sat": 800,
+    "match_floor_act": 12,
+    "match_tier_safety": 90,
+    "match_tier_match": 70,
+    "match_tier_reach": 45,
+    "student_list_limit": 15,
 }
 
 
@@ -260,6 +274,10 @@ FORMER_SETTINGS = (
     "SUGGESTION_CONFIDENCE_THRESHOLD",
     "DAY_MIN_ABSENT",
     "DAY_SHARE",
+    "MATCH_WEIGHTS",
+    "MATCH_FLOORS",
+    "MATCH_TIERS",
+    "STUDENT_LIST_LIMIT",
 )
 
 
@@ -320,3 +338,146 @@ def test_preflight_names_a_rule_left_in_the_environment(monkeypatch):
     monkeypatch.setenv("CURATOR_SAT_GAP", "200")
     check = _former_env_check()
     assert not check.ok and check.warn and "CURATOR_SAT_GAP" in check.detail
+
+
+# --- Группы правил: веса с суммой 100 и границы по убыванию (задача 2) ----------
+
+
+def test_groups_are_listed_and_their_defaults_hold_the_condition(admin):
+    """Группа приходит с экраном: её правила по порядку; умолчания проходят её же проверку."""
+    body = client_of(admin).get("/api/school-rules/").json()
+    groups = {group["code"]: group for group in body["groups"]}
+    assert set(groups) == {group.code for group in school_rules.GROUPS}
+    rules = {row["code"]: row for row in body["rules"]}
+    for group in school_rules.GROUPS:
+        members = school_rules.members_of(group.code)
+        assert members, f"в группе {group.code} нет правил"
+        assert groups[group.code]["rules"] == [rule.code for rule in members]
+        assert all(rule.section == group.section for rule in members)
+        assert all(rules[rule.code]["group"] == group.code for rule in members)
+        school_rules.check_group(group, {rule.code: rule.default for rule in members})
+    assert groups["match_weights"]["check"] == "sum" and groups["match_weights"]["total"] == 100
+    assert groups["match_tiers"]["check"] == "descending"
+
+
+WEIGHTS = {"match_w_gpa": 40, "match_w_english": 30, "match_w_standardized": 20, "match_w_portfolio": 10}
+
+
+def test_group_is_saved_whole_and_each_change_is_logged(admin):
+    api = client_of(admin)
+    body = api.patch("/api/school-rule-groups/match_weights/", {"values": WEIGHTS}, format="json").json()
+    rules = {row["code"]: row for row in body["rules"]}
+    assert {code: rules[code]["value"] for code in WEIGHTS} == WEIGHTS
+    assert school_rules.values()["match_w_gpa"] == 40
+    # в журнале — только то, что изменилось: английский остался 30
+    logged = {row["code"]: (row["old_value"], row["new_value"]) for row in body["history"]}
+    assert logged == {
+        "match_w_gpa": ("30", "40"),
+        "match_w_standardized": ("25", "20"),
+        "match_w_portfolio": ("15", "10"),
+    }
+    assert all(row["section"] == "match" and row["actor"] == "Администратор Правил" for row in body["history"])
+
+    body = api.post("/api/school-rule-groups/match_weights/reset/").json()
+    rules = {row["code"]: row for row in body["rules"]}
+    assert all(rules[code]["is_default"] for code in WEIGHTS)
+    assert not SchoolRule.objects.exists()
+    assert AuditLog.objects.filter(model_label=school_rules.AUDIT_LABEL).count() == 6
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {**WEIGHTS, "match_w_gpa": 35},  # сумма 95
+        {**WEIGHTS, "match_w_gpa": 45},  # сумма 105
+        {"match_w_gpa": 100},  # не все правила группы
+        {**WEIGHTS, "match_floor_sat": 800},  # чужое правило
+        {**WEIGHTS, "match_w_gpa": 140, "match_w_english": -70},  # сумма 100, но мимо границ
+        None,
+    ],
+)
+def test_group_with_a_wrong_sum_is_refused_whole(admin, values):
+    response = client_of(admin).patch("/api/school-rule-groups/match_weights/", {"values": values}, format="json")
+    assert response.status_code == 400 and response.json()["detail"]
+    assert not SchoolRule.objects.exists()
+    assert not AuditLog.objects.filter(model_label=school_rules.AUDIT_LABEL).exists()
+
+
+def test_wrong_sum_is_named_in_the_refusal(admin):
+    response = client_of(admin).patch(
+        "/api/school-rule-groups/match_weights/", {"values": {**WEIGHTS, "match_w_gpa": 35}}, format="json"
+    )
+    assert "100" in response.json()["detail"] and "95" in response.json()["detail"]
+
+
+def test_tiers_must_go_down(admin):
+    """Границы категорий — по убыванию: иначе категория между ними пропадает."""
+    api = client_of(admin)
+    for wrong in (
+        {"match_tier_safety": 70, "match_tier_match": 70, "match_tier_reach": 45},
+        {"match_tier_safety": 90, "match_tier_match": 40, "match_tier_reach": 45},
+    ):
+        assert api.patch("/api/school-rule-groups/match_tiers/", {"values": wrong}, format="json").status_code == 400
+    good = {"match_tier_safety": 95, "match_tier_match": 80, "match_tier_reach": 60}
+    assert api.patch("/api/school-rule-groups/match_tiers/", {"values": good}, format="json").status_code == 200
+    assert school_rules.values()["match_tier_match"] == 80
+
+
+def test_a_rule_of_a_group_is_not_changed_alone(admin):
+    """Вес по одному не правится и не сбрасывается: сумма перестала бы быть 100."""
+    api = client_of(admin)
+    assert api.patch("/api/school-rules/match_w_gpa/", {"value": 40}, format="json").status_code == 400
+    assert api.post("/api/school-rules/match_w_gpa/reset/").status_code == 400
+    assert api.patch("/api/school-rule-groups/nope/", {"values": {}}, format="json").status_code == 404
+    assert api.post("/api/school-rule-groups/nope/reset/").status_code == 404
+    assert not SchoolRule.objects.exists()
+
+
+@pytest.mark.parametrize("role", [Role.DIRECTOR_ADMISSION, Role.CURATOR, Role.TEACHER, Role.STUDENT])
+def test_only_the_admin_saves_a_group(role, make_user):
+    api = client_of(make_user(role, f"groups.{role}@example.kz"))
+    assert api.patch("/api/school-rule-groups/match_weights/", {"values": WEIGHTS}, format="json").status_code in (
+        403,
+        404,
+    )
+    assert api.post("/api/school-rule-groups/match_weights/reset/").status_code in (403, 404)
+    assert school_rules.values()["match_w_gpa"] == 30
+
+
+def test_match_formula_reads_the_rules_once_per_list(student):
+    """Цикл по программам читает правила школы один раз, а не на каждую программу."""
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    from universities.matching import open_programs
+    from universities.models import AdmissionRequirement, Program, University
+
+    university = University.objects.create(name="Rules U", country="США")
+    for index in range(5):
+        program = Program.objects.create(university=university, name=f"Program {index}", level="bachelor")
+        AdmissionRequirement.objects.create(program=program, min_sat=1200)
+    with CaptureQueriesContext(connection) as queries:
+        results = open_programs(student)
+    assert len(results) == 5
+    assert sum("core_schoolrule" in query["sql"] for query in queries.captured_queries) == 1
+
+
+def test_bar_tone_follows_the_match_boundary(student, set_rules):
+    """Цвет полоски позиции считает сервер от границы match — числа во фронте нет."""
+    from decimal import Decimal
+
+    from universities.matching import match
+    from universities.models import AdmissionRequirement, Program, University
+
+    student.exam.sat_current = 1250
+    student.exam.save()
+    program = Program.objects.create(
+        university=University.objects.create(name="Tone U", country="США"), name="Tone", level="bachelor"
+    )
+    AdmissionRequirement.objects.create(program=program, min_sat=1400, min_gpa=Decimal("1.0"))
+    # SAT: (1250 − 800) / (1400 − 800) = 75 %
+    row = {item["code"]: item for item in match(student, program).breakdown()}["standardized"]
+    assert (row["percent"], row["tone"]) == (75, "accent")
+    set_rules(match_tier_safety=95, match_tier_match=80, match_tier_reach=45)
+    row = {item["code"]: item for item in match(student, program).breakdown()}["standardized"]
+    assert (row["percent"], row["tone"]) == (75, "bad")

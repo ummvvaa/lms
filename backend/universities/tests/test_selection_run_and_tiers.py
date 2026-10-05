@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
@@ -70,12 +69,13 @@ def run_for(student, **kwargs) -> MatchRun:
 # --- Категории и фильтр ----------------------------------------------------
 
 
-def test_tier_boundaries_come_from_settings(settings):
+@pytest.mark.django_db
+def test_tier_boundaries_come_from_school_rules(set_rules):
     assert tier_for(95) == "safety"
     assert tier_for(75) == "match"
     assert tier_for(50) == "reach"
     assert tier_for(20) == "dream"
-    settings.MATCH_TIERS = {"safety": 99.0, "match": 90.0, "reach": 80.0}
+    set_rules(match_tier_safety=99, match_tier_match=90, match_tier_reach=80)
     assert tier_for(95) == "match"
 
 
@@ -257,10 +257,14 @@ def test_selection_screen_texts_have_no_chance_words():
     assert "соответствие" in source
 
 
-def test_methodology_explains_from_the_same_settings():
+@pytest.mark.django_db
+def test_methodology_explains_from_the_same_rules(set_rules):
     from universities.selection import methodology
 
     text = " ".join(methodology())
     assert "не шанс поступления" in text
     assert "Safety" in text and "Dream" in text
-    assert re.search(r"\d+%", text)
+    assert "GPA — 30%" in text
+    # правило школы поменяли — объяснение говорит новыми числами, как и расчёт
+    set_rules(match_w_gpa=40, match_w_english=30, match_w_standardized=20, match_w_portfolio=10)
+    assert "GPA — 40%" in " ".join(methodology())

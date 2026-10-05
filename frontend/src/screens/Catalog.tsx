@@ -215,8 +215,9 @@ export default function Catalog() {
 
   const cards = catalog.data?.results ?? []
   const inList = cards.filter((c) => c.in_my_list).length
-  const limit = facets.data?.list_limit ?? 15
-  const limitReached = inList >= limit
+  // потолок списка — правило школы; пока оно не пришло, кнопку не запираем: сервер откажет сам
+  const limit = facets.data?.list_limit
+  const limitReached = limit !== undefined && inList >= limit
 
   const setFilter = (name: string, value: string) => setFilters((prev) => ({ ...prev, [name]: value }))
   const hasFilters = Object.values(filters).some(Boolean)
@@ -273,7 +274,11 @@ export default function Catalog() {
     <div>
       <ScreenHead
         title={t('Каталог вузов')}
-        subtitle={`${counted(catalog.data?.count ?? 0, 'программа|программы|программ')} · ${t('в списке {count} из {limit}', { count: inList, limit })}`}
+        subtitle={
+          limit === undefined
+            ? counted(catalog.data?.count ?? 0, 'программа|программы|программ')
+            : `${counted(catalog.data?.count ?? 0, 'программа|программы|программ')} · ${t('в списке {count} из {limit}', { count: inList, limit })}`
+        }
       />
 
       <div className="acad__toolbar">

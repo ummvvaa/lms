@@ -22,10 +22,11 @@ const TIER_TITLES: Record<string, string> = {
   safety: tk('safety — подстраховка'),
 }
 
-function positionColor(position: MatchPosition): string {
-  if (position.is_met) return 'var(--good)'
-  if (position.percent >= 70) return 'var(--accent)'
-  return 'var(--bad)'
+/** Цвет полоски позиции приходит с сервера словом: порог — правило школы, здесь его нет. */
+const POSITION_COLOR: Record<MatchPosition['tone'], string> = {
+  good: 'var(--good)',
+  accent: 'var(--accent)',
+  bad: 'var(--bad)',
 }
 
 export function MatchBreakdown({ breakdown }: { breakdown: MatchPosition[] }) {
@@ -47,7 +48,7 @@ export function MatchBreakdown({ breakdown }: { breakdown: MatchPosition[] }) {
               )}
             </span>
           </div>
-          <Bar percent={position.percent} color={positionColor(position)} />
+          <Bar percent={position.percent} color={POSITION_COLOR[position.tone]} />
         </div>
       ))}
     </div>

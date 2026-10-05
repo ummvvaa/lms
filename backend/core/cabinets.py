@@ -384,14 +384,17 @@ def _average_match() -> int | None:
     шансом (инвариант №11). Считается по последним ста двадцати строкам
     списков: на дашборде нужно среднее школы, а не полный перебор.
     """
-    from universities.matching import match
+    from universities.matching import match, match_rules
 
     rows = (
         StudentUniversity.objects.filter(GRADUATE, student__is_active=True)
         .select_related("student", "program__university", "program__requirement")
         .order_by("-id")[:120]
     )
-    values = [result.percent for result in (match(row.student, row.program) for row in rows) if result.has_requirements]
+    rules = match_rules()
+    values = [
+        result.percent for result in (match(row.student, row.program, rules) for row in rows) if result.has_requirements
+    ]
     if not values:
         return None
     return round(sum(values) / len(values))

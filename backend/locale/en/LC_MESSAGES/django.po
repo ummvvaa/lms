@@ -15884,3 +15884,111 @@ msgstr "No deadlines on students' lists in the next {n} day.|No deadlines on stu
 #: suggestions/assistant.py
 msgid "Дедлайны на ближайший {n} день: {count}.|Дедлайны на ближайшие {n} дня: {count}.|Дедлайны на ближайшие {n} дней: {count}."
 msgstr "Deadlines in the next {n} day: {count}.|Deadlines in the next {n} days: {count}."
+
+#: core/school_rules.py
+msgid "Соответствие вузам"
+msgstr "University match"
+
+#: core/school_rules.py
+msgid "Веса и планки процента соответствия, границы категорий подбора, потолок списка вузов"
+msgstr "Weights and floors of the match percentage, selection category boundaries, the university list cap"
+
+#: core/school_rules.py
+msgid "Веса позиций в проценте соответствия"
+msgstr "Position weights in the match percentage"
+
+#: core/school_rules.py
+msgid "Сколько весит каждая позиция требований программы. Пара экзаменов (IELTS или TOEFL, SAT или ACT) весит как одна позиция"
+msgstr "How much each position of a program's requirements weighs. A pair of exams (IELTS or TOEFL, SAT or ACT) weighs as one position"
+
+#: core/school_rules.py
+msgid "Границы категорий подбора"
+msgstr "Selection category boundaries"
+
+#: core/school_rules.py
+msgid "С какого процента соответствия программа попадает в категорию; ниже границы reach — dream. Это категории соответствия требованиям, а не шансы поступления"
+msgstr "From what match percentage a program falls into a category; below the reach boundary it is dream. These are categories of meeting the requirements, not chances of admission"
+
+#: core/school_rules.py
+msgid "Вес GPA"
+msgstr "GPA weight"
+
+#: core/school_rules.py
+msgid "Вес английского (IELTS или TOEFL)"
+msgstr "English weight (IELTS or TOEFL)"
+
+#: core/school_rules.py
+msgid "Вес стандартного теста (SAT или ACT)"
+msgstr "Standardized test weight (SAT or ACT)"
+
+#: core/school_rules.py
+msgid "Вес портфолио"
+msgstr "Portfolio weight"
+
+#: core/school_rules.py
+msgid "Граница safety"
+msgstr "Safety boundary"
+
+#: core/school_rules.py
+msgid "Граница match"
+msgstr "Match boundary"
+
+#: core/school_rules.py
+msgid "Граница reach"
+msgstr "Reach boundary"
+
+#: core/school_rules.py
+msgid "С этой же границы полоска позиции в карточке вуза перестаёт быть красной"
+msgstr "From this same boundary the position bar on a university card stops being red"
+
+#: core/school_rules.py
+msgid "Нижняя планка GPA"
+msgstr "GPA floor"
+
+#: core/school_rules.py
+msgid "Нижняя планка IELTS"
+msgstr "IELTS floor"
+
+#: core/school_rules.py
+msgid "Нижняя планка TOEFL"
+msgstr "TOEFL floor"
+
+#: core/school_rules.py
+msgid "Нижняя планка SAT"
+msgstr "SAT floor"
+
+#: core/school_rules.py
+msgid "Нижняя планка ACT"
+msgstr "ACT floor"
+
+#: core/school_rules.py
+msgid "Балл на этой планке или ниже даёт 0 % по позиции; прогресс к порогу программы считается от неё, а не от нуля"
+msgstr "A score at or below this floor gives 0% for the position; progress toward the program's threshold is counted from it, not from zero"
+
+#: core/school_rules.py
+msgid "Потолок списка вузов"
+msgstr "University list cap"
+
+#: core/school_rules.py
+msgid "Больше стольких программ в свой список ученик не добавит, пока не уберёт лишнее"
+msgstr "A student cannot add more programs than this to their list until they remove some"
+
+#: core/school_rules.py
+msgid "«{rule}» сохраняется вместе с группой «{group}»"
+msgstr "“{rule}” is saved together with the group “{group}”"
+
+#: core/school_rules.py
+msgid "«{group}»: сумма должна быть {total}, сейчас {now}"
+msgstr "“{group}”: the sum must be {total}, now it is {now}"
+
+#: core/school_rules.py
+msgid "«{group}»: каждое следующее значение должно быть меньше предыдущего"
+msgstr "“{group}”: each next value must be lower than the previous one"
+
+#: core/school_rules.py
+msgid "Такой группы правил нет"
+msgstr "There is no such group of rules"
+
+#: core/school_rules.py
+msgid "«{group}»: нужны значения всех правил группы"
+msgstr "“{group}”: values of all rules in the group are required"

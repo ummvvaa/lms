@@ -15800,3 +15800,111 @@ msgstr "Алдағы {n} күнде оқушылар тізімдері бойы
 #: suggestions/assistant.py
 msgid "Дедлайны на ближайший {n} день: {count}.|Дедлайны на ближайшие {n} дня: {count}.|Дедлайны на ближайшие {n} дней: {count}."
 msgstr "Алдағы {n} күндегі дедлайндар: {count}."
+
+#: core/school_rules.py
+msgid "Соответствие вузам"
+msgstr "ЖОО талаптарына сәйкестік"
+
+#: core/school_rules.py
+msgid "Веса и планки процента соответствия, границы категорий подбора, потолок списка вузов"
+msgstr "Сәйкестік пайызының салмақтары мен төменгі межелері, іріктеу санаттарының шектері, ЖОО тізімінің шегі"
+
+#: core/school_rules.py
+msgid "Веса позиций в проценте соответствия"
+msgstr "Сәйкестік пайызындағы позициялардың салмақтары"
+
+#: core/school_rules.py
+msgid "Сколько весит каждая позиция требований программы. Пара экзаменов (IELTS или TOEFL, SAT или ACT) весит как одна позиция"
+msgstr "Бағдарлама талаптарының әр позициясы қанша салмақ алады. Емтихандар жұбы (IELTS немесе TOEFL, SAT немесе ACT) бір позиция ретінде есептеледі"
+
+#: core/school_rules.py
+msgid "Границы категорий подбора"
+msgstr "Іріктеу санаттарының шектері"
+
+#: core/school_rules.py
+msgid "С какого процента соответствия программа попадает в категорию; ниже границы reach — dream. Это категории соответствия требованиям, а не шансы поступления"
+msgstr "Бағдарлама қай сәйкестік пайызынан бастап санатқа кіреді; reach шегінен төмен — dream. Бұл түсу мүмкіндігі емес, талаптарға сәйкестік санаттары"
+
+#: core/school_rules.py
+msgid "Вес GPA"
+msgstr "GPA салмағы"
+
+#: core/school_rules.py
+msgid "Вес английского (IELTS или TOEFL)"
+msgstr "Ағылшын тілінің салмағы (IELTS немесе TOEFL)"
+
+#: core/school_rules.py
+msgid "Вес стандартного теста (SAT или ACT)"
+msgstr "Стандартты тест салмағы (SAT немесе ACT)"
+
+#: core/school_rules.py
+msgid "Вес портфолио"
+msgstr "Портфолио салмағы"
+
+#: core/school_rules.py
+msgid "Граница safety"
+msgstr "safety шегі"
+
+#: core/school_rules.py
+msgid "Граница match"
+msgstr "match шегі"
+
+#: core/school_rules.py
+msgid "Граница reach"
+msgstr "reach шегі"
+
+#: core/school_rules.py
+msgid "С этой же границы полоска позиции в карточке вуза перестаёт быть красной"
+msgstr "ЖОО карточкасындағы позиция жолағы да осы шектен бастап қызыл болмайды"
+
+#: core/school_rules.py
+msgid "Нижняя планка GPA"
+msgstr "GPA төменгі межесі"
+
+#: core/school_rules.py
+msgid "Нижняя планка IELTS"
+msgstr "IELTS төменгі межесі"
+
+#: core/school_rules.py
+msgid "Нижняя планка TOEFL"
+msgstr "TOEFL төменгі межесі"
+
+#: core/school_rules.py
+msgid "Нижняя планка SAT"
+msgstr "SAT төменгі межесі"
+
+#: core/school_rules.py
+msgid "Нижняя планка ACT"
+msgstr "ACT төменгі межесі"
+
+#: core/school_rules.py
+msgid "Балл на этой планке или ниже даёт 0 % по позиции; прогресс к порогу программы считается от неё, а не от нуля"
+msgstr "Осы межедегі немесе одан төмен балл позиция бойынша 0 % береді; бағдарлама шегіне дейінгі ілгерілеу нөлден емес, осы межеден есептеледі"
+
+#: core/school_rules.py
+msgid "Потолок списка вузов"
+msgstr "ЖОО тізімінің шегі"
+
+#: core/school_rules.py
+msgid "Больше стольких программ в свой список ученик не добавит, пока не уберёт лишнее"
+msgstr "Оқушы артығын алып тастамайынша, өз тізіміне бұдан көп бағдарлама қоса алмайды"
+
+#: core/school_rules.py
+msgid "«{rule}» сохраняется вместе с группой «{group}»"
+msgstr "«{rule}» «{group}» тобымен бірге сақталады"
+
+#: core/school_rules.py
+msgid "«{group}»: сумма должна быть {total}, сейчас {now}"
+msgstr "«{group}»: қосынды {total} болуы керек, қазір {now}"
+
+#: core/school_rules.py
+msgid "«{group}»: каждое следующее значение должно быть меньше предыдущего"
+msgstr "«{group}»: әрбір келесі мән алдыңғысынан кіші болуы керек"
+
+#: core/school_rules.py
+msgid "Такой группы правил нет"
+msgstr "Мұндай ережелер тобы жоқ"
+
+#: core/school_rules.py
+msgid "«{group}»: нужны значения всех правил группы"
+msgstr "«{group}»: топтың барлық ережелерінің мәндері қажет"

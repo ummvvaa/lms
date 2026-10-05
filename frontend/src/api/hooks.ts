@@ -170,6 +170,8 @@ export interface MatchPosition {
   percent: number
   is_met: boolean
   is_unknown: boolean
+  /** цвет полоски считает сервер: от границы match из настроек школы */
+  tone: 'good' | 'accent' | 'bad'
   gap_phrase: string
   criteria: MatchCriterion[]
 }
@@ -4167,11 +4169,26 @@ export interface SchoolRule {
   minimum: number
   maximum: number
   step: number
+  /** код группы (`SchoolRulesScreen.groups`): такое правило сохраняется только вместе с группой */
+  group: string
   is_default: boolean
+}
+
+/** Правила, которые имеют смысл только вместе: веса с суммой `total` или границы по убыванию. */
+export interface SchoolRuleGroup {
+  code: string
+  title: string
+  hint: string
+  section: string
+  check: 'sum' | 'descending'
+  total: number
+  /** коды правил группы по порядку */
+  rules: string[]
 }
 
 export interface SchoolRulesScreen {
   sections: { code: string; title: string; note: string }[]
+  groups: SchoolRuleGroup[]
   rules: SchoolRule[]
   history: { id: number; code: string; section: string; title: string; old_value: string; new_value: string; actor: string; created_at: string }[]
 }
@@ -4192,6 +4209,23 @@ export function useResetSchoolRule() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (code: string) => post<SchoolRulesScreen>(`/school-rules/${code}/reset/`),
+    onSuccess: (fresh) => queryClient.setQueryData(['school-rules'], fresh),
+  })
+}
+
+export function useSetSchoolRuleGroup() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { code: string; values: Record<string, string> }) =>
+      patch<SchoolRulesScreen>(`/school-rule-groups/${input.code}/`, { values: input.values }),
+    onSuccess: (fresh) => queryClient.setQueryData(['school-rules'], fresh),
+  })
+}
+
+export function useResetSchoolRuleGroup() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (code: string) => post<SchoolRulesScreen>(`/school-rule-groups/${code}/reset/`),
     onSuccess: (fresh) => queryClient.setQueryData(['school-rules'], fresh),
   })
 }

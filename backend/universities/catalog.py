@@ -8,12 +8,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from django.conf import settings
 from django.db.models import Q, QuerySet
 from django.utils.translation import gettext_lazy
 
+from core import school_rules
 from students.models import Student
-from universities.matching import match
+from universities.matching import MatchRules, match, match_rules
 from universities.models import AdmissionRound, Program, StudentUniversity
 
 #: Пороги уровня соответствия — ими фильтрует каталог и подписывает карточки.
@@ -88,9 +88,11 @@ def rounds_payload(program: Program) -> list[dict]:
     ]
 
 
-def program_card(student: Student, program: Program, *, in_list: dict | None = None) -> dict:
+def program_card(
+    student: Student, program: Program, *, in_list: dict | None = None, rules: MatchRules | None = None
+) -> dict:
     """Карточка программы глазами конкретного ученика."""
-    result = match(student, program)
+    result = match(student, program, rules)
     payload = result.as_dict()
     payload.update(
         {
@@ -120,8 +122,9 @@ def build(student: Student, filters: CatalogFilters) -> list[dict]:
         for row in StudentUniversity.objects.filter(student=student)
     }
 
+    rules = match_rules()
     cards = [
-        program_card(student, program, in_list=mine.get(program.pk))
+        program_card(student, program, in_list=mine.get(program.pk), rules=rules)
         for program in apply_filters(base_queryset(), filters)
     ]
 
@@ -146,5 +149,5 @@ def facets() -> dict:
         "levels": [
             {"code": code, "title": str(title), "from": low, "to": high} for code, (low, high, title) in LEVELS.items()
         ],
-        "list_limit": settings.STUDENT_LIST_LIMIT,
+        "list_limit": school_rules.value(school_rules.STUDENT_LIST_LIMIT),
     }

@@ -754,5 +754,43 @@ def school_rule_reset(request, code: str):
         return refused
     if rules.rule_of(code) is None:
         return Response({"detail": _("Такого правила нет")}, status=status.HTTP_404_NOT_FOUND)
-    rules.reset(code, actor=request.user)
+    try:
+        rules.reset(code, actor=request.user)
+    except rules.RuleRejected as error:
+        return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(rules.payload())
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def school_rule_group(request, code: str):
+    """Задать значения группы правил целиком: веса с суммой 100, границы по убыванию."""
+    from core import school_rules as rules
+
+    refused = _rules_forbidden(request)
+    if refused:
+        return refused
+    if rules.group_of(code) is None:
+        return Response({"detail": _("Такой группы правил нет")}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        rules.set_group(code, request.data.get("values"), actor=request.user)
+    except rules.RuleRejected as error:
+        return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(rules.payload())
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def school_rule_group_reset(request, code: str):
+    """Вернуть умолчания всей группы."""
+    from core import school_rules as rules
+
+    refused = _rules_forbidden(request)
+    if refused:
+        return refused
+    if rules.group_of(code) is None:
+        return Response({"detail": _("Такой группы правил нет")}, status=status.HTTP_404_NOT_FOUND)
+    rules.reset_group(code, actor=request.user)
     return Response(rules.payload())

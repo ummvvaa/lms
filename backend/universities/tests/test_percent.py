@@ -5,7 +5,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from django.test import override_settings
 
 from students.models import ExamProfile, Student
 from universities.matching import match
@@ -100,9 +99,9 @@ def test_no_requirements_means_no_percent(student, university):
 
 
 @pytest.mark.django_db
-@override_settings(MATCH_WEIGHTS={"gpa": 50.0, "english": 50.0, "standardized": 0.0, "portfolio": 0.0})
-def test_formula_is_configurable(student, university):
-    """Веса живут в настройках: школа меняет формулу без выката кода."""
+def test_formula_is_configurable(student, university, set_rules):
+    """Веса — правила школы: администратор меняет формулу с экрана, без выката кода."""
+    set_rules(match_w_gpa=50, match_w_english=50, match_w_standardized=0, match_w_portfolio=0)
     program = program_with(university, min_gpa=Decimal("3.4"), min_ielts=Decimal("6.5"))
 
     result = match(student, program)

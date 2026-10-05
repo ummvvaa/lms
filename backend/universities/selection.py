@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
@@ -20,7 +19,7 @@ from django.utils.translation import gettext_lazy
 from core.i18n import language_of, render
 from core.parallels import parallel_of
 from students.models import Student
-from universities.matching import MatchResult, match
+from universities.matching import MatchResult, match, match_rules
 from universities.models import (
     MatchRun,
     MatchRunResult,
@@ -48,9 +47,9 @@ def stage_titles() -> list[dict]:
     return [{"code": code, "title": str(title), "at": at} for code, title, at in STAGES]
 
 
-def tier_for(percent: int) -> str:
-    """Категория по проценту. Границы — в настройках, не в коде."""
-    tiers = settings.MATCH_TIERS
+def tier_for(percent: int, tiers: dict[str, float] | None = None) -> str:
+    """Категория по проценту. Границы — правила школы (`core.school_rules`), не код."""
+    tiers = tiers or match_rules().tiers
     if percent >= tiers["safety"]:
         return RunTier.SAFETY
     if percent >= tiers["match"]:
@@ -91,8 +90,9 @@ def goal_percents(student: Student, programs) -> dict[int, int]:
     from universities.matching import _goal_score
 
     exam = getattr(student, "exam", None)
+    rules = match_rules()
     if exam is None:
-        return {p.pk: match(student, p).percent for p in programs}
+        return {p.pk: match(student, p, rules).percent for p in programs}
 
     ielts_goal = _goal_score(student, "IELTS") or exam.ielts_target
     sat_goal = _goal_score(student, "SAT") or exam.sat_target
@@ -103,7 +103,7 @@ def goal_percents(student: Student, programs) -> dict[int, int]:
             exam.ielts_current = max(Decimal(str(ielts_goal)), exam.ielts_current or Decimal(0))
         if sat_goal is not None:
             exam.sat_current = max(int(sat_goal), exam.sat_current or 0)
-        return {p.pk: match(student, p).percent for p in programs}
+        return {p.pk: match(student, p, rules).percent for p in programs}
     finally:
         exam.ielts_current, exam.sat_current = original
 
@@ -167,7 +167,8 @@ def execute(run_id: int) -> dict:
         run.save(update_fields=["funnel_catalog", "funnel_filtered"])
 
         _advance(run, "profile", 35)
-        results: list[MatchResult] = [match(student, program) for program in filtered]
+        rules = match_rules()
+        results: list[MatchResult] = [match(student, program, rules) for program in filtered]
         by_id = {r.program_id: r for r in results}
 
         _advance(run, "analyze", 60)
@@ -195,7 +196,7 @@ def execute(run_id: int) -> dict:
                     program_id=result.program_id,
                     percent_now=result.percent,
                     percent_goal=max(goals.get(result.program_id, result.percent), result.percent),
-                    tier=tier_for(result.percent),
+                    tier=tier_for(result.percent, rules.tiers),
                     section=ResultSection.TOP,
                     position=position,
                 )
@@ -262,8 +263,8 @@ def methodology() -> list[str]:
     Собирается на сервере из тех же настроек, которыми считает движок:
     объяснение не может разойтись с расчётом.
     """
-    weights = settings.MATCH_WEIGHTS
-    tiers = settings.MATCH_TIERS
+    rules = match_rules()
+    weights, tiers = rules.weights, rules.tiers
     weight_line = ", ".join(
         f"{title} — {int(weights[key])}%"
         for key, title in (

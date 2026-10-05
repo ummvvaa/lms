@@ -9,7 +9,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from django.test import override_settings
 from rest_framework.test import APIClient
 
 from accounts.models import Role, User
@@ -130,8 +129,8 @@ def test_student_removes_only_what_he_added(api, catalog, student):
 
 
 @pytest.mark.django_db
-@override_settings(STUDENT_LIST_LIMIT=2)
-def test_list_has_a_limit(api, catalog):
+def test_list_has_a_limit(api, catalog, set_rules):
+    set_rules(student_list_limit=2)
     assert api.post("/api/catalog/add/", {"program": catalog[0].pk}, format="json").status_code == 201
     assert api.post("/api/catalog/add/", {"program": catalog[1].pk}, format="json").status_code == 201
 

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from itertools import pairwise
 
 from django.db import transaction
 from django.utils.translation import gettext as _
@@ -47,6 +48,7 @@ CURATOR = "curator"
 DEADLINES = "deadlines"
 REMINDERS = "reminders"
 FILES = "files"
+MATCH = "match"
 AI = "ai"
 
 SECTIONS: tuple[Section, ...] = (
@@ -86,6 +88,11 @@ SECTIONS: tuple[Section, ...] = (
         gettext_lazy("Пределы материалов и аудио, размер тренировки, слабая тема"),
     ),
     Section(
+        MATCH,
+        gettext_lazy("Соответствие вузам"),
+        gettext_lazy("Веса и планки процента соответствия, границы категорий подбора, потолок списка вузов"),
+    ),
+    Section(
         AI,
         gettext_lazy("ИИ"),
         gettext_lazy("Сколько школа готова тратить на модель в месяц"),
@@ -93,6 +100,48 @@ SECTIONS: tuple[Section, ...] = (
 )
 
 SECTION_BY_CODE: dict[str, Section] = {section.code: section for section in SECTIONS}
+
+
+@dataclass(frozen=True)
+class Group:
+    """Правила, которые имеют смысл только вместе: сохраняются и сбрасываются целиком."""
+
+    code: str
+    title: str
+    hint: str
+    section: str
+    #: `sum` — значения в сумме дают `total`; `descending` — каждое следующее меньше предыдущего
+    check: str = "sum"
+    total: int = 100
+
+
+#: Соответствие: веса позиций и границы категорий подбора
+MATCH_WEIGHTS = "match_weights"
+MATCH_TIERS = "match_tiers"
+
+GROUPS: tuple[Group, ...] = (
+    Group(
+        MATCH_WEIGHTS,
+        gettext_lazy("Веса позиций в проценте соответствия"),
+        gettext_lazy(
+            "Сколько весит каждая позиция требований программы. Пара экзаменов (IELTS или TOEFL, SAT или ACT) "
+            "весит как одна позиция"
+        ),
+        MATCH,
+    ),
+    Group(
+        MATCH_TIERS,
+        gettext_lazy("Границы категорий подбора"),
+        gettext_lazy(
+            "С какого процента соответствия программа попадает в категорию; ниже границы reach — dream. "
+            "Это категории соответствия требованиям, а не шансы поступления"
+        ),
+        MATCH,
+        check="descending",
+    ),
+)
+
+GROUP_BY_CODE: dict[str, Group] = {group.code: group for group in GROUPS}
 
 #: единица с формами числа через черту — экран склоняет её по значению («2 дня», «21 день»)
 DAYS = gettext_lazy("день|дня|дней")
@@ -117,6 +166,8 @@ class Rule:
     #: `decimal` — дробное с шагом `step`, хранится десятыми долями
     kind: str = "int"
     step: float = 1
+    #: код группы (`GROUPS`): такое правило не правится по одному
+    group: str = ""
 
 
 #: Посещаемость ниже порога — ученик в «Рисках», процент красным на экранах
@@ -195,6 +246,23 @@ PRACTICE_SIZE = "practice_size"
 PRACTICE_WEAK_SHARE = "practice_weak_share"
 #: Месячный лимит расходов на модель, доллары; ноль — лимита нет
 LLM_MONTHLY_LIMIT = "llm_monthly_limit"
+#: Соответствие требованиям: веса позиций (сумма 100)
+MATCH_W_GPA = "match_w_gpa"
+MATCH_W_ENGLISH = "match_w_english"
+MATCH_W_STANDARDIZED = "match_w_standardized"
+MATCH_W_PORTFOLIO = "match_w_portfolio"
+#: Нижние планки шкал: от них считается прогресс к порогу программы
+MATCH_FLOOR_GPA = "match_floor_gpa"
+MATCH_FLOOR_IELTS = "match_floor_ielts"
+MATCH_FLOOR_TOEFL = "match_floor_toefl"
+MATCH_FLOOR_SAT = "match_floor_sat"
+MATCH_FLOOR_ACT = "match_floor_act"
+#: Границы категорий подбора по проценту (по убыванию); ниже reach — dream
+MATCH_TIER_SAFETY = "match_tier_safety"
+MATCH_TIER_MATCH = "match_tier_match"
+MATCH_TIER_REACH = "match_tier_reach"
+#: Потолок списка вузов у одного ученика
+STUDENT_LIST_LIMIT = "student_list_limit"
 
 RULES: tuple[Rule, ...] = (
     # --- Посещаемость ---
@@ -769,6 +837,163 @@ RULES: tuple[Rule, ...] = (
         100,
         section=FILES,
     ),
+    # --- Соответствие вузам ---
+    Rule(
+        MATCH_W_GPA,
+        gettext_lazy("Вес GPA"),
+        "",
+        "%",
+        30,
+        0,
+        100,
+        section=MATCH,
+        group=MATCH_WEIGHTS,
+    ),
+    Rule(
+        MATCH_W_ENGLISH,
+        gettext_lazy("Вес английского (IELTS или TOEFL)"),
+        "",
+        "%",
+        30,
+        0,
+        100,
+        section=MATCH,
+        group=MATCH_WEIGHTS,
+    ),
+    Rule(
+        MATCH_W_STANDARDIZED,
+        gettext_lazy("Вес стандартного теста (SAT или ACT)"),
+        "",
+        "%",
+        25,
+        0,
+        100,
+        section=MATCH,
+        group=MATCH_WEIGHTS,
+    ),
+    Rule(
+        MATCH_W_PORTFOLIO,
+        gettext_lazy("Вес портфолио"),
+        "",
+        "%",
+        15,
+        0,
+        100,
+        section=MATCH,
+        group=MATCH_WEIGHTS,
+    ),
+    Rule(
+        MATCH_TIER_SAFETY,
+        gettext_lazy("Граница safety"),
+        "",
+        "%",
+        90,
+        1,
+        100,
+        section=MATCH,
+        group=MATCH_TIERS,
+    ),
+    Rule(
+        MATCH_TIER_MATCH,
+        gettext_lazy("Граница match"),
+        gettext_lazy("С этой же границы полоска позиции в карточке вуза перестаёт быть красной"),
+        "%",
+        70,
+        1,
+        100,
+        section=MATCH,
+        group=MATCH_TIERS,
+    ),
+    Rule(
+        MATCH_TIER_REACH,
+        gettext_lazy("Граница reach"),
+        "",
+        "%",
+        45,
+        1,
+        100,
+        section=MATCH,
+        group=MATCH_TIERS,
+    ),
+    Rule(
+        MATCH_FLOOR_GPA,
+        gettext_lazy("Нижняя планка GPA"),
+        gettext_lazy(
+            "Балл на этой планке или ниже даёт 0 % по позиции; прогресс к порогу программы считается от неё, "
+            "а не от нуля"
+        ),
+        POINTS,
+        2.0,
+        0.0,
+        5.0,
+        section=MATCH,
+        kind="decimal",
+        step=0.1,
+    ),
+    Rule(
+        MATCH_FLOOR_IELTS,
+        gettext_lazy("Нижняя планка IELTS"),
+        gettext_lazy(
+            "Балл на этой планке или ниже даёт 0 % по позиции; прогресс к порогу программы считается от неё, "
+            "а не от нуля"
+        ),
+        POINTS,
+        5.0,
+        0.0,
+        9.0,
+        section=MATCH,
+        kind="decimal",
+        step=0.5,
+    ),
+    Rule(
+        MATCH_FLOOR_TOEFL,
+        gettext_lazy("Нижняя планка TOEFL"),
+        gettext_lazy(
+            "Балл на этой планке или ниже даёт 0 % по позиции; прогресс к порогу программы считается от неё, "
+            "а не от нуля"
+        ),
+        POINTS,
+        45,
+        0,
+        120,
+        section=MATCH,
+    ),
+    Rule(
+        MATCH_FLOOR_SAT,
+        gettext_lazy("Нижняя планка SAT"),
+        gettext_lazy(
+            "Балл на этой планке или ниже даёт 0 % по позиции; прогресс к порогу программы считается от неё, "
+            "а не от нуля"
+        ),
+        POINTS,
+        800,
+        400,
+        1600,
+        section=MATCH,
+    ),
+    Rule(
+        MATCH_FLOOR_ACT,
+        gettext_lazy("Нижняя планка ACT"),
+        gettext_lazy(
+            "Балл на этой планке или ниже даёт 0 % по позиции; прогресс к порогу программы считается от неё, "
+            "а не от нуля"
+        ),
+        POINTS,
+        12,
+        1,
+        36,
+        section=MATCH,
+    ),
+    Rule(
+        STUDENT_LIST_LIMIT,
+        gettext_lazy("Потолок списка вузов"),
+        gettext_lazy("Больше стольких программ в свой список ученик не добавит, пока не уберёт лишнее"),
+        PIECES,
+        15,
+        1,
+        50,
+        section=MATCH,
+    ),
     # --- ИИ ---
     Rule(
         LLM_MONTHLY_LIMIT,
@@ -811,6 +1036,19 @@ FORMER_ENV: dict[str, str] = {
     "MATERIAL_MAX_FILES": MATERIAL_MAX_FILES,
     "LLM_MONTHLY_LIMIT": LLM_MONTHLY_LIMIT,
     "SUGGESTION_CONFIDENCE_THRESHOLD": "",
+    "MATCH_W_GPA": MATCH_W_GPA,
+    "MATCH_W_ENGLISH": MATCH_W_ENGLISH,
+    "MATCH_W_STANDARDIZED": MATCH_W_STANDARDIZED,
+    "MATCH_W_PORTFOLIO": MATCH_W_PORTFOLIO,
+    "MATCH_FLOOR_GPA": MATCH_FLOOR_GPA,
+    "MATCH_FLOOR_IELTS": MATCH_FLOOR_IELTS,
+    "MATCH_FLOOR_TOEFL": MATCH_FLOOR_TOEFL,
+    "MATCH_FLOOR_SAT": MATCH_FLOOR_SAT,
+    "MATCH_FLOOR_ACT": MATCH_FLOOR_ACT,
+    "MATCH_TIER_SAFETY": MATCH_TIER_SAFETY,
+    "MATCH_TIER_MATCH": MATCH_TIER_MATCH,
+    "MATCH_TIER_REACH": MATCH_TIER_REACH,
+    "STUDENT_LIST_LIMIT": STUDENT_LIST_LIMIT,
 }
 
 
@@ -820,6 +1058,15 @@ class RuleRejected(ValueError):
 
 def rule_of(code: str) -> Rule | None:
     return BY_CODE.get(code)
+
+
+def group_of(code: str) -> Group | None:
+    return GROUP_BY_CODE.get(code)
+
+
+def members_of(code: str) -> list[Rule]:
+    """Правила группы — в порядке реестра: по нему же проверяется «по убыванию»."""
+    return [rule for rule in RULES if rule.group == code]
 
 
 def _human(rule: Rule, stored: int) -> int | float:
@@ -926,6 +1173,7 @@ def set_value(code: str, raw, *, actor) -> int | float:
     rule = BY_CODE.get(code)
     if rule is None:
         raise RuleRejected(_("Такого правила нет"))
+    _alone(rule)
     number = check(rule, raw)
     old = value(code)
     SchoolRule.objects.update_or_create(code=code, defaults={"value": _stored(rule, number), "updated_by": actor})
@@ -942,11 +1190,78 @@ def reset(code: str, *, actor) -> int | float:
     rule = BY_CODE.get(code)
     if rule is None:
         raise RuleRejected(_("Такого правила нет"))
+    _alone(rule)
     old = value(code)
     SchoolRule.objects.filter(code=code).delete()
     if _stored(rule, old) != _stored(rule, rule.default):
         _log(rule, old, rule.default, actor=actor)
     return rule.default
+
+
+def _alone(rule: Rule) -> None:
+    """Правило из группы по одному не правится: сумма или порядок разъедутся."""
+    if rule.group:
+        raise RuleRejected(
+            _("«{rule}» сохраняется вместе с группой «{group}»").format(
+                rule=rule.title, group=GROUP_BY_CODE[rule.group].title
+            )
+        )
+
+
+def check_group(group: Group, numbers: dict[str, int | float]) -> None:
+    """Условие группы на уже проверенных значениях: сумма или убывание."""
+    ordered = [numbers[rule.code] for rule in members_of(group.code)]
+    if group.check == "sum":
+        total = sum(ordered)
+        if total != group.total:
+            raise RuleRejected(
+                _("«{group}»: сумма должна быть {total}, сейчас {now}").format(
+                    group=group.title, total=group.total, now=total
+                )
+            )
+    elif any(later >= earlier for earlier, later in pairwise(ordered)):
+        raise RuleRejected(
+            _("«{group}»: каждое следующее значение должно быть меньше предыдущего").format(group=group.title)
+        )
+
+
+@transaction.atomic
+def set_group(code: str, raw, *, actor) -> dict[str, int | float]:
+    """Задать значения группы целиком: все правила разом, одной транзакцией."""
+    from core.models import SchoolRule
+
+    group = GROUP_BY_CODE.get(code)
+    if group is None:
+        raise RuleRejected(_("Такой группы правил нет"))
+    members = members_of(code)
+    if not isinstance(raw, dict) or set(raw) != {rule.code for rule in members}:
+        raise RuleRejected(_("«{group}»: нужны значения всех правил группы").format(group=group.title))
+    numbers = {rule.code: check(rule, raw[rule.code]) for rule in members}
+    check_group(group, numbers)
+    old = values()
+    for rule in members:
+        number = numbers[rule.code]
+        SchoolRule.objects.update_or_create(
+            code=rule.code, defaults={"value": _stored(rule, number), "updated_by": actor}
+        )
+        if _stored(rule, old[rule.code]) != _stored(rule, number):
+            _log(rule, old[rule.code], number, actor=actor)
+    return numbers
+
+
+@transaction.atomic
+def reset_group(code: str, *, actor) -> None:
+    """Вернуть умолчания всей группы: строки удаляются, каждая правка — в журнал."""
+    from core.models import SchoolRule
+
+    if code not in GROUP_BY_CODE:
+        raise RuleRejected(_("Такой группы правил нет"))
+    members = members_of(code)
+    old = values()
+    SchoolRule.objects.filter(code__in=[rule.code for rule in members]).delete()
+    for rule in members:
+        if _stored(rule, old[rule.code]) != _stored(rule, rule.default):
+            _log(rule, old[rule.code], rule.default, actor=actor)
 
 
 def history(limit: int = 50) -> list[dict]:
@@ -997,8 +1312,21 @@ def payload() -> dict:
                 "minimum": rule.minimum,
                 "maximum": rule.maximum,
                 "step": rule.step,
+                "group": rule.group,
                 "is_default": _stored(rule, current) == _stored(rule, rule.default),
             }
         )
     sections = [{"code": section.code, "title": section.title, "note": section.note} for section in SECTIONS]
-    return {"sections": sections, "rules": rules, "history": history()}
+    groups = [
+        {
+            "code": group.code,
+            "title": group.title,
+            "hint": group.hint,
+            "section": group.section,
+            "check": group.check,
+            "total": group.total,
+            "rules": [rule.code for rule in members_of(group.code)],
+        }
+        for group in GROUPS
+    ]
+    return {"sections": sections, "groups": groups, "rules": rules, "history": history()}

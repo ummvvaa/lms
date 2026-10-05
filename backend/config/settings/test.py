@@ -42,18 +42,8 @@ LOGIN_IP_FAILURES = 100
 LOGIN_TRUSTED_NETWORKS = []
 SESSION_TOUCH_MINUTES = 15
 
-#: Движок соответствия: веса позиций и нижние планки шкал.
-MATCH_WEIGHTS = {"gpa": 30.0, "english": 30.0, "standardized": 25.0, "portfolio": 15.0}
-MATCH_FLOORS = {"gpa": 2.0, "ielts": 5.0, "toefl": 45.0, "sat": 800.0, "act": 12.0}
-
-#: Потолок списка вузов у ученика.
-STUDENT_LIST_LIMIT = 15
-
 #: Readiness: веса доменов, стартовые планки и цели.
 READINESS_WEIGHTS = {"exam": 35.0, "admission": 25.0, "talent": 20.0, "behavior": 10.0, "sport": 10.0}
-
-#: Категории подбора: границы по проценту (фаза 40).
-MATCH_TIERS = {"safety": 90.0, "match": 70.0, "reach": 45.0}
 
 #: Портфолио: веса разделов процента заполнения (фаза 38).
 PORTFOLIO_WEIGHTS = {

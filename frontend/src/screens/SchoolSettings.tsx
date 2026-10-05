@@ -7,6 +7,11 @@
  * действует со следующего запроса, без перезапуска; каждая правка и сброс —
  * строкой в истории раздела: кто, когда, было → стало.
  *
+ * Веса формул и границы категорий — группы: правила, которые имеют смысл
+ * только вместе. Группа — одна карточка с одной «Сохранить» и одной
+ * «Сбросить»; сумму и порядок экран показывает сразу и не даёт сохранить
+ * неверные, сервер проверяет то же самое ещё раз.
+ *
  * Правил больше полусотни, поэтому экран разбит на разделы: список слева,
  * правила раздела справа. На телефоне список разделов — сам экран, раздел
  * открывается по нажатию и возвращает крошкой. Раздел живёт в адресе
@@ -15,7 +20,16 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { useResetSchoolRule, useSchoolRules, useSetSchoolRule, type SchoolRule, type SchoolRulesScreen } from '../api/hooks'
+import {
+  useResetSchoolRule,
+  useResetSchoolRuleGroup,
+  useSchoolRules,
+  useSetSchoolRule,
+  useSetSchoolRuleGroup,
+  type SchoolRule,
+  type SchoolRuleGroup,
+  type SchoolRulesScreen,
+} from '../api/hooks'
 import Field from '../components/Field'
 import { Row, Rows, Segmented } from '../components/patterns'
 import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
@@ -126,6 +140,103 @@ function RuleRow({ rule }: { rule: SchoolRule }) {
   )
 }
 
+/** Число из поля: пустое и не число — NaN, чтобы сумма не сошлась молча. */
+const typed = (draft: string) => (draft.trim() === '' ? NaN : Number(draft.trim().replace(',', '.')))
+
+/**
+ * Группа правил одной карточкой: веса с суммой или границы по убыванию.
+ * Сохраняется и сбрасывается только целиком — по одному вес не поправить.
+ */
+function GroupCard({ group, rules }: { group: SchoolRuleGroup; rules: SchoolRule[] }) {
+  const [drafts, setDrafts] = useState<Record<string, string>>(() =>
+    Object.fromEntries(rules.map((rule) => [rule.code, String(rule.value)])),
+  )
+  const [error, setError] = useState('')
+  const save = useSetSchoolRuleGroup()
+  const reset = useResetSchoolRuleGroup()
+
+  const numbers = rules.map((rule) => typed(drafts[rule.code] ?? ''))
+  const inBounds = rules.every((rule, index) => numbers[index] >= rule.minimum && numbers[index] <= rule.maximum)
+  const sum = numbers.reduce((total, value) => total + value, 0)
+  const holds =
+    group.check === 'sum' ? sum === group.total : numbers.every((value, index) => index === 0 || value < numbers[index - 1])
+  const changed = rules.some((rule) => (drafts[rule.code] ?? '').trim() !== String(rule.value))
+  const isDefault = rules.every((rule) => rule.is_default)
+
+  const submit = () =>
+    save.mutate(
+      { code: group.code, values: Object.fromEntries(rules.map((rule) => [rule.code, (drafts[rule.code] ?? '').trim()])) },
+      {
+        onSuccess: () => {
+          setError('')
+          toast.success(t('Сохранено'))
+        },
+        onError: (e) => setError((e as Error).message),
+      },
+    )
+  const restore = () =>
+    reset.mutate(group.code, {
+      onSuccess: () => {
+        setDrafts(Object.fromEntries(rules.map((rule) => [rule.code, String(rule.default)])))
+        setError('')
+        toast.success(t('Вернули значения по умолчанию'))
+      },
+      onError: (e) => toast.error((e as Error).message),
+    })
+
+  return (
+    <DataCard title={t(group.title)} note={t(group.hint)}>
+      <div className="rules__members">
+        {rules.map((rule) => (
+          <Field
+            key={rule.code}
+            kind="number"
+            name={rule.code}
+            label={rule.unit ? `${t(rule.title)}, ${unitName(rule.unit)}` : t(rule.title)}
+            hint={
+              rule.hint
+                ? `${t(rule.hint)} · ${t('По умолчанию: {value}', { value: withUnit(rule.default, rule.unit) })}`
+                : t('По умолчанию: {value}', { value: withUnit(rule.default, rule.unit) })
+            }
+            value={drafts[rule.code] ?? ''}
+            onChange={(value) => {
+              setDrafts((prev) => ({ ...prev, [rule.code]: value }))
+              setError('')
+            }}
+            min={rule.minimum}
+            max={rule.maximum}
+            step={rule.step}
+          />
+        ))}
+      </div>
+      <div className="rules__groupfoot">
+        {group.check === 'sum' ? (
+          <span className={holds ? 't-note num' : 't-note num text-bad'} role="status">
+            {Number.isNaN(sum)
+              ? t('Заполните все поля: сумма должна быть {total}', { total: group.total })
+              : holds
+                ? t('Сумма: {sum} из {total}', { sum: shown(sum), total: group.total })
+                : t('Сумма: {sum} из {total} — сохранить нельзя', { sum: shown(sum), total: group.total })}
+          </span>
+        ) : (
+          <span className={holds ? 't-note' : 't-note text-bad'} role="status">
+            {holds ? t('Границы идут по убыванию') : t('Каждая следующая граница должна быть меньше предыдущей — сохранить нельзя')}
+          </span>
+        )}
+        {error && <span className="t-note text-bad">{error}</span>}
+        <div className="rules__actions">
+          <Button size="sm" disabled={!changed || !holds || !inBounds || save.isPending} onClick={submit}>
+            {t('Сохранить')}
+          </Button>
+          <Button variant="outline" size="sm" disabled={isDefault || reset.isPending} onClick={restore}>
+            {t('Сбросить группу')}
+          </Button>
+        </div>
+      </div>
+    </DataCard>
+  )
+}
+
 /** Список разделов: сколько правил в каждом и сколько из них школа поменяла. */
 function SectionList({ data, current }: { data: SchoolRulesScreen; current: string | null }) {
   return (
@@ -155,17 +266,25 @@ function SectionRules({ data, code, phone = false }: { data: SchoolRulesScreen; 
   const section = data.sections.find((row) => row.code === code)
   const history = data.history.filter((row) => row.section === code)
   if (!section) return null
+  const own = data.rules.filter((rule) => rule.section === code)
+  const single = own.filter((rule) => !rule.group)
+  const groups = data.groups.filter((group) => group.section === code)
   return (
     <div className="rules__stack">
+      {groups.map((group) => {
+        const members = group.rules.flatMap((ruleCode) => own.filter((rule) => rule.code === ruleCode))
+        // значения с сервера сменились (сохранили, сбросили) — поля берут их заново
+        return <GroupCard key={`${group.code}-${members.map((rule) => rule.value).join('-')}`} group={group} rules={members} />
+      })}
       {/* на телефоне название и пояснение раздела уже стоят в шапке экрана */}
-      <DataCard title={phone ? t('Правила') : t(section.title)} note={phone ? undefined : t(section.note)}>
-        {data.rules
-          .filter((rule) => rule.section === code)
-          .map((rule) => (
+      {single.length > 0 && (
+        <DataCard title={phone ? t('Правила') : t(section.title)} note={phone ? undefined : t(section.note)}>
+          {single.map((rule) => (
             // значение с сервера сменилось (сохранили, сбросили) — поле берёт его заново
             <RuleRow key={`${rule.code}-${rule.value}`} rule={rule} />
           ))}
-      </DataCard>
+        </DataCard>
+      )}
       <DataCard title={t('История изменений')} count={history.length || undefined} empty={history.length === 0 && t('в этом разделе правила ещё не меняли')}>
         <Rows>
           {history.map((row) => (

@@ -13,14 +13,67 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal
 
-from django.conf import settings
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
+from core import school_rules
 from core.phrasing import listing
 from core.readiness import clamp
 from students.models import Student
 from universities.models import UNVERIFIED_NOTE, AdmissionRequirement, Program
+
+# Процент соответствия — это НЕ шанс поступления (инвариант №11). Он считается
+# механически от порогов в `AdmissionRequirement`: по каждому критерию берётся
+# степень достижения, критерии взвешиваются, группы альтернатив (IELTS или
+# TOEFL, SAT или ACT) считаются как одна позиция. Веса — по позициям, а не по
+# отдельным экзаменам: иначе ученик с IELTS, но без TOEFL терял бы половину
+# «английского» веса ни за что.
+#
+# Веса, нижние планки и границы категорий — настройки школы (`core.school_rules`,
+# раздел «Соответствие вузам»). Планка — нижний край шкалы, с неё считается
+# прогресс к порогу: без неё IELTS 6.0 при пороге 6.5 давал бы 92 % — число,
+# которое льстит и ничего не значит.
+
+#: позиция → правило школы с её весом
+WEIGHT_RULES = {
+    "gpa": school_rules.MATCH_W_GPA,
+    "english": school_rules.MATCH_W_ENGLISH,
+    "standardized": school_rules.MATCH_W_STANDARDIZED,
+    "portfolio": school_rules.MATCH_W_PORTFOLIO,
+}
+#: критерий → правило школы с нижней планкой шкалы
+FLOOR_RULES = {
+    "gpa": school_rules.MATCH_FLOOR_GPA,
+    "ielts": school_rules.MATCH_FLOOR_IELTS,
+    "toefl": school_rules.MATCH_FLOOR_TOEFL,
+    "sat": school_rules.MATCH_FLOOR_SAT,
+    "act": school_rules.MATCH_FLOOR_ACT,
+}
+#: категория подбора → правило школы с её нижней границей; ниже reach — dream
+TIER_RULES = {
+    "safety": school_rules.MATCH_TIER_SAFETY,
+    "match": school_rules.MATCH_TIER_MATCH,
+    "reach": school_rules.MATCH_TIER_REACH,
+}
+
+
+@dataclass(frozen=True)
+class MatchRules:
+    """Правила школы для расчёта: веса позиций, планки шкал, границы категорий."""
+
+    weights: dict[str, float]
+    floors: dict[str, float]
+    tiers: dict[str, float]
+
+
+def match_rules() -> MatchRules:
+    """Правила расчёта одним запросом: цикл по программам читает их один раз и передаёт дальше."""
+    values = school_rules.values()
+    return MatchRules(
+        weights={key: float(values[code]) for key, code in WEIGHT_RULES.items()},
+        floors={key: float(values[code]) for key, code in FLOOR_RULES.items()},
+        tiers={key: float(values[code]) for key, code in TIER_RULES.items()},
+    )
 
 
 @dataclass(frozen=True)
@@ -39,6 +92,8 @@ class Criterion:
     group: str = ""
     #: считается ли разрыв числом. Портфолио — нет: «не хватает 1 портфолио» бессмысленно
     countable: bool = True
+    #: нижняя планка шкалы из правил школы: прогресс к порогу считается от неё
+    floor: float = 0.0
 
     @property
     def is_met(self) -> bool:
@@ -53,7 +108,7 @@ class Criterion:
     def achievement(self) -> float:
         """Степень достижения порога, 0..1.
 
-        Считается от нижней планки шкалы (`MATCH_FLOORS`), а не от нуля:
+        Считается от нижней планки шкалы (`floor`), а не от нуля:
         IELTS 6.0 при пороге 6.5 — это не 92%, потому что шкала начинается
         не с нуля. Данных нет — считаем нулём, но отдельно помечаем.
         """
@@ -61,11 +116,10 @@ class Criterion:
             return 1.0
         if self.current is None:
             return 0.0
-        floor = settings.MATCH_FLOORS.get(self.code, 0.0)
-        span = self.threshold - floor
+        span = self.threshold - self.floor
         if span <= 0:
             return 1.0 if self.current >= self.threshold else 0.0
-        return clamp((self.current - floor) / span)
+        return clamp((self.current - self.floor) / span)
 
     @property
     def gap_exact(self) -> float:
@@ -142,6 +196,12 @@ class MatchResult:
     #: данные программы подтверждены директором по поступлению (инвариант №14).
     #: Непроверенный порог даёт непроверенный процент — об этом надо сказать
     is_verified: bool = True
+    #: правила школы, по которым посчитан вердикт: веса позиций и границы категорий
+    rules: MatchRules | None = None
+
+    @property
+    def weights(self) -> dict[str, float]:
+        return (self.rules or match_rules()).weights
 
     @property
     def unmet(self) -> tuple[Criterion, ...]:
@@ -199,7 +259,7 @@ class MatchResult:
         if not self.has_requirements or not self.criteria:
             return 0
 
-        weights = settings.MATCH_WEIGHTS
+        weights = self.weights
         total_weight = 0.0
         earned = 0.0
         for key, items in self.positions:
@@ -215,18 +275,23 @@ class MatchResult:
 
     def breakdown(self) -> list[dict]:
         """Разбивка по позициям: процент без объяснения бесполезен."""
-        weights = settings.MATCH_WEIGHTS
+        weights = self.weights
+        # цвет полоски — от границы категории match из правил школы, а не от числа во фронте
+        accent_from = (self.rules or match_rules()).tiers["match"]
         rows: list[dict] = []
         for key, items in self.positions:
             best = max(items, key=lambda c: c.achievement)
+            percent = round(best.achievement * 100)
+            met = any(item.is_met for item in items)
             rows.append(
                 {
                     "code": key,
                     "title": listing(list(dict.fromkeys(item.title for item in items)), last=_("или")),
                     "weight": weights.get(key, weights.get(items[0].code, 10.0)),
                     "achievement": round(best.achievement, 3),
-                    "percent": round(best.achievement * 100),
-                    "is_met": any(item.is_met for item in items),
+                    "percent": percent,
+                    "is_met": met,
+                    "tone": "good" if met else "accent" if percent >= accent_from else "bad",
                     "is_unknown": all(item.is_unknown for item in items),
                     "gap_phrase": "" if best.is_met else best.short_gap(),
                     "criteria": [item.as_dict() for item in items],
@@ -296,35 +361,79 @@ def _best_score(student: Student, exam_type: str) -> float | None:
     return _number(best)
 
 
-def build_criteria(student: Student, requirement: AdmissionRequirement) -> tuple[Criterion, ...]:
+def build_criteria(
+    student: Student, requirement: AdmissionRequirement, rules: MatchRules | None = None
+) -> tuple[Criterion, ...]:
     """Собрать критерии, по которым есть требование.
 
     Пустой порог означает «требования нет» — такой критерий не создаётся.
     """
     exam = getattr(student, "exam", None)
+    floors = (rules or match_rules()).floors
     criteria: list[Criterion] = []
 
     if requirement.min_gpa is not None:
         criteria.append(
-            Criterion("gpa", "GPA", _number(exam.gpa) if exam else None, _number(requirement.min_gpa), step=0.1)
+            Criterion(
+                "gpa",
+                "GPA",
+                _number(exam.gpa) if exam else None,
+                _number(requirement.min_gpa),
+                step=0.1,
+                floor=floors["gpa"],
+            )
         )
 
     if requirement.min_ielts is not None:
         current = _best_score(student, "IELTS") or (_number(exam.ielts_current) if exam else None)
-        criteria.append(Criterion("ielts", "IELTS", current, _number(requirement.min_ielts), step=0.5, group="english"))
+        criteria.append(
+            Criterion(
+                "ielts",
+                "IELTS",
+                current,
+                _number(requirement.min_ielts),
+                step=0.5,
+                group="english",
+                floor=floors["ielts"],
+            )
+        )
 
     if requirement.min_toefl is not None:
         criteria.append(
-            Criterion("toefl", "TOEFL", _best_score(student, "TOEFL"), float(requirement.min_toefl), group="english")
+            Criterion(
+                "toefl",
+                "TOEFL",
+                _best_score(student, "TOEFL"),
+                float(requirement.min_toefl),
+                group="english",
+                floor=floors["toefl"],
+            )
         )
 
     if requirement.min_sat is not None:
         current = _best_score(student, "SAT") or (_number(exam.sat_current) if exam else None)
-        criteria.append(Criterion("sat", "SAT", current, float(requirement.min_sat), step=10, group="standardized"))
+        criteria.append(
+            Criterion(
+                "sat",
+                "SAT",
+                current,
+                float(requirement.min_sat),
+                step=10,
+                group="standardized",
+                floor=floors["sat"],
+            )
+        )
 
     if requirement.min_act is not None:
         criteria.append(
-            Criterion("act", "ACT", _best_score(student, "ACT"), float(requirement.min_act), group="standardized")
+            Criterion(
+                "act",
+                "ACT",
+                _best_score(student, "ACT"),
+                float(requirement.min_act),
+                group="standardized",
+                floor=floors["act"],
+            )
         )
 
     if requirement.portfolio_required:
@@ -341,33 +450,40 @@ def build_criteria(student: Student, requirement: AdmissionRequirement) -> tuple
     return tuple(criteria)
 
 
-def match(student: Student, program: Program) -> MatchResult:
-    """Соответствие ученика одной программе."""
+def match(student: Student, program: Program, rules: MatchRules | None = None) -> MatchResult:
+    """Соответствие ученика одной программе.
+
+    Цикл по программам передаёт `rules` сам, чтобы не читать правила школы на каждую.
+    """
     requirement = getattr(program, "requirement", None)
+    rules = rules or match_rules()
     return MatchResult(
         program_id=program.pk,
         program_name=program.name,
         university_name=program.university.name,
         country=program.university.country,
         has_requirements=requirement is not None,
-        criteria=build_criteria(student, requirement) if requirement else (),
+        criteria=build_criteria(student, requirement, rules) if requirement else (),
         # процент считается от порогов: непроверенный порог даёт
         # непроверенный процент, и ученику это должно быть видно
         is_verified=program.is_verified and (requirement is None or requirement.is_verified),
+        rules=rules,
     )
 
 
 def match_student_list(student: Student) -> list[MatchResult]:
     """Как ученик выглядит на фоне своего списка вузов."""
     rows = student.universities.select_related("program__university", "program__requirement").all()
-    return [match(student, row.program) for row in rows]
+    rules = match_rules()
+    return [match(student, row.program, rules) for row in rows]
 
 
 def open_programs(student: Student, *, programs: Iterable[Program] | None = None) -> list[MatchResult]:
     """Какие программы открываются при текущем профиле."""
     if programs is None:
         programs = Program.objects.filter(is_active=True).select_related("university", "requirement")
-    return [match(student, program) for program in programs]
+    rules = match_rules()
+    return [match(student, program, rules) for program in programs]
 
 
 def what_if(student: Student, *, ielts_delta: float = 0.0, sat_delta: int = 0, gpa_delta: float = 0.0) -> dict:

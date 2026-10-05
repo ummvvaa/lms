@@ -395,7 +395,7 @@ def add_to_my_list(request):
     Запись помечается `added_by=student` и ждёт подтверждения директора
     по поступлению — данные от ученика не приравниваются к проверенным.
     """
-    from django.conf import settings as django_settings
+    from core import school_rules
 
     student, by_curator, refusal = _list_owner(request)
     if refusal is not None:
@@ -409,7 +409,7 @@ def add_to_my_list(request):
     if tier not in Tier.values:
         return Response({"detail": _("Неизвестная категория")}, status=status.HTTP_400_BAD_REQUEST)
 
-    limit = django_settings.STUDENT_LIST_LIMIT
+    limit = school_rules.value(school_rules.STUDENT_LIST_LIMIT)
     if StudentUniversity.objects.filter(student=student).count() >= limit:
         return Response(
             {
