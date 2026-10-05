@@ -104,7 +104,15 @@ def _resolve_student(value: str) -> Student | None:
 
 
 def _in_domain(domain: Domain, model_label: str, field_name: str) -> bool:
-    """Поле принадлежит выбранному домену. Чужое отсекается на сервере."""
+    """Поле записано в реестре соответствий и принадлежит выбранному домену.
+
+    Чужое отсекается на сервере. Поле вне реестра (попытка экзамена, признак
+    ученика) файлом со списком не загружается, даже если его домен — выбранный.
+    """
+    from students.import_registry import FIELD_TARGETS
+
+    if f"{model_label}.{field_name}" not in FIELD_TARGETS:
+        return False
     owner = domain_of_field(model_label, field_name)
     return owner is not None and owner.code == domain.code
 

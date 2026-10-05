@@ -348,3 +348,61 @@ def test_the_doc_table_matches_the_registry():
     for row in import_registry.as_rows():
         line = f"| {row['title']} | {row['aliases']} | {row['domain']} | {row['kind']} | {row['destination']} |"
         assert line in text, f"в документации нет строки реестра: {line}"
+
+
+# --- Поля профилей в реестре -------------------------------------------------------
+
+
+def test_every_profile_field_is_in_the_registry():
+    """Файлом со списком учеников загружается ровно то, что записано в реестре соответствий (D43)."""
+    from core.domains import PROFILE_MODELS, domain_of_field, iter_field_specs
+
+    profile_fields = {
+        f"{model.label}.{spec.name}" for _domain, model, spec in iter_field_specs() if model.label in PROFILE_MODELS
+    }
+    assert set(import_registry.FIELD_TARGETS) == profile_fields
+    # ключи колонок не повторяются, домен записи — домен её поля
+    keys = [spec.key for spec in (*import_registry.COLUMNS, *import_registry.FIELD_COLUMNS)]
+    assert len(keys) == len(set(keys))
+    for target, spec in import_registry.FIELD_TARGETS.items():
+        label, _dot, name = target.rpartition(".")
+        assert domain_of_field(label, name).code == spec.domain, target
+
+
+def test_field_list_of_the_old_tab_comes_from_the_registry():
+    """Список «куда положить колонку» и сопоставление — из реестра: своего списка у вкладки нет."""
+    from students.import_reading import catalogue, rules_mapping
+
+    for code in ("behavior", "admission", "exam", "talent", "sport"):
+        targets = {row["target"] for row in catalogue(code)}
+        assert targets == {t for t, spec in import_registry.FIELD_TARGETS.items() if spec.domain == code}
+    assert catalogue("documents") == []
+    # написание колонки из реестра узнаётся целиком, а не по вхождению
+    columns = {column.title: column.target for column in rules_mapping(["email", "ielts", "ielts цель"], "exam")}
+    assert columns == {
+        "email": "student",
+        "ielts": "students.ExamProfile.ielts_current",
+        "ielts цель": "students.ExamProfile.ielts_target",
+    }
+
+
+@pytest.mark.django_db
+def test_field_outside_the_registry_is_not_loaded_by_the_list_file():
+    """Попытка экзамена — поле домена экзаменов, но не поле профиля: файл со списком её не пишет."""
+    from students.import_service import build_preview
+
+    preview = build_preview(
+        header=["email", "балл"],
+        rows=[["nobody@example.kz", "7.0"]],
+        mapping={"email": "student", "балл": "students.ExamAttempt.total_score"},
+        domain_code="exam",
+    )
+    assert preview.rows == [] and preview.matched == 0
+
+
+def test_the_fields_doc_table_matches_the_registry():
+    """Таблица в `guides/FIELDS_IMPORT.md` собрана из `FIELD_COLUMNS` — построчно."""
+    text = (ROOT / "guides" / "FIELDS_IMPORT.md").read_text(encoding="utf-8")
+    for row in import_registry.as_rows(import_registry.FIELD_COLUMNS):
+        line = f"| {row['title']} | {row['aliases']} | {row['domain']} | {row['destination']} |"
+        assert line in text, f"в документации нет строки реестра: {line}"

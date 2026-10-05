@@ -32,8 +32,8 @@ from typing import Any
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
-from core.domains import DOMAINS, PROFILE_MODELS, iter_field_specs, spec_of_field
-from students.import_registry import title_variants
+from core.domains import DOMAINS, iter_field_specs, spec_of_field
+from students.import_registry import FIELD_TARGETS, title_variants
 
 #: Сколько строк-образцов уходит в модель. Трёх хватает, чтобы понять
 #: формат колонки, и мало, чтобы это стоило денег.
@@ -80,6 +80,9 @@ class Reading:
 
     columns: list[Column] = field(default_factory=list)
     total_rows: int = 0
+    #: поля реестра соответствий для выбранного домена — список выбора
+    #: «куда положить колонку»: экран не собирает его сам
+    fields: list[dict[str, str]] = field(default_factory=list)
     matched: int = 0
     unmatched: list[str] = field(default_factory=list)
     warnings: list[dict[str, Any]] = field(default_factory=list)
@@ -95,6 +98,7 @@ class Reading:
     def as_dict(self) -> dict[str, Any]:
         return {
             "columns": [column.as_dict() for column in self.columns],
+            "fields": self.fields,
             "mapping": self.mapping,
             "total_rows": self.total_rows,
             "matched": self.matched,
@@ -113,24 +117,34 @@ class Reading:
 def catalogue(domain_code: str) -> list[dict[str, str]]:
     """Поля выбранного домена, в которые кладёт значения файл. Из реестра, не из вьюхи.
 
-    Только профильные модели: файл со списком учеников кладёт значения
-    в их профили. Записи справочника (вуз, программа, требования) грузятся
-    своим импортом и в этот список попадать не должны. Домен выбирает
-    администратор перед загрузкой (фаза 35); неизвестный код — пустой список.
+    Список — записи реестра соответствий (`import_registry.FIELD_TARGETS`):
+    файл со списком учеников кладёт значения в их профили, и что именно
+    можно загрузить, сказано там. Название и подсказка диапазона — из
+    `core.domains`, порядок — тоже его. Домен выбирает администратор перед
+    загрузкой (фаза 35); неизвестный код — пустой список.
     """
     domain = DOMAINS.get(domain_code)
+    if domain is None:
+        return []
+    return [row for row in _registry_fields() if row["domain"] == domain.code]
+
+
+def _registry_fields() -> list[dict[str, str]]:
+    """Все поля профилей, которые знает реестр соответствий, — в порядке `core.domains`."""
     rows: list[dict[str, str]] = []
     for current, model, spec in iter_field_specs():
-        if model.label not in PROFILE_MODELS:
-            continue
-        if domain is None or current.code != domain.code:
+        target = f"{model.label}.{spec.name}"
+        column = FIELD_TARGETS.get(target)
+        if column is None:
             continue
         rows.append(
             {
-                "target": f"{model.label}.{spec.name}",
+                "target": target,
+                "domain": current.code,
                 "title": spec.title,
                 "short": spec.short or spec.title,
                 "range": spec.range_hint,
+                "aliases": column.aliases,
             }
         )
     return rows
@@ -184,22 +198,24 @@ def _score(column_title: str, label: str) -> float:
 MATCH_THRESHOLD = 0.5
 
 
+def _alias_score(column_title: str, aliases) -> float:
+    """Заголовок — одно из написаний колонки в реестре: совпадение целиком, не по вхождению."""
+    low = _normalize(column_title)
+    return 1.0 if low and any(low == _normalize(alias) for alias in aliases) else 0.0
+
+
 def rules_mapping(header: list[str], domain_code: str) -> list[Column]:
-    """Сопоставить колонки по названиям полей из реестра.
+    """Сопоставить колонки по реестру соответствий: названия полей и их написания в файлах.
 
     Сначала ищем среди полей выбранного домена, потом среди чужих: колонка,
     похожая и на своё поле, и на чужое, должна лечь в своё — иначе человек
     увидит «эту колонку ведёт другой домен» там, где домен как раз выбранный.
     """
     own = {row["target"] for row in catalogue(domain_code)}
-    # ищем только среди профилей учеников: в файле со списком класса
-    # не может быть колонки про требования вуза, а лишний кандидат
-    # уводит сопоставление не туда
-    everything = {
-        f"{model.label}.{spec.name}": (domain.code, spec)
-        for domain, model, spec in iter_field_specs()
-        if model.label in PROFILE_MODELS
-    }
+    # ищем только среди полей реестра — это профили учеников: в файле со
+    # списком класса не может быть колонки про требования вуза, а лишний
+    # кандидат уводит сопоставление не туда
+    everything = {row["target"]: row for row in _registry_fields()}
 
     columns: list[Column] = []
     used: set[str] = set()
@@ -217,10 +233,10 @@ def rules_mapping(header: list[str], domain_code: str) -> list[Column]:
             continue
 
         best, best_score = "", 0.0
-        for target, (_domain_code, spec) in everything.items():
+        for target, row in everything.items():
             if target in used:
                 continue
-            score = max(_score(title, spec.title), _score(title, spec.short or spec.title))
+            score = max(_score(title, row["title"]), _score(title, row["short"]), _alias_score(title, row["aliases"]))
             # своё поле при равном счёте выигрывает у чужого
             if target in own:
                 score += 0.01
@@ -232,17 +248,17 @@ def rules_mapping(header: list[str], domain_code: str) -> list[Column]:
             columns.append(column)
             continue
 
-        domain_code, spec = everything[best]
+        found = everything[best]
         if best not in own:
             column.skip_reason = "foreign_domain"
-            column.foreign_domain = DOMAINS[domain_code].title if domain_code in DOMAINS else domain_code
-            column.field_title = spec.title
+            column.foreign_domain = DOMAINS[found["domain"]].title if found["domain"] in DOMAINS else found["domain"]
+            column.field_title = found["title"]
             columns.append(column)
             continue
 
         used.add(best)
         column.target = best
-        column.field_title = spec.title
+        column.field_title = found["title"]
         columns.append(column)
 
     return columns
@@ -434,7 +450,11 @@ def read(
         columns = rules_mapping(header, domain_code)
         columns = _ask_model_for_mapping(columns, rows, domain_code, actor)
 
-    reading = Reading(columns=columns, total_rows=len(rows))
+    reading = Reading(
+        columns=columns,
+        total_rows=len(rows),
+        fields=[{"target": row["target"], "title": row["title"]} for row in catalogue(domain_code)],
+    )
     reading.matched, reading.unmatched = _match_students(columns, rows)
     reading.warnings = inspect(columns, rows)
     reading.text, reading.offline, reading.note = _explain(reading, actor=actor, rows=rows)

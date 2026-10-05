@@ -16215,3 +16215,11 @@ msgstr "The school has not set the formulas. Statuses are set by hand, which can
 #: core/cabinets.py
 msgid "Формулы школа не задала. Статусы ставятся вручную."
 msgstr "The school has not set the formulas. Statuses are set by hand."
+
+#: students/import_registry.py
+msgid "как в карточке: вариант из списка, да или нет, число в границах, дата, текст"
+msgstr "as in the card: an option from the list, yes or no, a number within range, a date, text"
+
+#: students/import_registry.py
+msgid "поле профиля"
+msgstr "profile field"

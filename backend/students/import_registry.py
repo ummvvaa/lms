@@ -20,6 +20,13 @@
 * **куда ложится** — профиль поступления, профиль экзаменов, попытка
   экзамена, документ-ссылка, хранилище паролей.
 
+Поля профилей пяти доменов, которые загружаются списком учеников с ключом
+«почта или логин» (вкладка «Поля по CSV»), записаны здесь же, в
+`FIELD_COLUMNS` (05.10.2026): какое поле, какого домена, как его называют
+в файлах. До этого список таких полей и их сопоставление жили мимо реестра.
+Тест сверяет его с профилями `core.domains`: поле профиля, которого здесь
+нет, файлом не загружается.
+
 Новая колонка в будущем — строка в `COLUMNS`, не правка разбора.
 Порядок записей важен: «Электронный адрес Common app» должен найтись
 раньше «Электронный адрес», иначе почта Common App легла бы в личную.
@@ -39,6 +46,7 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
 from django.utils import translation
+from django.utils.functional import lazy
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy, pgettext
 
@@ -53,6 +61,9 @@ GPA = "gpa"
 LINK = "link"
 PASSWORD = "password"
 NAME = "name"
+#: значение поля профиля: разбирается так же, как при вводе в карточке
+#: (`core.audit.coerce`) — вариант из списка, да/нет, справочник, число в границах
+VALUE = "value"
 
 KIND_TITLES: dict[str, str] = {
     TEXT: gettext_lazy("текст"),
@@ -64,6 +75,7 @@ KIND_TITLES: dict[str, str] = {
     LINK: gettext_lazy("ссылка"),
     PASSWORD: gettext_lazy("пароль"),
     NAME: gettext_lazy("ФИО"),
+    VALUE: gettext_lazy("как в карточке: вариант из списка, да или нет, число в границах, дата, текст"),
 }
 
 # --- Куда ложится ---------------------------------------------------------------
@@ -74,6 +86,7 @@ ATTEMPT = "attempt"  # попытка экзамена
 DOCUMENT = "document"  # документ-ссылка
 CREDENTIAL = "credential"  # хранилище паролей
 MATCH = "match"  # сопоставление с учеником, никуда не пишется
+FIELD = "field"  # поле профиля любого домена: модель названа в записи
 
 TARGET_TITLES: dict[str, str] = {
     PROFILE: gettext_lazy("профиль поступления"),
@@ -82,6 +95,7 @@ TARGET_TITLES: dict[str, str] = {
     DOCUMENT: gettext_lazy("документ-ссылка"),
     CREDENTIAL: gettext_lazy("хранилище паролей"),
     MATCH: gettext_lazy("сопоставление с учеником"),
+    FIELD: gettext_lazy("поле профиля"),
 }
 
 #: Домены, в которые таблица поступления пишет **сверх своих**, от имени
@@ -113,6 +127,8 @@ class ColumnSpec:
     #: вид пароля — для `CREDENTIAL`
     credential: str = ""
     required: bool = False
+    #: модель профиля — для `FIELD`: `students.BehaviorProfile`
+    model: str = ""
 
     @property
     def domain_title(self) -> str:
@@ -125,6 +141,8 @@ class ColumnSpec:
         """Куда ложится — словами для отчёта и документации."""
         if self.target in (PROFILE, EXAM_PROFILE):
             return _("{target}, поле «{field}»").format(target=TARGET_TITLES[self.target], field=self.field)
+        if self.target == FIELD:
+            return _("{target}, поле «{field}»").format(target=_model_title(self.model), field=self.field)
         if self.target == ATTEMPT:
             return f"{TARGET_TITLES[self.target]} {self.exam}-{self.slot}"
         if self.target == DOCUMENT:
@@ -247,7 +265,92 @@ COLUMNS: tuple[ColumnSpec, ...] = (  # i18n-skip: синонимы заголо�
     ),
 )
 
-BY_KEY: dict[str, ColumnSpec] = {spec.key: spec for spec in COLUMNS}
+# --- Поля профилей: файл со списком учеников ---------------------------------
+
+
+def _model_title(label: str) -> str:
+    """«Профиль дисциплины» — имя модели профиля словами, из самой модели."""
+    from django.apps import apps
+
+    return str(apps.get_model(label)._meta.verbose_name).lower()
+
+
+def _field_title(label: str, name: str) -> str:
+    from core.labels import field_title
+
+    return field_title(label, name)
+
+
+#: заголовок колонки поля — его название из `core.domains`: один факт в одном месте
+_lazy_field_title = lazy(_field_title, str)
+
+
+def _field(key: str, model: str, name: str, domain: str, *aliases: str) -> ColumnSpec:
+    label = f"students.{model}"
+    return ColumnSpec(key, _lazy_field_title(label, name), aliases, VALUE, domain, FIELD, name, model=label)
+
+
+#: Поля профилей, которых нет среди колонок таблицы поступления. Ключ ученика
+#: в таком файле — почта или логин, сопоставление колонок человек правит руками
+#: (`students.import_reading`); синонимы — как колонку называют в школьных списках
+FIELD_COLUMNS: tuple[ColumnSpec, ...] = (  # i18n-skip: синонимы заголовков школы — для распознавания, без перевода
+    # дисциплина
+    _field("attendance_percent", "BehaviorProfile", "attendance_percent", "behavior", "посещаемость", "посещаемость %"),
+    _field("remarks_count", "BehaviorProfile", "remarks_count", "behavior", "замечания", "замечаний"),
+    _field("behavior_status", "BehaviorProfile", "status", "behavior", "статус дисциплины", "дисциплина"),
+    _field("behavior_comment", "BehaviorProfile", "comment", "behavior", "комментарий по дисциплине"),
+    # поступление
+    _field("target_country", "AdmissionProfile", "target_country", "admission", "страна", "целевая страна"),
+    _field("target_major", "AdmissionProfile", "target_major", "admission", "специальность", "направление"),
+    _field("target_level", "AdmissionProfile", "target_level", "admission", "уровень", "уровень вузов"),
+    _field("has_common_app", "AdmissionProfile", "has_common_app", "admission", "common app", "есть common app"),
+    _field(
+        "has_application_account",
+        "AdmissionProfile",
+        "has_application_account",
+        "admission",
+        "аккаунт подачи",
+        "есть аккаунт подачи",
+    ),
+    _field("admission_status", "AdmissionProfile", "status", "admission", "статус поступления", "статус a/b/c"),
+    # экзамены: текущий балл и цель — поля профиля, попытки IELTS-n и SAT-n — колонки таблицы выше
+    _field("ielts_current", "ExamProfile", "ielts_current", "exam", "ielts", "ielts текущий"),
+    _field("ielts_target", "ExamProfile", "ielts_target", "exam", "ielts цель", "цель ielts"),
+    _field("sat_current", "ExamProfile", "sat_current", "exam", "sat", "sat текущий"),
+    _field("sat_target", "ExamProfile", "sat_target", "exam", "sat цель", "цель sat"),
+    _field("hours_per_week", "ExamProfile", "hours_per_week", "exam", "часов в неделю", "часы"),
+    _field("exam_teacher", "ExamProfile", "teacher", "exam", "учитель", "преподаватель"),
+    _field("next_mock_date", "ExamProfile", "next_mock_date", "exam", "следующий mock test", "дата mock test"),
+    # таланты
+    _field("main_track", "TalentProfile", "main_track", "talent", "трек", "основной трек"),
+    _field("portfolio_status", "TalentProfile", "portfolio_status", "talent", "портфолио", "статус портфолио"),
+    _field("talent_comment", "TalentProfile", "comment", "talent", "комментарий по талантам"),
+    # спорт
+    _field("sport_type", "SportProfile", "sport_type", "sport", "вид спорта", "спорт"),
+    _field("sport_level", "SportProfile", "level", "sport", "уровень в спорте", "спортивный уровень"),
+    _field("sport_rank", "SportProfile", "rank", "sport", "разряд", "звание"),
+    _field("leadership_role", "SportProfile", "leadership_role", "sport", "роль в команде", "капитан"),
+)
+
+
+def field_target(spec: ColumnSpec) -> str:
+    """Поле профиля, в которое ложится колонка: `students.ExamProfile.gpa`; не поле — пусто."""
+    if spec.target == PROFILE:
+        return f"students.AdmissionProfile.{spec.field}"
+    if spec.target == EXAM_PROFILE:
+        return f"students.ExamProfile.{spec.field}"
+    if spec.target == FIELD:
+        return f"{spec.model}.{spec.field}"
+    return ""
+
+
+#: Поле профиля → запись реестра: всё, что загружается файлом со списком учеников.
+#: Шесть полей пишет и таблица поступления (телефон, почты, папка, срок паспорта, GPA)
+FIELD_TARGETS: dict[str, ColumnSpec] = {
+    field_target(spec): spec for spec in (*COLUMNS, *FIELD_COLUMNS) if field_target(spec)
+}
+
+BY_KEY: dict[str, ColumnSpec] = {spec.key: spec for spec in (*COLUMNS, *FIELD_COLUMNS)}
 
 #: Заголовки, которые не колонки данных: их не надо называть «не распознана»
 SERVICE_HEADERS: tuple[str, ...] = ("№", "n", "no", "#")
@@ -545,10 +648,12 @@ def _column_warning(column, warning: str) -> str:
 # --- Для документации ----------------------------------------------------------
 
 
-def as_rows() -> list[dict]:
-    """Реестр строками — из них собирается таблица в `guides/ADMISSION_IMPORT.md`.
+def as_rows(columns: tuple[ColumnSpec, ...] = COLUMNS) -> list[dict]:
+    """Реестр строками — из них собираются таблицы в `guides/`.
 
-    Документация обязана совпадать с кодом: тест сверяет её с этим списком.
+    `COLUMNS` — таблица поступления (`ADMISSION_IMPORT.md`), `FIELD_COLUMNS` —
+    поля профилей (`FIELDS_IMPORT.md`). Документация обязана совпадать
+    с кодом: тест сверяет её с этим списком.
     """
     return [
         {
@@ -559,5 +664,5 @@ def as_rows() -> list[dict]:
             "destination": spec.destination,
             "required": pgettext("answer", "да") if spec.required else pgettext("answer", "нет"),
         }
-        for spec in COLUMNS
+        for spec in columns
     ]

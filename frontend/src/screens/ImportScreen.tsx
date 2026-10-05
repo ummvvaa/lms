@@ -70,6 +70,8 @@ interface Reading {
     skip_reason: string
     foreign_domain: string
   }[]
+  /** поля выбранного домена из реестра соответствий сервера — список выбора в таблице сопоставления */
+  fields: { target: string; title: string }[]
   mapping: Record<string, string>
   total_rows: number
   matched: number
@@ -296,8 +298,10 @@ function FieldsImport({ domain }: { domain: Domain }) {
                   >
                     <option value="">{t('— не импортировать —')}</option>
                     <option value="student">{t('Ученик (почта или логин)')}</option>
-                    {model.fields.map((field) => (
-                      <option key={field.name} value={`${model.label}.${field.name}`}>
+                    {/* поля — из реестра соответствий сервера, а не из описания домена:
+                        что загружается файлом, сказано в одном месте */}
+                    {(reading?.fields ?? []).map((field) => (
+                      <option key={field.target} value={field.target}>
                         {field.title}
                       </option>
                     ))}
@@ -505,9 +509,10 @@ function extrasOf(domain: Domain): { key: string; tab: string; body: ReactNode }
 
 /** Администратор: выбор домена, потом файл. */
 function AdminImport({ domains }: { domains: Domain[] }) {
-  // мастер на реестре — главный путь (фаза 72); старый CSV-импорт полей
-  // остаётся второй вкладкой: реестр пока знает только колонки таблицы
-  // Асем, а поля вне его грузятся прежним сопоставлением (DEFECTS, D42)
+  // мастер на реестре — главный путь (фаза 72); импорт полей списком
+  // остаётся второй вкладкой: поля и их написания он берёт из того же
+  // реестра соответствий (05.10.2026), а ключ ученика и ручное
+  // сопоставление колонок у него свои (DEFECTS, D43)
   const [mode, setMode] = useState<'wizard' | 'csv'>('wizard')
   const [code, setCode] = useState('')
   const [what, setWhat] = useState('fields')
