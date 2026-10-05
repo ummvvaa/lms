@@ -18,7 +18,7 @@ import { t, tk, tn } from '../../i18n'
 import { usePhone } from '../../phone'
 import { toast } from 'sonner'
 import { markTone, useSetGrade, type AcadDay, type AcadLesson, type AcadMark, type AcadSubject, type AcadWeek, type AcadWeekRow } from '../../api/academics'
-import { timeInSchoolZone } from '../../lib/dates'
+import { mondayOf, shiftDay, timeInSchoolZone } from '../../lib/dates'
 import { formatDayMonth } from '../../lib/format'
 import './academics.css'
 
@@ -55,16 +55,11 @@ export function useWeekStart(): [string, (date: string) => void] {
 }
 
 export function weekStart(iso: string): string {
-  const day = new Date(`${iso}T00:00:00`)
-  const shift = (day.getDay() + 6) % 7
-  day.setDate(day.getDate() - shift)
-  return day.toISOString().slice(0, 10)
+  return mondayOf(iso)
 }
 
 export function addDays(iso: string, days: number): string {
-  const day = new Date(`${iso}T00:00:00`)
-  day.setDate(day.getDate() + days)
-  return day.toISOString().slice(0, 10)
+  return shiftDay(iso, days)
 }
 
 /** Кто учится, одним словом для сетки: состав или учитель. */

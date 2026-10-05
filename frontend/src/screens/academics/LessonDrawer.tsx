@@ -35,6 +35,7 @@ import { Button } from '../../components/ui/button'
 import { t, tn } from '../../i18n'
 import { dateFull, dateWords } from './shared'
 import { formatWeekday } from '../../lib/format'
+import { todayAlmaty } from '../../lib/dates'
 
 
 function ConflictNote({ conflicts, checked }: { conflicts: AcadConflict[]; checked: boolean }) {
@@ -513,7 +514,7 @@ export default function LessonDrawer({ lesson, conflicts, onClose }: { lesson: A
   const restore = useRestoreLesson()
   const [dialog, setDialog] = useState<'edit' | 'sub' | 'move' | 'cancel' | 'delete' | null>(null)
   const changed = lesson.status !== 'planned' || Boolean(lesson.substitute)
-  const past = lesson.state === 'past' && lesson.date < new Date().toISOString().slice(0, 10)
+  const past = lesson.state === 'past' && lesson.date < todayAlmaty()
   return (
     <>
       <EditDrawer

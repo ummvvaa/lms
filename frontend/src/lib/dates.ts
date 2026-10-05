@@ -29,6 +29,25 @@ export function timeInSchoolZone(at: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: SCHOOL_TIME_ZONE }).format(at)
 }
 
+/**
+ * День через `days` дней от дня `iso` — арифметика календаря, без часовых поясов.
+ *
+ * Дата разбирается и собирается как UTC: местная полночь, отрезанная
+ * `toISOString()`, в Алматы давала вчерашний день — подпись недели в
+ * «Расписании» стояла «4–7 октября» над сеткой «пн 5 – пт 9» (D85).
+ */
+export function shiftDay(iso: string, days: number): string {
+  const day = new Date(`${iso}T00:00:00Z`)
+  day.setUTCDate(day.getUTCDate() + days)
+  return day.toISOString().slice(0, 10)
+}
+
+/** Понедельник недели, в которую попадает день `iso`. */
+export function mondayOf(iso: string): string {
+  const weekday = new Date(`${iso}T00:00:00Z`).getUTCDay()
+  return shiftDay(iso, -((weekday + 6) % 7))
+}
+
 /** День через `days` дней от сегодня по Алматы. */
 export function daysFromToday(days: number): string {
   const at = new Date()

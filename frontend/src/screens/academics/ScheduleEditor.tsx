@@ -21,6 +21,7 @@ import LessonDrawer, { LessonForm, SlotField } from './LessonDrawer'
 import ScheduleImport from './ScheduleImport'
 import { dateWords, useWeekStart, WeekGrid, WeekNav, weekStart } from './shared'
 import { formatDateTime } from '../../lib/format'
+import { shiftDay } from '../../lib/dates'
 
 type View = 'group' | 'teacher' | 'room'
 
@@ -284,7 +285,5 @@ export default function ScheduleEditor() {
 }
 
 function addWeek(iso: string): string {
-  const day = new Date(`${iso}T00:00:00`)
-  day.setDate(day.getDate() + 7)
-  return day.toISOString().slice(0, 10)
+  return shiftDay(iso, 7)
 }

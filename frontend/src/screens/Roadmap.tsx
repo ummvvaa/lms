@@ -11,6 +11,7 @@ import { Button } from '../components/ui/button'
 import { t, tk, tn } from '../i18n'
 import { formatDate, formatYearMonth } from '../lib/format'
 import './roadmap.css'
+import { todayAlmaty } from '../lib/dates'
 
 const STATUSES: { code: TaskStatus; title: string }[] = [
   { code: 'todo', title: tk('Сделать') },
@@ -66,7 +67,7 @@ export default function Roadmap() {
 
   const all = data ?? []
   const done = all.filter((task) => task.status === 'done').length
-  const overdue = all.filter((task) => task.status !== 'done' && task.due_date_effective && task.due_date_effective < new Date().toISOString().slice(0, 10)).length
+  const overdue = all.filter((task) => task.status !== 'done' && task.due_date_effective && task.due_date_effective < todayAlmaty()).length
   const categories = [...new Set(all.map((task) => task.category))]
 
   return (
