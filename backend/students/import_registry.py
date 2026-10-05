@@ -350,10 +350,29 @@ FIELD_TARGETS: dict[str, ColumnSpec] = {
     field_target(spec): spec for spec in (*COLUMNS, *FIELD_COLUMNS) if field_target(spec)
 }
 
-#: Всё, что знает реестр: колонки таблицы поступления, затем поля профилей
-ALL_COLUMNS: tuple[ColumnSpec, ...] = (*COLUMNS, *FIELD_COLUMNS)
+#: Ключ ученика в файле-списке: почта или логин, точное совпадение по всей школе
+#: (`students.lookup`). У 8–10 почты нет — их строку находит логин. В листе с
+#: колонкой ФИО ключ не нужен: там ученика находит ФИО внутри группы листа.
+#: Заголовок «почта» в листе без ФИО — тоже ключ (решение владельца, 05.10.2026)
+STUDENT_KEY: ColumnSpec = ColumnSpec(  # i18n-skip: синонимы заголовков школы — для распознавания, без перевода
+    "student_key",
+    gettext_lazy("Ученик (почта или логин)"),
+    ("логин", "login", "мейл", "почта ученика", "email ученика"),
+    TEXT,
+    "",
+    MATCH,
+)
+
+#: Всё, что знает реестр: колонки таблицы поступления, ключ ученика, поля профилей
+ALL_COLUMNS: tuple[ColumnSpec, ...] = (*COLUMNS, STUDENT_KEY, *FIELD_COLUMNS)
 
 BY_KEY: dict[str, ColumnSpec] = {spec.key: spec for spec in ALL_COLUMNS}
+
+
+def card_keys(keys) -> tuple[str, ...]:
+    """Колонки таблицы, которые ложатся в поле профиля: в файле-списке они читаются «как в карточке»."""
+    return tuple(key for key in keys if key in BY_KEY and BY_KEY[key].target in (PROFILE, EXAM_PROFILE))
+
 
 #: Заголовки, которые не колонки данных: их не надо называть «не распознана»
 SERVICE_HEADERS: tuple[str, ...] = ("№", "n", "no", "#")
@@ -494,7 +513,7 @@ def read_columns(header: list[str], *, assigned: dict[str, str] | None = None) -
         key = assigned[_text(title)]
         if key in BY_KEY and key not in found:
             found[key] = index
-    for spec in COLUMNS:
+    for spec in (*COLUMNS, STUDENT_KEY):
         if spec.key in found:
             continue
         names = (*spec.aliases, *sorted(header_variants(spec.title)))
@@ -505,6 +524,9 @@ def read_columns(header: list[str], *, assigned: dict[str, str] | None = None) -
                 found[spec.key] = index
                 taken.add(index)
                 break
+    # в листе без ФИО заголовок «почта» — ключ ученика, а не личная почта в карточке
+    if "name" not in found and STUDENT_KEY.key not in found and "email" in found and "email" not in assigned.values():
+        found[STUDENT_KEY.key] = found.pop("email")
     for index, title in enumerate(header):
         if index in taken or not keys[index] or keys[index] in SERVICE_HEADERS:
             continue

@@ -76,6 +76,8 @@ class Row:
     skip: bool = False
     #: что из значений строки заменит уже записанное: поле, было, станет
     overwrites: list[dict] = field(default_factory=list)
+    #: строка листа-списка: ученик найден по почте или логину, поля читаются «как в карточке»
+    by_key: bool = False
 
     @property
     def fields(self) -> list[dict]:
@@ -145,6 +147,8 @@ class Sheet:
     rows: list[Row] = field(default_factory=list)
     #: колонки реестра, найденные в заголовке листа
     columns: list[str] = field(default_factory=list)
+    #: лист-список: колонки ФИО нет, ученик ищется по почте или логину
+    by_key: bool = False
     #: заголовки, которых реестр не знает
     unknown: list[str] = field(default_factory=list)
 
@@ -154,6 +158,7 @@ class Sheet:
             "group_code": self.group_code,
             "group": self.group_id,
             "error": self.error,
+            "by_key": self.by_key,
             "columns": self.columns,
             "unknown_columns": self.unknown,
             "rows": [row.as_dict() for row in self.rows],
@@ -278,14 +283,19 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
         columns = registry.read_columns(header)
         sheet.columns = [spec.key for spec in registry.ALL_COLUMNS if spec.key in columns]
         sheet.unknown = registry.unknown_columns(header, columns)
-        if "name" not in columns:
-            sheet.error = _("На листе не нашлась колонка «{column}» — лист пропущен целиком").format(
-                column=registry.spec_of("name").title
-            )
+        # колонки ФИО нет, а колонка с почтой или логином есть — лист-список:
+        # ученика находит ключ, точным совпадением по всей школе
+        sheet.by_key = "name" not in columns and registry.STUDENT_KEY.key in columns
+        if "name" not in columns and not sheet.by_key:
+            sheet.error = _(
+                "На листе нет колонки «{column}» и нет колонки с почтой или логином ученика — лист пропущен целиком"
+            ).format(column=registry.spec_of("name").title)
             out.append(sheet)
             continue
 
         students = list(Student.objects.filter(group=group, is_active=True).select_related("group"))
+        as_card = registry.card_keys(sheet.columns) if sheet.by_key else ()
+        match_key = registry.STUDENT_KEY.key if sheet.by_key else "name"
         seen: dict[int, int] = {}
         for number, raw in enumerate(body, start=1):
 
@@ -293,18 +303,22 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
                 index = columns.get(key, -1)
                 return line[index] if 0 <= index < len(line) else None
 
-            raw_name = _text(cell("name"))
-            # строка без ФИО — не ошибка: это хвост листа или его разметка
+            raw_name = _text(cell(match_key))
+            # строка без ФИО или ключа — не ошибка: это хвост листа или его разметка
             if not raw_name:
                 continue
-            row = Row(index=number, raw_name=raw_name)
+            row = Row(index=number, raw_name=raw_name, by_key=sheet.by_key)
             fix = fixes.get(f"{sheet_name}:{number}")
             if fix and fix.skip:
                 row.skip = True
-            _resolve_student(row, students=students, fix=fix, finder=find)
-            _refuse_junior(row, students)
-            _resolve_values(row, cell=cell, keys=sheet.columns)
-            _resolve_fields(row, cell=cell, keys=sheet.columns)
+            if sheet.by_key:
+                student = _resolve_by_key(row, own_groups=own_groups)
+            else:
+                _resolve_student(row, students=students, fix=fix, finder=find)
+                student = next((s for s in students if s.pk == row.student), None)
+            _refuse_junior(row, student)
+            _resolve_values(row, cell=cell, keys=sheet.columns, as_card=as_card)
+            _resolve_fields(row, cell=cell, keys=sheet.columns, as_card=as_card)
             if row.student is not None:
                 if row.student in seen:
                     row.error = _("этот ученик уже был в строке №{number}").format(number=seen[row.student])
@@ -315,13 +329,27 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
     return out
 
 
-def _refuse_junior(row: Row, students: list) -> None:
+def _refuse_junior(row: Row, student) -> None:
     """Ученик 8–10 — ошибка строки: поступление ведётся только у 11."""
     from core.parallels import has_admission
 
-    student = next((s for s in students if s.pk == row.student), None) if row.student else None
     if student is not None and not has_admission(student):
         row.error = _("поступление ведётся только у 11 параллели — строка пропущена")
+
+
+def _resolve_by_key(row: Row, *, own_groups: set[int] | None):
+    """Ученик листа-списка: почта или логин, точное совпадение по всей школе (`students.lookup`)."""
+    from students.lookup import resolve
+
+    student = resolve(row.raw_name)
+    if student is None:
+        row.error = _("ученик с такой почтой или логином не найден")
+        return None
+    if own_groups is not None and student.group_id not in own_groups:
+        row.error = _("ученик не из вашей группы: куратор загружает только свои")
+        return None
+    row.student, row.student_name = student.pk, student.full_name
+    return student
 
 
 def _resolve_student(row: Row, *, students: list, fix: Fix | None, finder) -> None:
@@ -623,10 +651,12 @@ def _apply_row(row: Row, *, actor, today: dt.date, domains: list[str]) -> dict:
         return bool(spec.domain) and spec.domain in domains
 
     # профили: значения ложатся полями, пустая ячейка ничего не стирает
+    # в листе-списке те же поля читаются «как в карточке» и идут через `_apply_fields`
+    as_card = registry.card_keys(row.values) if row.by_key else ()
     profile_changes: dict[str, dict] = {}
     for key, value in row.values.items():
         spec = registry.spec_of(key)
-        if spec.target in (registry.PROFILE, registry.EXAM_PROFILE) and allowed(spec):
+        if key not in as_card and spec.target in (registry.PROFILE, registry.EXAM_PROFILE) and allowed(spec):
             profile_changes.setdefault(spec.target, {})[spec.field] = value
 
     admission_changes = profile_changes.get(registry.PROFILE, {})
@@ -647,7 +677,7 @@ def _apply_row(row: Row, *, actor, today: dt.date, domains: list[str]) -> dict:
         changed |= bool(apply_changes(exam_profile, exam_changes, actor=actor, source=Source.IMPORT))
         by_domain["exam"] = by_domain.get("exam", 0) + len(exam_changes)
 
-    fields = _apply_fields(row, student=student, actor=actor, domains=domains)
+    fields = _apply_fields(row, student=student, actor=actor, domains=domains, as_card=as_card)
     for code, count in fields.items():
         by_domain[code] = by_domain.get(code, 0) + count
     changed |= bool(fields)
@@ -704,7 +734,8 @@ def _apply_fields(row: Row, *, student, actor, domains: list[str], as_card: tupl
 
 def _common_app_seen(row: Row, domains: list[str]) -> bool:
     """Есть ли в строке признак заведённого Common App — и выбран ли его домен."""
-    if "admission" not in domains:
+    # в листе-списке признак пишется только своей колонкой: файл полей ничего не домысливает
+    if "admission" not in domains or row.by_key:
         return False
     return bool(row.values.get("common_app_email") or row.values.get("common_app_password"))
 

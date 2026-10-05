@@ -10072,12 +10072,6 @@ msgstr ""
 "“{group}” is not your group: curators upload only their own — the sheet was "
 "skipped"
 
-#: students/admission_import.py:268
-#, python-brace-format
-msgid "На листе не нашлась колонка «{column}» — лист пропущен целиком"
-msgstr ""
-"Column “{column}” was not found on the sheet — the whole sheet was skipped"
-
 #: students/admission_import.py:295
 #, python-brace-format
 msgid "этот ученик уже был в строке №{number}"
@@ -16223,3 +16217,20 @@ msgstr "as in the card: an option from the list, yes or no, a number within rang
 #: students/import_registry.py
 msgid "поле профиля"
 msgstr "profile field"
+
+#: students/admission_import.py
+#, python-brace-format
+msgid "На листе нет колонки «{column}» и нет колонки с почтой или логином ученика — лист пропущен целиком"
+msgstr "The sheet has neither the column “{column}” nor a column with the student's email or login — the whole sheet is skipped"
+
+#: students/admission_import.py
+msgid "ученик с такой почтой или логином не найден"
+msgstr "no student with this email or login"
+
+#: students/admission_import.py
+msgid "ученик не из вашей группы: куратор загружает только свои"
+msgstr "the student is not in your group: a curator uploads only their own groups"
+
+#: students/import_registry.py
+msgid "Ученик (почта или логин)"
+msgstr "Student (email or login)"

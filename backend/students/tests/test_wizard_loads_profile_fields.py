@@ -104,3 +104,48 @@ def test_header_alike_for_fields_of_two_domains_is_left_to_the_person(klass, adm
     uploaded = book({"Chicago": (["ФИО", "Статус"], [[klass[0].full_name, "A"]])})
     sheets = admission_import.parse(uploaded, actor=admin)
     assert sheets[0].columns == ["name"] and sheets[0].unknown == ["Статус"]
+
+
+# --- Ключ ученика: почта или логин ---------------------------------------------------
+
+
+def test_sheet_without_names_finds_students_by_email_or_login(klass, stranger, admin):
+    """Колонки ФИО нет — ученика находит почта или логин, точным совпадением по всей школе."""
+    by_login = klass[1]
+    by_login.user.login = "erzhanova.m"
+    by_login.user.save(update_fields=["login"])
+    header = ["email", "ielts"]
+    body = [[klass[0].email, "6.5"], ["ERZHANOVA.M", "7.0"], [stranger.email, "5.5"], ["nobody@example.kz", "6.0"]]
+    sheets = admission_import.parse(book({"Chicago": (header, body)}), actor=admin)
+    assert sheets[0].by_key and sheets[0].columns == ["student_key", "ielts_current"]
+    first, second, other_group, missing = rows_of(sheets)
+    assert (first.student, second.student) == (klass[0].pk, by_login.pk) and first.by_key
+    # ключ ищет по всей школе: ученик другой группы найден, как и во вкладке «Поля по CSV»
+    assert other_group.student == stranger.pk and not other_group.error
+    assert missing.student is None and missing.error == "ученик с такой почтой или логином не найден"
+
+
+def test_email_header_next_to_names_stays_the_personal_email(klass, admin):
+    """С колонкой ФИО «почта» — личная почта в карточке, а не ключ (решение владельца)."""
+    uploaded = book({"Chicago": (["ФИО", "Почта"], [[klass[0].full_name, "own@mail.kz"]])})
+    sheets = admission_import.parse(uploaded, actor=admin)
+    assert not sheets[0].by_key and sheets[0].columns == ["name", "email"]
+    assert rows_of(sheets)[0].values == {"email": "own@mail.kz"}
+
+
+def test_list_sheet_reads_table_fields_like_the_card_and_guesses_nothing(klass, admin):
+    """В листе-списке телефон и GPA — «как в карточке»; признак Common App сам не ставится."""
+    student = klass[0]
+    header = ["логин", "Номер телефона", "GPA", "Электронный адрес Common App"]
+    uploaded = book({"Chicago": (header, [[student.email, "8 707 000 00 00", "4.5", "ca@example.org"]])})
+    admission_import.apply(uploaded, actor=admin)
+    student.admission.refresh_from_db()
+    student.exam.refresh_from_db()
+    assert student.admission.student_phone == "8 707 000 00 00"
+    assert student.admission.common_app_email == "ca@example.org" and student.admission.has_common_app is False
+    assert str(student.exam.gpa) == "4.50"
+
+
+def test_sheet_with_neither_names_nor_key_is_skipped_with_words(klass, admin):
+    sheets = admission_import.parse(book({"Chicago": (["ielts", "sat"], [["6.5", "1300"]])}), actor=admin)
+    assert "нет колонки с почтой или логином" in sheets[0].error and sheets[0].rows == []
