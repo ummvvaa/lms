@@ -17,6 +17,7 @@ from rest_framework.test import APIClient
 
 from accounts.curators import assign
 from accounts.models import User
+from core import school_rules
 from core.models import AuditLog, Notification
 from students import attention, documents
 from students.models import (
@@ -293,7 +294,7 @@ def test_revoke_returns_the_document_to_the_queue(mine, curator):
 @pytest.mark.django_db
 def test_expiring_is_computed_from_the_threshold(mine, curator, settings):
     _student, user = mine
-    soon = upload(user, expires_at=str(days(settings.CURATOR_RULES["DOCUMENT_EXPIRING_DAYS"] - 5)))
+    soon = upload(user, expires_at=str(days(school_rules.value("document_expiring_days") - 5)))
     far = upload(user, doc_type="exam_certificate", expires_at=str(days(400)))
     client = login(curator)
     for doc in (soon, far):
@@ -597,7 +598,7 @@ def test_escalation_from_the_card_without_a_row(mine, curator, kymbat, asem):
 @pytest.mark.django_db
 def test_document_expiry_notice_two_weeks_ahead(mine, curator, settings):
     _student, user = mine
-    notice = settings.CURATOR_RULES["DOCUMENT_NOTICE_DAYS"]
+    notice = school_rules.value("document_notice_days")
     doc = upload(user, expires_at=str(days(notice)))
     other = upload(user, doc_type="exam_certificate", expires_at=str(days(notice + 3)))
     client = login(curator)

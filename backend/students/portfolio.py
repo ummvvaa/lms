@@ -81,9 +81,12 @@ def documents_checklist(student: Student) -> list[dict]:
     for row in rows:
         latest[row.doc_type] = row
     out = []
+    from core import school_rules
+
+    expiring_days = school_rules.value(school_rules.DOCUMENT_EXPIRING_DAYS)
     for code in REQUIRED_DOCUMENTS:
         row = latest.get(code)
-        state = row.state if row else "none"
+        state = row.state_within(expiring_days) if row else "none"
         out.append(
             {
                 "code": code,

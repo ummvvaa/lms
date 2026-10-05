@@ -789,7 +789,7 @@ class DocumentStatus(models.TextChoices):
     """Проверка документа (фаза 62): загружен → подтверждён или отклонён с причиной.
 
     «Истекает» — не статус, а вычисляемый признак подтверждённого документа
-    со сроком действия ближе `CURATOR_RULES["DOCUMENT_EXPIRING_DAYS"]`.
+    со сроком действия ближе настройки школы «Документ истекает».
     """
 
     PENDING = "pending", gettext_lazy("Ждёт проверки")
@@ -860,21 +860,35 @@ class StudentDocument(Archivable):
     )
     created_at = models.DateTimeField(gettext_lazy("Загружен"), auto_now_add=True)
 
-    @property
-    def is_expiring(self) -> bool:
-        """Подтверждён, а срок действия уже близко (порог — в настройках)."""
-        from django.conf import settings as conf
+    def expiring_within(self, days: int | None = None) -> bool:
+        """Подтверждён, а срок действия ближе `days` дней.
+
+        `days` — настройка школы «Документ истекает»; список документов читает
+        её один раз и передаёт сюда, одиночный документ читает сам.
+        """
         from django.utils import timezone
 
         if self.status != DocumentStatus.CONFIRMED or self.expires_at is None:
             return False
+        if days is None:
+            from core import school_rules
+
+            days = school_rules.value(school_rules.DOCUMENT_EXPIRING_DAYS)
         today = timezone.localdate()
-        return today <= self.expires_at <= today + timedelta(days=conf.CURATOR_RULES["DOCUMENT_EXPIRING_DAYS"])
+        return today <= self.expires_at <= today + timedelta(days=days)
+
+    @property
+    def is_expiring(self) -> bool:
+        """Подтверждён, а срок действия уже близко (порог — настройка школы)."""
+        return self.expiring_within()
+
+    def state_within(self, days: int | None = None) -> str:
+        """Состояние для матрицы: `expiring` поверх `confirmed`, остальное — статус."""
+        return "expiring" if self.expiring_within(days) else str(self.status)
 
     @property
     def state(self) -> str:
-        """Состояние для матрицы: `expiring` поверх `confirmed`, остальное — статус."""
-        return "expiring" if self.is_expiring else str(self.status)
+        return self.state_within()
 
     @property
     def is_link(self) -> bool:

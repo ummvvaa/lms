@@ -20,14 +20,13 @@ from __future__ import annotations
 import datetime as dt
 from pathlib import Path
 
-from django.conf import settings
 from django.db import transaction
 from django.db.models import QuerySet
 from django.utils import timezone, translation
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_noop
 
-from core import stored_text
+from core import school_rules, stored_text
 from core.audit import apply_changes, record_event
 from core.domains import ROLE_STUDENT, Source
 from core.i18n import language_of
@@ -83,13 +82,15 @@ def state_of(students: QuerySet[Student]) -> dict[int, dict]:
         ).values_list("changes__object_id", "pk")
     )
     out: dict[int, dict] = {}
+    # «истекает» — настройка школы: читается один раз на всю матрицу
+    expiring_days = school_rules.value(school_rules.DOCUMENT_EXPIRING_DAYS)
     for student in students:
         mine = latest.get(student.pk, {})
         cells: dict[str, dict] = {}
         for code in REQUIRED_DOCUMENTS:
             row = mine.get(code)
             cells[code] = {
-                "state": row.state if row else "none",
+                "state": row.state_within(expiring_days) if row else "none",
                 "document": row.pk if row else None,
                 # имя файла — как назвал ученик, иначе само имя файла: повторять тип незачем
                 # название документа-ссылки по умолчанию хранится по-русски — читающему на его языке
@@ -324,13 +325,14 @@ def remind(students: QuerySet[Student], *, actor, days: int = 7) -> list[dict]:
 
 
 def send_expiry_notices(today: dt.date | None = None) -> int:
-    """Куратору — за `DOCUMENT_NOTICE_DAYS` дней до срока подтверждённого документа."""
+    """Куратору — за столько дней до срока подтверждённого документа, сколько задано в настройках школы."""
     from accounts.curators import curator_of
     from core.models import Notification
     from roadmap.reminders import _notify_once
 
     today = today or timezone.localdate()
-    when = today + dt.timedelta(days=settings.CURATOR_RULES["DOCUMENT_NOTICE_DAYS"])
+    notice_days = school_rules.value(school_rules.DOCUMENT_NOTICE_DAYS)
+    when = today + dt.timedelta(days=notice_days)
     sent = 0
     rows = StudentDocument.objects.filter(status=DocumentStatus.CONFIRMED, expires_at=when).select_related(
         "student", "student__group"
@@ -351,7 +353,7 @@ def send_expiry_notices(today: dt.date | None = None) -> int:
                 "Через {n} дней истекает срок документа «{doc}» у {student}"
             ),
             link=f"/students/{row.student_id}?tab=documents",
-            n=settings.CURATOR_RULES["DOCUMENT_NOTICE_DAYS"],
+            n=notice_days,
             doc=doc,
             student=row.student.full_name,
         ):

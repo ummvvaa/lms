@@ -5,8 +5,9 @@
 внимания» в карточке. Считать их на фронте нельзя — три экрана разойдутся
 в первый же месяц, и куратор перестанет верить числам.
 
-Пороги — из настроек (`CURATOR_RULES`), а не из кода: школа меняет их
-без выката, тесты фиксируют числами. Каждое правило закрыто своим тестом
+Пороги — настройки школы (`core.school_rules`, раздел «Куратор»), а не числа
+в коде: администратор меняет их на экране, действуют со следующего запроса.
+Каждое правило закрыто своим тестом
 (`students/tests/test_curator_buckets_and_tasks.py`).
 
 Корзина «документы не собраны» (фаза 62) считает по тем же данным, что
@@ -19,11 +20,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import timedelta
 
-from django.conf import settings
 from django.db.models import Q, QuerySet
 from django.utils import timezone
-from django.utils.translation import gettext_lazy
+from django.utils.translation import gettext_lazy, gettext_noop
 
+from core import school_rules
+from core.phrasing import tn
 from students.models import ExamAttempt, ExamGoal, Student
 
 #: Экзамены школы, по которым считаются цели и отставание (фаза 59).
@@ -39,6 +41,9 @@ class Bucket:
     #: чем это плохо — одной строкой, для подсказки под чипом
     hint: str
     tone: str
+    #: правило, чей срок стоит в подписи: подпись — фраза с числом через черту,
+    #: помечена `gettext_noop` и собирается при показе (`words`)
+    days: str = ""
 
 
 BUCKETS: tuple[Bucket, ...] = (
@@ -50,15 +55,27 @@ BUCKETS: tuple[Bucket, ...] = (
     ),
     Bucket(
         "nomock",
-        gettext_lazy("Mock Test не было больше месяца"),
-        gettext_lazy("Последний Mock Test старше 30 дней или его не было вовсе"),
+        gettext_noop(
+            "Mock Test не было больше {n} дня|Mock Test не было больше {n} дней|Mock Test не было больше {n} дней"
+        ),
+        gettext_noop(
+            "Последний Mock Test старше {n} дня или его не было вовсе|"
+            "Последний Mock Test старше {n} дней или его не было вовсе|"
+            "Последний Mock Test старше {n} дней или его не было вовсе"
+        ),
         "warn",
+        days="MOCK_STALE_DAYS",
     ),
     Bucket(
         "far",
-        gettext_lazy("Балл далеко от цели, экзамен ближе 60 дней"),
-        gettext_lazy("До цели больше балла по IELTS или больше 100 по SAT, а сдавать скоро"),
+        gettext_noop(
+            "Балл далеко от цели, экзамен ближе {n} дня|"
+            "Балл далеко от цели, экзамен ближе {n} дней|"
+            "Балл далеко от цели, экзамен ближе {n} дней"
+        ),
+        gettext_noop("До цели по IELTS не хватает {ielts} или больше, по SAT — {sat} или больше, а сдавать скоро"),
         "bad",
+        days="EXAM_SOON_DAYS",
     ),
     Bucket(
         "docs",
@@ -79,9 +96,38 @@ BUCKET_CODES = tuple(b.code for b in BUCKETS)
 ADMISSION_BUCKETS = frozenset({"nogoal", "nomock", "far", "docs"})
 
 
+#: ключ порога в расчётах корзин → правило школы
+RULE_CODES = {
+    "MOCK_STALE_DAYS": school_rules.MOCK_STALE_DAYS,
+    "EXAM_SOON_DAYS": school_rules.EXAM_SOON_DAYS,
+    "IELTS_GAP": school_rules.IELTS_GAP,
+    "SAT_GAP": school_rules.SAT_GAP,
+    "IELTS_JUMP": school_rules.IELTS_JUMP,
+    "SAT_JUMP": school_rules.SAT_JUMP,
+}
+
+
 def rules() -> dict:
-    """Пороги правил. Отдельной функцией — чтобы тест мог их переопределить."""
-    return settings.CURATOR_RULES
+    """Пороги корзин и резкого скачка — настройки школы, одним запросом."""
+    values = school_rules.values()
+    return {key: values[code] for key, code in RULE_CODES.items()}
+
+
+def _number(value: float) -> str:
+    """Порог в подписи: «1», «1,5» — без хвоста нулей, запятая по языку."""
+    from core.i18n import active_language
+
+    text = f"{value:g}"
+    return text if active_language() == "en" else text.replace(".", ",")
+
+
+def words(bucket: Bucket, conf: dict | None = None) -> tuple[str, str]:
+    """Подпись и подсказка корзины на языке ответа; срок правила — числом из настроек."""
+    if not bucket.days:
+        return str(bucket.title), str(bucket.hint)
+    conf = conf or rules()
+    gaps = {"ielts": _number(conf["IELTS_GAP"]), "sat": _number(conf["SAT_GAP"])}
+    return tn(conf[bucket.days], bucket.title, **gaps), tn(conf[bucket.days], bucket.hint, **gaps)
 
 
 def _goal_map(students: QuerySet[Student]) -> dict[int, dict[str, ExamGoal]]:
@@ -245,16 +291,20 @@ def buckets_of(student: Student) -> list[str]:
 def counts(students: QuerySet[Student]) -> list[dict]:
     """Числа по каждой корзине для выборки — главная и чипы берут их отсюда."""
     state = state_of(students)
-    return [
-        {
-            "code": bucket.code,
-            "title": str(bucket.title),
-            "hint": str(bucket.hint),
-            "tone": bucket.tone,
-            "count": sum(1 for row in state.values() if bucket.code in row["buckets"]),
-        }
-        for bucket in BUCKETS
-    ]
+    conf = rules()
+    out = []
+    for bucket in BUCKETS:
+        title, hint = words(bucket, conf)
+        out.append(
+            {
+                "code": bucket.code,
+                "title": title,
+                "hint": hint,
+                "tone": bucket.tone,
+                "count": sum(1 for row in state.values() if bucket.code in row["buckets"]),
+            }
+        )
+    return out
 
 
 def filter_by(students: QuerySet[Student], code: str) -> QuerySet[Student]:
@@ -266,16 +316,19 @@ def filter_by(students: QuerySet[Student], code: str) -> QuerySet[Student]:
     return students.filter(pk__in=keep)
 
 
-def sharp_jump(model_label: str, field_name: str, old_value: str, new_value: str) -> bool:
+def sharp_jump(model_label: str, field_name: str, old_value: str, new_value: str, conf: dict | None = None) -> bool:
     """Резкий скачок значения: балл вырос слишком сильно, чтобы верить на слово.
 
-    Порог свой у каждого экзамена (`CURATOR_RULES`). Считается на сервере
+    Порог свой у каждого экзамена — настройки школы. Считается на сервере
     и приходит строкой очереди готовым признаком: у куратора и у владельца
-    домена «резкий скачок» обязан значить одно и то же.
+    домена «резкий скачок» обязан значить одно и то же. Очередь передаёт
+    пороги сама (`conf`), чтобы не читать их на каждую строку.
     """
     if model_label.lower() != "students.examprofile":
         return False
-    conf = rules()
+    if field_name not in ("ielts_current", "sat_current"):
+        return False
+    conf = conf or rules()
     limit = {"ielts_current": conf["IELTS_JUMP"], "sat_current": conf["SAT_JUMP"]}.get(field_name)
     if limit is None:
         return False

@@ -30,7 +30,7 @@ from rest_framework.test import APIClient
 
 from accounts.curators import assign
 from accounts.models import User
-from core import secrets
+from core import school_rules, secrets
 from core.models import AuditLog
 from students import admission_import, credentials
 from students.models import (
@@ -616,10 +616,9 @@ def test_link_document_opens_by_redirect_after_the_rights_check(db, chicago, kla
 
 def test_passport_expiry_makes_the_document_expiring(db, chicago, klass, asem):
     """Срок паспорта из таблицы — это срок документа, и «истекает» считается по нему."""
-    from django.conf import settings as conf
 
     student = klass[0]
-    soon = TODAY + dt.timedelta(days=conf.CURATOR_RULES["DOCUMENT_EXPIRING_DAYS"] - 1)
+    soon = TODAY + dt.timedelta(days=school_rules.value("document_expiring_days") - 1)
     row = row18("Сериков Данияр", passport="https://drive.google.com/passport/serikov", expiry=soon)
     admission_import.apply(book({"CHICAGO": (HEADER_18, [row])}), actor=asem)
 

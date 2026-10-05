@@ -21,6 +21,7 @@ from rest_framework.test import APIClient
 
 from accounts.curators import assign
 from accounts.models import User
+from core import school_rules
 from directories.models import ExamKind
 from roadmap.models import Task, TaskOrigin, TaskStatus
 from students import attention
@@ -154,7 +155,7 @@ def test_bucket_nogoal_only_when_neither_goal_is_set(chicago):
 @pytest.mark.django_db
 def test_bucket_nomock_counts_from_the_threshold(chicago, settings):
     """Пробника не было или он старше порога — граница ровно на числе настроек."""
-    limit = settings.CURATOR_RULES["MOCK_STALE_DAYS"]
+    limit = school_rules.value("mock_stale_days")
     never = student_with(chicago, name="Небылов", email="nomock61@example.kz")
     fresh = student_with(chicago, name="Свежев", email="fresh61@example.kz", mock_date=days(-limit + 1))
     stale = student_with(chicago, name="Староев", email="stale61@example.kz", mock_date=days(-limit - 1))
@@ -167,8 +168,8 @@ def test_bucket_nomock_counts_from_the_threshold(chicago, settings):
 @pytest.mark.django_db
 def test_bucket_far_needs_both_the_gap_and_the_near_exam(chicago, ielts, sat, settings):
     """Далеко от цели — только если и отставание большое, и экзамен скоро."""
-    gap = settings.CURATOR_RULES["IELTS_GAP"]
-    soon = settings.CURATOR_RULES["EXAM_SOON_DAYS"]
+    gap = school_rules.value("ielts_gap")
+    soon = school_rules.value("exam_soon_days")
 
     far = student_with(
         chicago,
@@ -207,7 +208,7 @@ def test_bucket_far_needs_both_the_gap_and_the_near_exam(chicago, ielts, sat, se
 @pytest.mark.django_db
 def test_bucket_far_uses_its_own_threshold_for_sat(chicago, sat, settings):
     """У SAT свой порог: 90 баллов отставания — ещё не корзина, 150 — уже да."""
-    gap = settings.CURATOR_RULES["SAT_GAP"]
+    gap = school_rules.value("sat_gap")
     small = student_with(
         chicago,
         name="Малов",
@@ -310,14 +311,36 @@ def test_group_switch_narrows_everything(as_curator, chicago, tokyo):
     assert [row["group"] for row in alien["results"]] == ["CHICAGO"] and alien["group"] == "CHICAGO"
 
 
+@pytest.mark.django_db
+def test_bucket_thresholds_are_school_settings(chicago, admin):
+    """Порог поменяли на экране настроек — корзина и её подпись считают по новому числу."""
+    pupil = student_with(chicago, name="Двадцатов", email="twenty61@example.kz", mock_date=days(-20))
+    assert "nomock" not in attention.buckets_of(pupil), "20 дней при пороге 30 — ещё не давно"
+
+    school_rules.set_value(school_rules.MOCK_STALE_DAYS, 14, actor=admin)
+    assert "nomock" in attention.buckets_of(pupil)
+    row = next(row for row in attention.counts(Student.objects.filter(pk=pupil.pk)) if row["code"] == "nomock")
+    assert row["count"] == 1
+    assert row["title"] == "Mock Test не было больше 14 дней" and "старше 14 дней" in row["hint"]
+
+    school_rules.set_value(school_rules.IELTS_GAP, "1,5", actor=admin)
+    far = next(row for row in attention.counts(Student.objects.filter(pk=pupil.pk)) if row["code"] == "far")
+    assert "экзамен ближе 60 дней" in far["title"]
+    assert "по IELTS не хватает 1,5 или больше, по SAT — 100 или больше" in far["hint"]
+
+    school_rules.set_value(school_rules.IELTS_JUMP, 3, actor=admin)
+    assert not attention.sharp_jump("students.ExamProfile", "ielts_current", "5.0", "7.0")
+    assert attention.sharp_jump("students.ExamProfile", "ielts_current", "5.0", "8.0")
+
+
 # --- Резкий скачок -------------------------------------------------------------
 
 
 @pytest.mark.django_db
 def test_sharp_jump_thresholds(settings):
     """Пороги скачка свои у каждого экзамена и берутся из настроек."""
-    jump_ielts = settings.CURATOR_RULES["IELTS_JUMP"]
-    jump_sat = settings.CURATOR_RULES["SAT_JUMP"]
+    jump_ielts = school_rules.value("ielts_jump")
+    jump_sat = school_rules.value("sat_jump")
 
     assert attention.sharp_jump("students.ExamProfile", "ielts_current", "5.5", str(5.5 + jump_ielts))
     assert not attention.sharp_jump("students.ExamProfile", "ielts_current", "5.5", str(5.5 + jump_ielts - 0.5))

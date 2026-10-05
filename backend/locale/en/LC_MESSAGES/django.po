@@ -10273,23 +10273,9 @@ msgstr "No exam target"
 msgid "Не поставлена ни цель IELTS, ни цель SAT — учиться не к чему"
 msgstr "Neither an IELTS nor a SAT target is set — nothing to work towards"
 
-#: students/attention.py:53
-msgid "Mock Test не было больше месяца"
-msgstr "No Mock Test for over a month"
 
-#: students/attention.py:54
-msgid "Последний Mock Test старше 30 дней или его не было вовсе"
-msgstr "The last Mock Test was more than 30 days ago, or there has been none"
 
-#: students/attention.py:59
-msgid "Балл далеко от цели, экзамен ближе 60 дней"
-msgstr "Score far from target, exam within 60 days"
 
-#: students/attention.py:60
-msgid "До цели больше балла по IELTS или больше 100 по SAT, а сдавать скоро"
-msgstr ""
-"More than 1 IELTS band or 100 SAT points short of the target, and the exam is"
-" soon"
 
 #: students/attention.py:65
 msgid "Документы не собраны"
@@ -15661,9 +15647,6 @@ msgstr "A confirmed document with an expiry date counts as expiring this many da
 msgid "Уведомление о сроке документа"
 msgstr "Document expiry notification"
 
-#: core/school_rules.py
-msgid "За столько дней до срока документа куратору и ученику приходит уведомление"
-msgstr "This many days before the document's expiry date the curator and the student get a notification"
 
 #: core/school_rules.py
 msgid "Задача ученика «скоро срок»"
@@ -15878,3 +15861,23 @@ msgstr "How many minutes after the start-of-lesson bell the teacher is reminded 
 #: suggestions/assistant.py
 msgid "{student} — профиль не обновлялся больше {n} дня|{student} — профиль не обновлялся больше {n} дней|{student} — профиль не обновлялся больше {n} дней"
 msgstr "{student} — profile not updated for more than {n} day|{student} — profile not updated for more than {n} days"
+
+#: students/attention.py
+msgid "За столько дней до срока документа куратору приходит уведомление"
+msgstr "This many days before the document's expiry date the curator gets a notification"
+
+#: students/attention.py
+msgid "Mock Test не было больше {n} дня|Mock Test не было больше {n} дней|Mock Test не было больше {n} дней"
+msgstr "No Mock Test for more than {n} day|No Mock Test for more than {n} days"
+
+#: students/attention.py
+msgid "Последний Mock Test старше {n} дня или его не было вовсе|Последний Mock Test старше {n} дней или его не было вовсе|Последний Mock Test старше {n} дней или его не было вовсе"
+msgstr "The last Mock Test is older than {n} day or there was none at all|The last Mock Test is older than {n} days or there was none at all"
+
+#: students/attention.py
+msgid "Балл далеко от цели, экзамен ближе {n} дня|Балл далеко от цели, экзамен ближе {n} дней|Балл далеко от цели, экзамен ближе {n} дней"
+msgstr "Score far from the target, exam in less than {n} day|Score far from the target, exam in less than {n} days"
+
+#: students/attention.py
+msgid "До цели по IELTS не хватает {ielts} или больше, по SAT — {sat} или больше, а сдавать скоро"
+msgstr "{ielts} or more short of the IELTS target, {sat} or more short of the SAT target, and the exam is soon"

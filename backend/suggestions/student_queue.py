@@ -97,7 +97,14 @@ def pending_for(role: str, group_ids: list[int] | None = None, *, escalated: boo
     return list(for_role(rows, role, group_ids))
 
 
-def kind_of(changes) -> dict:
+def gap_share() -> float:
+    """С какой доли расхождения у строки чип «Расхождение» — настройка школы."""
+    from core import school_rules
+
+    return school_rules.value(school_rules.QUEUE_GAP_SHARE) / 100
+
+
+def kind_of(changes, limit: float | None = None) -> dict:
     """Характер правки для чипа в строке очереди (фаза 49).
 
     Три случая, и они означают разное: значения не было вовсе, значение
@@ -107,7 +114,7 @@ def kind_of(changes) -> dict:
     if all(not change.old_value for change in changes):
         return {"code": "new", "title": _("Новое")}
     gap = max((divergence(change) for change in changes), default=0.0)
-    if gap >= 0.2:
+    if gap >= (gap_share() if limit is None else limit):
         return {"code": "gap", "title": _("Расхождение")}
     return {"code": "edit", "title": _("Правка")}
 
@@ -141,6 +148,10 @@ def queue_payload(role: str, group_ids: list[int] | None = None, *, escalated: b
     по расхождению.
     """
     items = []
+    # пороги школы — один раз на очередь, а не на каждую строку
+    from students.attention import rules as curator_rules
+
+    limit, jumps = gap_share(), curator_rules()
     for suggestion in pending_for(role, group_ids, escalated=escalated):
         changes = list(suggestion.changes.all())
         gap = max((divergence(c) for c in changes), default=0.0)
@@ -166,10 +177,12 @@ def queue_payload(role: str, group_ids: list[int] | None = None, *, escalated: b
                 "domain_title": DOMAINS[suggestion.domain_code].title if suggestion.domain_code in DOMAINS else "",
                 "created_at": suggestion.created_at,
                 "divergence": round(gap, 3),
-                "kind": kind_of(changes),
+                "kind": kind_of(changes, limit),
                 # «резкий скачок» (фаза 61): считает сервер по порогам школы,
                 # чтобы у куратора и у владельца домена он значил одно и то же
-                "sharp_jump": any(sharp_jump(c.model_label, c.field_name, c.old_value, c.new_value) for c in changes),
+                "sharp_jump": any(
+                    sharp_jump(c.model_label, c.field_name, c.old_value, c.new_value, jumps) for c in changes
+                ),
                 "changes": SuggestionChangeSerializer(changes, many=True).data,
             }
         )

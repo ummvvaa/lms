@@ -187,7 +187,9 @@ def overview(request):
     queue = queue_payload(ROLE_CURATOR, groups)
     tasks = _tasks_of(students, only_open=True)
     today = timezone.localdate()
-    soon = [t for t in tasks if t.effective_due_date and t.effective_due_date <= today + dt.timedelta(days=2)]
+    # «скоро срок» — настройка школы
+    soon_edge = today + dt.timedelta(days=school_rules.value(school_rules.CURATOR_TASK_SOON_DAYS))
+    soon = [t for t in tasks if t.effective_due_date and t.effective_due_date <= soon_edge]
     overdue = [t for t in tasks if t.is_overdue]
     counts = attention.counts(students)
     by_code = {row["code"]: row["count"] for row in counts}
@@ -519,7 +521,7 @@ def student_card(request, pk: int):
             "admission": admission_block,
             "behavior": behavior_block,
             "buckets": [
-                {"code": b.code, "title": b.title, "tone": b.tone}
+                {"code": b.code, "title": attention.words(b)[0], "tone": b.tone}
                 for b in attention.BUCKETS
                 if b.code in state["buckets"]
             ],
