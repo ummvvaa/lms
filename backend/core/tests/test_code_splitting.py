@@ -90,3 +90,23 @@ def test_screens_load_by_route():
     assert "cssCodeSplit: false" in config
     main = (SRC / "main.tsx").read_text(encoding="utf-8")
     assert "vite:preloadError" in main, "после выката открытая вкладка не перезагрузится на новую сборку"
+
+
+def test_dictionaries_load_by_language():
+    """Словари kk и en — отдельные куски сборки: статический импорт вернёт их в общий файл (D83)."""
+    static = re.compile(r"""^import\s[^'"\n]*from\s+['"][^'"]*/(?:kk|en)['"]""", re.M)
+    eager = sorted(
+        path.relative_to(SRC).as_posix()
+        for path in SRC.rglob("*.ts*")
+        if static.search(path.read_text(encoding="utf-8"))
+    )
+    assert not eager, f"словарь импортирован статически и едет в общем файле: {eager}"
+    index = (SRC / "i18n" / "index.ts").read_text(encoding="utf-8")
+    for lang in ("kk", "en"):
+        assert f"import('./{lang}')" in index, f"словарь {lang} не грузится отдельным куском"
+    # словарь языка устройства приходит до первой отрисовки, язык человека — до переключения
+    main = (SRC / "main.tsx").read_text(encoding="utf-8")
+    assert main.count("createRoot(") == 1 and main.index("function start()") < main.index("createRoot(")
+    assert re.search(r"loadLanguage\(lang\)\.then\(\s*\(\) => \{\s*setLanguage\(lang\)\s*start\(\)", main)
+    app = (SRC / "App.tsx").read_text(encoding="utf-8")
+    assert "languageReady(wanted)" in app and "loadLanguage(wanted)" in app

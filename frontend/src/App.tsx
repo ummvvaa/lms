@@ -1,5 +1,5 @@
 /** Роутинг и провайдеры. */
-import { Fragment, lazy, useEffect, useMemo, type ReactNode } from 'react'
+import { Fragment, lazy, useEffect, useMemo, useReducer, type ReactNode } from 'react'
 import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
@@ -9,7 +9,7 @@ import ConnectionBanner from './components/ConnectionBanner'
 import OfflineScreen from './components/OfflineScreen'
 import { useConnection } from './api/useConnection'
 import { AuthProvider, useAuth } from './auth/AuthContext'
-import { rememberLanguage, setLanguage } from './i18n'
+import { language, languageReady, loadLanguage, rememberLanguage, setLanguage } from './i18n'
 import { offeredLanguage } from './components/ProfileMenu'
 import { applyTheme } from './theme'
 import Shell from './layout/Shell'
@@ -227,18 +227,37 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
  *
  * Язык выставляется до отрисовки детей (useMemo, не useEffect), а ключ
  * перемонтирует поддерево при смене — интерфейс меняется без перезагрузки.
+ * Словарь языка подгружается отдельным куском сборки: до его прихода
+ * остаётся прежний язык.
  * Плотность приходит не из профиля, а из роли: это не вкус, а разные
  * задачи — таблица на 250 строк и кабинет с тремя задачами.
  */
 function PersonalSettings({ children }: { children: ReactNode }) {
   const { me } = useAuth()
   // сохранённый в профиле язык действует, только если он предлагается; до входа — язык устройства
-  const lang = offeredLanguage(me)
+  const wanted = offeredLanguage(me)
+  // словарь — отдельный кусок сборки: пока он едет, интерфейс остаётся на
+  // прежнем языке и переключается целиком, когда словарь в памяти
+  const [, arrived] = useReducer((count: number) => count + 1, 0)
+  const lang = languageReady(wanted) ? wanted : language()
+  useEffect(() => {
+    if (languageReady(wanted)) return
+    let live = true
+    loadLanguage(wanted).then(
+      () => live && arrived(),
+      // нет связи: язык остаётся прежним, полоса «нет связи» уже на экране
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [wanted])
   const theme = me?.theme ?? 'system'
   useMemo(() => setLanguage(lang), [lang])
   useEffect(() => {
-    if (me) rememberLanguage(lang)
-  }, [me, lang])
+    // запоминается выбранный язык: с него устройство начнёт в следующий раз
+    if (me) rememberLanguage(wanted)
+  }, [me, wanted])
   useEffect(() => applyTheme(theme), [theme])
   return (
     <Fragment key={lang}>

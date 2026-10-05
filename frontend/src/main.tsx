@@ -2,6 +2,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
+import { deviceLanguage, loadLanguage, setLanguage } from './i18n'
 import { readText, writeText } from './lib/storage'
 import { applyTheme } from './theme'
 import './styles/base.css'
@@ -21,12 +22,27 @@ window.addEventListener('vite:preloadError', (event) => {
   window.location.reload()
 })
 
-createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    {/* внешняя граница: падение самого каркаса тоже показывает сообщение,
-        а не пустую страницу */}
-    <ErrorBoundary scope="app">
-      <App />
-    </ErrorBoundary>
-  </React.StrictMode>,
+function start() {
+  createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      {/* внешняя граница: падение самого каркаса тоже показывает сообщение,
+          а не пустую страницу */}
+      <ErrorBoundary scope="app">
+        <App />
+      </ErrorBoundary>
+    </React.StrictMode>,
+  )
+}
+
+// Словарь языка этого устройства — отдельный кусок сборки и грузится до
+// первой отрисовки: экран входа и каркас сразу на своём языке, русский не
+// мелькает. У русского словаря нет — ждать нечего. Не загрузился (нет
+// связи) — интерфейс всё равно открывается, по-русски
+const lang = deviceLanguage()
+loadLanguage(lang).then(
+  () => {
+    setLanguage(lang)
+    start()
+  },
+  () => start(),
 )

@@ -4,6 +4,12 @@
  * интерфейс не падает. Что перевод есть у каждого ключа, проверяет
  * правило `lms-i18n/keys` (`npm run lint`) и `backend/core/tests/test_i18n.py`.
  *
+ * Словарь — отдельный кусок сборки (05.10.2026): человек читает один язык,
+ * а оба словаря весили почти половину основного файла. `loadLanguage`
+ * подгружает нужный до первой отрисовки (`main.tsx`) и перед сменой языка
+ * (`PersonalSettings` в `App.tsx`); язык переключается, когда словарь уже
+ * в памяти, — русский текст не мелькает и страница не перезагружается.
+ *
  * Подстановки — `{имя}` в строке: `t('Сохранено: {name}', { name })`.
  * Число со словом — `tn(n, '{n} урок|{n} урока|{n} уроков')`: формы через
  * черту, форму выбирает `Intl.PluralRules` по языку. Русских форм три
@@ -15,12 +21,49 @@
  * Common App, reach/target/safety, GPA, названия вузов и программ.
  */
 import { readText, writeText } from '../lib/storage'
-import { en } from './en'
-import { kk } from './kk'
 
 export type Lang = 'ru' | 'kk' | 'en'
 
-const DICTS: Record<Lang, Record<string, string> | null> = { ru: null, kk, en }
+type Dict = Record<string, string>
+
+/** Загруженные словари; у русского словаря нет — ключ и есть текст. */
+const DICTS: Partial<Record<Lang, Dict | null>> = { ru: null }
+
+/** Словарь языка — своим куском сборки. Формат файлов прежний: их читают `i18n_import` и правило `i18n-keys`. */
+const LOADERS: Record<Exclude<Lang, 'ru'>, () => Promise<Dict>> = {
+  kk: () => import('./kk').then((module) => module.kk),
+  en: () => import('./en').then((module) => module.en),
+}
+
+const loading = new Map<Lang, Promise<void>>()
+
+/** Словарь языка уже в памяти: язык можно включать без ожидания. */
+export function languageReady(lang: Lang): boolean {
+  return lang in DICTS
+}
+
+/**
+ * Подгрузить словарь языка. Повторный вызов ждёт ту же загрузку; неудача
+ * (нет связи) не запоминается — следующая попытка грузит заново.
+ */
+export function loadLanguage(lang: Lang): Promise<void> {
+  if (lang === 'ru' || languageReady(lang)) return Promise.resolve()
+  let pending = loading.get(lang)
+  if (!pending) {
+    pending = LOADERS[lang]().then(
+      (dict) => {
+        DICTS[lang] = dict
+        loading.delete(lang)
+      },
+      (error: unknown) => {
+        loading.delete(lang)
+        throw error
+      },
+    )
+    loading.set(lang, pending)
+  }
+  return pending
+}
 
 /** Локаль `Intl` для языка: английский — британский, день раньше месяца, как в школе. */
 const LOCALES: Record<Lang, string> = { ru: 'ru-RU', kk: 'kk-KZ', en: 'en-GB' }
@@ -38,7 +81,7 @@ const PLURAL_ORDER: Record<Lang, Intl.LDMLPluralRule[]> = {
 let current: Lang = 'ru'
 const pluralRules = new Map<Lang, Intl.PluralRules>()
 
-/** Сменить язык. Перерисовку экранов делает провайдер в App. */
+/** Сменить язык. Словарь к этому моменту загружен (`loadLanguage`); перерисовку экранов делает провайдер в App. */
 export function setLanguage(lang: Lang) {
   current = lang
   document.documentElement.lang = lang
