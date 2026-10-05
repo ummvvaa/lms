@@ -10,7 +10,6 @@ from datetime import timedelta
 from decimal import Decimal
 
 import pytest
-from django.test import override_settings
 from django.utils import timezone
 
 from engagement import scoring
@@ -82,14 +81,53 @@ def test_reopening_and_closing_again_does_not_double_the_award(student):
 
 
 @pytest.mark.django_db
-@override_settings(XP_AWARDS={"task_done": 40}, XP_LEVEL_STEP=100)
-def test_level_grows_with_xp(student):
+def test_level_grows_with_xp(student, set_rules):
+    set_rules(xp_task_done=40)
     for i in range(3):
         complete(Task.objects.create(student=student, title=f"Задача {i}", category="test"), status=TaskStatus.DONE)
 
     state = scoring.get_state(student)
     assert state.xp == 120
     assert state.level == 2
+
+
+@pytest.mark.django_db
+def test_award_sizes_and_level_step_are_school_rules(student, set_rules):
+    """У каждого действия — своё правило с прежним числом; шаг уровня действует сразу, XP не меняются."""
+    from core import school_rules
+
+    assert set(scoring.AWARD_RULES) == set(XPKind.values)
+    former = {
+        "task_done": 10,
+        "exercise_solved": 5,
+        "mock_taken": 25,
+        "profile_section": 15,
+        "essay_submitted": 20,
+        "onboarding_done": 30,
+        "material_approved": 25,
+        "homework_on_time": 5,
+    }
+    assert {kind: scoring.award_size(kind) for kind in XPKind.values} == former
+    assert school_rules.BY_CODE[school_rules.XP_TASK_DONE].section == school_rules.XP
+
+    set_rules(xp_task_done=40)
+    for i in range(3):
+        complete(Task.objects.create(student=student, title=f"Шаг {i}", category="test"), status=TaskStatus.DONE)
+    summary = scoring.summary(student)
+    assert (summary["xp"], summary["level"], summary["level_progress"], summary["level_step"]) == (120, 2, 20, 100)
+
+    set_rules(xp_level_step=50)
+    summary = scoring.summary(student)
+    assert (summary["xp"], summary["level"], summary["level_progress"], summary["level_step"]) == (120, 3, 20, 50)
+
+
+@pytest.mark.django_db
+def test_zero_award_gives_no_xp_and_leaves_the_table(student, set_rules):
+    """Ноль в правиле — действие XP не даёт и из таблицы «за что дают» уходит."""
+    set_rules(xp_task_done=0)
+    complete(Task.objects.create(student=student, title="Без XP", category="test"), status=TaskStatus.DONE)
+    assert not XPEvent.objects.filter(student=student).exists()
+    assert "task_done" not in {row["kind"] for row in scoring.awards_table()}
 
 
 # --- стрик ---------------------------------------------------------------

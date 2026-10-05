@@ -304,18 +304,9 @@ CSRF_TRUSTED_ORIGINS = env_list(
     "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080",
 )
 
-# --- Геймификация --------------------------------------------------------
-# Инвариант №12: XP даётся за действия, а не за результаты. Ни одного пункта
-# про баллы экзаменов, GPA или статусы здесь нет и появиться не может.
-
-XP_AWARDS = {
-    "task_done": int(env("XP_TASK_DONE", "10")),
-    "exercise_solved": int(env("XP_EXERCISE_SOLVED", "5")),
-    "mock_taken": int(env("XP_MOCK_TAKEN", "25")),
-    "profile_section": int(env("XP_PROFILE_SECTION", "15")),
-    "essay_submitted": int(env("XP_ESSAY_SUBMITTED", "20")),
-    "onboarding_done": int(env("XP_ONBOARDING_DONE", "30")),
-}
+#: Геймификация: сколько XP за действие и шаг уровня — настройки
+#: администратора (`core.school_rules`, раздел «XP и уровни»), не здесь.
+#: Инвариант №12: XP даётся за действия, а не за результаты
 
 #: Хранилище файлов ДЗ — отдельный закрытый бакет Yandex Object Storage
 #: в регионе Казахстан (`docs/DEPLOY.md`). Пусто — локальный диск разработки
@@ -326,9 +317,6 @@ HOMEWORK_S3 = {
     "ACCESS_KEY": env("HOMEWORK_S3_ACCESS_KEY", ""),
     "SECRET_KEY": env("HOMEWORK_S3_SECRET_KEY", ""),
 }
-
-#: Сколько XP на уровень. Уровни отмечают движение, а не выстраивают гонку.
-XP_LEVEL_STEP = int(env("XP_LEVEL_STEP", "100"))
 
 #: Соответствие требованиям — веса позиций, нижние планки шкал, границы
 #: категорий подбора — и потолок списка вузов: настройки администратора

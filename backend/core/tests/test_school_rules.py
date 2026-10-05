@@ -245,6 +245,16 @@ FORMER_CONSTANTS = {
     "portfolio_w_olympiads": 10,
     "portfolio_w_sport": 10,
     "portfolio_w_documents": 15,
+    # XP за действия и шаг уровня
+    "xp_task_done": 10,
+    "xp_exercise_solved": 5,
+    "xp_mock_taken": 25,
+    "xp_profile_section": 15,
+    "xp_essay_submitted": 20,
+    "xp_onboarding_done": 30,
+    "xp_homework_on_time": 5,
+    "xp_material_approved": 25,
+    "xp_level_step": 100,
 }
 
 
@@ -309,6 +319,8 @@ FORMER_SETTINGS = (
     "READINESS_TALENT_TARGET",
     "READINESS_SPORT",
     "PORTFOLIO_WEIGHTS",
+    "XP_AWARDS",
+    "XP_LEVEL_STEP",
 )
 
 

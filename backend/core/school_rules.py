@@ -51,6 +51,7 @@ FILES = "files"
 MATCH = "match"
 READINESS = "readiness"
 PORTFOLIO = "portfolio"
+XP = "xp"
 AI = "ai"
 
 SECTIONS: tuple[Section, ...] = (
@@ -103,6 +104,11 @@ SECTIONS: tuple[Section, ...] = (
         PORTFOLIO,
         gettext_lazy("Портфолио"),
         gettext_lazy("Веса разделов в проценте заполнения портфолио"),
+    ),
+    Section(
+        XP,
+        gettext_lazy("XP и уровни"),
+        gettext_lazy("Сколько XP ученик получает за действие и сколько XP в одном уровне"),
     ),
     Section(
         AI,
@@ -340,6 +346,21 @@ PORTFOLIO_W_ACHIEVEMENTS = "portfolio_w_achievements"
 PORTFOLIO_W_OLYMPIADS = "portfolio_w_olympiads"
 PORTFOLIO_W_SPORT = "portfolio_w_sport"
 PORTFOLIO_W_DOCUMENTS = "portfolio_w_documents"
+#: XP за действия ученика (инвариант №12: за баллы и оценки XP нет) и шаг уровня
+XP_TASK_DONE = "xp_task_done"
+XP_EXERCISE_SOLVED = "xp_exercise_solved"
+XP_MOCK_TAKEN = "xp_mock_taken"
+XP_PROFILE_SECTION = "xp_profile_section"
+XP_ESSAY_SUBMITTED = "xp_essay_submitted"
+XP_ONBOARDING_DONE = "xp_onboarding_done"
+XP_HOMEWORK_ON_TIME = "xp_homework_on_time"
+XP_MATERIAL_APPROVED = "xp_material_approved"
+XP_LEVEL_STEP = "xp_level_step"
+
+#: одна подсказка на все начисления: что значит ноль и чего здесь нет
+XP_HINT = gettext_lazy(
+    "Начисляется один раз за действие. 0 — за это действие XP не даётся. За баллы экзаменов и оценки XP нет"
+)
 
 RULES: tuple[Rule, ...] = (
     # --- Посещаемость ---
@@ -1323,6 +1344,100 @@ RULES: tuple[Rule, ...] = (
         section=PORTFOLIO,
         group=PORTFOLIO_WEIGHTS,
     ),
+    # --- XP и уровни ---
+    Rule(
+        XP_TASK_DONE,
+        gettext_lazy("XP за выполненную задачу роадмапа"),
+        XP_HINT,
+        "XP",
+        10,
+        0,
+        1000,
+        section=XP,
+    ),
+    Rule(
+        XP_EXERCISE_SOLVED,
+        gettext_lazy("XP за решённое упражнение"),
+        XP_HINT,
+        "XP",
+        5,
+        0,
+        1000,
+        section=XP,
+    ),
+    Rule(
+        XP_MOCK_TAKEN,
+        gettext_lazy("XP за Mock Test онлайн"),
+        XP_HINT,
+        "XP",
+        25,
+        0,
+        1000,
+        section=XP,
+    ),
+    Rule(
+        XP_PROFILE_SECTION,
+        gettext_lazy("XP за заполненный раздел профиля"),
+        XP_HINT,
+        "XP",
+        15,
+        0,
+        1000,
+        section=XP,
+    ),
+    Rule(
+        XP_ESSAY_SUBMITTED,
+        gettext_lazy("XP за эссе, отправленное на проверку"),
+        XP_HINT,
+        "XP",
+        20,
+        0,
+        1000,
+        section=XP,
+    ),
+    Rule(
+        XP_ONBOARDING_DONE,
+        gettext_lazy("XP за пройденный онбординг"),
+        XP_HINT,
+        "XP",
+        30,
+        0,
+        1000,
+        section=XP,
+    ),
+    Rule(
+        XP_HOMEWORK_ON_TIME,
+        gettext_lazy("XP за ДЗ, сданное в срок"),
+        XP_HINT,
+        "XP",
+        5,
+        0,
+        1000,
+        section=XP,
+    ),
+    Rule(
+        XP_MATERIAL_APPROVED,
+        gettext_lazy("XP за материал, прошедший проверку"),
+        XP_HINT,
+        "XP",
+        25,
+        0,
+        1000,
+        section=XP,
+    ),
+    Rule(
+        XP_LEVEL_STEP,
+        gettext_lazy("XP в одном уровне"),
+        gettext_lazy(
+            "Столько XP нужно на каждый следующий уровень. Уровень ученика пересчитывается по новому шагу сразу, "
+            "набранные XP не меняются"
+        ),
+        "XP",
+        100,
+        10,
+        10000,
+        section=XP,
+    ),
     # --- ИИ ---
     Rule(
         LLM_MONTHLY_LIMIT,
@@ -1394,6 +1509,13 @@ FORMER_ENV: dict[str, str] = {
     "PORTFOLIO_W_OLYMPIADS": PORTFOLIO_W_OLYMPIADS,
     "PORTFOLIO_W_SPORT": PORTFOLIO_W_SPORT,
     "PORTFOLIO_W_DOCUMENTS": PORTFOLIO_W_DOCUMENTS,
+    "XP_TASK_DONE": XP_TASK_DONE,
+    "XP_EXERCISE_SOLVED": XP_EXERCISE_SOLVED,
+    "XP_MOCK_TAKEN": XP_MOCK_TAKEN,
+    "XP_PROFILE_SECTION": XP_PROFILE_SECTION,
+    "XP_ESSAY_SUBMITTED": XP_ESSAY_SUBMITTED,
+    "XP_ONBOARDING_DONE": XP_ONBOARDING_DONE,
+    "XP_LEVEL_STEP": XP_LEVEL_STEP,
 }
 
 

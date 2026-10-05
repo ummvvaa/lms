@@ -13,46 +13,51 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext
 
+from core import school_rules
 from core.phrasing import tn
 from engagement.models import StudentGameState, XPEvent, XPKind
 from students.models import Student
 
-#: Сколько XP стоит каждое действие. Размеры настраиваются.
-DEFAULT_AWARDS = {
-    XPKind.TASK_DONE: 10,
-    XPKind.EXERCISE_SOLVED: 5,
-    XPKind.MOCK_TAKEN: 25,
-    XPKind.PROFILE_SECTION: 15,
-    XPKind.ESSAY_SUBMITTED: 20,
-    XPKind.ONBOARDING_DONE: 30,
-    XPKind.MATERIAL_APPROVED: 25,
-    XPKind.HOMEWORK_ON_TIME: 5,
+#: Действие → правило школы «сколько XP за него» (`core.school_rules`, раздел
+#: «XP и уровни»). Действия без правила нет: тест сверяет словарь с `XPKind`
+AWARD_RULES = {
+    XPKind.TASK_DONE: school_rules.XP_TASK_DONE,
+    XPKind.EXERCISE_SOLVED: school_rules.XP_EXERCISE_SOLVED,
+    XPKind.MOCK_TAKEN: school_rules.XP_MOCK_TAKEN,
+    XPKind.PROFILE_SECTION: school_rules.XP_PROFILE_SECTION,
+    XPKind.ESSAY_SUBMITTED: school_rules.XP_ESSAY_SUBMITTED,
+    XPKind.ONBOARDING_DONE: school_rules.XP_ONBOARDING_DONE,
+    XPKind.MATERIAL_APPROVED: school_rules.XP_MATERIAL_APPROVED,
+    XPKind.HOMEWORK_ON_TIME: school_rules.XP_HOMEWORK_ON_TIME,
 }
 
-#: Сколько XP нужно на каждый следующий уровень. Растёт, но не круто:
-#: цель — отмечать движение, а не выстраивать соревнование.
-LEVEL_STEP = 100
+
+def award_size(kind: str, values: dict | None = None) -> int:
+    """Сколько XP стоит действие. `values` — правила школы, если вызывающий их уже прочитал."""
+    rule = AWARD_RULES.get(kind)
+    if rule is None:
+        return 0
+    return int(values[rule] if values is not None else school_rules.value(rule))
 
 
-def award_size(kind: str) -> int:
-    configured = getattr(settings, "XP_AWARDS", {})
-    return int(configured.get(kind, DEFAULT_AWARDS.get(kind, 0)))
+def level_step(values: dict | None = None) -> int:
+    """Сколько XP в одном уровне. Уровни отмечают движение, а не выстраивают гонку."""
+    code = school_rules.XP_LEVEL_STEP
+    return int(values[code] if values is not None else school_rules.value(code))
 
 
-def level_for(xp: int) -> int:
+def level_for(xp: int, step: int | None = None) -> int:
     """Уровень по сумме XP. Первый уровень — сразу, с нуля."""
-    step = int(getattr(settings, "XP_LEVEL_STEP", LEVEL_STEP))
-    return max(1, xp // step + 1)
+    return max(1, xp // (step or level_step()) + 1)
 
 
-def xp_to_next(xp: int) -> tuple[int, int]:
+def xp_to_next(xp: int, step: int | None = None) -> tuple[int, int]:
     """Сколько набрано внутри текущего уровня и сколько нужно всего."""
-    step = int(getattr(settings, "XP_LEVEL_STEP", LEVEL_STEP))
+    step = step or level_step()
     return xp % step, step
 
 
@@ -79,7 +84,9 @@ def award(
     if kind not in XPKind.values:
         raise ValueError(gettext("XP за «{kind}» не начисляется: это не действие ученика").format(kind=kind))
 
-    size = award_size(kind) if amount is None else amount
+    # размер начисления и шаг уровня — одним чтением правил школы
+    values = school_rules.values()
+    size = award_size(kind, values) if amount is None else amount
     if size <= 0:
         return None
 
@@ -100,7 +107,7 @@ def award(
 
     state = get_state(student)
     state.xp += size
-    state.level = level_for(state.xp)
+    state.level = level_for(state.xp, level_step(values))
     _touch_streak(state)
     state.save(update_fields=["xp", "level", "streak_days", "best_streak", "last_active_on", "updated_at"])
     return event
@@ -159,7 +166,9 @@ def summary(student: Student) -> dict:
     inside, step = xp_to_next(state.xp)
     return {
         "xp": state.xp,
-        "level": state.level,
+        # уровень — по действующему шагу: сохранённый пересчитывается только при начислении
+        # и после смены правила расходился бы с полоской «набрано / нужно»
+        "level": level_for(state.xp, step),
         "level_progress": inside,
         "level_step": step,
         "streak_days": state.streak_days,
@@ -181,8 +190,9 @@ def summary(student: Student) -> dict:
 
 def awards_table() -> list[dict]:
     """За что и сколько дают — ученику это видно, чтобы не было загадок."""
+    values = school_rules.values()
     return [
-        {"kind": kind, "title": XPKind(kind).label, "amount": award_size(kind)}
+        {"kind": kind, "title": XPKind(kind).label, "amount": award_size(kind, values)}
         for kind in XPKind.values
-        if award_size(kind) > 0
+        if award_size(kind, values) > 0
     ]

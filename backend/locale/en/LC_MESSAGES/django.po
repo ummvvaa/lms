@@ -16128,3 +16128,55 @@ msgstr "Competitions target"
 #: core/school_rules.py
 msgid "Столько соревнований дают полный балл за соревнования в домене «Спорт»"
 msgstr "This many competitions give full points for competitions in the “Sport” domain"
+
+#: core/school_rules.py
+msgid "XP и уровни"
+msgstr "XP and levels"
+
+#: core/school_rules.py
+msgid "Сколько XP ученик получает за действие и сколько XP в одном уровне"
+msgstr "How much XP a student gets for an action and how much XP is in one level"
+
+#: core/school_rules.py
+msgid "Начисляется один раз за действие. 0 — за это действие XP не даётся. За баллы экзаменов и оценки XP нет"
+msgstr "Awarded once per action. 0 — no XP is given for this action. There is no XP for exam scores or grades"
+
+#: core/school_rules.py
+msgid "XP за выполненную задачу роадмапа"
+msgstr "XP for a completed roadmap task"
+
+#: core/school_rules.py
+msgid "XP за решённое упражнение"
+msgstr "XP for a solved exercise"
+
+#: core/school_rules.py
+msgid "XP за Mock Test онлайн"
+msgstr "XP for an online Mock Test"
+
+#: core/school_rules.py
+msgid "XP за заполненный раздел профиля"
+msgstr "XP for a completed profile section"
+
+#: core/school_rules.py
+msgid "XP за эссе, отправленное на проверку"
+msgstr "XP for an essay sent for review"
+
+#: core/school_rules.py
+msgid "XP за пройденный онбординг"
+msgstr "XP for completed onboarding"
+
+#: core/school_rules.py
+msgid "XP за ДЗ, сданное в срок"
+msgstr "XP for homework submitted on time"
+
+#: core/school_rules.py
+msgid "XP за материал, прошедший проверку"
+msgstr "XP for a material that passed review"
+
+#: core/school_rules.py
+msgid "XP в одном уровне"
+msgstr "XP per level"
+
+#: core/school_rules.py
+msgid "Столько XP нужно на каждый следующий уровень. Уровень ученика пересчитывается по новому шагу сразу, набранные XP не меняются"
+msgstr "This much XP is needed for each next level. A student's level is recalculated with the new step at once; the XP earned does not change"
