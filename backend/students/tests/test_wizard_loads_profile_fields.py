@@ -1,0 +1,106 @@
+"""Мастер импорта загружает поля профилей всех доменов (D43, второй шаг).
+
+Вкладка «Поля по CSV» с ручным сопоставлением жила рядом с мастером, пока
+он знал только колонки таблицы поступления. Здесь — умения, которыми мастер
+её заменяет: значения «как в карточке», ключ ученика по почте и логину,
+лист без группы, ручное назначение колонки, 8–10 по домену, отмена загрузки.
+"""
+
+# ruff: noqa: F811 — фикстуры таблицы поступления приходят импортом и стоят параметрами тестов
+
+from __future__ import annotations
+
+import pytest
+
+from core.models import AuditLog
+from students import admission_import
+from students.tests.test_admission_import_and_credentials import (  # noqa: F401 — фикстуры той же таблицы
+    admin,
+    asem,
+    book,
+    boston,
+    chicago,
+    klass,
+    kymbat,
+    login,
+    stranger,
+)
+
+pytestmark = pytest.mark.django_db
+
+
+def rows_of(sheets):
+    return [row for sheet in sheets for row in sheet.rows]
+
+
+# --- Значения «как в карточке» -----------------------------------------------------
+
+
+def test_profile_fields_are_recognised_next_to_the_table_columns(klass, admin):
+    """Колонки полей профилей узнаются в том же листе, что ФИО и телефон."""
+    header = ["ФИО", "Номер телефона", "Целевая страна", "ielts цель", "Статус по дисциплине", "Что-то своё"]
+    uploaded = book({"Chicago": (header, [[klass[0].full_name, "8 707 389 63 73", "Канада", "7.5", "зелёный", "x"]])})
+    sheets = admission_import.parse(uploaded, actor=admin)
+    assert sheets[0].columns == ["name", "phone", "behavior_status", "target_country", "ielts_target"]
+    assert sheets[0].unknown == ["Что-то своё"]
+    payload = admission_import.preview_payload(sheets)
+    by_key = {column["key"]: column for column in payload["columns"]}
+    assert by_key["ielts_target"]["domain"] == "exam" and by_key["behavior_status"]["domain"] == "behavior"
+    # порядок доменов — порядок реестра: таблица поступления, затем поля профилей
+    assert payload["domains"] == ["admission", "exam", "behavior"]
+
+
+def test_value_is_checked_like_in_the_card_and_written_with_the_journal(klass, admin):
+    """Вариант из списка — подписью, число — в границах; запись идёт в журнал источником «импорт»."""
+    student = klass[0]
+    header = ["ФИО", "ielts цель", "Уровень обучения", "Кабинет подачи", "Часов в неделю"]
+    uploaded = book({"Chicago": (header, [[student.full_name, "7.5", "Бакалавриат", "да", "6"]])})
+    record = admission_import.apply(uploaded, actor=admin)
+    student.exam.refresh_from_db()
+    student.admission.refresh_from_db()
+    assert str(student.exam.ielts_target) == "7.5" and student.exam.hours_per_week == 6
+    assert student.admission.has_application_account is True and student.admission.target_level == "bachelor"
+    assert record.students_updated == 1
+    entries = AuditLog.objects.filter(source="import", field_name__in=["ielts_target", "hours_per_week"])
+    assert entries.count() == 2 and {entry.actor_id for entry in entries} == {admin.pk}
+
+
+def test_value_the_card_would_refuse_is_a_row_error_with_a_hint(klass, admin):
+    """IELTS 12.5 — ошибка строки с диапазоном; соседняя строка загружается."""
+    header = ["ФИО", "ielts"]
+    uploaded = book({"Chicago": (header, [[klass[0].full_name, "12.5"], [klass[1].full_name, "6.5"]])})
+    sheets = admission_import.parse(uploaded, actor=admin)
+    bad, good = rows_of(sheets)
+    assert "от 0 до 9" in bad.error and "IELTS" in bad.error
+    assert not good.error and good.values == {"ielts_current": "6.5"}
+
+
+def test_preview_says_what_will_be_overwritten(klass, admin):
+    student = klass[0]
+    student.exam.ielts_current = "6.0"
+    student.exam.save(update_fields=["ielts_current"])
+    uploaded = book({"Chicago": (["ФИО", "ielts"], [[student.full_name, "7.0"], [klass[1].full_name, "6.5"]])})
+    payload = admission_import.preview_payload(admission_import.parse(uploaded, actor=admin))
+    first, second = payload["sheets"][0]["rows"]
+    assert [(o["old"], o["new"]) for o in first["overwrites"]] == [("6.0", "7.0")]
+    assert second["overwrites"] == [] and payload["counts"]["overwrites"] == 1
+    assert first["fields"] == [{"key": "ielts_current", "title": "Текущий балл IELTS", "value": "7.0"}]
+
+
+def test_current_score_column_does_not_become_an_attempt(klass, admin):
+    """«ielts» — текущий балл профиля, «IELTS-1» — попытка: одно в другое не попадает."""
+    from students.models import ExamAttempt
+
+    student = klass[0]
+    uploaded = book({"Chicago": (["ФИО", "ielts", "IELTS-1"], [[student.full_name, "6.5", "7.0"]])})
+    admission_import.apply(uploaded, actor=admin)
+    student.exam.refresh_from_db()
+    assert str(student.exam.ielts_current) == "6.5"
+    assert [str(a.total_score) for a in ExamAttempt.objects.filter(student=student)] == ["7.0"]
+
+
+def test_header_alike_for_fields_of_two_domains_is_left_to_the_person(klass, admin):
+    """«Статус» похож и на дисциплину, и на поступление — мастер не угадывает."""
+    uploaded = book({"Chicago": (["ФИО", "Статус"], [[klass[0].full_name, "A"]])})
+    sheets = admission_import.parse(uploaded, actor=admin)
+    assert sheets[0].columns == ["name"] and sheets[0].unknown == ["Статус"]

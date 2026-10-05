@@ -74,6 +74,17 @@ class Row:
     warnings: list[str] = field(default_factory=list)
     error: str = ""
     skip: bool = False
+    #: что из значений строки заменит уже записанное: поле, было, станет
+    overwrites: list[dict] = field(default_factory=list)
+
+    @property
+    def fields(self) -> list[dict]:
+        """Значения полей профилей («как в карточке») — подписью и текстом, для шага проверки."""
+        return [
+            {"key": spec.key, "title": str(spec.title), "value": str(self.values[spec.key])}
+            for spec in registry.FIELD_COLUMNS
+            if spec.key in self.values
+        ]
 
     @property
     def scores(self) -> list[dict]:
@@ -115,6 +126,8 @@ class Row:
             "links": self.links,
             "has_email_password": self.passwords.get("email", False),
             "has_common_app_password": self.passwords.get("common_app", False),
+            "fields": self.fields,
+            "overwrites": self.overwrites,
             "warnings": self.warnings,
             "error": self.error,
             "skip": self.skip,
@@ -263,7 +276,7 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
             continue
         sheet.group_id = group.pk
         columns = registry.read_columns(header)
-        sheet.columns = [spec.key for spec in registry.COLUMNS if spec.key in columns]
+        sheet.columns = [spec.key for spec in registry.ALL_COLUMNS if spec.key in columns]
         sheet.unknown = registry.unknown_columns(header, columns)
         if "name" not in columns:
             sheet.error = _("На листе не нашлась колонка «{column}» — лист пропущен целиком").format(
@@ -291,6 +304,7 @@ def parse(uploaded, *, fixes: dict[str, Fix] | None = None, group: str = "", act
             _resolve_student(row, students=students, fix=fix, finder=find)
             _refuse_junior(row, students)
             _resolve_values(row, cell=cell, keys=sheet.columns)
+            _resolve_fields(row, cell=cell, keys=sheet.columns)
             if row.student is not None:
                 if row.student in seen:
                     row.error = _("этот ученик уже был в строке №{number}").format(number=seen[row.student])
@@ -327,11 +341,52 @@ def _resolve_student(row: Row, *, students: list, fix: Fix | None, finder) -> No
     )
 
 
-def _resolve_values(row: Row, *, cell, keys: list[str]) -> None:
+def _resolve_fields(row: Row, *, cell, keys: list[str], as_card: tuple[str, ...] = ()) -> None:
+    """Значения полей профилей — той же проверкой, что ввод в карточке (`core.audit.coerce`).
+
+    Вариант из списка — ключом или подписью на любом языке, да/нет, запись
+    справочника по названию, число в границах поля. Значение, которое
+    карточка не приняла бы, — ошибка строки с подсказкой диапазона: строка
+    не применяется, остальные загружаются. Что заменит уже записанное,
+    складывается в `overwrites` — человек видит это до «Применить».
+    `as_card` — колонки таблицы, которые в этом листе читаются так же.
+    """
+    from django.apps import apps
+
+    from core.audit import ValueRejected, coerce, normalize, to_text
+    from core.domains import spec_of_field
+    from core.labels import field_title
+
+    if row.student is None:
+        return
+    for key in keys:
+        spec = registry.spec_of(key)
+        if spec.target != registry.FIELD and key not in as_card:
+            continue
+        raw = _text(cell(key))
+        if not raw:
+            continue
+        label, _dot, name = registry.field_target(spec).rpartition(".")
+        model = apps.get_model(label)
+        instance = model.objects.filter(student_id=row.student).first() or model(student_id=row.student)
+        try:
+            coerce(instance, name, raw)
+        except ValueRejected as problem:
+            found = spec_of_field(label, name)
+            hint = f" ({found.range_hint})" if found and found.range_hint else ""
+            row.error = f"{field_title(label, name)}: {problem}{hint}"
+            continue
+        row.values[key] = raw
+        old, new = to_text(getattr(instance, name, None)), to_text(normalize(instance, name, raw))
+        if old and old != new:
+            row.overwrites.append({"key": key, "title": field_title(label, name), "old": old, "new": new})
+
+
+def _resolve_values(row: Row, *, cell, keys: list[str], as_card: tuple[str, ...] = ()) -> None:
     """Разобрать ячейки строки по реестру: каждую — своим типом."""
     for key in keys:
         spec = registry.spec_of(key)
-        if spec.target == registry.MATCH:
+        if spec.target in (registry.MATCH, registry.FIELD) or key in as_card:
             continue
         value, warning, fatal = registry.parse_cell(spec, cell(key))
         if fatal:
@@ -348,7 +403,7 @@ def found_domains(sheets: list[Sheet]) -> list[str]:
     keys = {key for sheet in sheets for key in sheet.columns}
     present = registry.domains_of_columns(keys)
     order: list[str] = []
-    for spec in registry.COLUMNS:
+    for spec in registry.ALL_COLUMNS:
         if spec.domain in present and spec.domain not in order:
             order.append(spec.domain)
     return order
@@ -369,7 +424,7 @@ def columns_payload(sheets: list[Sheet]) -> list[dict]:
             if key not in keys:
                 keys.append(key)
     out = []
-    for spec in registry.COLUMNS:
+    for spec in registry.ALL_COLUMNS:
         if spec.key not in keys or spec.target == registry.MATCH:
             continue
         domain = DOMAINS.get(spec.domain)
@@ -399,6 +454,8 @@ def _field_title(spec) -> str:
     if spec.target == registry.EXAM_PROFILE:
         found = spec_of_field("students.ExamProfile", spec.field)
         return found.title if found else spec.field
+    if spec.target == registry.FIELD:
+        return str(spec.title)
     if spec.target == registry.ATTEMPT:
         return _("{exam}, результат {slot}").format(exam=spec.exam, slot=spec.slot)
     if spec.target == registry.DOCUMENT:
@@ -442,6 +499,8 @@ def preview_payload(sheets: list[Sheet]) -> dict:
             "passwords": sum(
                 sum(1 for has in row.passwords.values() if has) for row in rows if not row.error and not row.skip
             ),
+            # сколько уже записанных значений заменит файл — «Перезапишется» на шаге проверки
+            "overwrites": sum(len(row.overwrites) for row in rows if not row.error and not row.skip),
         },
     }
 
@@ -588,6 +647,11 @@ def _apply_row(row: Row, *, actor, today: dt.date, domains: list[str]) -> dict:
         changed |= bool(apply_changes(exam_profile, exam_changes, actor=actor, source=Source.IMPORT))
         by_domain["exam"] = by_domain.get("exam", 0) + len(exam_changes)
 
+    fields = _apply_fields(row, student=student, actor=actor, domains=domains)
+    for code, count in fields.items():
+        by_domain[code] = by_domain.get(code, 0) + count
+    changed |= bool(fields)
+
     passwords = _apply_passwords(row, student=student, actor=actor, domains=domains)
     links = _apply_links(row, student=student, actor=actor, domains=domains)
     attempts = _apply_scores(row, student=student, actor=actor, today=today, domains=domains)
@@ -599,6 +663,43 @@ def _apply_row(row: Row, *, actor, today: dt.date, domains: list[str]) -> dict:
         by_domain["exam"] = by_domain.get("exam", 0) + attempts
     changed = changed or bool(passwords or links or attempts)
     return {"changed": changed, "attempts": attempts, "links": links, "passwords": passwords, "by_domain": by_domain}
+
+
+def _apply_fields(row: Row, *, student, actor, domains: list[str], as_card: tuple[str, ...] = ()) -> dict[str, int]:
+    """Поля профилей «как в карточке»: значение приводит `coerce`, пишет `apply_changes`.
+
+    Возвращает, сколько значений записано в каждый домен. Профиля нет —
+    заводится, как у остальных колонок мастера.
+    """
+    from django.apps import apps
+
+    from core.audit import ValueRejected, apply_changes, coerce
+    from core.domains import Source
+
+    grouped: dict[str, dict[str, tuple[str, str]]] = {}
+    for key, raw in row.values.items():
+        spec = registry.spec_of(key)
+        if (spec.target != registry.FIELD and key not in as_card) or spec.domain not in domains:
+            continue
+        label, _dot, name = registry.field_target(spec).rpartition(".")
+        grouped.setdefault(label, {})[name] = (raw, spec.domain)
+    written: dict[str, int] = {}
+    for label, values in grouped.items():
+        instance, _made = apps.get_model(label).objects.get_or_create(student=student)
+        clean: dict[str, object] = {}
+        for name, (raw, _domain) in values.items():
+            try:
+                clean[name] = coerce(instance, name, raw)
+            except ValueRejected:
+                # проверено разбором; сюда доходит только то, что изменилось между шагами
+                continue
+        if not clean:
+            continue
+        apply_changes(instance, clean, actor=actor, source=Source.IMPORT)
+        for name in clean:
+            domain = values[name][1]
+            written[domain] = written.get(domain, 0) + 1
+    return written
 
 
 def _common_app_seen(row: Row, domains: list[str]) -> bool:

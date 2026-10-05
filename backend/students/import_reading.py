@@ -33,7 +33,8 @@ from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
 from core.domains import DOMAINS, iter_field_specs, spec_of_field
-from students.import_registry import FIELD_TARGETS, title_variants
+from students.import_registry import FIELD_TARGETS, MATCH_THRESHOLD, alias_score, title_score
+from students.import_registry import normalize_title as _normalize
 
 #: Сколько строк-образцов уходит в модель. Трёх хватает, чтобы понять
 #: формат колонки, и мало, чтобы это стоило денег.
@@ -162,48 +163,6 @@ def _domain_of_target(target: str) -> str:
 # --- Сопоставление правилами ----------------------------------------------
 
 
-def _normalize(text: str) -> str:
-    # казахские буквы — часть слова: заголовок из выгрузки на казахском
-    # не должен рассыпаться на обрывки
-    return re.sub(r"[^a-zа-яёәғқңөұүһі0-9]+", " ", (text or "").lower()).strip()  # i18n-skip: регулярное выражение
-
-
-def _tokens(text: str) -> set[str]:
-    return {word for word in _normalize(text).split() if len(word) > 1}
-
-
-def _score(column_title: str, label: str) -> float:
-    """Насколько заголовок колонки похож на подпись поля.
-
-    Считаем по словам, а не по вхождению строки: «IELTS текущий» и
-    «Минимальный балл IELTS» пересекаются подстрокой, но значат разное,
-    и такая ошибка кладёт чужие числа в чужую колонку.
-    """
-    left = _tokens(column_title)
-    best = 0.0
-    # подпись поля сверяется на всех трёх языках: файл, выгруженный
-    # на казахском или английском, узнаётся так же, как русский
-    for variant in title_variants(label):
-        right = _tokens(variant)
-        if not left or not right:
-            continue
-        if left == right:
-            return 1.0
-        best = max(best, len(left & right) / len(left | right))
-    return best
-
-
-#: Ниже этого совпадение считаем случайным. Половина общих слов — это
-#: «Специальность» против «Целевая специальность», и это то, что нужно.
-MATCH_THRESHOLD = 0.5
-
-
-def _alias_score(column_title: str, aliases) -> float:
-    """Заголовок — одно из написаний колонки в реестре: совпадение целиком, не по вхождению."""
-    low = _normalize(column_title)
-    return 1.0 if low and any(low == _normalize(alias) for alias in aliases) else 0.0
-
-
 def rules_mapping(header: list[str], domain_code: str) -> list[Column]:
     """Сопоставить колонки по реестру соответствий: названия полей и их написания в файлах.
 
@@ -236,7 +195,9 @@ def rules_mapping(header: list[str], domain_code: str) -> list[Column]:
         for target, row in everything.items():
             if target in used:
                 continue
-            score = max(_score(title, row["title"]), _score(title, row["short"]), _alias_score(title, row["aliases"]))
+            score = max(
+                title_score(title, row["title"]), title_score(title, row["short"]), alias_score(title, row["aliases"])
+            )
             # своё поле при равном счёте выигрывает у чужого
             if target in own:
                 score += 0.01

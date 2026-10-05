@@ -302,15 +302,15 @@ FIELD_COLUMNS: tuple[ColumnSpec, ...] = (  # i18n-skip: синонимы заг�
     # поступление
     _field("target_country", "AdmissionProfile", "target_country", "admission", "страна", "целевая страна"),
     _field("target_major", "AdmissionProfile", "target_major", "admission", "специальность", "направление"),
-    _field("target_level", "AdmissionProfile", "target_level", "admission", "уровень", "уровень вузов"),
+    _field("target_level", "AdmissionProfile", "target_level", "admission", "уровень обучения", "уровень"),
     _field("has_common_app", "AdmissionProfile", "has_common_app", "admission", "common app", "есть common app"),
     _field(
         "has_application_account",
         "AdmissionProfile",
         "has_application_account",
         "admission",
-        "аккаунт подачи",
-        "есть аккаунт подачи",
+        "кабинет подачи",
+        "есть кабинет подачи",
     ),
     _field("admission_status", "AdmissionProfile", "status", "admission", "статус поступления", "статус a/b/c"),
     # экзамены: текущий балл и цель — поля профиля, попытки IELTS-n и SAT-n — колонки таблицы выше
@@ -350,7 +350,10 @@ FIELD_TARGETS: dict[str, ColumnSpec] = {
     field_target(spec): spec for spec in (*COLUMNS, *FIELD_COLUMNS) if field_target(spec)
 }
 
-BY_KEY: dict[str, ColumnSpec] = {spec.key: spec for spec in (*COLUMNS, *FIELD_COLUMNS)}
+#: Всё, что знает реестр: колонки таблицы поступления, затем поля профилей
+ALL_COLUMNS: tuple[ColumnSpec, ...] = (*COLUMNS, *FIELD_COLUMNS)
+
+BY_KEY: dict[str, ColumnSpec] = {spec.key: spec for spec in ALL_COLUMNS}
 
 #: Заголовки, которые не колонки данных: их не надо называть «не распознана»
 SERVICE_HEADERS: tuple[str, ...] = ("№", "n", "no", "#")
@@ -409,21 +412,91 @@ def header_variants(title) -> set[str]:
     return {key for key in (_header_key(text) for text in title_variants(title)) if key}
 
 
-def read_columns(header: list[str]) -> dict[str, int]:
+# --- Заголовок поля: по словам, а не по вхождению ---------------------------------
+
+#: Ниже этого совпадение считаем случайным. Половина общих слов — это
+#: «Специальность» против «Целевая специальность», и это то, что нужно.
+MATCH_THRESHOLD = 0.5
+
+
+def normalize_title(text: str) -> str:
+    # казахские буквы — часть слова: заголовок из выгрузки на казахском
+    # не должен рассыпаться на обрывки
+    return re.sub(r"[^a-zа-яёәғқңөұүһі0-9]+", " ", (text or "").lower()).strip()  # i18n-skip: регулярное выражение
+
+
+def _tokens(text: str) -> set[str]:
+    return {word for word in normalize_title(text).split() if len(word) > 1}
+
+
+def title_score(column_title: str, label) -> float:
+    """Насколько заголовок колонки похож на подпись поля.
+
+    Считаем по словам, а не по вхождению строки: «IELTS текущий» и
+    «Минимальный балл IELTS» пересекаются подстрокой, но значат разное,
+    и такая ошибка кладёт чужие числа в чужую колонку.
+    """
+    left = _tokens(column_title)
+    best = 0.0
+    # подпись поля сверяется на всех трёх языках: файл, выгруженный
+    # на казахском или английском, узнаётся так же, как русский
+    for variant in title_variants(label):
+        right = _tokens(variant)
+        if not left or not right:
+            continue
+        if left == right:
+            return 1.0
+        best = max(best, len(left & right) / len(left | right))
+    return best
+
+
+def alias_score(column_title: str, aliases) -> float:
+    """Заголовок — одно из написаний колонки в реестре: совпадение целиком, не по вхождению."""
+    low = normalize_title(column_title)
+    return 1.0 if low and any(low == normalize_title(alias) for alias in aliases) else 0.0
+
+
+def field_score(column_title: str, spec: ColumnSpec) -> float:
+    """Счёт заголовка против поля профиля: полное и короткое название, написания реестра."""
+    from core.domains import spec_of_field
+
+    label, _dot, name = field_target(spec).rpartition(".")
+    found = spec_of_field(label, name)
+    short = (found.short or found.title) if found else spec.title
+    return max(
+        title_score(column_title, spec.title), title_score(column_title, short), alias_score(column_title, spec.aliases)
+    )
+
+
+def read_columns(header: list[str], *, assigned: dict[str, str] | None = None) -> dict[str, int]:
     """Сопоставить заголовки листа с колонками реестра.
 
     Один заголовок достаётся одной колонке: иначе «Электронный адрес»
     подошёл бы и личной почте, и почте Common App. Порядок — порядок
     реестра, и он это столкновение и разводит.
 
-    Колонка узнаётся по старым написаниям школы (`aliases`) и по своему
-    заголовку на любом из трёх языков: файл, выгруженный шаблоном на
-    казахском или английском, читается так же, как русский.
+    Колонка таблицы поступления узнаётся по старым написаниям школы
+    (`aliases`, по вхождению) и по своему заголовку на любом из трёх
+    языков. Поле профиля (`FIELD_COLUMNS`) — по словам заголовка: тем же
+    счётом, каким его узнавала вкладка «Поля по CSV»; заголовок, одинаково
+    похожий на поля разных доменов («Статус», «Комментарий»), не узнаётся —
+    его назначает человек. `assigned` — назначения человека «заголовок →
+    ключ колонки» (пустой ключ — «не загружать»): они главнее распознавания.
     """
+    assigned = assigned or {}
     taken: set[int] = set()
     found: dict[str, int] = {}
     keys = [_header_key(title) for title in header]
+    for index, title in enumerate(header):
+        if _text(title) not in assigned:
+            continue
+        taken.add(index)
+        key = assigned[_text(title)]
+        if key in BY_KEY and key not in found:
+            found[key] = index
     for spec in COLUMNS:
+        if spec.key in found:
+            continue
         names = (*spec.aliases, *sorted(header_variants(spec.title)))
         for index, key in enumerate(keys):
             if index in taken or not key:
@@ -432,6 +505,20 @@ def read_columns(header: list[str]) -> dict[str, int]:
                 found[spec.key] = index
                 taken.add(index)
                 break
+    for index, title in enumerate(header):
+        if index in taken or not keys[index] or keys[index] in SERVICE_HEADERS:
+            continue
+        scored = sorted(
+            ((field_score(title, spec), spec) for spec in FIELD_COLUMNS if spec.key not in found),
+            key=lambda pair: -pair[0],
+        )
+        if not scored or scored[0][0] < MATCH_THRESHOLD:
+            continue
+        # два поля разных доменов с одним счётом — выбирать не нам
+        if len(scored) > 1 and scored[1][0] == scored[0][0] and scored[1][1].domain != scored[0][1].domain:
+            continue
+        found[scored[0][1].key] = index
+        taken.add(index)
     return found
 
 
