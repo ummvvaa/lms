@@ -241,3 +241,37 @@ def test_preview_endpoint_takes_assignments_and_offers_the_registry(klass, admin
     assert answer["columns"][0]["header"] == "балл" and answer["counts"]["ready"] == 1
     keys = {row["key"] for row in answer["assignable"]}
     assert {"name", "student_key", "phone", "ielts_1", "ielts_current", "sport_rank"} <= keys
+
+
+# --- 8–10 классы: параллель закрывает домен, а не строку ----------------------------------
+
+
+@pytest.fixture
+def junior(db, make_user):
+    from students.models import StudyGroup
+    from students.tests.test_admission_import_and_credentials import make_student
+
+    group = StudyGroup.objects.create(code="KIOTO", parallel=9)
+    return make_student(group, "Младшев", "Тимур", "junior65@example.kz", make_user)
+
+
+def test_junior_gets_discipline_and_sport_but_not_exams(junior, admin):
+    """Дисциплина и спорт у 8–10 ведутся — загружаются; экзамены — нет, и об этом сказано."""
+    header = ["email", "Статус по дисциплине", "Спортивный разряд", "ielts"]
+    uploaded = book({"Лист1": (header, [[junior.email, "critical", "КМС", "6.5"]])})
+    sheets = admission_import.parse(uploaded, actor=admin)
+    row = rows_of(sheets)[0]
+    assert not row.error and row.values == {"behavior_status": "critical", "sport_rank": "КМС"}
+    assert row.warnings == ["«Экзамены» ведётся только у 11 параллели — значения пропущены"]
+    admission_import.apply(uploaded, actor=admin)
+    junior.behavior.refresh_from_db()
+    junior.sport.refresh_from_db()
+    junior.exam.refresh_from_db()
+    assert junior.behavior.status == "critical" and junior.sport.rank == "КМС" and junior.exam.ielts_current is None
+
+
+def test_junior_row_with_only_closed_domains_is_an_error_as_before(junior, admin):
+    """Файл одних экзаменов ученику 8–10 не нужен: строка — ошибка, как в таблице поступления."""
+    uploaded = book({"Лист1": (["email", "ielts", "Целевая страна"], [[junior.email, "6.5", "Канада"]])})
+    row = rows_of(admission_import.parse(uploaded, actor=admin))[0]
+    assert row.error == "поступление ведётся только у 11 параллели — строка пропущена"

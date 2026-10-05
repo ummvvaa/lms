@@ -16237,3 +16237,8 @@ msgstr "For a CSV with a name column choose the group: the file has no sheets, a
 #: students/admission_import.py
 msgid "CSV не в кодировке UTF-8: сохраните файл как «CSV UTF-8» и загрузите снова"
 msgstr "The CSV is not in UTF-8: save the file as “CSV UTF-8” and upload it again"
+
+#: students/admission_import.py
+#, python-brace-format
+msgid "«{domain}» ведётся только у 11 параллели — значения пропущены"
+msgstr "“{domain}” is kept only for grade 11 — the values are skipped"

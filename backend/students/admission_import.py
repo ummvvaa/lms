@@ -340,9 +340,9 @@ def parse(
             else:
                 _resolve_student(row, students=students, fix=fix, finder=find)
                 student = next((s for s in students if s.pk == row.student), None)
-            _refuse_junior(row, student)
-            _resolve_values(row, cell=cell, keys=sheet.columns, as_card=as_card)
-            _resolve_fields(row, cell=cell, keys=sheet.columns, as_card=as_card)
+            keys = _open_keys(row, student, sheet.columns)
+            _resolve_values(row, cell=cell, keys=keys, as_card=as_card)
+            _resolve_fields(row, cell=cell, keys=keys, as_card=as_card)
             if row.student is not None:
                 if row.student in seen:
                     row.error = _("этот ученик уже был в строке №{number}").format(number=seen[row.student])
@@ -353,12 +353,32 @@ def parse(
     return out
 
 
-def _refuse_junior(row: Row, student) -> None:
-    """Ученик 8–10 — ошибка строки: поступление ведётся только у 11."""
-    from core.parallels import has_admission
+def _open_keys(row: Row, student, keys: list[str]) -> list[str]:
+    """Колонки листа, которые у этого ученика ведутся: параллель закрывает домен, а не строку.
 
-    if student is not None and not has_admission(student):
+    Поступление, экзамены и документы — только у 11 параллели; дисциплина,
+    таланты и спорт — у всех (`core.parallels`). Если у ученика 8–10 закрыты
+    все домены листа, строка — ошибка, как и раньше: таблица поступления
+    ему не нужна. Если часть открыта, она загружается, а о закрытых
+    значениях сказано предупреждением — так работала вкладка «Поля по CSV»,
+    где домен выбирали заранее.
+    """
+    from core.domains import DOMAINS
+    from core.parallels import domain_open_for
+
+    if student is None:
+        return keys
+    domains = {registry.spec_of(key).domain for key in keys} - {""}
+    closed = {code for code in domains if not domain_open_for(code, student)}
+    if not closed:
+        return keys
+    if closed == domains:
         row.error = _("поступление ведётся только у 11 параллели — строка пропущена")
+        return keys
+    for code in sorted(closed):
+        title = DOMAINS[code].title if code in DOMAINS else code
+        row.warnings.append(_("«{domain}» ведётся только у 11 параллели — значения пропущены").format(domain=title))
+    return [key for key in keys if registry.spec_of(key).domain not in closed]
 
 
 def _resolve_by_key(row: Row, *, own_groups: set[int] | None):
