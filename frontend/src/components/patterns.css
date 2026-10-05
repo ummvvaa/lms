@@ -506,13 +506,9 @@
   color: var(--ink);
 }
 
-.tipbar__action {
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: var(--type-note);
-  font-weight: 700;
-  color: var(--accent-ink);
+body [data-slot='button'][data-variant].tipbar__action {
+  font-family: inherit;
+  line-height: inherit;
   cursor: pointer;
 }
 

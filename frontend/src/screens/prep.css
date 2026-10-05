@@ -313,17 +313,15 @@
   display: block;
 }
 
-.prep__lessonhead {
+body [data-slot='button'][data-variant].prep__lessonhead {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: calc(var(--space) * 3);
   width: 100%;
   text-align: left;
-  border: 0;
-  background: transparent;
+  border-style: none;
+  border-width: 0;
   cursor: pointer;
-  padding: 0;
 }
 
 .prep__lessonbody {

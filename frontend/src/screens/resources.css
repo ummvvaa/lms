@@ -139,17 +139,12 @@
   padding: var(--pad-card);
 }
 
-.res__read {
+body [data-slot='button'][data-variant].res__read {
   justify-self: start;
   display: inline-flex;
   align-items: center;
-  gap: calc(var(--space) * 1);
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: var(--type-note);
-  font-weight: 650;
-  color: var(--accent-ink);
+  font-family: inherit;
+  line-height: inherit;
   cursor: pointer;
 }
 

@@ -1,22 +1,16 @@
 /* Помощник в углу: плавающая кнопка и панель диалога. */
 
-.aw__fab {
+body [data-slot='button'][data-variant].aw__fab {
   position: fixed;
   right: var(--fab-gap);
   bottom: var(--fab-gap);
   /* ниже окон и шторок (у них 50): герб не должен лежать поверх
      открытого списка разделов или диалога (найдено в 74-й и 76-й) */
   z-index: 40;
-  width: var(--fab-size);
-  height: var(--fab-size);
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  background: var(--surface);
   box-shadow: var(--shadow-raised);
   cursor: pointer;
   display: grid;
   place-items: center;
-  padding: 0;
 }
 
 .aw__fab img {
@@ -79,28 +73,11 @@
   flex: 0 0 auto;
 }
 
-.aw__tool {
-  height: calc(var(--space) * 7);
+body [data-slot='button'][data-variant].aw__tool {
   min-width: calc(var(--space) * 7);
-  padding: 0 calc(var(--space) * 2);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-inrow);
-  background: none;
-  color: var(--ink-2);
   cursor: pointer;
-  font-size: var(--type-note);
   line-height: 1;
   white-space: nowrap;
-}
-
-.aw__tool--icon {
-  width: calc(var(--space) * 7);
-  padding: 0;
-}
-
-.aw__tool:hover {
-  color: var(--ink);
-  background: var(--surface-2);
 }
 
 .aw__body {
@@ -119,19 +96,9 @@
   gap: calc(var(--space) * 1);
 }
 
-.aw__quickbtn {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
-  background: var(--surface-2);
-  color: var(--ink);
-  font-size: var(--type-note);
-  font-weight: 650;
-  padding: calc(var(--space) * 1) calc(var(--space) * 3);
+body [data-slot='button'][data-variant].aw__quickbtn {
+  padding-block: calc(var(--space) * 1);
   cursor: pointer;
-}
-
-.aw__quickbtn:hover {
-  border-color: var(--accent);
 }
 
 .aw__hint {
@@ -279,7 +246,7 @@
    Запас считается из тех же токенов, что и нижнее поле экрана, —
    иначе кнопка садится на бар, а панель накрывает разделы. */
 @media (max-width: 759px) {
-  .aw__fab {
+  body [data-slot='button'][data-variant].aw__fab {
     bottom: calc(var(--fab-gap) + var(--tabbar-clear));
   }
   .aw {

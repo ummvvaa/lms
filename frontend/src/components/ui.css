@@ -1237,13 +1237,9 @@ button.head__pill:hover:not(.head__pill--on) {
   flex: 1;
 }
 
-.notif__all {
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: var(--type-note);
-  font-weight: 650;
-  color: var(--accent-ink);
+body [data-slot='button'][data-variant].notif__all {
+  font-family: inherit;
+  line-height: inherit;
   cursor: pointer;
 }
 
@@ -2573,11 +2569,8 @@ button.head__pill:hover:not(.head__pill--on) {
   /* Цель нажатия не меньше поля касания: кнопка меню строки, текстовые
      кнопки плашек и подсказок получают поле касания без роста видимого
      размера. Размеры кнопок реестра — в `patterns.css` */
-  .rowmenu__button {
+  body [data-slot='button'][data-variant].rowmenu__button {
     min-width: var(--touch);
-    min-height: var(--touch);
-    width: var(--touch);
-    height: var(--touch);
   }
 
   /* бейдж с ошибкой листа в заголовке проверки строк: длинная подпись
@@ -2605,16 +2598,13 @@ button.head__pill:hover:not(.head__pill--on) {
     width: auto;
   }
 
-  .notice__more,
-  .tipbar__action,
   .tipbar__close,
   .start__step {
     min-height: var(--touch);
   }
 
-  .notice__more,
-  .tipbar__action {
-    padding: calc(var(--space) * 3) calc(var(--space) * 2);
+  body [data-slot='button'][data-variant].notice__more,
+  body [data-slot='button'][data-variant].tipbar__action {
     margin: calc(var(--space) * -3) calc(var(--space) * -2);
   }
 
@@ -2623,13 +2613,6 @@ button.head__pill:hover:not(.head__pill--on) {
     margin: calc(var(--space) * -3);
   }
 
-  .aw__tool {
-    min-height: var(--touch);
-  }
-
-  .aw__tool--icon {
-    width: var(--touch);
-  }
 }
 
 /* Блок «Поступление» (фаза 73). Живёт здесь, а не в curator.css: блок один
@@ -2779,15 +2762,6 @@ button.head__pill:hover:not(.head__pill--on) {
 
   /* поле касания 44 px при значке 16 px; специфичность в два класса —
      чтобы утилиты размера кнопки не спорили */
-  .cadm__acts .cadm__ibtn {
-    width: calc(var(--space) * 11);
-    height: var(--touch);
-    color: var(--ink-2);
-  }
-
-  .cadm__acts .cadm__ibtn:hover {
-    color: var(--ink);
-  }
 }
 
 /* --- Пояснительная плашка (фаза 75) -----------------------------------
@@ -2852,15 +2826,10 @@ button.head__pill:hover:not(.head__pill--on) {
   font-weight: 600;
 }
 
-.notice__more {
+body [data-slot='button'][data-variant].notice__more {
   flex: 0 0 auto;
-  border: 0;
-  background: none;
-  padding: 0;
-  font: inherit;
-  font-size: var(--type-note);
-  font-weight: 700;
-  color: var(--accent-ink);
+  font-family: inherit;
+  line-height: inherit;
   cursor: pointer;
 }
 

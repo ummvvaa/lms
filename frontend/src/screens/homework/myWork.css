@@ -56,9 +56,8 @@
   flex: 1;
 }
 
-.mywork__pill {
+body [data-slot='button'][data-variant].mywork__pill {
   max-width: 100%;
-  gap: calc(var(--space) * 2);
 }
 
 .mywork__name {

@@ -179,17 +179,8 @@
   margin-top: calc(var(--space) * 2);
 }
 
-.squeue__hint {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
-  padding: calc(var(--space) * 1) calc(var(--space) * 3);
-  font-size: var(--type-note);
-  color: var(--ink-2);
-  background: var(--surface);
+body [data-slot='button'][data-variant].squeue__hint {
+  padding-block: calc(var(--space) * 1);
   cursor: pointer;
 }
 
-.squeue__hint:hover {
-  border-color: var(--ink-3);
-  color: var(--ink);
-}

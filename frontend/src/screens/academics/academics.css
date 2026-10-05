@@ -92,28 +92,24 @@
 
 /* добавить урок: «+» появляется под курсором на пустом месте клетки
    (замечание владельца, 27.09.2026); на телефоне — кнопка словами в списке дня */
-.wk__cell .wk__add {
+body .wk__cell [data-slot='button'][data-variant].wk__add {
   align-self: flex-end;
   margin-top: auto;
   opacity: 0;
-  color: var(--accent-ink);
   cursor: pointer;
 }
 
-.wk__cell:hover .wk__add,
-.wk__cell:focus-within .wk__add {
+body .wk__cell:hover [data-slot='button'][data-variant].wk__add,
+body .wk__cell:focus-within [data-slot='button'][data-variant].wk__add {
   opacity: 1;
   background: var(--accent-bg);
 }
 
-.dayl__body .wk__add {
+body .dayl__body [data-slot='button'][data-variant].wk__add {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: calc(var(--space) / 2);
-  min-height: calc(var(--space) * 8);
-  border-radius: var(--radius-inrow);
-  color: var(--accent-ink);
   font-size: var(--type-note);
   cursor: pointer;
 }
@@ -202,10 +198,8 @@ body [data-slot='button'][data-variant].les--conflict {
 }
 
 /* «ещё N» под двумя уроками клетки и «свернуть» после раскрытия */
-.wk__more {
+body [data-slot='button'][data-variant].wk__more {
   align-self: flex-start;
-  min-height: calc(var(--space) * 6);
-  padding: 0 calc(var(--space) * 1);
 }
 
 .les__tag {

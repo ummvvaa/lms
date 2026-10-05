@@ -6,11 +6,6 @@
 
    Позиционирование, стрелки и закрытие рисует `DropdownMenu` из shadcn
    (фаза 32) — здесь остались размеры кнопки и поля пунктов. */
-.rowmenu__button {
-  min-height: calc(var(--space) * 7);
-  padding: 0 calc(var(--space) * 2);
-}
-
 .rowmenu__panel {
   min-width: calc(var(--space) * 55);
   padding: calc(var(--space) * 1);
@@ -25,13 +20,17 @@
 
 /* Действие внутри пункта меню (удаление с диалогом): текст пункта,
    а не кнопка в кнопке. Цвет — от пункта, у опасного он винный */
+/* сброс утилит реестра стоит весом класса: правила кнопки реестра (высота,
+   поля, цвет варианта) остаются поверх него, как и были; раскладка пункта —
+   селектором тяжелее варианта */
 .rowmenu__action {
   all: unset;
+}
+
+body [data-slot='button'][data-variant].rowmenu__action {
   display: block;
   width: 100%;
   cursor: pointer;
-  color: inherit;
-  font: inherit;
 }
 
 .rowmenu__sep {

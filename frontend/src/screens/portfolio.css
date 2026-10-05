@@ -215,27 +215,15 @@
   white-space: nowrap;
 }
 
-.mydocs__acts .mydocs__ibtn {
-  width: calc(var(--space) * 11);
-  height: var(--touch);
-  color: var(--ink-2);
-}
-
-.mydocs__acts .mydocs__ibtn:hover {
-  color: var(--ink);
-}
-
-.mydocs__more {
+body [data-slot='button'][data-variant].mydocs__more {
   display: inline-flex;
   align-items: center;
-  gap: calc(var(--space) * 1);
   margin-top: calc(var(--space) * 1);
-  padding: calc(var(--space) * 1) 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: var(--type-note);
-  color: var(--ink-2);
+  padding-block: calc(var(--space) * 1);
+  border-style: none;
+  border-width: 0;
+  font-family: inherit;
+  line-height: inherit;
   cursor: pointer;
 }
 

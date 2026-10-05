@@ -70,7 +70,7 @@ export default function ChangePassword() {
 
         {error && <Chip tone="bad" className="login__hint">{error}</Chip>}
 
-        <Button variant="outline" size="sm" className="login__hint" onClick={() => void logout()}>
+        <Button variant="outline" size="sm" className="login__out" onClick={() => void logout()}>
           {t('Выйти')}
         </Button>
       </div>

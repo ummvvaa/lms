@@ -169,25 +169,19 @@
   }
 
   /* строка ленты: слева число и день недели, справа название с подписью */
-  .calfeed__row {
+  body [data-slot='button'][data-variant].calfeed__row {
     display: grid;
     grid-template-columns: calc(var(--space) * 11) minmax(0, 1fr) auto;
     align-items: center;
-    gap: calc(var(--space) * 3);
     width: 100%;
-    height: auto;
-    min-height: var(--touch);
-    padding: calc(var(--space) * 2) 0;
-    border: 0;
-    border-top: 1px solid var(--line);
-    border-radius: 0;
-    background: none;
+    padding-block: calc(var(--space) * 2);
+    border-style: solid none none;
+    border-width: 1px 0 0;
     text-align: left;
     white-space: normal;
-    color: var(--ink);
   }
 
-  .calfeed__group .calfeed__row:first-of-type {
+  body .calfeed__group [data-slot='button'][data-variant].calfeed__row:first-of-type {
     border-top: 0;
   }
 
@@ -225,15 +219,9 @@
   }
 
   /* «Ещё N событий» раскрывает остаток на месте */
-  .calfeed__more {
-    min-height: var(--touch);
-    border: 0;
-    border-top: 1px solid var(--line);
-    border-radius: 0;
-    background: none;
-    color: var(--accent-ink);
-    font-size: var(--type-note);
-    font-weight: 700;
+  body [data-slot='button'][data-variant].calfeed__more {
+    border-style: solid none none;
+    border-width: 1px 0 0;
   }
 
   .calgrid--phone {

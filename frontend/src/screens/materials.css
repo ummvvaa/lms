@@ -38,11 +38,6 @@
   border-color: var(--accent);
 }
 
-.mat__title {
-  font-size: var(--type-body);
-  font-weight: 650;
-}
-
 .mat__form {
   margin-bottom: calc(var(--space) * 4);
   display: grid;
