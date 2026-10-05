@@ -55,16 +55,6 @@ READINESS_WEIGHTS = {"exam": 35.0, "admission": 25.0, "talent": 20.0, "behavior"
 #: Категории подбора: границы по проценту (фаза 40).
 MATCH_TIERS = {"safety": 90.0, "match": 70.0, "reach": 45.0}
 
-#: Напоминания: сроки фиксированы числами (фаза 39).
-REMIND_EXAM_DAYS = 14
-REMIND_DEADLINE_DAYS = 14
-REMIND_TASK_DAYS = 3
-REMIND_EXAM_TASK_DAYS = 30
-REMIND_SCHOLARSHIP_DAYS = 21
-
-#: Стипендии: горизонт «ближайших» дедлайнов (фаза 44).
-SCHOLARSHIP_SOON_DAYS = 30
-
 #: Портфолио: веса разделов процента заполнения (фаза 38).
 PORTFOLIO_WEIGHTS = {
     "profile": 20.0,

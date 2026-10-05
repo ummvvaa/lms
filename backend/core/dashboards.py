@@ -11,6 +11,7 @@ from datetime import timedelta
 from django.db.models import Avg, Count, F, Q
 from django.utils import timezone
 
+from core import school_rules
 from core.parallels import admission_q
 from students.models import (
     AdmissionProfile,
@@ -160,7 +161,8 @@ def admission_dashboard() -> dict:
     with_three = students.annotate(n=Count("universities")).filter(n__gte=3).count()
 
     today = timezone.localdate()
-    horizon = today + timedelta(days=120)
+    windows = school_rules.values()
+    horizon = today + timedelta(days=windows[school_rules.DEADLINE_DASHBOARD_DAYS])
     deadlines = list(
         AdmissionRound.objects.filter(deadline__gte=today, deadline__lte=horizon)
         .annotate(
@@ -180,6 +182,12 @@ def admission_dashboard() -> dict:
         )
         .order_by("deadline")[:40]
     )
+    # цвет срока считает сервер по окнам школы: ближе «ближайших сроков» — красный,
+    # ближе «горизонта» — жёлтый; экран порогов не знает
+    soon, far = windows[school_rules.DEADLINE_SOON_DAYS], windows[school_rules.DEADLINE_HORIZON_DAYS]
+    for row in deadlines:
+        left = (row["deadline"] - today).days
+        row["tone"] = "bad" if left < soon else "warn" if left < far else "neutral"
 
     popular = list(
         StudentUniversity.objects.filter(GRADUATE, student__is_active=True)

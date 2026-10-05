@@ -22,13 +22,6 @@ import './catalog.css'
 
 type Mode = 'catalog' | 'saved' | 'pick'
 
-function deadlineTone(days: number | null): 'bad' | 'warn' | 'neutral' {
-  if (days === null || days < 0) return 'neutral'
-  if (days === 0) return 'bad'
-  if (days <= 7) return 'warn'
-  return 'neutral'
-}
-
 function Heart({ row }: { row: ScholarshipRow }) {
   const { save, remove } = useSaveScholarship()
   const busy = save.isPending || remove.isPending
@@ -165,7 +158,7 @@ export default function Scholarships() {
     { key: 'basis', title: t('Основание'), width: '16%', cell: (row) => row.basis_titles.join(', ') || <span className="t-note">{t('нет')}</span> },
     { key: 'funding', title: t('Финансирование'), width: '14%', cell: (row) => row.funding_title, sortBy: (row) => row.funding_title },
     { key: 'amount', title: t('Сумма'), width: '12%', align: 'right', cell: (row) => <span className="num">{row.amount_title || t('нет')}</span> },
-    { key: 'deadline', title: t('Дедлайн'), width: '14%', cell: (row) => <Chip tone={deadlineTone(row.days_left)} size="sm">{row.deadline_state}</Chip>, sortBy: (row) => row.deadline },
+    { key: 'deadline', title: t('Дедлайн'), width: '14%', cell: (row) => <Chip tone={row.deadline_tone} size="sm">{row.deadline_state}</Chip>, sortBy: (row) => row.deadline },
     { key: 'save', title: '', width: '10%', align: 'right', cell: (row) => <Heart row={row} /> },
   ]
 
@@ -219,7 +212,7 @@ export default function Scholarships() {
             <DataCard title={t('Сохранённые')} count={savedRows.length || undefined} empty={savedRows.length === 0 && t('отметьте в каталоге то, что подходит, — дедлайн появится в календаре')}>
               <Rows>
                 {savedRows.map((row) => (
-                  <Row key={row.id} icon="card" title={row.name} note={[row.organizer, row.funding_title, row.amount_title].filter(Boolean).join(' · ')} right={<Chip tone={deadlineTone(row.days_left)} size="sm">{row.deadline_state}</Chip>} onOpen={() => setOpen(row)} openLabel={t('Подробнее')} />
+                  <Row key={row.id} icon="card" title={row.name} note={[row.organizer, row.funding_title, row.amount_title].filter(Boolean).join(' · ')} right={<Chip tone={row.deadline_tone} size="sm">{row.deadline_state}</Chip>} onOpen={() => setOpen(row)} openLabel={t('Подробнее')} />
                 ))}
               </Rows>
             </DataCard>

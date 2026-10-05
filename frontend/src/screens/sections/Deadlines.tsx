@@ -59,7 +59,6 @@ export default function Deadlines() {
         <div className="grid grid--cards">
           {data.deadlines.map((row) => {
             const left = daysLeft(row.deadline)
-            const tone = left < 30 ? 'bad' : left < 60 ? 'warn' : 'neutral'
             return (
               <div key={row.id} className="card card-pad">
                 <div className="row-between">
@@ -69,7 +68,8 @@ export default function Deadlines() {
                       {row.country} · {row.round_type} · {row.program_name}
                     </p>
                   </div>
-                  <Chip tone={tone} className="num">
+                  {/* цвет срока считает сервер по окнам из настроек школы */}
+                  <Chip tone={row.tone} className="num">
                     {tn(left, '{n} дн')}
                   </Chip>
                 </div>

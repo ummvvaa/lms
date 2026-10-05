@@ -175,6 +175,7 @@ class ScholarshipSerializer(VerificationMixin, DomainModelSerializer):
     amount_title = serializers.SerializerMethodField()
     deadline_state = serializers.SerializerMethodField()
     days_left = serializers.SerializerMethodField()
+    deadline_tone = serializers.SerializerMethodField()
     is_saved = serializers.SerializerMethodField()
 
     class Meta:
@@ -199,6 +200,7 @@ class ScholarshipSerializer(VerificationMixin, DomainModelSerializer):
             "deadline",
             "deadline_state",
             "days_left",
+            "deadline_tone",
             "url",
             "requirements",
             "description",
@@ -223,6 +225,16 @@ class ScholarshipSerializer(VerificationMixin, DomainModelSerializer):
         from django.utils import timezone
 
         return None if obj.deadline is None else (obj.deadline - timezone.localdate()).days
+
+    def get_deadline_tone(self, obj) -> str:
+        """Цвет чипа дедлайна по настройке школы «Срок горит» — порог читается раз на список."""
+        from core import school_rules
+        from universities.scholarships import deadline_tone
+
+        close_days = getattr(self, "_close_days", None)
+        if close_days is None:
+            close_days = self._close_days = school_rules.value(school_rules.DEADLINE_CLOSE_DAYS)
+        return deadline_tone(obj.deadline, close_days)
 
     def get_is_saved(self, obj) -> bool:
         """Сохранена ли она этим учеником — сердечко рисуется по ответу."""

@@ -40,6 +40,11 @@ def for_student(student: Student, *, limit: int = HOW_MANY) -> list[dict]:
     reward = award_size(XPKind.TASK_DONE)
 
     rows = []
+    # «срок горит» — настройка школы: по ней у задачи появляется чип срока
+    from core import school_rules
+
+    close_days = school_rules.value(school_rules.DEADLINE_CLOSE_DAYS)
+    today = timezone.localdate()
     for task in chosen:
         due = task.effective_due_date
         rows.append(
@@ -50,7 +55,9 @@ def for_student(student: Student, *, limit: int = HOW_MANY) -> list[dict]:
                 "priority": task.priority,
                 "status": task.status,
                 "due_date": due.isoformat() if due else None,
-                "days_left": (due - timezone.localdate()).days if due else None,
+                "days_left": (due - today).days if due else None,
+                # срок близко или уже прошёл — экран ставит чип, порога он не знает
+                "due_soon": bool(due) and (due - today).days <= close_days,
                 "from_deadline": bool(task.admission_round_id),
                 # откуда задача: «от куратора» ученик видит и в панели «Сегодня»
                 "origin": task.origin,

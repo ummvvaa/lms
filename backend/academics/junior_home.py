@@ -27,8 +27,14 @@ from academics.results import student_attendance, student_summary
 from core.phrasing import plural, tn
 from students.models import Activity, Competition, Student
 
-#: сколько дней вперёд смотрит «Скоро»
-SOON_DAYS = 30
+
+def soon_days() -> int:
+    """Сколько дней вперёд смотрит «Скоро» — настройка школы «Ближайшие сроки»."""
+    from core import school_rules
+
+    return school_rules.value(school_rules.DEADLINE_SOON_DAYS)
+
+
 #: строк в «Скоро» и «Последних оценках»
 SOON_ROWS = 5
 RECENT_ROWS = 3
@@ -77,7 +83,7 @@ def home_payload(student: Student) -> dict:
     attendance = student_attendance(student.pk, start, seen_end)
     missed = attendance.absent
     upcoming = sorted(
-        _assessments(student, current, current + dt.timedelta(days=SOON_DAYS), calendar),
+        _assessments(student, current, current + dt.timedelta(days=soon_days()), calendar),
         key=lambda lesson: (lesson.date, lesson.slot),
     )
     nearest_sor = next((lesson for lesson in upcoming if lesson.kind == LessonKind.SOR), None)
@@ -123,7 +129,7 @@ def home_payload(student: Student) -> dict:
                 f"{nearest_sor.course.subject.name} — {kind_label(nearest_sor)}"
                 if nearest_sor
                 else tn(
-                    SOON_DAYS,
+                    soon_days(),
                     "в ближайший {n} день СОР нет|в ближайшие {n} дня СОР нет|в ближайшие {n} дней СОР нет",
                 )
             ),
@@ -174,7 +180,7 @@ def home_payload(student: Student) -> dict:
         }
         for lesson in upcoming
     ]
-    horizon = current + dt.timedelta(days=SOON_DAYS)
+    horizon = current + dt.timedelta(days=soon_days())
     for row in Activity.objects.filter(student=student, category="olympiad", date__gte=current, date__lte=horizon):
         soon.append(
             {

@@ -26,6 +26,7 @@ from django.utils import timezone, translation
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
+from core import school_rules
 from core.domains import ROLE_TITLES, domain_of_role
 from core.i18n import active_language, language_of
 from core.labels import field_title, value_title
@@ -536,7 +537,8 @@ def _offline_prep_plan(student: Student, facts: dict, weak: list[str]) -> str:
             _("Следующий Mock Test назначен на {date}.").format(date=profile.next_mock_date.strftime("%d.%m.%Y"))
         )
     else:
-        suggested = timezone.localdate() + timedelta(days=21)
+        # через сколько дней советовать следующий Mock Test — настройка школы
+        suggested = timezone.localdate() + timedelta(days=school_rules.value(school_rules.NEXT_MOCK_DAYS))
         lines.append(
             _("Следующий Mock Test стоит назначить примерно на {date}.").format(date=suggested.strftime("%d.%m.%Y"))
         )
@@ -690,8 +692,10 @@ def _balance_problems(counts: dict, rows: list) -> list[str]:
 
     dated = [row for row in rows if row.deadline]
     dated.sort(key=lambda r: r.deadline)
+    # «вплотную» и «скорый дедлайн» — настройки школы
+    windows = school_rules.values()
     for first, second in pairwise(dated):
-        if (second.deadline - first.deadline).days <= 3:
+        if (second.deadline - first.deadline).days <= windows[school_rules.DEADLINE_TIGHT_DAYS]:
             problems.append(
                 _("дедлайны {first} и {second} стоят вплотную ({first_date} и {second_date})").format(
                     first=first.program.university.name,
@@ -701,7 +705,8 @@ def _balance_problems(counts: dict, rows: list) -> list[str]:
                 )
             )
             break
-    soon = [row for row in dated if 0 <= (row.deadline - timezone.localdate()).days <= 14]
+    near_days = windows[school_rules.DEADLINE_NEAR_DAYS]
+    soon = [row for row in dated if 0 <= (row.deadline - timezone.localdate()).days <= near_days]
     if soon:
         nearest = soon[0]
         problems.append(

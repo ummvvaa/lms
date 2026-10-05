@@ -12297,14 +12297,7 @@ msgstr ""
 msgid "Стоит вернуть в поле зрения: {count}."
 msgstr "Worth bringing back into view: {count}."
 
-#: suggestions/assistant.py:419
-msgid "В ближайшие 60 дней дедлайнов по спискам учеников нет."
-msgstr "No deadlines on students' lists in the next 60 days."
 
-#: suggestions/assistant.py:420
-#, python-brace-format
-msgid "Дедлайны на ближайшие 60 дней: {count}."
-msgstr "Deadlines in the next 60 days: {count}."
 
 #: suggestions/assistant.py:427
 msgid "У всех, у кого заполнен профиль поступления, Common App заведён."
@@ -15720,13 +15713,7 @@ msgstr "Round not checked for a long time"
 msgid "Дедлайн раунда не сверяли с сайтом вуза дольше этого срока — он в счётчике кабинета Асем"
 msgstr "The round deadline has not been checked against the university site for longer than this — it is counted in Assem's cabinet"
 
-#: core/school_rules.py
-msgid "План давно не открывали"
-msgstr "Plan not opened for a long time"
 
-#: core/school_rules.py
-msgid "Ученик не открывал план дольше этого срока — на главной появляется сюжет про план"
-msgstr "The student has not opened the plan for longer than this — a prompt about the plan appears on the home page"
 
 #: core/school_rules.py
 msgid "Напоминание об экзамене"
@@ -15881,3 +15868,19 @@ msgstr "Score far from the target, exam in less than {n} day|Score far from the 
 #: students/attention.py
 msgid "До цели по IELTS не хватает {ielts} или больше, по SAT — {sat} или больше, а сдавать скоро"
 msgstr "{ielts} or more short of the IELTS target, {sat} or more short of the SAT target, and the exam is soon"
+
+#: suggestions/assistant.py
+msgid "Плана давно не касались"
+msgstr "Plan not touched for a long time"
+
+#: suggestions/assistant.py
+msgid "В плане ученика ничего не двигалось дольше этого срока — на главной появляется сюжет про план"
+msgstr "Nothing has moved in the student's plan for longer than this — a prompt about the plan appears on the home page"
+
+#: suggestions/assistant.py
+msgid "В ближайший {n} день дедлайнов по спискам учеников нет.|В ближайшие {n} дня дедлайнов по спискам учеников нет.|В ближайшие {n} дней дедлайнов по спискам учеников нет."
+msgstr "No deadlines on students' lists in the next {n} day.|No deadlines on students' lists in the next {n} days."
+
+#: suggestions/assistant.py
+msgid "Дедлайны на ближайший {n} день: {count}.|Дедлайны на ближайшие {n} дня: {count}.|Дедлайны на ближайшие {n} дней: {count}."
+msgstr "Deadlines in the next {n} day: {count}.|Deadlines in the next {n} days: {count}."

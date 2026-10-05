@@ -16,13 +16,9 @@ from datetime import timedelta
 from django.utils import timezone
 from django.utils.translation import gettext
 
+from core import school_rules
 from engagement.models import CueCondition, HomeCue
 from students.models import Student
-
-#: сколько дней тишины считаем «план не открывали»
-PLAN_IDLE_DAYS = 7
-#: горизонт, на котором дедлайн стипендии уже горит
-SCHOLARSHIP_HORIZON_DAYS = 30
 
 
 def _portfolio_gap(student: Student) -> str | None:
@@ -65,7 +61,8 @@ def _scholarship_deadline(student: Student) -> str | None:
     from universities.models import SavedScholarship, Scholarship
 
     today = timezone.localdate()
-    horizon = today + timedelta(days=SCHOLARSHIP_HORIZON_DAYS)
+    # «ближайший» дедлайн стипендии — настройка школы «Ближайшие сроки»
+    horizon = today + timedelta(days=school_rules.value(school_rules.DEADLINE_SOON_DAYS))
     saved = set(SavedScholarship.objects.filter(student=student).values_list("scholarship_id", flat=True))
     rows = Scholarship.objects.filter(deadline__gte=today, deadline__lte=horizon).exclude(pk__in=saved)
     count = rows.count()
@@ -75,16 +72,18 @@ def _scholarship_deadline(student: Student) -> str | None:
 
 
 def _plan_idle(student: Student) -> str | None:
-    """План есть, но за неделю в нём ничего не двигалось."""
+    """План есть, но за срок из настроек школы в нём ничего не двигалось."""
     from roadmap.models import ApplicationPlan, Task
 
     if not ApplicationPlan.objects.filter(student=student).exists():
         return None
-    edge = timezone.now() - timedelta(days=PLAN_IDLE_DAYS)
+    # сколько дней тишины значит «плана не касались» — настройка школы
+    idle_days = school_rules.value(school_rules.PLAN_IDLE_DAYS)
+    edge = timezone.now() - timedelta(days=idle_days)
     moved = Task.objects.filter(student=student, updated_at__gte=edge).exists()
     if moved:
         return None
-    return gettext("Плана не касались {days} дн.").format(days=PLAN_IDLE_DAYS)
+    return gettext("Плана не касались {days} дн.").format(days=idle_days)
 
 
 def _no_universities(student: Student) -> str | None:

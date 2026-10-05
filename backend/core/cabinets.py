@@ -22,7 +22,7 @@ from django.db.models import Avg, Count, Exists, F, OuterRef, Q, Sum
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
-from core import stored_text
+from core import school_rules, stored_text
 from core.dashboards import mock_drops
 from core.parallels import admission_q, parallel_of
 from core.phrasing import counted, tn
@@ -39,10 +39,15 @@ from students.models import (
 )
 from universities.models import AdmissionRound, StudentUniversity
 
-#: сколько дней вперёд смотрит «ближайшее» — экзамены, олимпиады, старты
-HORIZON_DAYS = 60
-# окно героя на дашборде Асем: дальше — уже не «горит», это видно в разделе «Дедлайны»
-URGENT_DAYS = 30
+
+def horizon_days() -> int:
+    """На сколько дней вперёд смотрит «ближайшее» — экзамены, олимпиады, старты (настройка школы)."""
+    return school_rules.value(school_rules.DEADLINE_HORIZON_DAYS)
+
+
+def urgent_days() -> int:
+    """Окно героя на дашборде Асем: дальше — уже не «горит», это видно в разделе «Дедлайны»."""
+    return school_rules.value(school_rules.DEADLINE_SOON_DAYS)
 
 
 def _active():
@@ -141,7 +146,7 @@ def exam_cabinet() -> dict:
     drops = mock_drops(limit=6)
 
     today = timezone.localdate()
-    horizon = today + timedelta(days=HORIZON_DAYS)
+    horizon = today + timedelta(days=horizon_days())
     upcoming = list(
         ExamGoal.objects.filter(GRADUATE, exam_date__gte=today, exam_date__lte=horizon, student__is_active=True)
         .values("exam_date", name=F("exam__name"))
@@ -265,9 +270,10 @@ def admission_cabinet() -> dict:
     ).exclude(application_status="submitted")
     first = week_rounds.first()
     # герой дашборда стоит, только пока впереди есть дедлайн с подающими:
-    # окно — 30 дней, неделя — его срочная часть (фаза 80)
+    # окно — настройка школы «Ближайшие сроки», неделя — его срочная часть (фаза 80)
+    window_days = urgent_days()
     month_rounds = (
-        AdmissionRound.objects.filter(deadline__gte=today, deadline__lte=today + timedelta(days=URGENT_DAYS))
+        AdmissionRound.objects.filter(deadline__gte=today, deadline__lte=today + timedelta(days=window_days))
         .annotate(
             applicants_count=Count(
                 "applicants", filter=Q(applicants__student__is_active=True) & admission_q("applicants__student__")
@@ -302,7 +308,8 @@ def admission_cabinet() -> dict:
     single = sum(1 for count in counts.values() if count == 1)
     balanced = sum(1 for sid, kinds in tiers.items() if {"reach", "safety"} <= kinds)
 
-    stale = today - timedelta(days=30)
+    # раунд «давно не сверяли» — настройка школы
+    stale = today - timedelta(days=school_rules.value(school_rules.ROUND_STALE_DAYS))
     return {
         "role": "director_admission",
         "title": _("Поступление"),
@@ -320,8 +327,8 @@ def admission_cabinet() -> dict:
                 if first is not None
                 else None
             ),
-            # дедлайны ближайших 30 дней: без них героя на дашборде нет вовсе
-            "window_days": URGENT_DAYS,
+            # дедлайны ближайшего окна: без них героя на дашборде нет вовсе
+            "window_days": window_days,
             "rounds": month_rounds.count(),
             "applicants": sum(row.applicants_count for row in month_rounds),
             "nearest": (
@@ -499,7 +506,8 @@ def behavior_cabinet() -> dict:
     has_contact = ParentContact.objects.filter(student=OuterRef("pk"))
     without_contacts = students.annotate(has_c=Exists(has_contact)).filter(has_c=False).count()
 
-    edge = timezone.now() - timedelta(days=30)
+    # «молчит» — не входил дольше срока из настроек школы
+    edge = timezone.now() - timedelta(days=school_rules.value(school_rules.STUDENT_SILENT_DAYS))
     silent = students.filter(
         Q(user__last_login__lt=edge) | Q(user__last_login__isnull=True), user__isnull=False
     ).count()
@@ -581,7 +589,7 @@ def talent_cabinet() -> dict:
         .order_by("created_at")[:6]
     )
     today = timezone.localdate()
-    horizon = today + timedelta(days=HORIZON_DAYS)
+    horizon = today + timedelta(days=horizon_days())
     olympiads = list(
         Activity.objects.filter(category="olympiad", date__gte=today, date__lte=horizon, student__is_active=True)
         .values("title", "date")
@@ -652,7 +660,7 @@ def talent_cabinet() -> dict:
 def sport_cabinet() -> dict:
     """Календарь стартов, три числа, распределение по видам спорта."""
     today = timezone.localdate()
-    horizon = today + timedelta(days=HORIZON_DAYS)
+    horizon = today + timedelta(days=horizon_days())
     starts = list(
         Competition.objects.filter(student__is_active=True, date__gte=today, date__lte=horizon)
         .values("name", "date")

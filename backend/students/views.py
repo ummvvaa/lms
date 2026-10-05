@@ -1087,7 +1087,6 @@ def exam_goals_attention(request):
     """
     import datetime as dt
 
-    from django.conf import settings
     from django.utils import timezone
 
     from core.domains import DOMAINS
@@ -1097,7 +1096,10 @@ def exam_goals_attention(request):
 
     today = timezone.localdate()
     week = today + dt.timedelta(days=7)
-    horizon = today + dt.timedelta(days=settings.REMIND_EXAM_TASK_DAYS)
+    from core import school_rules
+
+    # то же окно, что у задачи о регистрации на экзамен, — настройка школы
+    horizon = today + dt.timedelta(days=school_rules.value(school_rules.REMIND_EXAM_TASK_DAYS))
 
     with_goals = set(ExamGoal.objects.values_list("student_id", flat=True))
     without = [

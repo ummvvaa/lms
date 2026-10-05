@@ -291,12 +291,17 @@ def revoke(document: StudentDocument, *, actor):
 # --- Напоминания задачей ---------------------------------------------------------
 
 
-def remind(students: QuerySet[Student], *, actor, days: int = 7) -> list[dict]:
-    """Каждому, у кого не хватает, — задача со списком именно его недостающих."""
+def remind(students: QuerySet[Student], *, actor, days: int | None = None) -> list[dict]:
+    """Каждому, у кого не хватает, — задача со списком именно его недостающих.
+
+    Срок задачи — настройка школы «Срок задачи о документах», если не задан явно.
+    """
     from roadmap.models import TaskCategory
     from roadmap.services import assign_to_students
 
     state = state_of(students)
+    if days is None:
+        days = school_rules.value(school_rules.DOCUMENTS_TASK_DAYS)
     due = timezone.localdate() + dt.timedelta(days=days)
     made = []
     for student in students:

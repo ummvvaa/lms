@@ -2126,6 +2126,8 @@ export interface TodayTask {
   status: TaskStatus
   due_date: string | null
   days_left: number | null
+  /** срок близко или прошёл: чип у задачи; порог — настройка школы «Срок горит» */
+  due_soon: boolean
   from_deadline: boolean
   university_name: string | null
   xp: number
@@ -4359,6 +4361,8 @@ export interface ScholarshipRow {
   deadline: string | null
   /** состояние срока словами — собирает сервер, не экран */
   deadline_state: string
+  /** цвет чипа срока — тоже с сервера: порог «срок горит» — настройка школы */
+  deadline_tone: 'bad' | 'warn' | 'neutral'
   days_left: number | null
   url: string
   requirements: string

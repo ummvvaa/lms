@@ -48,6 +48,8 @@ export interface Deadline {
   university: string
   country: string
   program_name: string
+  /** цвет срока — считает сервер по окнам из настроек школы */
+  tone: 'bad' | 'warn' | 'neutral'
 }
 
 export interface AdmissionData {

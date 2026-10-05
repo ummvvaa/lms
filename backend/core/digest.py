@@ -18,6 +18,7 @@ from django.utils import timezone, translation
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
+from core import school_rules
 from core.domains import Source, domain_of_role
 from core.i18n import active_language
 from core.labels import acting_for_phrase, field_short, field_title, value_title
@@ -25,9 +26,6 @@ from core.models import AuditLog
 from core.phrasing import counted, days_left, listing, people, tn
 from suggestions.commands import title_of as command_title
 from suggestions.models import Suggestion, SuggestionStatus
-
-#: сколько дней вперёд считаем дедлайн «скорым» — про него стоит сказать
-DEADLINE_HORIZON = 14
 
 SOURCE_PHRASE = {
     Source.MANUAL: gettext_lazy("руками"),
@@ -157,7 +155,8 @@ def _deadline_lines() -> list[str]:
     from universities.models import ApplicationStatus, StudentUniversity
 
     today = timezone.localdate()
-    horizon = today + timedelta(days=DEADLINE_HORIZON)
+    # «скорый дедлайн», о котором стоит сказать, — настройка школы
+    horizon = today + timedelta(days=school_rules.value(school_rules.DEADLINE_NEAR_DAYS))
     rows = (
         StudentUniversity.objects.filter(
             admission_q("student__"),

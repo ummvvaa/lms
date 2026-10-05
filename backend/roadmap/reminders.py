@@ -14,10 +14,10 @@ from __future__ import annotations
 
 import datetime as dt
 
-from django.conf import settings
 from django.db import IntegrityError
 from django.utils.translation import gettext_noop
 
+from core import school_rules
 from core.i18n import language_of, render
 from core.models import Notification
 from roadmap.models import Task, TaskCategory, TaskPriority, TaskStatus
@@ -39,7 +39,7 @@ def create_registration_tasks(today: dt.date | None = None) -> int:
     from django.db.models import Exists, OuterRef
 
     today = today or _today()
-    horizon = today + dt.timedelta(days=settings.REMIND_EXAM_TASK_DAYS)
+    horizon = today + dt.timedelta(days=school_rules.value(school_rules.REMIND_EXAM_TASK_DAYS))
     created = 0
     # `exclude(tasks__…isnull=True)` здесь не годится: LEFT JOIN подсовывает
     # пустую строку, и цель без задач выглядела бы как цель с живой задачей
@@ -86,7 +86,7 @@ def create_scholarship_tasks(today: dt.date | None = None) -> int:
     from universities.models import SavedScholarship
 
     today = today or _today()
-    horizon = today + dt.timedelta(days=settings.REMIND_SCHOLARSHIP_DAYS)
+    horizon = today + dt.timedelta(days=school_rules.value(school_rules.REMIND_SCHOLARSHIP_DAYS))
     created = 0
     rows = (
         SavedScholarship.objects.filter(scholarship__deadline__gte=today, scholarship__deadline__lte=horizon)
@@ -147,7 +147,7 @@ def send_event_reminders(today: dt.date | None = None) -> int:
     today = today or _today()
     sent = 0
 
-    exam_day = today + dt.timedelta(days=settings.REMIND_EXAM_DAYS)
+    exam_day = today + dt.timedelta(days=school_rules.value(school_rules.REMIND_EXAM_DAYS))
     for goal in ExamGoal.objects.filter(exam_date=exam_day).select_related("exam", "student__user"):
         sent += _notify_once(
             goal.student.user,
@@ -158,7 +158,7 @@ def send_event_reminders(today: dt.date | None = None) -> int:
             ),
             link="/calendar",
             exam=goal.exam.name,
-            n=settings.REMIND_EXAM_DAYS,
+            n=school_rules.value(school_rules.REMIND_EXAM_DAYS),
             date=f"{goal.exam_date:%d.%m.%Y}",
         )
     for goal in ExamGoal.objects.filter(registration_date=exam_day).select_related("exam", "student__user"):
@@ -171,7 +171,7 @@ def send_event_reminders(today: dt.date | None = None) -> int:
             date=f"{goal.registration_date:%d.%m.%Y}",
         )
 
-    deadline_day = today + dt.timedelta(days=settings.REMIND_DEADLINE_DAYS)
+    deadline_day = today + dt.timedelta(days=school_rules.value(school_rules.REMIND_DEADLINE_DAYS))
     rows = StudentUniversity.objects.filter(
         admission_round__isnull=False, admission_round__deadline=deadline_day
     ).select_related("admission_round", "program__university", "student__user")
@@ -185,7 +185,7 @@ def send_event_reminders(today: dt.date | None = None) -> int:
             date=f"{row.admission_round.deadline:%d.%m.%Y}",
         )
 
-    scholarship_day = today + dt.timedelta(days=settings.REMIND_SCHOLARSHIP_DAYS)
+    scholarship_day = today + dt.timedelta(days=school_rules.value(school_rules.REMIND_SCHOLARSHIP_DAYS))
     saved = SavedScholarship.objects.filter(scholarship__deadline=scholarship_day).select_related(
         "scholarship", "student__user"
     )
@@ -199,7 +199,7 @@ def send_event_reminders(today: dt.date | None = None) -> int:
             date=f"{row.scholarship.deadline:%d.%m.%Y}",
         )
 
-    task_day = today + dt.timedelta(days=settings.REMIND_TASK_DAYS)
+    task_day = today + dt.timedelta(days=school_rules.value(school_rules.REMIND_TASK_DAYS))
     tasks = (
         Task.objects.exclude(status__in=TaskStatus.closed())
         .filter(due_date=task_day, admission_round__isnull=True, exam_goal__isnull=True, scholarship__isnull=True)

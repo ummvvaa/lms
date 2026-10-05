@@ -56,9 +56,6 @@ CHAT_RULES = (  # i18n-skip: промпт модели
 #: сколько строк-фактов уходит в модель на свободный вопрос
 MAX_FACTS = 150
 
-#: за сколько дней вперёд искать СОР и СОЧ — как на экране «Сегодня»
-ASSESSMENTS_AHEAD = 30
-
 
 def _reply(text: str, lines: list[str] | None = None) -> dict:
     from suggestions.assistant import _reply as base
@@ -269,16 +266,18 @@ def _assessments(actor) -> tuple[str, list[str]]:
     """Ближайшие СОР и СОЧ в моих составах — свои уроки и замены."""
     calendar = school_calendar.load()
     day = today()
+    # за сколько дней вперёд искать СОР и СОЧ — настройка школы «Ближайшие сроки»
+    ahead = school_rules.value(school_rules.DEADLINE_SOON_DAYS)
     rows = [
         lesson
-        for lesson in by_time(teachers.lessons_of(actor, day, day + dt.timedelta(days=ASSESSMENTS_AHEAD)), calendar)
+        for lesson in by_time(teachers.lessons_of(actor, day, day + dt.timedelta(days=ahead)), calendar)
         if lesson.is_live
         and lesson.kind != LessonKind.FO
         and not calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
     ]
     if not rows:
         none_ahead = tn(
-            ASSESSMENTS_AHEAD,
+            ahead,
             "В ближайшие {n} день СОР и СОЧ у вас нет.|"
             "В ближайшие {n} дня СОР и СОЧ у вас нет.|"
             "В ближайшие {n} дней СОР и СОЧ у вас нет.",

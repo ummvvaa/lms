@@ -175,12 +175,12 @@ def test_saved_deadline_shows_up_in_the_calendar(student, scholarship):
 
 
 @pytest.mark.django_db
-def test_reminder_and_task_appear_before_the_deadline(student, student_user, scholarship, settings):
+def test_reminder_and_task_appear_before_the_deadline(student, student_user, scholarship):
     """За N дней приходит напоминание и появляется задача роадмапа."""
-    from core.models import Notification
+    from core.models import Notification, SchoolRule
     from roadmap.reminders import run_daily
 
-    settings.REMIND_SCHOLARSHIP_DAYS = 10
+    SchoolRule.objects.create(code="remind_scholarship_days", value=10)
     SavedScholarship.objects.create(student=student, scholarship=scholarship)
 
     result = run_daily()
@@ -368,3 +368,18 @@ def test_registry_owns_the_scholarship_fields():
     assert can_write_for("admin", "admission", "universities.Scholarship", "deadline")
     assert not can_write_for("admin", "exam", "universities.Scholarship", "deadline")
     assert can_delete("director_admission", "universities.Scholarship")
+
+
+def test_deadline_tone_follows_the_school_setting():
+    """Цвет чипа дедлайна считает сервер: сегодня — красный, в окне «срок горит» — жёлтый."""
+    import datetime as dt
+
+    from universities.scholarships import deadline_tone
+
+    today = dt.date(2026, 10, 5)
+    assert deadline_tone(None, 7, today) == "neutral"
+    assert deadline_tone(today - dt.timedelta(days=1), 7, today) == "neutral"
+    assert deadline_tone(today, 7, today) == "bad"
+    assert deadline_tone(today + dt.timedelta(days=7), 7, today) == "warn"
+    assert deadline_tone(today + dt.timedelta(days=8), 7, today) == "neutral"
+    assert deadline_tone(today + dt.timedelta(days=8), 10, today) == "warn", "порог поменяли — окно шире"

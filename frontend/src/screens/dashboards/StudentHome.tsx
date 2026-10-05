@@ -146,7 +146,7 @@ function TasksToday() {
             title={task.title}
             note={[task.university_name ?? '', task.days_left === null ? '' : task.days_left < 0 ? t('срок прошёл') : task.days_left === 0 ? t('сегодня') : t('до {date}', { date: task.due_date ? formatDate(task.due_date) : '' })].filter(Boolean).join(' · ')}
             right={
-              task.days_left !== null && task.days_left <= 7 && task.status !== 'done' ? (
+              task.days_left !== null && task.due_soon && task.status !== 'done' ? (
                 <Chip tone={task.days_left < 0 ? 'bad' : 'warn'} size="sm">
                   {task.days_left < 0 ? t('просрочена') : task.days_left === 0 ? t('сегодня') : tn(task.days_left, '{n} день|{n} дня|{n} дней')}
                 </Chip>

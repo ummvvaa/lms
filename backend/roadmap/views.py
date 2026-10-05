@@ -416,7 +416,10 @@ def plan_attention(request):
         return Response({"detail": _("Планы учеников ведёт директор по поступлению")}, status=status.HTTP_403_FORBIDDEN)
 
     today = timezone.localdate()
-    soon = today + dt.timedelta(days=30)
+    from core import school_rules
+
+    # «скоро» — настройка школы «Ближайшие сроки»
+    soon = today + dt.timedelta(days=school_rules.value(school_rules.DEADLINE_SOON_DAYS))
     from core.parallels import admission_q
 
     # планы — только у 11: у 8–10 поступления нет

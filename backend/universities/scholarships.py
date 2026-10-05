@@ -16,7 +16,6 @@ import datetime as dt
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from django.conf import settings
 from django.db.models import Q, QuerySet
 from django.utils import timezone
 from django.utils.translation import gettext as _
@@ -28,8 +27,25 @@ from universities.models import SavedScholarship, Scholarship
 
 
 def soon_days() -> int:
-    """Через сколько дней дедлайн считается «ближайшим» — для счётчика сверху."""
-    return int(getattr(settings, "SCHOLARSHIP_SOON_DAYS", 30))
+    """Через сколько дней дедлайн считается «ближайшим» — настройка школы «Ближайшие сроки»."""
+    from core import school_rules
+
+    return school_rules.value(school_rules.DEADLINE_SOON_DAYS)
+
+
+def deadline_tone(deadline: dt.date | None, close_days: int, today: dt.date | None = None) -> str:
+    """Цвет чипа дедлайна: сегодня — красный, «срок горит» — жёлтый, иначе без цвета.
+
+    Порог — настройка школы «Срок горит»; считает сервер, экран числа не знает.
+    """
+    if deadline is None:
+        return "neutral"
+    left = (deadline - (today or timezone.localdate())).days
+    if left < 0:
+        return "neutral"
+    if left == 0:
+        return "bad"
+    return "warn" if left <= close_days else "neutral"
 
 
 #: Сколько стипендий уходит в модель. Больше — лишний контекст и лишние деньги.

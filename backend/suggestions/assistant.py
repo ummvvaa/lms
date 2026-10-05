@@ -408,15 +408,17 @@ def out_of_sight(*, student_ids=None, **_kwargs) -> dict:
 
 
 def deadlines_soon(*, student_ids=None, **_kwargs) -> dict:
-    """Раунды подачи из списков учеников на ближайшие 60 дней."""
+    """Раунды подачи из списков учеников на «горизонт» из настроек школы."""
+    from core import school_rules
     from universities.models import StudentUniversity
 
     today = timezone.localdate()
+    horizon = school_rules.value(school_rules.DEADLINE_HORIZON_DAYS)
     rows = (
         StudentUniversity.objects.filter(
             admission_round__isnull=False,
             admission_round__deadline__gte=today,
-            admission_round__deadline__lte=today + timedelta(days=60),
+            admission_round__deadline__lte=today + timedelta(days=horizon),
         )
         .select_related("student", "program__university", "admission_round")
         .order_by("admission_round__deadline")
@@ -429,8 +431,24 @@ def deadlines_soon(*, student_ids=None, **_kwargs) -> dict:
         for row in rows[:15]
     ]
     if not lines:
-        return _reply(_("В ближайшие 60 дней дедлайнов по спискам учеников нет."))
-    return _reply(_("Дедлайны на ближайшие 60 дней: {count}.").format(count=len(lines)), lines=lines)
+        return _reply(
+            tn(
+                horizon,
+                "В ближайший {n} день дедлайнов по спискам учеников нет.|"
+                "В ближайшие {n} дня дедлайнов по спискам учеников нет.|"
+                "В ближайшие {n} дней дедлайнов по спискам учеников нет.",
+            )
+        )
+    return _reply(
+        tn(
+            horizon,
+            "Дедлайны на ближайший {n} день: {count}.|"
+            "Дедлайны на ближайшие {n} дня: {count}.|"
+            "Дедлайны на ближайшие {n} дней: {count}.",
+            count=len(lines),
+        ),
+        lines=lines,
+    )
 
 
 def no_common_app(*, student_ids=None, **_kwargs) -> dict:
