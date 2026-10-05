@@ -241,7 +241,7 @@ def practice_start(request):
             section=data.get("section", ""),
             difficulty=data.get("difficulty", ""),
             topic=data.get("topic", ""),
-            size=data.get("size", services.DEFAULT_PRACTICE_SIZE),
+            size=data.get("size"),
         )
     except services.PrepError as error:
         return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
@@ -523,7 +523,8 @@ def center_exams(request):
     student = _own_student(request)
     if student is None:
         return Response({"detail": _("Центр подготовки — экран ученика")}, status=status.HTTP_403_FORBIDDEN)
-    return Response({"exams": prep_center.exams(student)})
+    # размер тренировки стоит в подписи кнопки — число приходит отсюда, экран его не знает
+    return Response({"exams": prep_center.exams(student), "practice_size": services.practice_size()})
 
 
 @extend_schema(responses={200: dict})

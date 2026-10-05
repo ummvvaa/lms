@@ -787,6 +787,32 @@ RULES: tuple[Rule, ...] = (
 
 BY_CODE: dict[str, Rule] = {rule.code: rule for rule in RULES}
 
+#: Переменные окружения, в которых эти правила жили до 05.10.2026. Код их больше
+#: не читает: оставшаяся в `.env.prod` переменная молча ничего не делает, поэтому
+#: `preflight` называет её по имени (пустое правило — настройка убрана совсем)
+FORMER_ENV: dict[str, str] = {
+    "ACADEMICS_DAY_MIN_ABSENT": DAY_ABSENT_MIN,
+    "ACADEMICS_DAY_SHARE": DAY_ABSENT_SHARE,
+    "CURATOR_MOCK_STALE_DAYS": MOCK_STALE_DAYS,
+    "CURATOR_EXAM_SOON_DAYS": EXAM_SOON_DAYS,
+    "CURATOR_IELTS_GAP": IELTS_GAP,
+    "CURATOR_SAT_GAP": SAT_GAP,
+    "CURATOR_IELTS_JUMP": IELTS_JUMP,
+    "CURATOR_SAT_JUMP": SAT_JUMP,
+    "CURATOR_DOCUMENT_EXPIRING_DAYS": DOCUMENT_EXPIRING_DAYS,
+    "CURATOR_DOCUMENT_NOTICE_DAYS": DOCUMENT_NOTICE_DAYS,
+    "REMIND_EXAM_DAYS": REMIND_EXAM_DAYS,
+    "REMIND_DEADLINE_DAYS": REMIND_DEADLINE_DAYS,
+    "REMIND_TASK_DAYS": REMIND_TASK_DAYS,
+    "REMIND_EXAM_TASK_DAYS": REMIND_EXAM_TASK_DAYS,
+    "REMIND_SCHOLARSHIP_DAYS": REMIND_SCHOLARSHIP_DAYS,
+    "SCHOLARSHIP_SOON_DAYS": DEADLINE_SOON_DAYS,
+    "MATERIAL_MAX_FILE_MB": MATERIAL_FILE_MB,
+    "MATERIAL_MAX_FILES": MATERIAL_MAX_FILES,
+    "LLM_MONTHLY_LIMIT": LLM_MONTHLY_LIMIT,
+    "SUGGESTION_CONFIDENCE_THRESHOLD": "",
+}
+
 
 class RuleRejected(ValueError):
     """Значение не подходит правилу. Текст пригоден для показа человеку."""

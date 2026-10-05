@@ -94,6 +94,7 @@ def test_essay_system_prompt_forbids_writing():
 # --- Журнал вызовов модели ---
 
 
+@pytest.mark.django_db  # месячный лимит — настройка школы, читается из базы
 @override_settings(LLM={"API_KEY": "", "BASE_URL": "https://example", "MODEL": "m", "TIMEOUT": 5, "NO_RETENTION": True})
 def test_llm_is_optional():
     from suggestions.llm import LLMUnavailable, complete, is_configured

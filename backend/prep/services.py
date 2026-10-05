@@ -30,11 +30,12 @@ from prep.models import (
 )
 from students.models import AttemptFormat, AttemptSource, ExamAttempt, Student
 
-#: Сколько заданий в тренировке по умолчанию.
-DEFAULT_PRACTICE_SIZE = 10
 
-#: Тема считается слабой, если верных ответов меньше этой доли.
-WEAK_THRESHOLD = 0.6
+def practice_size() -> int:
+    """Сколько заданий в тренировке, если ученик не выбрал иначе, — настройка школы."""
+    from core import school_rules
+
+    return school_rules.value(school_rules.PRACTICE_SIZE)
 
 
 class PrepError(ValueError):
@@ -105,9 +106,10 @@ def start_practice(
     section: str = "",
     difficulty: str = "",
     topic: str = "",
-    size: int = DEFAULT_PRACTICE_SIZE,
+    size: int | None = None,
 ) -> PracticeSession:
     """Собрать тренировку. Вопросы берутся из банка, а не выдумываются."""
+    size = size or practice_size()
     pool = list(practice_pool(exam_type=exam_type, section=section, difficulty=difficulty, topic=topic))
     if not pool:
         raise PrepError(_("В банке нет заданий по этим параметрам — попросите академического директора их добавить"))
@@ -265,6 +267,10 @@ def weak_topics(session: PracticeSession) -> list[dict]:
         bucket["total"] += 1
         bucket["correct"] += 1 if row.is_correct else 0
 
+    from core import school_rules
+
+    # тема слабая, если верных ответов меньше этой доли, — настройка школы
+    weak_below = school_rules.value(school_rules.PRACTICE_WEAK_SHARE) / 100
     weak = [
         {
             "topic": topic,
@@ -273,7 +279,7 @@ def weak_topics(session: PracticeSession) -> list[dict]:
             "percent": round(bucket["correct"] / bucket["total"] * 100),
         }
         for topic, bucket in stats.items()
-        if bucket["total"] and bucket["correct"] / bucket["total"] < WEAK_THRESHOLD
+        if bucket["total"] and bucket["correct"] / bucket["total"] < weak_below
     ]
     return sorted(weak, key=lambda row: row["percent"])
 

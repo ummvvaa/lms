@@ -241,3 +241,82 @@ def test_decimal_rule_keeps_tenths_and_reads_a_comma(admin):
 
     api.post("/api/school-rules/ielts_jump/reset/")
     assert school_rules.value(school_rules.IELTS_JUMP) == 1.5
+
+
+# --- Правила ушли из кода и окружения (05.10.2026) ----------------------------
+
+#: имена настроек сервера, в которых правила жили раньше: в коде их быть не должно
+FORMER_SETTINGS = (
+    "CURATOR_RULES",
+    "REMIND_EXAM_DAYS",
+    "REMIND_DEADLINE_DAYS",
+    "REMIND_TASK_DAYS",
+    "REMIND_EXAM_TASK_DAYS",
+    "REMIND_SCHOLARSHIP_DAYS",
+    "SCHOLARSHIP_SOON_DAYS",
+    "MATERIAL_MAX_FILE_MB",
+    "MATERIAL_MAX_FILES",
+    "LLM_MONTHLY_LIMIT",
+    "SUGGESTION_CONFIDENCE_THRESHOLD",
+    "DAY_MIN_ABSENT",
+    "DAY_SHARE",
+)
+
+
+def _sources():
+    from pathlib import Path
+
+    backend = Path(__file__).resolve().parents[2]
+    for path in backend.rglob("*.py"):
+        if "tests" in path.parts or "migrations" in path.parts:
+            continue
+        yield path, path.read_text(encoding="utf-8")
+
+
+def test_every_rule_is_read_by_the_code():
+    """Правило на экране, которое код не читает, — рычаг, не подключённый ни к чему."""
+    text = "\n".join(body for path, body in _sources() if path.name != "school_rules.py")
+    names = {
+        name: value
+        for name, value in vars(school_rules).items()
+        if name.isupper() and isinstance(value, str) and value in school_rules.BY_CODE
+    }
+    assert set(names.values()) == set(school_rules.BY_CODE), "у правила нет константы с кодом"
+    unused = sorted(name for name in names if f"school_rules.{name}" not in text)
+    assert not unused, f"правила, которые код не читает: {unused}"
+
+
+def test_former_settings_and_env_names_are_gone():
+    """Перенесённое правило не читается ни из настроек сервера, ни из окружения."""
+    from pathlib import Path
+
+    from django.conf import settings
+
+    for name in FORMER_SETTINGS:
+        assert not hasattr(settings, name), f"настройка {name} осталась в settings"
+    hits = [
+        f"{path.name}: {name}"
+        for path, body in _sources()
+        if path.name != "school_rules.py"
+        for name in (*FORMER_SETTINGS, *school_rules.FORMER_ENV)
+        # имя правила в реестре совпадает с прежним именем настройки — ищем обращение к настройке
+        if f'"{name}"' in body or f"settings.{name}" in body
+    ]
+    assert not hits, f"прежние имена в коде: {hits}"
+    root = Path("/repo") if Path("/repo/deploy").is_dir() else Path(__file__).resolve().parents[3]
+    for example in ("deploy/.env.example", "deploy/.env.prod.example"):
+        body = (root / example).read_text(encoding="utf-8")
+        left = [name for name in school_rules.FORMER_ENV if f"{name}=" in body]
+        assert not left, f"{example}: остались {left}"
+
+
+def test_preflight_names_a_rule_left_in_the_environment(monkeypatch):
+    """Переменная прежнего правила в окружении молча ничего не делает — preflight её называет."""
+    from core.management.commands.preflight import _former_env_check
+
+    for name in school_rules.FORMER_ENV:
+        monkeypatch.delenv(name, raising=False)
+    assert _former_env_check().ok
+    monkeypatch.setenv("CURATOR_SAT_GAP", "200")
+    check = _former_env_check()
+    assert not check.ok and check.warn and "CURATOR_SAT_GAP" in check.detail

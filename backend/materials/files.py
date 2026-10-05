@@ -12,7 +12,6 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
-from django.conf import settings
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
@@ -43,18 +42,28 @@ class Inspected:
     checksum: str
 
 
+def max_file_mb() -> int:
+    """Предел одного файла материала, МБ — настройка школы."""
+    from core import school_rules
+
+    return school_rules.value(school_rules.MATERIAL_FILE_MB)
+
+
 def max_file_bytes() -> int:
-    return int(getattr(settings, "MATERIAL_MAX_FILE_MB", 15)) * 1024 * 1024
+    return max_file_mb() * 1024 * 1024
 
 
 def max_files() -> int:
-    return int(getattr(settings, "MATERIAL_MAX_FILES", 10))
+    """Сколько файлов в одном материале — настройка школы."""
+    from core import school_rules
+
+    return school_rules.value(school_rules.MATERIAL_MAX_FILES)
 
 
 def limits() -> dict:
     """Пределы для подсказки в интерфейсе — теми же числами, что проверка."""
     return {
-        "max_file_mb": int(getattr(settings, "MATERIAL_MAX_FILE_MB", 15)),
+        "max_file_mb": max_file_mb(),
         "max_files": max_files(),
         "formats": str(HUMAN_FORMATS),
         "hint": tn(
@@ -63,7 +72,7 @@ def limits() -> dict:
             "{formats}, до {size} МБ на файл, не больше {n} файлов в материале|"
             "{formats}, до {size} МБ на файл, не больше {n} файлов в материале",
             formats=HUMAN_FORMATS,
-            size=int(getattr(settings, "MATERIAL_MAX_FILE_MB", 15)),
+            size=max_file_mb(),
         ),
     }
 
@@ -77,10 +86,11 @@ def inspect(upload) -> Inspected:
     size = getattr(upload, "size", 0) or 0
     if size == 0:
         raise FileRejected(_("Файл «{name}» пустой — проверьте, что выгрузилось").format(name=upload.name))
-    if size > max_file_bytes():
+    limit_mb = max_file_mb()
+    if size > limit_mb * 1024 * 1024:
         raise FileRejected(
             _("Файл «{name}» весит {size} МБ, а можно до {limit} МБ. Сожмите его или разбейте на части").format(
-                name=upload.name, size=_megabytes(size), limit=int(getattr(settings, "MATERIAL_MAX_FILE_MB", 15))
+                name=upload.name, size=_megabytes(size), limit=limit_mb
             )
         )
 
@@ -106,7 +116,7 @@ def inspect(upload) -> Inspected:
 
 
 def check_count(existing: int, adding: int) -> None:
-    """Не больше `MATERIAL_MAX_FILES` файлов в одном материале."""
+    """Не больше файлов в одном материале, чем задано в настройках школы."""
     total = existing + adding
     if total > max_files():
         raise FileRejected(

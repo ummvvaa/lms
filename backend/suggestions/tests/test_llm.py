@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from decimal import Decimal
 
 import pytest
@@ -21,6 +22,18 @@ from suggestions.budget import BudgetExceeded, cost_of, spent_this_month
 from suggestions.models import LLMCall, SuggestionChange
 from suggestions.providers import Completion, LLMUnavailable, NullProvider, Usage
 from universities.models import AdmissionRequirement, Program, University
+
+
+@contextmanager
+def monthly_limit(dollars: int):
+    """Месячный лимит — настройка школы: строкой правила на время проверки."""
+    from core.models import SchoolRule
+
+    row = SchoolRule.objects.create(code="llm_monthly_limit", value=dollars)
+    try:
+        yield
+    finally:
+        row.delete()
 
 
 class FakeProvider:
@@ -167,7 +180,7 @@ def test_exhausted_limit_turns_operations_off_with_a_readable_message(fake, kymb
     fake(FakeProvider(content="ответ"))
     LLMCall.objects.create(purpose="digest", model="fake-1", cost=Decimal("12.5"))
 
-    with override_settings(LLM_MONTHLY_LIMIT="10"):
+    with monthly_limit(10):
         assert spent_this_month() == Decimal("12.5")
         with pytest.raises(BudgetExceeded) as error:
             budget.check_available()
@@ -186,7 +199,7 @@ def test_operations_fall_back_to_rules_when_the_limit_is_out(fake, kymbat, stude
     fake(FakeProvider(content="красиво написанный текст"))
     LLMCall.objects.create(purpose="digest", model="fake-1", cost=Decimal("99"))
 
-    with override_settings(LLM_MONTHLY_LIMIT="10"):
+    with monthly_limit(10):
         outcome = operations.explain_list(student_ids=[student.pk], actor=kymbat, role=kymbat.role)
 
     assert outcome.offline is True
@@ -198,7 +211,7 @@ def test_operations_fall_back_to_rules_when_the_limit_is_out(fake, kymbat, stude
 def test_the_operation_endpoint_answers_402_when_the_limit_is_out(api, kymbat):
     LLMCall.objects.create(purpose="digest", model="fake-1", cost=Decimal("99"))
     api.force_authenticate(kymbat)
-    with override_settings(LLM_MONTHLY_LIMIT="10"):
+    with monthly_limit(10):
         answer = api.post("/api/commands/run/", {"code": "focus_today"}, format="json")
     assert answer.status_code == 402
     assert "лимит" in answer.json()["detail"].lower()

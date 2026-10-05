@@ -74,8 +74,10 @@ def cost_of(*, model: str, tokens_in: int, tokens_out: int, searches: int = 0) -
 
 
 def monthly_limit() -> Decimal:
-    """Месячный лимит в долларах. Ноль — лимита нет."""
-    return Decimal(str(getattr(settings, "LLM_MONTHLY_LIMIT", "0") or "0"))
+    """Месячный лимит в долларах — настройка школы. Ноль — лимита нет."""
+    from core import school_rules
+
+    return Decimal(school_rules.value(school_rules.LLM_MONTHLY_LIMIT))
 
 
 def month_start(today: date | None = None) -> date:

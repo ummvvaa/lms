@@ -9,7 +9,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
 from accounts.models import Role
-from core.models import Notification
+from core.models import Notification, SchoolRule
 from directories.models import OlympiadSubject
 from engagement.models import XPEvent, XPKind
 from materials.files import FileRejected, inspect
@@ -299,8 +299,8 @@ def test_file_type_is_checked_by_content_not_by_extension():
 
 
 @pytest.mark.django_db
-def test_oversized_file_is_refused_in_words(settings):
-    settings.MATERIAL_MAX_FILE_MB = 1
+def test_oversized_file_is_refused_in_words():
+    SchoolRule.objects.create(code="material_file_mb", value=1)
     big = SimpleUploadedFile("big.pdf", b"%PDF-" + b"0" * (2 * 1024 * 1024), content_type="application/pdf")
     with pytest.raises(FileRejected) as error:
         inspect(big)
@@ -308,8 +308,8 @@ def test_oversized_file_is_refused_in_words(settings):
 
 
 @pytest.mark.django_db
-def test_too_many_files_are_refused(api, olympian, subject, settings):
-    settings.MATERIAL_MAX_FILES = 2
+def test_too_many_files_are_refused(api, olympian, subject):
+    SchoolRule.objects.create(code="material_max_files", value=2)
     api.force_authenticate(olympian.user)
     answer = api.post(
         "/api/materials/",
@@ -663,6 +663,7 @@ def test_the_upload_notifies_the_curator(api, olympian, subject, arman):
     assert Notification.objects.filter(recipient=arman, kind=Notification.Kind.MATERIAL_PENDING).exists()
 
 
+@pytest.mark.django_db  # предел файла — настройка школы, читается из базы
 def test_pdf_signature_is_not_confused_with_a_text_file():
     """Файл, начинающийся не с сигнатуры, не проходит."""
     with pytest.raises(FileRejected):

@@ -46,7 +46,26 @@ def _settings_checks() -> list[Check]:
             ", ".join(nets) if nets else "пусто: блокировка по адресу действует на всех, впишите сеть школы",
         )
     )
+    out.append(_former_env_check())
     return out
+
+
+def _former_env_check() -> Check:
+    """Правила школы живут на экране «Настройки школы»: переменная окружения их больше не задаёт."""
+    from core import school_rules
+
+    left = sorted(name for name in school_rules.FORMER_ENV if os.environ.get(name))
+    return Check(
+        "Правила школы не заданы в окружении",
+        not left,
+        (
+            f"в окружении остались {', '.join(left)} — код их не читает: задайте значение на экране "
+            "«Настройки школы» и уберите переменные из .env.prod"
+            if left
+            else ""
+        ),
+        warn=True,
+    )
 
 
 def _mail_checks(mail_to: str) -> list[Check]:

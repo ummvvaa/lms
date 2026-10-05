@@ -74,7 +74,7 @@ test("главная: числа-кнопки, очередь, корзины, �
   await expect(page.locator("body")).toContainText("документы не собраны");
   await expect(page.locator("body")).toContainText("истекает срок");
   await expect(page.locator("body")).toContainText(
-    "Mock Test не было больше месяца",
+    "Mock Test не было больше 30 дней",
   );
 
   await expect(page.locator("body")).toContainText("Кого дёргать");

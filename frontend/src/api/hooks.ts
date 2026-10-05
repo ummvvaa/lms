@@ -1195,7 +1195,7 @@ export interface CenterExam {
 export const useCenterExams = () =>
   useQuery({
     queryKey: ['prep-center', 'exams'],
-    queryFn: () => get<{ exams: CenterExam[] }>('/prep/center/exams/'),
+    queryFn: () => get<{ exams: CenterExam[]; practice_size: number }>('/prep/center/exams/'),
   })
 
 export interface CenterSection {

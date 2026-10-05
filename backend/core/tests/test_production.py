@@ -441,7 +441,6 @@ REQUIRED_IN_PROD = (
     "EMAIL_HOST",
     "DEFAULT_FROM_EMAIL",
     "LLM_API_KEY",
-    "LLM_MONTHLY_LIMIT",
 )
 
 #: Секреты: в примере всегда пустые

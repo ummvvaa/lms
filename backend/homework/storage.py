@@ -8,7 +8,7 @@
 
 Хранилище не настроено (разработка) — локальный диск в `PRIVATE_MEDIA_ROOT`
 через те же подписанные адреса, но на сервер и одним куском; предел — как
-у материалов (`MATERIAL_MAX_FILE_MB`).
+у материалов (настройка школы «Предел файла материала»).
 
 Настройки — окружение: `HOMEWORK_S3_BUCKET`, `HOMEWORK_S3_ENDPOINT`,
 `HOMEWORK_S3_REGION`, `HOMEWORK_S3_ACCESS_KEY`, `HOMEWORK_S3_SECRET_KEY`.
@@ -58,7 +58,9 @@ class LocalStorage:
         return target
 
     def max_bytes(self) -> int:
-        return int(getattr(settings, "MATERIAL_MAX_FILE_MB", 15)) * 1024 * 1024
+        from materials.files import max_file_bytes
+
+        return max_file_bytes()
 
     def _token(self, key: str, action: str) -> str:
         return signing.dumps({"k": key, "a": action}, salt=LOCAL_SALT)

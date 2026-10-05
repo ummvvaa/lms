@@ -399,6 +399,7 @@ def test_preflight_names_every_check(pupil, group, settings, capsys):
         "SECRET_KEY свой",
         "ALLOWED_HOSTS",
         "LOGIN_TRUSTED_NETWORKS",
+        "Правила школы не заданы в окружении",
         "Почта: сервер отвечает",
         "Бэкап: переменные бакета",
         "Бэкап: последний дамп",

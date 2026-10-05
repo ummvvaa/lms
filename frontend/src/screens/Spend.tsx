@@ -37,7 +37,7 @@ export default function Spend() {
       />
 
       <StatRow>
-        <Kpi label={t('Расход за месяц')} value={money(data.spent_this_month)} note={data.limit > 0 ? t('из {limit}', { limit: money(data.limit) }) : t('лимит не задан — его задают в настройках сервера')} tone={data.available ? 'neutral' : 'bad'} />
+        <Kpi label={t('Расход за месяц')} value={money(data.spent_this_month)} note={data.limit > 0 ? t('из {limit}', { limit: money(data.limit) }) : t('лимит не задан')} tone={data.available ? 'neutral' : 'bad'} action={data.limit > 0 ? undefined : { label: t('Задать лимит'), to: '/school-settings?section=ai' }} />
         <Kpi label={t('Использовано лимита')} value={data.limit > 0 ? `${data.percent}%` : null} none={t('без лимита')} tone={data.percent >= 90 ? 'bad' : data.percent >= 70 ? 'warn' : 'good'} />
         <Kpi label={tn(days, 'Вызовов за {n} день|Вызовов за {n} дня|Вызовов за {n} дней')} value={data.calls || null} none={t('нет')} />
         <Kpi label={t('Неудачных')} value={data.failures || null} none={t('нет')} tone={data.failures > 0 ? 'warn' : 'neutral'} />

@@ -25,7 +25,6 @@ from students.models import ExamType
 #: банка кладёт файлы своим путём и сюда не заходит
 AUDIO_EXTENSIONS = (".mp3", ".m4a")
 AUDIO_TYPES = {".mp3": "audio/mpeg", ".m4a": "audio/mp4"}
-AUDIO_MAX_MB = 20
 
 
 class QuestionOptionSerializer(serializers.ModelSerializer):
@@ -81,9 +80,13 @@ class PassageSerializer(serializers.ModelSerializer):
         name = (upload.name or "").lower()
         if not name.endswith(AUDIO_EXTENSIONS):
             raise serializers.ValidationError(_("Аудио — файлом mp3 или m4a"))
-        if upload.size > AUDIO_MAX_MB * 1024 * 1024:
+        from core import school_rules
+
+        # предел аудио — настройка школы
+        limit = school_rules.value(school_rules.PREP_AUDIO_MB)
+        if upload.size > limit * 1024 * 1024:
             raise serializers.ValidationError(
-                _("Аудио тяжелее {limit} МБ — сожмите или разрежьте запись").format(limit=AUDIO_MAX_MB)
+                _("Аудио тяжелее {limit} МБ — сожмите или разрежьте запись").format(limit=limit)
             )
         return upload
 

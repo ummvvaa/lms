@@ -363,9 +363,6 @@ const FORMATS = [
 type Format = (typeof FORMATS)[number]['value']
 type MyRun = NonNullable<ReturnType<typeof useMyRuns>['data']>[number]
 
-/** Сколько вопросов в одной тренировке — число стоит и в подписи кнопки. */
-const PRACTICE_SIZE = 10
-
 const DIFFICULTY_FILTERS = [
   { value: '', title: tk('Любая сложность') },
   { value: 'easy', title: tk('Простые') },
@@ -410,6 +407,8 @@ function ExamPicker({ onPick }: { onPick: (exam: string) => void }) {
 /** Тренажёр: секция → тема → фильтры → начать практику. */
 function PracticePicker({ exam, onStart }: { exam: string; onStart: (session: PrepSession) => void }) {
   const sections = useCenterSections(exam)
+  // сколько вопросов в тренировке — настройка школы; число стоит и в подписи кнопки
+  const practiceSize = useCenterExams().data?.practice_size
   const [section, setSection] = useState<string | null>(null)
   const [topic, setTopic] = useState('')
   const [difficulty, setDifficulty] = useState('')
@@ -474,7 +473,7 @@ function PracticePicker({ exam, onStart }: { exam: string; onStart: (session: Pr
             onClick={() => {
               setError(null)
               startPractice.mutate(
-                { exam_type: exam, section, topic, difficulty, size: PRACTICE_SIZE },
+                { exam_type: exam, section, topic, difficulty, ...(practiceSize ? { size: practiceSize } : {}) },
                 {
                   onSuccess: onStart,
                   onError: (e) => setError(e instanceof Error ? e.message : t('Не удалось собрать тренировку')),
@@ -482,7 +481,7 @@ function PracticePicker({ exam, onStart }: { exam: string; onStart: (session: Pr
               )
             }}
           >
-            {`${t('Начать практику')} · ${counted(PRACTICE_SIZE, 'вопрос|вопроса|вопросов')}`}
+            {practiceSize ? `${t('Начать практику')} · ${counted(practiceSize, 'вопрос|вопроса|вопросов')}` : t('Начать практику')}
           </Button>
         </div>
       </div>

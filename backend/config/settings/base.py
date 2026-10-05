@@ -150,9 +150,8 @@ MEDIA_ROOT = BASE_DIR / "media"
 #: Отдаёт их вьюха после проверки прав (`materials.views.download`)
 PRIVATE_MEDIA_ROOT = Path(env("PRIVATE_MEDIA_ROOT", str(BASE_DIR / "private")))
 
-#: Пределы загрузки материалов олимпиадников. Школа меняет их без выката.
-MATERIAL_MAX_FILE_MB = int(env("MATERIAL_MAX_FILE_MB", "15"))
-MATERIAL_MAX_FILES = int(env("MATERIAL_MAX_FILES", "10"))
+#: Пределы загрузки материалов олимпиадников — настройки администратора
+#: (`core.school_rules`, раздел «Файлы и подготовка»), не здесь
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
@@ -469,12 +468,8 @@ LLM_PRICES = {
 #: моделей 10 долларов за тысячу, текст найденных страниц идёт токенами ввода.
 LLM_PRICE_SEARCH_PER_1000 = env("LLM_PRICE_SEARCH", "10")
 
-#: Месячный лимит расходов на модель, доллары. Ноль — лимита нет.
-#: При исчерпании операции отключаются с понятным текстом, а не молча.
-LLM_MONTHLY_LIMIT = env("LLM_MONTHLY_LIMIT", "0")
-
-#: Порог уверенности, выше которого строку предложения можно принять пачкой.
-SUGGESTION_CONFIDENCE_THRESHOLD = float(env("SUGGESTION_CONFIDENCE_THRESHOLD", "0.9"))
+#: Месячный лимит расходов на модель — настройка администратора
+#: (`core.school_rules`, раздел «ИИ»), не здесь
 
 # --- Фоновая сверка дедлайнов -------------------------------------------
 # Ходим только по белому списку: сайты вузов из справочника и Common App.
