@@ -127,6 +127,8 @@ export type AcadMark = 'present' | 'absent' | 'late' | 'excused' | null
 export interface LateInfo {
   arrived?: string | null
   late_by?: number | null
+  /** опоздание дольше правила школы считается пропуском: в листах и журнале оно читается «н» */
+  late_as_absent?: boolean
 }
 
 export interface RosterRow extends AcadStudent, LateInfo {
@@ -949,6 +951,8 @@ export interface AttendanceDayCell {
   /** во сколько пришёл опоздавший и на сколько минут; время не записано — null */
   arrived?: string | null
   late_by?: number | null
+  /** «н» из долгого опоздания: правило школы считает его пропуском */
+  late_as_absent?: boolean
 }
 
 export interface AttendanceDayRow extends AcadStudent {
@@ -1259,11 +1263,15 @@ export interface RiskRow {
   group: string
   attendance: { total: number; absent: number; excused: number; late: number; late_minutes?: number; late_unknown?: number; pct: number | null }
   unexcused_days: string[]
+  /** почему ученик в «Рисках»: посещаемость ниже порога, дни без причины, опоздания */
+  reasons: ('attendance' | 'unexcused' | 'late')[]
 }
 
 export interface RisksScreen {
   period: { title: string; from: string; to: string }
   threshold: number
+  /** столько опозданий за период — причина «опоздания»; 0 — правило школы выключено */
+  late_limit: number
   rows: RiskRow[]
   periods: { code: string; title: string }[]
 }

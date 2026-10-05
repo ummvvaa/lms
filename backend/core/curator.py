@@ -465,6 +465,9 @@ def student_card(request, pk: int):
     behavior_block = {
         "attendance_percent": absences["pct"],
         "attendance_lessons": absences["total"],
+        # опозданий за то же окно: число видно всегда, включено правило «Опоздания в „Рисках“» или нет
+        "late_count": absences["late"],
+        "late_window_days": absences["window_days"],
         # ниже порога процент выделяется: порог — настройка администратора
         "attendance_below": school_rules.value(school_rules.ATTENDANCE_BELOW),
         "remarks_count": getattr(behavior, "remarks_count", 0),

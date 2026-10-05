@@ -4171,6 +4171,8 @@ export interface SchoolRule {
   step: number
   /** код группы (`SchoolRulesScreen.groups`): такое правило сохраняется только вместе с группой */
   group: string
+  /** правило выключено нулём: с какого значения школе предлагается начать; 0 — предложения нет */
+  suggested: number
   is_default: boolean
 }
 
@@ -5037,6 +5039,9 @@ export interface CuratorCard {
     /** посещаемость по урокам за последний месяц: процент, уроков с отметкой, дни с пропусками */
     attendance_percent: number | null
     attendance_lessons: number
+    /** опозданий за то же окно (`late_window_days` дней); опоздание, которое считается пропуском, сюда не входит */
+    late_count: number
+    late_window_days: number
     /** порог посещаемости из настроек школы: ниже — процент выделен */
     attendance_below: number
     remarks_count: number

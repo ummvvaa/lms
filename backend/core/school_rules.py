@@ -222,6 +222,8 @@ class Rule:
     step: float = 1
     #: код группы (`GROUPS`): такое правило не правится по одному
     group: str = ""
+    #: правило выключено нулём; с какого значения школе предлагается начать, если включит
+    suggested: int = 0
 
 
 #: Посещаемость ниже порога — ученик в «Рисках», процент красным на экранах
@@ -239,6 +241,10 @@ LESSON_MINUTES_DEFAULT = "lesson_minutes_default"
 #: «День без причины»: не меньше стольких «н» и не меньше такой доли уроков дня
 DAY_ABSENT_MIN = "day_absent_min"
 DAY_ABSENT_SHARE = "day_absent_share"
+#: Опоздание дольше стольких минут читается как пропуск «н»; 0 — выключено
+LATE_AS_ABSENT_MINUTES = "late_as_absent_minutes"
+#: Столько опозданий за период «Рисков» — ученик в «Рисках»; 0 — выключено
+LATE_RISK_COUNT = "late_risk_count"
 #: Через сколько минут после звонка напоминать учителю о неотмеченном уроке
 UNMARKED_REMIND_MINUTES = "unmarked_remind_minutes"
 #: За сколько дней помощник считает посещаемость и когда профиль «давно не обновлялся»
@@ -422,6 +428,35 @@ RULES: tuple[Rule, ...] = (
         60,
         1,
         100,
+    ),
+    Rule(
+        LATE_AS_ABSENT_MINUTES,
+        gettext_lazy("Опоздание больше N минут считается пропуском"),
+        gettext_lazy(
+            "0 — правило выключено. Опоздание дольше этого числа минут читается как «н»: урок идёт пропуском "
+            "в процент посещаемости, в «день без причины», в журнал, выгрузки и отчёты родителям. Отметка учителя "
+            "не меняется: выключили правило — опоздание снова опоздание. Опоздания без времени прихода "
+            "остаются опозданиями"
+        ),
+        gettext_lazy("мин"),
+        0,
+        0,
+        180,
+        suggested=20,
+    ),
+    Rule(
+        LATE_RISK_COUNT,
+        gettext_lazy("Опоздания в «Рисках»: опозданий за период"),
+        gettext_lazy(
+            "0 — правило выключено. Столько опозданий за выбранный в «Рисках» период — ученик попадает "
+            "в «Риски» с причиной «опоздания». Опоздание, которое по правилу выше считается пропуском, "
+            "сюда не идёт: оно уже «н»"
+        ),
+        gettext_lazy("опоздание|опоздания|опозданий"),
+        0,
+        0,
+        100,
+        suggested=3,
     ),
     Rule(
         UNMARKED_REMIND_MINUTES,
@@ -949,7 +984,7 @@ RULES: tuple[Rule, ...] = (
     ),
     Rule(
         MATCH_W_ENGLISH,
-        gettext_lazy("Вес английского (IELTS или TOEFL)"),
+        gettext_lazy("Вес английского"),
         "",
         "%",
         30,
@@ -960,7 +995,7 @@ RULES: tuple[Rule, ...] = (
     ),
     Rule(
         MATCH_W_STANDARDIZED,
-        gettext_lazy("Вес стандартного теста (SAT или ACT)"),
+        gettext_lazy("Вес SAT или ACT"),
         "",
         "%",
         25,
@@ -1780,6 +1815,7 @@ def payload() -> dict:
                 "maximum": rule.maximum,
                 "step": rule.step,
                 "group": rule.group,
+                "suggested": rule.suggested,
                 "is_default": _stored(rule, current) == _stored(rule, rule.default),
             }
         )

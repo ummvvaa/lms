@@ -129,12 +129,21 @@ def drop_excuse(row: Excuse, *, actor=None) -> None:
 # --- Чтение отметок ------------------------------------------------------------
 
 
-def marks_map(lessons: list[Lesson], student_ids: Iterable[int]) -> dict[tuple[int, int], str]:
+def marks_map(lessons: list[Lesson], student_ids: Iterable[int], *, raw: bool = False) -> dict[tuple[int, int], str]:
     """`(урок, ученик)` → `present | absent | late | excused`; неотмеченный урок в карте не стоит.
 
     Присутствие пишется явно для отмеченных уроков, чтобы читающий код
     не различал «не был отмечен» и «был».
+
+    Опоздание дольше правила школы («Опоздание больше N минут считается
+    пропуском») читается здесь как «н» — и, как всякая «н», внутри уважительного
+    периода как «у». Это единственное место правила: процент, «день без причины»,
+    лист, журнал, выгрузки, отчёты и «Риски» берут отметку отсюда. `raw` — отметки
+    как их поставил учитель: для экрана урока, который шлёт на запись весь состав
+    и иначе затёр бы опоздание пропуском.
     """
+    from academics.results import late_counts_absent, minute_rules
+
     ids = list(student_ids)
     if not lessons or not ids:
         return {}
@@ -144,18 +153,35 @@ def marks_map(lessons: list[Lesson], student_ids: Iterable[int]) -> dict[tuple[i
     store = cache.current()
     if store is not None:
         rows = store.attendance_rows(start, end)
+        arrivals = store.arrival_rows(start, end)
     else:
         rows = {}
-        for row in Attendance.objects.filter(lesson__in=[lesson.pk for lesson in lessons], student_id__in=ids):
-            rows[(row.lesson_id, row.student_id)] = row.mark
+        arrivals = {}
+        for lesson_id, sid, mark, arrived in Attendance.objects.filter(
+            lesson__in=[lesson.pk for lesson in lessons], student_id__in=ids
+        ).values_list("lesson_id", "student_id", "mark", "arrived_at"):
+            rows[(lesson_id, sid)] = mark
+            if arrived is not None:
+                arrivals[(lesson_id, sid)] = arrived
+    late_rules = None
+    if not raw and arrivals:
+        # правила и звонки читаются, только если в периоде есть опоздания со временем
+        late_rules = minute_rules()
+        if not late_rules.late_absent_after:
+            late_rules = None
     out: dict[tuple[int, int], str] = {}
-    by_id = {lesson.pk: lesson for lesson in lessons}
     for lesson in lessons:
         if not lesson.is_marked:
             continue
         for sid in ids:
             mark = rows.get((lesson.pk, sid), PRESENT)
-            if mark == Mark.ABSENT and is_excused(periods, sid, by_id[lesson.pk].date):
+            if (
+                mark == Mark.LATE
+                and late_rules is not None
+                and late_counts_absent(lesson, arrivals.get((lesson.pk, sid)), late_rules)
+            ):
+                mark = Mark.ABSENT
+            if mark == Mark.ABSENT and is_excused(periods, sid, lesson.date):
                 mark = EXCUSED
             out[(lesson.pk, sid)] = mark
     return out

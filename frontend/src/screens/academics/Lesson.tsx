@@ -28,7 +28,7 @@ import { formatDateTime } from '../../lib/format'
 /** Отметка на чтение: слово отметки, у неотмеченного урока — «не отмечен». */
 function MarkCell({ row, words }: { row: RosterRow; words: Record<string, string> }) {
   if (row.mark === null) return <span className="roster__none">{t('не отмечен')}</span>
-  return <MarkChip mark={row.mark} words={words} lateBy={row.late_by} size="sm" />
+  return <MarkChip mark={row.mark} words={words} lateBy={row.late_by} lateAsAbsent={row.late_as_absent} size="sm" />
 }
 
 /**
@@ -241,7 +241,7 @@ export default function LessonScreen() {
         <DataCard title={t('Урок')}>
           <Rows>
             <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} />
-            <Row title={t('Моя отметка')} right={data.mine?.mark ? <MarkChip mark={data.mine.mark} words={words} lateBy={data.mine.late_by} /> : <span className="t-note">{future ? t('урок впереди') : t('учитель ещё не отметил')}</span>} />
+            <Row title={t('Моя отметка')} right={data.mine?.mark ? <MarkChip mark={data.mine.mark} words={words} lateBy={data.mine.late_by} lateAsAbsent={data.mine.late_as_absent} /> : <span className="t-note">{future ? t('урок впереди') : t('учитель ещё не отметил')}</span>} />
             <Row title={t('Оценка')} value={data.mine?.grade ?? null} none={t('нет')} note={data.mine?.comment || undefined} />
             <LessonHomeworkRow lesson={lesson.id} text={data.mine?.homework ?? ''} />
           </Rows>

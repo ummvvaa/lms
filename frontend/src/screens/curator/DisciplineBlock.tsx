@@ -79,6 +79,8 @@ export default function DisciplineBlock({ card }: { card: Card }) {
           {missed.length === 0
             ? t('Пропусков за последний месяц нет')
             : `${t('Дней с пропусками за месяц:')} ${missed.length}${unexcused.length ? ` · ${t('без причины: {n}', { n: unexcused.length })}` : ''}`}
+          {/* опоздания за то же окно — число видно всегда, включено правило «Опоздания в „Рисках“» или нет */}
+          {` · ${block.late_count ? t('опозданий за месяц: {n}', { n: block.late_count }) : t('опозданий за месяц нет')}`}
         </p>
       )}
       {unexcused.length > 0 && block.may_write && (

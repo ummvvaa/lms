@@ -39,7 +39,7 @@ import { homeworkReviewOpen } from '../../layout/nav'
 import { useAuth } from '../../auth/AuthContext'
 import { t, tk, tn } from '../../i18n'
 import { usePhone } from '../../phone'
-import { ArrivalForm, dateShort, dateWords, GRADE_COMMENT_HINT, GRADE_COMMENT_MAX, lateWords, MarkChip, PeriodSwitch, useGradeComment } from './shared'
+import { ArrivalForm, dateShort, dateWords, GRADE_COMMENT_HINT, GRADE_COMMENT_MAX, lateAsAbsentWords, lateWords, MarkChip, PeriodSwitch, useGradeComment } from './shared'
 import './homework-review.css'
 
 type Mode = 'both' | 'a' | 'g'
@@ -51,8 +51,11 @@ function cellNode(cell: JournalCell, column: JournalColumn, mode: Mode) {
   const mark = cell.mark
   const showMark = mode !== 'g'
   const showGrade = mode !== 'a'
-  // подсказка клетки: «опоздал на 12 мин» и комментарий к оценке
-  const hint = [mark === 'late' ? lateWords(cell.late_by) : '', cell.comment].filter(Boolean).join(' · ')
+  // подсказка клетки: «опоздал на 12 мин» и комментарий к оценке; у «н» из долгого
+  // опоздания — что ученик пришёл, но по правилу школы это пропуск
+  const hint = [cell.late_as_absent ? lateAsAbsentWords(cell.late_by) : mark === 'late' ? lateWords(cell.late_by) : '', cell.comment]
+    .filter(Boolean)
+    .join(' · ')
   return (
     <span className="jcell" title={hint || undefined}>
       {showMark &&
@@ -207,6 +210,7 @@ function CellEditor({
               ...(value.mark === 'excused' ? [{ value: 'excused', label: t('у') }] : []),
             ]}
           />
+          {value.late_as_absent && !askLate && <span className="t-note">{lateAsAbsentWords(value.late_by)}</span>}
           {value.mark === 'late' && !askLate && (
             <span className="t-note">
               {lateWords(value.late_by)}
@@ -748,7 +752,7 @@ export default function Journal() {
           {selectedLesson && !data.may_edit && (
             <DataCard title={t('Выделено')}>
               <Rows>
-                <Row title={data.rows[selected?.row ?? 0]?.full_name ?? ''} note={`${dateWords(selectedLesson.date)} · ${selectedLesson.kind_label}`} right={<MarkChip mark={data.rows[selected?.row ?? 0]?.cells[selectedAt ?? 0]?.mark ?? null} lateBy={data.rows[selected?.row ?? 0]?.cells[selectedAt ?? 0]?.late_by} words={meta.data?.mark_words ?? {}} />} />
+                <Row title={data.rows[selected?.row ?? 0]?.full_name ?? ''} note={`${dateWords(selectedLesson.date)} · ${selectedLesson.kind_label}`} right={<MarkChip mark={data.rows[selected?.row ?? 0]?.cells[selectedAt ?? 0]?.mark ?? null} lateBy={data.rows[selected?.row ?? 0]?.cells[selectedAt ?? 0]?.late_by} lateAsAbsent={data.rows[selected?.row ?? 0]?.cells[selectedAt ?? 0]?.late_as_absent} words={meta.data?.mark_words ?? {}} />} />
               </Rows>
             </DataCard>
           )}

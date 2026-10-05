@@ -61,6 +61,12 @@ def quarter_percent(fo_pct: float | None, sor_pct: float | None, soch_pct: float
 # Уважительная — 0 минут и урок в знаменателе, если так решила школа
 # («Пропуск по уважительной причине снижает процент»), иначе урок в процент
 # не входит. Процент — минуты присутствия к минутам отмеченных уроков.
+#
+# Правило школы «Опоздание больше N минут считается пропуском» (05.10.2026,
+# выключено нулём): такое опоздание читается как «н» уже в карте отметок
+# (`marks.marks_map`), поэтому сюда приходит пропуском — 0 минут, в счёт «н»
+# и в «день без причины»; в счёт опозданий не идёт. В базе отметка учителя
+# остаётся опозданием со временем прихода.
 
 
 def _minutes_between(starts: dt.time, ends: dt.time) -> int:
@@ -70,11 +76,13 @@ def _minutes_between(starts: dt.time, ends: dt.time) -> int:
 
 @dataclass(frozen=True)
 class MinuteRules:
-    """Что нужно формуле: звонки года и два правила школы."""
+    """Что нужно формуле: звонки года и правила школы."""
 
     calendar: SchoolCalendar
     excused_lowers: bool
     default_minutes: int
+    #: опоздание дольше стольких минут читается как пропуск; 0 — правило выключено
+    late_absent_after: int = 0
 
     def span(self, lesson: Lesson) -> tuple[dt.time, dt.time] | None:
         from academics.calendar import lesson_groups
@@ -99,6 +107,7 @@ def minute_rules() -> MinuteRules:
         calendar=school_calendar.load(),
         excused_lowers=bool(values[school_rules.EXCUSED_LOWERS_ATTENDANCE]),
         default_minutes=values[school_rules.LESSON_MINUTES_DEFAULT],
+        late_absent_after=int(values[school_rules.LATE_AS_ABSENT_MINUTES]),
     )
     if store is not None:
         store.memo["minute_rules"] = rules
@@ -115,11 +124,34 @@ def late_by(lesson: Lesson, arrived: dt.time | None, rules: MinuteRules | None =
     return _minutes_between(span[0], arrived)
 
 
+def late_counts_absent(lesson: Lesson, arrived: dt.time | None, rules: MinuteRules | None = None) -> bool:
+    """Опоздание дольше правила школы читается как пропуск.
+
+    Времени прихода нет (опоздания до 30.09.2026) или у номера урока нет звонка —
+    минуты посчитать не из чего, опоздание остаётся опозданием.
+    """
+    rules = rules or minute_rules()
+    if not rules.late_absent_after or arrived is None:
+        return False
+    minutes = late_by(lesson, arrived, rules)
+    return minutes is not None and minutes > rules.late_absent_after
+
+
 def late_fields(lesson: Lesson, mark: str | None, arrived: dt.time | None) -> dict:
-    """Для экрана: во сколько пришёл и на сколько опоздал; у старых опозданий — пусто."""
-    if mark != LATE:
-        return {"arrived": None, "late_by": None}
-    return {"arrived": f"{arrived:%H:%M}" if arrived else None, "late_by": late_by(lesson, arrived)}
+    """Для экрана: во сколько пришёл и на сколько опоздал; у старых опозданий — пусто.
+
+    `late_as_absent` — опоздание по правилу школы считается пропуском: в картах
+    отметок оно уже «н» (или «у» внутри уважительного периода), время прихода
+    при нём остаётся, чтобы экран сказал, откуда взялась «н».
+    """
+    as_absent = mark in (LATE, ABSENT, EXCUSED) and late_counts_absent(lesson, arrived)
+    if mark != LATE and not as_absent:
+        return {"arrived": None, "late_by": None, "late_as_absent": False}
+    return {
+        "arrived": f"{arrived:%H:%M}" if arrived else None,
+        "late_by": late_by(lesson, arrived),
+        "late_as_absent": as_absent,
+    }
 
 
 @dataclass
@@ -488,6 +520,10 @@ def recent_absences(student_id: int, *, days: int = 30) -> dict:
     return {
         "pct": totals.pct,
         "total": totals.total,
+        # опоздания за те же дни — число в карточке ученика; опоздание, которое
+        # по правилу школы считается пропуском, сюда не входит: оно в «н»
+        "late": totals.late,
+        "window_days": days,
         "days": rows,
         "unexcused_days": unexcused_days(student_id, start, end, totals),
     }

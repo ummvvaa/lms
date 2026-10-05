@@ -485,9 +485,33 @@ export function lateWords(lateBy: number | null | undefined): string {
   return lateBy === null || lateBy === undefined ? t('опоздал · время не указано') : t('опоздал на {minutes} мин', { minutes: lateBy })
 }
 
+/** Долгое опоздание по правилу школы считается пропуском — говорим, откуда взялась «н». */
+export function lateAsAbsentWords(lateBy: number | null | undefined): string {
+  return t('опоздал на {minutes} мин — считается пропуском', { minutes: lateBy ?? 0 })
+}
+
 /** Чип отметки посещаемости словами; у опоздания — на сколько минут. */
-export function MarkChip({ mark, words, size, lateBy }: { mark: AcadMark; words: Record<string, string>; size?: 'sm'; lateBy?: number | null }) {
+export function MarkChip({
+  mark,
+  words,
+  size,
+  lateBy,
+  lateAsAbsent,
+}: {
+  mark: AcadMark
+  words: Record<string, string>
+  size?: 'sm'
+  lateBy?: number | null
+  /** опоздание дольше правила школы: читается как пропуск, но чип говорит, что ученик пришёл */
+  lateAsAbsent?: boolean
+}) {
   if (mark === null) return null
+  if (lateAsAbsent && mark !== 'excused')
+    return (
+      <Chip tone="bad" size={size}>
+        {lateAsAbsentWords(lateBy)}
+      </Chip>
+    )
   return (
     <Chip tone={markTone(mark) as Tone} size={size}>
       {mark === 'late' ? lateWords(lateBy) : t(words[mark] ?? mark)}

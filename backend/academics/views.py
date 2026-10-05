@@ -419,7 +419,10 @@ def _roster(lesson: Lesson, calendar, scale) -> list[dict]:
 
     ids = member_ids(lesson.course.cohort, lesson.date)
     students = {s.pk: s for s in Student.objects.filter(pk__in=ids).select_related("group")}
-    marks = marking.marks_map([lesson], ids)
+    # отметки как их поставил учитель: экран шлёт на запись весь состав, и опоздание,
+    # которое по правилу школы считается пропуском, записалось бы пропуском навсегда;
+    # что оно считается пропуском, говорит `late_as_absent`
+    marks = marking.marks_map([lesson], ids, raw=True)
     arrivals = marking.arrivals_map([lesson], ids)
     grades = marking.grades_map([lesson], ids)
     quarter = calendar.quarter_of(lesson.date)
@@ -486,7 +489,9 @@ def lesson_detail(request, pk: int):
         }
         return Response(payload)
     payload["roster"] = _roster(lesson, calendar, scale)
-    payload["absent"] = [row["short"] for row in payload["roster"] if row["mark"] in ("absent", "excused")]
+    payload["absent"] = [
+        row["short"] for row in payload["roster"] if row["mark"] in ("absent", "excused") or row["late_as_absent"]
+    ]
     payload["late"] = [
         (
             _("{name} (на {minutes} мин)").format(name=row["short"], minutes=row["late_by"])
@@ -494,7 +499,7 @@ def lesson_detail(request, pk: int):
             else row["short"]
         )
         for row in payload["roster"]
-        if row["mark"] == "late"
+        if row["mark"] == "late" and not row["late_as_absent"]
     ]
     payload["may_mark"] = rights.marks_lesson(request.user, lesson) and lesson.is_live
     payload["may_grade"] = rights.grades_lesson(request.user, lesson) and lesson.is_live
@@ -1417,7 +1422,13 @@ def attendance_export(request):
 @permission_classes([IsAuthenticated])
 @cached
 def risks(request):
-    """Пропуски по урокам за месяц: посещаемость ниже порога и дни без причины."""
+    """Пропуски по урокам за период: посещаемость ниже порога, дни без причины, опоздания.
+
+    У строки — причины (`reasons`): `attendance`, `unexcused`, `late`. Опоздания —
+    причина, только когда школа включила правило «Опоздания в „Рисках“»: столько
+    опозданий за выбранный период. Опоздание, которое считается пропуском, сюда
+    не идёт — оно уже «н» и снижает процент.
+    """
     if not rights.reads_risks(request.user.role):
         return _forbid(_("Риски по посещаемости читают директор школы и администратор"))
     calendar = school_calendar.load()
@@ -1425,7 +1436,9 @@ def risks(request):
         calendar, str(request.query_params.get("period") or _default_period(calendar))
     )
     end = min(end, today())
-    threshold = school_rules.value(school_rules.ATTENDANCE_BELOW)
+    rule_values = school_rules.values()
+    threshold = rule_values[school_rules.ATTENDANCE_BELOW]
+    late_limit = int(rule_values[school_rules.LATE_RISK_COUNT])
     picked = _group_param(request.query_params.get("group"))
     students = visible_students(request.user).filter(is_active=True).select_related("group")
     if picked is not None:
@@ -1434,14 +1447,27 @@ def risks(request):
     day_limits = day_rules()
     for student in students.order_by("group__code", "last_name", "first_name"):
         totals = student_attendance(student.pk, start, end)
+        if not totals.total:
+            continue
         days = unexcused_days(student.pk, start, end, totals, day_limits)
-        if totals.total and ((totals.pct is not None and totals.pct < threshold) or days):
-            rows.append({**student_brief(student), "attendance": totals.as_dict(), "unexcused_days": days})
+        reasons = []
+        if totals.pct is not None and totals.pct < threshold:
+            reasons.append("attendance")
+        if days:
+            reasons.append("unexcused")
+        if late_limit and totals.late >= late_limit:
+            reasons.append("late")
+        if reasons:
+            rows.append(
+                {**student_brief(student), "attendance": totals.as_dict(), "unexcused_days": days, "reasons": reasons}
+            )
     rows.sort(key=lambda r: (r["attendance"]["pct"] if r["attendance"]["pct"] is not None else 101, r["full_name"]))
     return Response(
         {
             "period": {"title": title, "from": start, "to": end},
             "threshold": threshold,
+            # 0 — правило «Опоздания в „Рисках“» выключено
+            "late_limit": late_limit,
             "rows": rows,
             "periods": period_choices(calendar),
         }

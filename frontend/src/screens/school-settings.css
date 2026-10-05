@@ -56,9 +56,13 @@
 }
 
 /* группа правил: поля в ряд, под ними сумма и кнопки на всю группу */
+.rules__grouphint {
+  margin: 0 0 calc(var(--space) * 4);
+}
+
 .rules__members {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space) * 52), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space) * 72), 1fr));
   gap: calc(var(--space) * 4);
   align-items: start;
 }

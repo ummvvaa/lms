@@ -31,7 +31,7 @@ import { plural, t, tk, tn } from '../i18n'
 import { todayAlmaty } from '../lib/dates'
 import { usePhone } from '../phone'
 import { ExcuseDialog } from './academics/GradesTab'
-import { absentWords, dateShort, dateWords, GroupPick } from './academics/shared'
+import { absentWords, dateShort, dateWords, GroupPick, lateAsAbsentWords } from './academics/shared'
 import { formatMonthYear } from '../lib/format'
 import './attendance.css'
 
@@ -233,7 +233,12 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
                 if (!cell?.has_lesson) return null
                 if (cell.unmarked) return <span className="att__cellnote">{t('не отмечен')}</span>
                 if (!cell.started) return <span className="att__cellnote">{t('впереди')}</span>
-                return <b className={`att__mark att__mark--${cell.mark ?? 'none'}`}>{cellLetter(cell)}</b>
+                // «н» из долгого опоздания: подсказка говорит, что ученик пришёл, но по правилу школы это пропуск
+                return (
+                  <b className={`att__mark att__mark--${cell.mark ?? 'none'}`} title={cell.late_as_absent ? lateAsAbsentWords(cell.late_by) : undefined}>
+                    {cellLetter(cell)}
+                  </b>
+                )
               }}
             />
             <p className="t-note att__legend">{t('«·» — был, «н» — не был, «у» — уважительная причина, «оп» — опоздал, «оп 10» — опоздал на 10 минут.')}</p>

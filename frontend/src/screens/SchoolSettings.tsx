@@ -95,6 +95,9 @@ function RuleRow({ rule }: { rule: SchoolRule }) {
             ? Number(rule.default) ? t('По умолчанию: да') : t('По умолчанию: нет')
             : `${t('По умолчанию: {value}', { value: withUnit(rule.default, rule.unit) })} · ${t('от {min} до {max}', { min: shown(rule.minimum), max: shown(rule.maximum) })}`}
         </span>
+        {rule.suggested > 0 && Number(rule.value) === 0 && (
+          <span className="t-note">{t('Сейчас выключено. Обычно ставят {value}', { value: withUnit(rule.suggested, rule.unit) })}</span>
+        )}
       </div>
       <div className="rules__edit">
         {rule.kind === 'bool' ? (
@@ -134,6 +137,19 @@ function RuleRow({ rule }: { rule: SchoolRule }) {
           <Button variant="outline" size="sm" disabled={rule.is_default || reset.isPending} onClick={restore}>
             {t('Сбросить')}
           </Button>
+          {/* выключенному правилу — предложенное значение в поле; сохранит человек сам */}
+          {rule.suggested > 0 && draft.trim() === '0' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDraft(String(rule.suggested))
+                setError('')
+              }}
+            >
+              {t('Подставить {value}', { value: shown(rule.suggested) })}
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -185,7 +201,9 @@ function GroupCard({ group, rules }: { group: SchoolRuleGroup; rules: SchoolRule
     })
 
   return (
-    <DataCard title={t(group.title)} note={t(group.hint)}>
+    <DataCard title={t(group.title)}>
+      {/* пояснение группы — абзацем: в строке заголовка оно обрезалось бы многоточием */}
+      <p className="t-note rules__grouphint">{t(group.hint)}</p>
       <div className="rules__members">
         {rules.map((rule) => (
           <Field

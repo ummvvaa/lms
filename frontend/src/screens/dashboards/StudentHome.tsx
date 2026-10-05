@@ -79,7 +79,7 @@ function LessonsToday() {
                   {lesson.status_title}
                 </Chip>
               ) : lesson.mine?.mark ? (
-                <MarkChip mark={lesson.mine.mark} words={MARK_WORDS} size="sm" lateBy={lesson.mine.late_by} />
+                <MarkChip mark={lesson.mine.mark} words={MARK_WORDS} size="sm" lateBy={lesson.mine.late_by} lateAsAbsent={lesson.mine.late_as_absent} />
               ) : lesson.slot === now ? (
                 <Chip tone="accent" size="sm">
                   {t('сейчас')}

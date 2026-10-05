@@ -624,6 +624,11 @@ body [data-slot='button'][data-variant].les--conflict {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* «Риски»: причины строки — отдельной строкой под именем */
+.risks__why {
+  display: block;
+}
+
 .acad__note {
   color: var(--ink-2);
   font-size: var(--type-body);

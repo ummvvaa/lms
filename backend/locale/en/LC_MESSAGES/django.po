@@ -15914,12 +15914,12 @@ msgid "Вес GPA"
 msgstr "GPA weight"
 
 #: core/school_rules.py
-msgid "Вес английского (IELTS или TOEFL)"
-msgstr "English weight (IELTS or TOEFL)"
+msgid "Вес английского"
+msgstr "English weight"
 
 #: core/school_rules.py
-msgid "Вес стандартного теста (SAT или ACT)"
-msgstr "Standardized test weight (SAT or ACT)"
+msgid "Вес SAT или ACT"
+msgstr "SAT or ACT weight"
 
 #: core/school_rules.py
 msgid "Вес портфолио"
@@ -16180,3 +16180,23 @@ msgstr "XP per level"
 #: core/school_rules.py
 msgid "Столько XP нужно на каждый следующий уровень. Уровень ученика пересчитывается по новому шагу сразу, набранные XP не меняются"
 msgstr "This much XP is needed for each next level. A student's level is recalculated with the new step at once; the XP earned does not change"
+
+#: core/school_rules.py
+msgid "Опоздание больше N минут считается пропуском"
+msgstr "A late arrival of more than N minutes counts as an absence"
+
+#: core/school_rules.py
+msgid "0 — правило выключено. Опоздание дольше этого числа минут читается как «н»: урок идёт пропуском в процент посещаемости, в «день без причины», в журнал, выгрузки и отчёты родителям. Отметка учителя не меняется: выключили правило — опоздание снова опоздание. Опоздания без времени прихода остаются опозданиями"
+msgstr "0 — the rule is off. A late arrival longer than this many minutes reads as an “A” mark: the lesson goes as missed into the attendance percentage, the “day without a reason”, the journal, exports and reports to parents. The teacher's mark does not change: turn the rule off and the late arrival is a late arrival again. Late arrivals without an arrival time stay late arrivals"
+
+#: core/school_rules.py
+msgid "Опоздания в «Рисках»: опозданий за период"
+msgstr "Late arrivals in “Risks”: late arrivals per period"
+
+#: core/school_rules.py
+msgid "0 — правило выключено. Столько опозданий за выбранный в «Рисках» период — ученик попадает в «Риски» с причиной «опоздания». Опоздание, которое по правилу выше считается пропуском, сюда не идёт: оно уже «н»"
+msgstr "0 — the rule is off. This many late arrivals in the period picked in “Risks” put the student into “Risks” with the reason “late arrivals”. A late arrival that counts as an absence under the rule above is not counted here: it is already an “A” mark"
+
+#: core/school_rules.py
+msgid "опоздание|опоздания|опозданий"
+msgstr "late arrival|late arrivals"
