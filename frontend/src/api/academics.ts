@@ -495,7 +495,8 @@ export interface SchoolGrades {
   periods: { code: string; title: string }[]
   subjects: AcadSubject[]
   heat: { group: string; group_id: number; cells: { subject: number; pct: number | null; tone: string }[]; attendance: number | null }[]
-  kpis: { attendance: number | null; risk: number; empty_journals: number; finals: number; quarter_ends: string | null }
+  /** `empty_journal_days` — окно «журнал без оценок», настройка школы */
+  kpis: { attendance: number | null; risk: number; empty_journals: number; empty_journal_days: number; finals: number; quarter_ends: string | null }
   risk: (AcadStudent & { subjects: string[] })[]
   worst_attendance: (AcadStudent & { attendance: StudentGrades['attendance'] })[]
   empty_journals: AcadCourse[]
@@ -518,7 +519,8 @@ export interface GroupGrades {
   journals: (AcadCourse & { unmarked: number })[]
   /** порог посещаемости из настроек школы: ниже — процент выделен */
   attendance_below: number
-  kpis: { attendance: number | null; risk: number; absent: number; unmarked: number }
+  /** `unmarked_days` — окно неотмеченных уроков, настройка школы */
+  kpis: { attendance: number | null; risk: number; absent: number; unmarked: number; unmarked_days: number }
   has_courses: boolean
 }
 

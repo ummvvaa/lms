@@ -16,13 +16,13 @@ from django.utils.translation import gettext_noop
 
 from academics import calendar as school_calendar
 
-#: Через сколько минут после звонка напоминать о неотмеченном уроке
-REMIND_AFTER_MINUTES = 10
-
 
 @shared_task(name="academics.remind_unmarked")
 def remind_unmarked() -> int:
-    """Учителю — уведомление о каждом уроке, не отмеченном через 10 минут после звонка."""
+    """Учителю — уведомление о каждом уроке, не отмеченном через N минут после звонка на урок.
+
+    N — настройка школы «Напоминание о неотмеченном уроке» (по умолчанию 10).
+    """
 
     calendar = school_calendar.load()
     now = timezone.localtime()
@@ -37,10 +37,12 @@ def remind_unmarked() -> int:
 def _remind(calendar, now, day, sent) -> int:
     from academics.models import Lesson, LessonStatus
     from academics.teachers import lesson_words
+    from core import school_rules
     from core.i18n import language_of, render
     from core.models import Notification
     from materials.services import notify
 
+    wait = dt.timedelta(minutes=school_rules.value(school_rules.UNMARKED_REMIND_MINUTES))
     rows = Lesson.objects.filter(
         date=day, status=LessonStatus.PLANNED, marked_at__isnull=True, reminded_at__isnull=True
     ).select_related("course", "course__subject", "course__cohort", "teacher", "substitute")
@@ -49,7 +51,7 @@ def _remind(calendar, now, day, sent) -> int:
         if bell is None:
             continue
         starts = dt.datetime.combine(day, bell[0], tzinfo=now.tzinfo)
-        if now < starts + dt.timedelta(minutes=REMIND_AFTER_MINUTES):
+        if now < starts + wait:
             continue
         who = lesson.substitute or lesson.teacher
         if who is None:

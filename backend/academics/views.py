@@ -45,6 +45,7 @@ from academics.models import (
 from academics.payloads import course_dict, kind_label, lesson_dict, person, student_brief, subject_dict, user_name
 from academics.results import (
     calendar_period,
+    day_rules,
     late_by,
     late_fields,
     student_attendance,
@@ -1430,9 +1431,10 @@ def risks(request):
     if picked is not None:
         students = students.filter(group=picked)
     rows = []
+    day_limits = day_rules()
     for student in students.order_by("group__code", "last_name", "first_name"):
         totals = student_attendance(student.pk, start, end)
-        days = unexcused_days(student.pk, start, end, totals)
+        days = unexcused_days(student.pk, start, end, totals, day_limits)
         if totals.total and ((totals.pct is not None and totals.pct < threshold) or days):
             rows.append({**student_brief(student), "attendance": totals.as_dict(), "unexcused_days": days})
     rows.sort(key=lambda r: (r["attendance"]["pct"] if r["attendance"]["pct"] is not None else 101, r["full_name"]))

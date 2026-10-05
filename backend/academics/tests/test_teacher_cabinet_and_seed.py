@@ -89,6 +89,19 @@ def test_reminder_goes_to_the_bell_once_per_lesson_ten_minutes_after_the_bell(
     assert not __import__("django.core.mail", fromlist=["outbox"]).outbox, "писем учителю нет"
 
 
+def test_reminder_delay_is_a_school_setting(year, subjects, teacher, cohorts, calendar, monkeypatch):
+    """«Напоминание о неотмеченном уроке» — настройка: поставили 20 минут, на 15-й напоминания нет."""
+    from core.models import SchoolRule
+
+    SchoolRule.objects.create(code="unmarked_remind_minutes", value=20)
+    create_once(subject=subjects["alg"], teacher=teacher, cohort=cohorts["boston"], date=days(0), slot=1, room="204")
+    starts = dt.datetime.combine(days(0), calendar.bell(1)[0], tzinfo=timezone.get_current_timezone())
+    monkeypatch.setattr(tasks.timezone, "localtime", lambda: starts + dt.timedelta(minutes=15))
+    assert tasks.remind_unmarked() == 0
+    monkeypatch.setattr(tasks.timezone, "localtime", lambda: starts + dt.timedelta(minutes=20))
+    assert tasks.remind_unmarked() == 1
+
+
 def test_curator_reminds_the_teacher_about_an_unmarked_lesson(lesson, teacher, as_curator):
     response = as_curator.post(f"/api/acad/lessons/{lesson.pk}/remind/", {}, format="json")
     assert response.status_code == 200
@@ -138,6 +151,15 @@ def test_unexcused_day_rule_two_absences_and_sixty_percent(
         rows[1], [{"student": pupils["aliya"].pk, "mark": "absent"}], actor=teacher, calendar=calendar
     )
     assert unexcused_days(pupils["aliya"].pk, days(-30), days(0)) == [day], "два «н» из трёх — 67 %"
+    # пороги — настройки школы: «только если пропущены все уроки дня» и «не меньше трёх „н“»
+    from core.models import SchoolRule
+
+    share = SchoolRule.objects.create(code="day_absent_share", value=100)
+    assert unexcused_days(pupils["aliya"].pk, days(-30), days(0)) == [], "два из трёх — меньше 100 %"
+    share.delete()
+    SchoolRule.objects.create(code="day_absent_min", value=3)
+    assert unexcused_days(pupils["aliya"].pk, days(-30), days(0)) == [], "два «н» — меньше трёх"
+    SchoolRule.objects.all().delete()
     risks = login(teacher)  # noqa: F841 — учителю рисков нет, проверяется ниже
     grades = as_curator.get(f"/api/acad/students/{pupils['aliya'].pk}/grades/?period=q1").json()
     assert grades["unexcused_days"] == [str(day)]

@@ -493,19 +493,29 @@ def recent_absences(student_id: int, *, days: int = 30) -> dict:
     }
 
 
+def day_rules() -> tuple[int, float]:
+    """Пороги «дня без причины» — настройки школы: сколько «н» и какая доля уроков дня."""
+    from core import school_rules
+
+    values = school_rules.values()
+    return int(values[school_rules.DAY_ABSENT_MIN]), values[school_rules.DAY_ABSENT_SHARE] / 100
+
+
 def unexcused_days(
-    student_id: int, start: dt.date, end: dt.date, totals: AttendanceTotals | None = None
+    student_id: int,
+    start: dt.date,
+    end: dt.date,
+    totals: AttendanceTotals | None = None,
+    rules: tuple[int, float] | None = None,
 ) -> list[dt.date]:
-    """Дни без причины: не меньше двух «н» и не меньше 60 % уроков дня ученика.
+    """Дни без причины: «н» за день не меньше порога и не меньше доли уроков дня ученика.
 
-    Пороги — решение владельца (25.09.2026); считаются только «н», «у» уже
-    оформлены и в риск не входят.
+    Пороги — настройки школы (`core.school_rules`; по умолчанию 2 «н» и 60 % —
+    решение владельца 25.09.2026). Считаются только «н»: «у» уже оформлены
+    и в риск не входят. Список учеников передаёт пороги сам (`rules`), чтобы
+    не читать их на каждого.
     """
-    from django.conf import settings
-
-    rules = getattr(settings, "ACADEMICS_RULES", {})
-    min_absent = int(rules.get("DAY_MIN_ABSENT", 2))
-    share = float(rules.get("DAY_SHARE", 0.6))
+    min_absent, share = rules or day_rules()
     totals = totals or student_attendance(student_id, start, end)
     from academics.schedule import for_student, live_lessons
 

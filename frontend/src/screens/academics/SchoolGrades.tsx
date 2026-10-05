@@ -11,7 +11,7 @@ import DataTable, { type Column } from '../../components/DataTable'
 import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tn } from '../../i18n'
 import { dateWords, PeriodSwitch } from './shared'
 
 function CellDrawer({ params, onClose }: { params: { group: string; subject: number; period: string }; onClose: () => void }) {
@@ -68,7 +68,7 @@ export default function SchoolGrades() {
       <StatRow>
         <Kpi label={t('Посещаемость')} value={data.kpis.attendance !== null ? `${data.kpis.attendance} %` : null} none={t('нет данных')} note={t('по урокам с отметкой')} />
         <Kpi label={t('Прогноз двойки')} value={data.kpis.risk || null} none={t('нет')} tone={data.kpis.risk ? 'bad' : undefined} note={t('учеников хотя бы по одному предмету')} />
-        <Kpi label={t('Журналы без оценок')} value={data.kpis.empty_journals || null} none={t('нет')} tone={data.kpis.empty_journals ? 'warn' : undefined} note={t('за две недели')} action={data.kpis.empty_journals ? { label: t('Учителя'), to: '/teachers' } : undefined} />
+        <Kpi label={t('Журналы без оценок')} value={data.kpis.empty_journals || null} none={t('нет')} tone={data.kpis.empty_journals ? 'warn' : undefined} note={tn(data.kpis.empty_journal_days, 'за {n} день|за {n} дня|за {n} дней')} action={data.kpis.empty_journals ? { label: t('Учителя'), to: '/teachers' } : undefined} />
         <Kpi label={t('Итоги четверти')} value={data.kpis.finals || null} none={t('нет')} note={data.kpis.quarter_ends ? t('выставляют до {date}', { date: dateWords(data.kpis.quarter_ends) }) : ''} />
       </StatRow>
       <DataCard

@@ -87,7 +87,7 @@ export default function CuratorGrades() {
         <Kpi label={t('Посещаемость')} value={data.kpis.attendance !== null ? `${data.kpis.attendance} %` : null} none={t('нет данных')} />
         <Kpi label={t('Двойка в прогнозе')} value={data.kpis.risk || null} none={t('нет')} tone={data.kpis.risk ? 'bad' : undefined} note={plural(data.kpis.risk, 'ученик|ученика|учеников')} />
         <Kpi label={t('Пропуски без причины')} value={data.kpis.absent || null} none={t('нет')} action={data.kpis.absent ? { label: t('Оформить'), to: '/attendance' } : undefined} />
-        <Kpi label={t('Не отмечено учителями')} value={data.kpis.unmarked || null} none={t('всё отмечено')} note={t('за неделю')} tone={data.kpis.unmarked ? 'warn' : undefined} />
+        <Kpi label={t('Не отмечено учителями')} value={data.kpis.unmarked || null} none={t('всё отмечено')} note={tn(data.kpis.unmarked_days, 'за {n} день|за {n} дня|за {n} дней')} tone={data.kpis.unmarked ? 'warn' : undefined} />
       </StatRow>
       <div className="card">
         <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={(row) => navigate(`/students/${row.id}?tab=grades`)} minWidth={`${200 + 96 + data.subjects.length * 96}px`} />

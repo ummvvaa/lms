@@ -115,5 +115,5 @@ SCHOOL_NAME = "Школа из настроек тестов"  # i18n-skip: на
 #: ключ паролей учеников — фиксированный для контура разработки и тестов (фаза 65)
 CREDENTIALS_KEY = CREDENTIALS_KEY or "H_NSLockqCkfmX4srlV8APcg38BKjiwF0qU534WsZYk="  # noqa: F405
 
-#: пороги учебной части — числами, чтобы `.env` не протекал в проверки
-ACADEMICS_RULES = {"DAY_MIN_ABSENT": 2, "DAY_SHARE": 0.6}
+#: учебная часть: дата запуска посещаемости по урокам не задана, чтобы `.env` не протекал в проверки
+ACADEMICS_RULES = {"DAY_MARKS_UNTIL": ""}

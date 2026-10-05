@@ -35,6 +35,7 @@ from django.utils.translation import gettext_lazy
 
 from core.i18n import active_language
 from core.parallels import admission_q, admission_students
+from core.phrasing import tn
 from roadmap.models import TaskStatus
 from students.models import Student
 from suggestions import operations
@@ -366,7 +367,7 @@ def _show_names(text: str, roster: operations.Roster, mentioned: set[int]) -> st
 
 
 def out_of_sight(*, student_ids=None, **_kwargs) -> dict:
-    """Посещаемость по урокам за месяц ниже порога или ни данных, ни правок две недели.
+    """Посещаемость по урокам за окно ниже порога или ни данных, ни правок дольше срока.
 
     Порог — тот же, что у «Рисков» и экранов посещаемости: настройка
     администратора (`core.school_rules`). Процент — по урокам, как на экранах:
@@ -375,11 +376,15 @@ def out_of_sight(*, student_ids=None, **_kwargs) -> dict:
     from academics.results import attendance_by_students
     from core import school_rules
 
-    threshold = school_rules.value(school_rules.ATTENDANCE_BELOW)
-    horizon = timezone.now() - timedelta(days=14)
+    rules = school_rules.values()
+    threshold = rules[school_rules.ATTENDANCE_BELOW]
+    stale_days = rules[school_rules.PROFILE_STALE_DAYS]
+    horizon = timezone.now() - timedelta(days=stale_days)
     end = timezone.localdate()
     people = list(_students(student_ids).select_related("behavior"))
-    totals = attendance_by_students([student.pk for student in people], end - timedelta(days=29), end)
+    # окно — настройка школы; сегодняшний день входит в счёт
+    window = rules[school_rules.ASSISTANT_ATTENDANCE_DAYS]
+    totals = attendance_by_students([student.pk for student in people], end - timedelta(days=window - 1), end)
     lines: list[str] = []
     for student in people:
         found = totals.get(student.pk)
@@ -388,7 +393,15 @@ def out_of_sight(*, student_ids=None, **_kwargs) -> dict:
         if pct is not None and pct < threshold:
             lines.append(_("{student} — посещаемость {percent}%").format(student=_name(student), percent=pct))
         elif pct is None and behavior is not None and behavior.updated_at < horizon:
-            lines.append(_("{student} — профиль не обновлялся больше двух недель").format(student=_name(student)))
+            lines.append(
+                tn(
+                    stale_days,
+                    "{student} — профиль не обновлялся больше {n} дня|"
+                    "{student} — профиль не обновлялся больше {n} дней|"
+                    "{student} — профиль не обновлялся больше {n} дней",
+                    student=_name(student),
+                )
+            )
     if not lines:
         return _reply(_("Никто не пропал: посещаемость в норме, профили обновляются."))
     return _reply(_("Стоит вернуть в поле зрения: {count}.").format(count=len(lines)), lines=lines[:15])

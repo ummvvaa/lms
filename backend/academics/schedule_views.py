@@ -943,7 +943,9 @@ def school_grades_payload(code: str) -> dict:
         heat.append({"group": group.code, "group_id": group.pk, "cells": cells, "attendance": att})
     worst.sort(key=lambda r: (r["attendance"]["pct"], r["full_name"]))
     empty_journals = []
-    two_weeks = today() - dt.timedelta(days=13)
+    # окно «журнал без оценок» — настройка школы; сегодняшний день входит в счёт
+    empty_days = school_rules.value(school_rules.EMPTY_JOURNAL_DAYS)
+    two_weeks = today() - dt.timedelta(days=empty_days - 1)
     for course in courses:
         past = [
             lesson
@@ -964,6 +966,7 @@ def school_grades_payload(code: str) -> dict:
             "attendance": round(sum(attendance_all) / len(attendance_all)) if attendance_all else None,
             "risk": len(risk),
             "empty_journals": len(empty_journals),
+            "empty_journal_days": empty_days,
             "finals": finals,
             "quarter_ends": (
                 quarter.ends if quarter else (calendar.current_quarter().ends if calendar.current_quarter() else None)
@@ -1120,7 +1123,9 @@ def group_grades_payload(group: StudyGroup, code: str) -> dict:
         if low or (totals.pct is not None and totals.pct < attendance_below):
             need.append({**student_brief(student), "low": low, "attendance_pct": totals.pct})
     journals = []
-    week_ago = today() - dt.timedelta(days=6)
+    # окно неотмеченных уроков — настройка школы; сегодняшний день входит в счёт
+    unmarked_days = school_rules.value(school_rules.UNMARKED_LESSONS_DAYS)
+    week_ago = today() - dt.timedelta(days=unmarked_days - 1)
     for course in courses:
         past = [
             lesson
@@ -1144,6 +1149,7 @@ def group_grades_payload(group: StudyGroup, code: str) -> dict:
             "risk": sum(1 for r in rows if any(c["grade"] == 2 for c in r["cells"])),
             "absent": sum(r["absent"] for r in rows),
             "unmarked": sum(j["unmarked"] for j in journals),
+            "unmarked_days": unmarked_days,
         },
         "has_courses": bool(courses),
     }

@@ -12299,10 +12299,6 @@ msgstr ""
 msgid "{student} — посещаемость {percent}%"
 msgstr "{student} — attendance {percent}%"
 
-#: suggestions/assistant.py:391
-#, python-brace-format
-msgid "{student} — профиль не обновлялся больше двух недель"
-msgstr "{student} — profile not updated for over two weeks"
 
 #: suggestions/assistant.py:393
 msgid "Никто не пропал: посещаемость в норме, профили обновляются."
@@ -15564,9 +15560,6 @@ msgstr "What share of the day's lessons must be missed without a reason. 100 mea
 msgid "Напоминание о неотмеченном уроке"
 msgstr "Reminder about an unmarked lesson"
 
-#: core/school_rules.py
-msgid "Через сколько минут после звонка с урока учителю приходит напоминание отметить посещаемость. Проверка идёт раз в пять минут"
-msgstr "How many minutes after the end-of-lesson bell the teacher is reminded to mark attendance. The check runs every five minutes"
 
 #: core/school_rules.py
 msgid "Окно посещаемости у помощника"
@@ -15877,3 +15870,11 @@ msgstr "lesson|lessons"
 #: core/school_rules.py
 msgid "Сколько школа готова тратить на модель в месяц"
 msgstr "How much the school is ready to spend on the model per month"
+
+#: suggestions/assistant.py
+msgid "Через сколько минут после звонка на урок учителю приходит напоминание отметить посещаемость. Проверка идёт раз в пять минут"
+msgstr "How many minutes after the start-of-lesson bell the teacher is reminded to mark attendance. The check runs every five minutes"
+
+#: suggestions/assistant.py
+msgid "{student} — профиль не обновлялся больше {n} дня|{student} — профиль не обновлялся больше {n} дней|{student} — профиль не обновлялся больше {n} дней"
+msgstr "{student} — profile not updated for more than {n} day|{student} — profile not updated for more than {n} days"

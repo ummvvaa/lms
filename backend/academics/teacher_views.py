@@ -36,7 +36,7 @@ from academics.models import Course, Excuse, Lesson, LessonKind, LessonStatus, Q
 from academics.payloads import cohort_dict, course_dict, lesson_dict, person, student_brief, teacher_dict, user_name
 from academics.results import ResultRefused, calendar_period, course_context, late_fields, set_finals
 from academics.views import _excuse_dict, _forbid, _int, _not_found
-from core import stored_text
+from core import school_rules, stored_text
 from core.domains import ROLE_TEACHER
 from students.models import Student
 
@@ -361,7 +361,12 @@ def journal_payload(course: Course, user, period: str) -> dict:
         },
         "may_edit": rights.owns_course(user, course),
         "is_owner": course.teacher_id == user.pk,
-        "final_window": bool(quarter_for_finals and quarter_for_finals.ends - dt.timedelta(days=6) <= today()),
+        # окно итогов — настройка школы: за сколько дней до конца четверти оно открывается
+        "final_window": bool(
+            quarter_for_finals
+            and quarter_for_finals.ends - dt.timedelta(days=school_rules.value(school_rules.FINALS_WINDOW_DAYS))
+            <= today()
+        ),
     }
 
 
