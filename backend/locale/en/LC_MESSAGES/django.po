@@ -16206,3 +16206,12 @@ msgstr "No bell schedule assigned: {groups}. Assign one in School year"
 #: academics/schedule.py
 msgid "не назначены"
 msgstr "not assigned"
+
+#: core/cabinets.py
+#, python-brace-format
+msgid "Формулы школа не задала. Статусы ставятся вручную — при {n} ученике это не удержать.|Формулы школа не задала. Статусы ставятся вручную — при {n} учениках это не удержать.|Формулы школа не задала. Статусы ставятся вручную — при {n} учениках это не удержать."
+msgstr "The school has not set the formulas. Statuses are set by hand, which cannot keep up with {n} student.|The school has not set the formulas. Statuses are set by hand, which cannot keep up with {n} students."
+
+#: core/cabinets.py
+msgid "Формулы школа не задала. Статусы ставятся вручную."
+msgstr "The school has not set the formulas. Statuses are set by hand."

@@ -243,6 +243,24 @@ def test_each_cabinet_answers_with_its_own(db, role, keys):
         assert key in data, f"{role}: в кабинете нет «{key}»"
 
 
+def test_admission_cabinet_names_the_real_number_of_graduates(db):
+    """D82: «при 250 учениках» было строкой в интерфейсе — число учеников 11 параллели даёт сервер."""
+    from core.cabinets import admission_cabinet
+    from students.models import Student, StudyGroup
+
+    assert admission_cabinet()["statuses_note"] == "Формулы школа не задала. Статусы ставятся вручную."
+    senior = StudyGroup.objects.create(code="11Z", parallel=11)
+    junior = StudyGroup.objects.create(code="9Z", parallel=9)
+    for index in range(3):
+        Student.objects.create(
+            last_name=f"Выпускник{index}", first_name="Тест", email=f"s{index}@x.kz", group=senior, graduation_year=2027
+        )
+    Student.objects.create(last_name="Младший", first_name="Тест", email="j@x.kz", group=junior, graduation_year=2029)
+    note = admission_cabinet()["statuses_note"]
+    # девятиклассник в счёт не идёт: поступление — у 11 параллели
+    assert "при 3 учениках" in note and "250" not in note
+
+
 def test_admin_has_no_confirmation_queue(db):
     """Администратору подтверждать нечего: очереди у него нет."""
     from core.cabinets import build

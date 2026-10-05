@@ -2916,7 +2916,6 @@ export const en: Record<string, string> = {
   'Формат файла': 'File format',
   'Формат файла Mock Test': 'Mock Test file format',
   'Формат: колонки узнаются по заголовкам, пустая ячейка ничего не стирает — guides/ADMISSION_IMPORT.md в репозитории': 'Format: columns are recognised by their headers, an empty cell erases nothing — guides/ADMISSION_IMPORT.md in the repository',
-  'Формулы школа не задала. Статусы ставятся вручную — при 250 учениках это не удержать.': 'The school has not set the formulas. Statuses are set by hand, which cannot keep up with 250 students.',
   'Фото не склеились — приложите их файлами': 'The photos could not be combined — attach them as files',
   'Футбол': 'Football',
   'Химия': 'Chemistry',

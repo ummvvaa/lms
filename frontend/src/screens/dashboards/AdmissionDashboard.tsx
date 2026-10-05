@@ -27,6 +27,8 @@ import { CabinetBoard, CabinetStats } from './cabinet'
 interface AdmissionCabinet {
   title: string
   owner: string
+  /** «формулы не заданы, статусы руками» с числом учеников 11 параллели — фраза сервера */
+  statuses_note: string
   stats: Parameters<typeof CabinetStats>[0]['stats']
   urgent: {
     eyebrow: string
@@ -279,7 +281,7 @@ export default function AdmissionDashboard() {
               // Пока их нет, статус ставится руками, и об этом сказано прямо
               <DataCard title={t('Статусы A / B / C')}>
                 <p className="muted rows__empty">
-                  {t('Формулы школа не задала. Статусы ставятся вручную — при 250 учениках это не удержать.')}
+                  {cabinet.statuses_note}
                 </p>
                 <Button variant="outline" size="sm" onClick={() => navigate('/task-templates')}>
                   {t('Задать формулы')}
