@@ -7,6 +7,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
+import { wizardApplyByApi } from "../helpers/wizard";
 import { watch } from "../helpers/session";
 
 /**
@@ -251,49 +252,29 @@ test.describe("история загрузок и отмена импорта", 
       headers: { "X-CSRFToken": csrf },
     });
 
-    // директор по прямому запросу получает отказ — файлы грузит администратор
-    const refused = await page.request.post("/api/import/apply/", {
-      data: { domain: "exam", file_name: "x.csv", rows: [] },
-      headers: { "X-CSRFToken": csrf },
-    });
-    expect(refused.status()).toBe(403);
-
+    // загружает администратор — мастером импорта, файлом-списком с почтой
+    // ученика (вкладки «Поля по CSV» больше нет); пачку домена «Экзамены»
+    // отменяет её директор
     const adminContext = await browser.newContext({
       storageState: statePath("admin"),
     });
     const adminPage = await adminContext.newPage();
     await adminPage.goto("/dashboard");
-    const adminCsrf = (await adminContext.cookies()).find(
-      (c) => c.name === "csrftoken",
-    )!.value;
-    const applied = await adminPage.request.post("/api/import/apply/", {
-      data: {
-        domain: "exam",
-        file_name: "проверка-отката.csv",
-        rows: [
-          {
-            student: studentId,
-            changes: [
-              {
-                model: "students.ExamProfile",
-                field: "hours_per_week",
-                old: "4",
-                new: "9",
-                raw: "9",
-              },
-            ],
-          },
-        ],
-      },
-      headers: { "X-CSRFToken": adminCsrf },
-    });
+    const applied = await wizardApplyByApi(
+      adminPage,
+      "проверка-отката.csv",
+      "email,Часов подготовки в неделю\nstudent@probe.local,9\n",
+      ["exam"],
+    );
     expect(applied.ok()).toBeTruthy();
     await adminContext.close();
 
     await page.reload();
+    // у загрузки мастера две строки истории: отчёт и пачка домена — отменяется пачка
     const row = page
       .locator("table.tbl tbody tr")
       .filter({ hasText: "проверка-отката.csv" })
+      .filter({ has: page.getByRole("button", { name: "Отменить", exact: true }) })
       .first();
     await expect(row).toBeVisible();
 

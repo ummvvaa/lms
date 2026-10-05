@@ -1,7 +1,7 @@
 /**
  * Снимки экранов, которых коснулся перенос загрузки файлов администратору, на двух ширинах.
  *
- * Узкий набор по заданию: импорт администратора (с выбранным доменом),
+ * Узкий набор по заданию: импорт администратора (мастер с файлом-списком),
  * история загрузок и таблица директора, помощник с выбором домена,
  * соревнования и контакты без кнопки загрузки. Полный набор всех экранов
  * снимает `shots.spec.ts`.
@@ -10,6 +10,7 @@ import { test, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 import { statePath } from "../helpers/auth-state";
+import { wizardFile, wizardToColumns } from "../helpers/wizard";
 
 const DIR = path.join(__dirname, "..", "shots", "admin-only-import");
 
@@ -24,9 +25,9 @@ const SHOTS: {
     screen: "/import",
     name: "admin_import_exam",
     prepare: async (page) => {
-      // старый CSV-импорт — вкладка «Поля по CSV» (фаза 72)
-      await page.getByRole("tab", { name: "Поля по CSV" }).click();
-      await page.getByLabel("Домен", { exact: true }).selectOption("exam");
+      // мастер импорта с файлом-списком на шаге «Что заполняем»: колонки узнаны по реестру
+      await wizardFile(page, "баллы.csv", "email,ielts,ielts цель\nnobody@probe.local,6.5,7.5\n");
+      await wizardToColumns(page);
       await page.waitForTimeout(300);
     },
   },
@@ -35,9 +36,8 @@ const SHOTS: {
     screen: "/import",
     name: "admin_import_admission_rows",
     prepare: async (page) => {
-      // старый CSV-импорт — вкладка «Поля по CSV» (фаза 72)
-      await page.getByRole("tab", { name: "Поля по CSV" }).click();
-      await page.getByLabel("Домен", { exact: true }).selectOption("admission");
+      // загрузки списков и справочников — вторая вкладка за мастером
+      await page.getByRole("tab", { name: "Списки и справочники" }).click();
       await page.getByRole("tab", { name: "Требования вузов" }).click();
       await page.waitForTimeout(300);
     },

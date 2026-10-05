@@ -8,6 +8,7 @@
 import { expect, test } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { watch } from "../helpers/session";
+import { wizardApply, wizardApplyByApi, wizardFile, wizardToColumns, wizardToRows } from "../helpers/wizard";
 
 test.describe("первый вход", () => {
   test.use({ storageState: statePath("director_exam") });
@@ -104,15 +105,12 @@ test.describe("пустой экран объясняет себя", () => {
 });
 
 test.describe("ошибка в файле объясняется по-человечески", () => {
-  // с фазы 35 файлы грузит администратор, выбрав домен
+  // поля профилей грузит мастер импорта: файл-список с почтой ученика
   test.use({ storageState: statePath("admin") });
 
   test("одна кривая строка не отменяет файл", async ({ page }) => {
     const diag = watch(page);
     await page.goto("/import");
-    // старый CSV-импорт полей — вторая вкладка за мастером (фаза 72, D43)
-    await page.getByRole("tab", { name: "Поля по CSV" }).click();
-    await page.getByLabel("Домен", { exact: true }).selectOption("exam");
 
     // берём трёх настоящих учеников и приводим их к известному состоянию:
     // сценарий не должен зависеть от того, что оставил прошлый прогон
@@ -120,103 +118,52 @@ test.describe("ошибка в файле объясняется по-челов
       await page.request.get("/api/students/?page_size=3")
     ).json();
     const emails = list.results.map((row: { email: string }) => row.email);
-    const csrf = (await page.context().cookies()).find(
-      (c) => c.name === "csrftoken",
-    )!.value;
     // администратор в таблицу не пишет: известное состояние ставим той же
     // загрузкой за домен «Экзамены», что и проверяем
-    await page.request.post("/api/import/apply/", {
-      data: {
-        domain: "exam",
-        file_name: "подготовка.csv",
-        rows: list.results.map((row: { id: number }) => ({
-          student: row.id,
-          changes: [
-            {
-              model: "students.ExamProfile",
-              field: "ielts_current",
-              old: "",
-              new: "5.5",
-              raw: "5.5",
-            },
-          ],
-        })),
-      },
-      headers: { "X-CSRFToken": csrf },
-    });
+    const prepared = await wizardApplyByApi(
+      page,
+      "подготовка.csv",
+      `email,ielts\n${emails.map((email: string) => `${email},5.5`).join("\n")}\n`,
+      ["exam"],
+    );
+    expect(prepared.status()).toBe(201);
     await page.reload();
-    // после перезагрузки экран снова открыт на мастере — вкладка выбирается заново
-    await page.getByRole("tab", { name: "Поля по CSV" }).click();
-    await page.getByLabel("Домен", { exact: true }).selectOption("exam");
     const csv = `email,ielts\n${emails[0]},7.0\n${emails[1]},12.5\n${emails[2]},6.5\n`;
 
+    await wizardFile(page, "баллы.csv", csv);
+    await wizardToColumns(page);
+    // колонку мастер узнал сам: «ielts» — текущий балл домена «Экзамены»
+    await expect(page.locator("table.tbl tbody tr").filter({ hasText: "Текущий балл IELTS" }).first()).toContainText("Экзамены");
+    await wizardToRows(page);
+
+    // сообщение называет поле, значение и допустимый диапазон — в строке ученика
+    const bad = page.locator("table.tbl tbody tr.aimp__row--bad");
+    await expect(bad).toHaveCount(1);
+    await expect(bad).toContainText(emails[1]);
+    await expect(bad).toContainText("Текущий балл IELTS");
+    await expect(bad).toContainText("12.5");
+    await expect(bad).toContainText("максимальный балл — 9");
+    await expect(bad).toContainText("от 0 до 9 баллов");
+
+    // пока строка с ошибкой не разобрана, применить нельзя; её пропускают —
+    // и применяются правильные строки, а не отвергается весь файл
+    const apply = page.getByRole("button", { name: "Применить", exact: true });
+    await expect(apply).toBeDisabled();
     await Promise.all([
-      page.waitForResponse((r) => r.url().includes("/api/import/preview/")),
-      page.setInputFiles("input[type=file]", {
-        name: "баллы.csv",
-        mimeType: "text/csv",
-        buffer: Buffer.from(csv, "utf8"),
-      }),
+      page.waitForResponse((r) => r.url().includes("/api/admission-imports/preview/") && r.status() === 200),
+      page.getByRole("button", { name: "Пропустить строки с ошибкой" }).click(),
     ]);
-
-    // колонку сопоставляем руками — так это и делает человек.
-    // Строки берём по порядку: по тексту их не различить, слово «email»
-    // встречается и в подписи варианта «Ученик (email)»
-    const mapping = page.locator("table.tbl tbody tr");
-    await expect(mapping.first()).toBeVisible();
-    await mapping.nth(0).locator("select").selectOption("student");
-    // по значению, а не по подписи: подписи полей живут в реестре и меняются
-    await mapping
-      .nth(1)
-      .locator("select")
-      .selectOption("students.ExamProfile.ielts_current");
-    await page.getByRole("button", { name: "Показать предпросмотр" }).click();
-
-    // сообщение называет строку, колонку, значение и допустимый диапазон
-    const problems = page.locator(".imp__problems").first();
-    await expect(problems).toBeVisible();
-    await expect(problems).toContainText("Строка 3");
-    await expect(problems).toContainText("колонка «ielts»");
-    await expect(problems).toContainText("12.5");
-    await expect(problems).toContainText("максимальный балл — 9");
-    await expect(problems).toContainText("от 0 до 9 баллов");
-
-    // применяются только правильные строки, а не отвергается весь файл
-    const apply = page.getByRole("button", { name: /Применить/ });
-    await expect(apply).toContainText("правильных строк");
-    const mark = diag.mark();
-    await apply.click();
-    await expect
-      .poll(
-        () =>
-          diag
-            .since(mark)
-            .filter((c) => c.url.includes("/import/apply/") && c.status === 200)
-            .length,
-      )
-      .toBeGreaterThan(0);
+    await expect(apply).toBeEnabled();
+    await wizardApply(page);
 
     // исправляем файл и грузим заново — теперь проходит целиком
     const fixed = `email,ielts\n${emails[0]},7.5\n${emails[1]},6.0\n${emails[2]},6.5\n`;
-    // ждём, пока файл прочитается: до этого сопоставление колонок
-    // ещё принадлежит прошлому файлу и будет заменено
-    await Promise.all([
-      page.waitForResponse((r) => r.url().includes("/api/import/preview/")),
-      page.setInputFiles("input[type=file]", {
-        name: "баллы-исправленный.csv",
-        mimeType: "text/csv",
-        buffer: Buffer.from(fixed, "utf8"),
-      }),
-    ]);
-    await mapping.nth(0).locator("select").selectOption("student");
-    // по значению, а не по подписи: подписи полей живут в реестре и меняются
-    await mapping
-      .nth(1)
-      .locator("select")
-      .selectOption("students.ExamProfile.ielts_current");
-    await page.getByRole("button", { name: "Показать предпросмотр" }).click();
-    await expect(page.locator(".imp__problems")).toHaveCount(0);
-    await page.getByRole("button", { name: "Применить", exact: true }).click();
+    await page.goto("/import");
+    await wizardFile(page, "баллы-исправленный.csv", fixed);
+    await wizardToColumns(page);
+    await wizardToRows(page);
+    await expect(page.locator("table.tbl tbody tr.aimp__row--bad")).toHaveCount(0);
+    await wizardApply(page);
 
     // значение видно в базе после перезагрузки
     await page.reload();

@@ -16,6 +16,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { apiPost, watch, unlockTable } from "../helpers/session";
 import { sidebar } from "../helpers/shell";
+import { wizardApply, wizardFile, wizardToColumns, wizardToRows } from "../helpers/wizard";
 
 test.describe.configure({ mode: "serial", timeout: 120_000 });
 
@@ -90,9 +91,9 @@ test("директор: «Импорт» с мастером, в таблице 
   await expect(page.locator("input[type=file]")).toHaveCount(1);
   await expect(page.locator(".manual-note")).toBeVisible();
 
-  // старый CSV-путь по API остался администратору — отказ с объяснением
+  // прежнего пути с ручным сопоставлением колонок больше нет: поля грузит мастер
   const csrf = await csrfOf(page);
-  const refused = await page.request.post("/api/import/preview/", {
+  const gone = await page.request.post("/api/import/preview/", {
     multipart: {
       domain: "exam",
       file: {
@@ -103,8 +104,7 @@ test("директор: «Импорт» с мастером, в таблице 
     },
     headers: { "X-CSRFToken": csrf },
   });
-  expect(refused.status()).toBe(403);
-  expect((await refused.json()).detail).toContain("администратор");
+  expect(gone.status()).toBe(404);
 
   expect(diag.consoleErrors).toEqual([]);
   expect(diag.pageErrors).toEqual([]);
@@ -149,7 +149,7 @@ test("директор спорта: соревнования без «Загр�
   await page.context().close();
 });
 
-test("администратор: домен → файл → предпросмотр → применение, журнал помечен доменом", async ({
+test("администратор: файл → что заполняем → проверка → применение, журнал помечен доменом", async ({
   browser,
 }) => {
   const page = await as(browser, "admin");
@@ -170,58 +170,27 @@ test("администратор: домен → файл → предпросм
 
   await page.goto("/import");
   await expect(page.locator("h1")).toContainText("Импорт");
-  // старый CSV-импорт полей — вторая вкладка за мастером (фаза 72, D43);
-  // там без домена файл выбрать негде
-  await page.getByRole("tab", { name: "Поля по CSV" }).click();
-  await expect(page.locator("input[type=file]")).toHaveCount(0);
-  await page.getByLabel("Домен", { exact: true }).selectOption("exam");
-  // ищем именно подсказку под выбором домена: та же фраза стоит в каждой
-  // строке истории загрузок, и на базе с прошлыми прогонами их там много
-  await expect(
-    page.getByText(
-      "Правки в журнале будут помечены: администратор за домен «Экзамены»",
-    ),
-  ).toBeVisible();
+  // вкладки «Поля по CSV» больше нет: поля профилей грузит мастер
+  await expect(page.getByRole("tab", { name: "Поля по CSV" })).toHaveCount(0);
 
-  await Promise.all([
-    page.waitForResponse((r) => r.url().includes("/api/import/preview/")),
-    page.setInputFiles("input[type=file]", {
-      name: FILE_NAME,
-      mimeType: "text/csv",
-      buffer: Buffer.from(
-        `email,ielts\n${uploadedFor.email},${value}\n`,
-        "utf8",
-      ),
-    }),
-  ]);
-  const mapping = page.locator("table.tbl tbody tr");
-  await expect(mapping.first()).toBeVisible();
-  // в списке полей — только выбранный домен: поля поступления не предлагаются
-  const options = await mapping
-    .nth(1)
-    .locator("select option")
-    .allTextContents();
-  expect(options).toContain("Текущий балл IELTS");
-  expect(options).not.toContain("Целевая страна");
-
-  await mapping.nth(0).locator("select").selectOption("student");
-  await mapping
-    .nth(1)
-    .locator("select")
-    .selectOption("students.ExamProfile.ielts_current");
-  await page.getByRole("button", { name: "Показать предпросмотр" }).click();
-  await expect(page.getByText("Нашлось: 1")).toBeVisible();
+  await wizardFile(page, FILE_NAME, `email,ielts\n${uploadedFor.email},${value}\n`);
+  await wizardToColumns(page);
+  // колонку мастер узнал по реестру и положил в её домен
+  const column = page.locator("table.tbl tbody tr").filter({ hasText: "Текущий балл IELTS" }).first();
+  await expect(column).toContainText("Экзамены");
+  await wizardToRows(page);
+  await expect(page.locator(".toolbar").filter({ hasText: "Строк готово:" }).first()).toContainText("Строк готово: 1");
 
   const mark = diag.mark();
-  await page.getByRole("button", { name: "Применить", exact: true }).click();
+  await wizardApply(page);
   await expect
     .poll(() =>
       diag
         .since(mark)
-        .filter((c) => c.url.includes("/import/apply/"))
+        .filter((c) => c.url.includes("/admission-imports/apply/"))
         .map((c) => c.status),
     )
-    .toEqual([200]);
+    .toEqual([201]);
 
   // значение в базе
   const profile = await (
@@ -231,9 +200,12 @@ test("администратор: домен → файл → предпросм
 
   // история: загрузка помечена доменом и тем, что её делал администратор
   await page.reload();
-  await page.getByRole("tab", { name: "Поля по CSV" }).click();
-  await page.getByLabel("Домен", { exact: true }).selectOption("exam");
-  const row = page.locator("table.tbl tbody tr").filter({ hasText: FILE_NAME }).first();
+  // у загрузки мастера две строки истории: отчёт и пачка домена — помечена пачка
+  const row = page
+    .locator("table.tbl tbody tr")
+    .filter({ hasText: FILE_NAME })
+    .filter({ has: page.getByRole("button", { name: "Отменить", exact: true }) })
+    .first();
   await expect(row).toBeVisible();
   await expect(row).toContainText("администратор за домен «Экзамены»");
   const history = await (await page.request.get("/api/imports/")).json();
@@ -266,7 +238,11 @@ test("директор видит загрузку администратора 
 
   const page = await as(browser, "director_exam");
   await page.goto("/import");
-  const row = page.locator("table.tbl tbody tr").filter({ hasText: FILE_NAME }).first();
+  const row = page
+    .locator("table.tbl tbody tr")
+    .filter({ hasText: FILE_NAME })
+    .filter({ has: page.getByRole("button", { name: "Отменить", exact: true }) })
+    .first();
   await expect(row).toBeVisible();
   await expect(row).toContainText("администратор за домен «Экзамены»");
   await row.getByRole("button", { name: "Отменить", exact: true }).click();

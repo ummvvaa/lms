@@ -13,6 +13,7 @@ import { lastLinkToken } from "../helpers/dev-link";
 import { dropUsers, resetAll, serviceLog, waitForApi } from "../helpers/manage";
 import { byKey } from "../helpers/roles";
 import { login } from "../helpers/session";
+import { wizardApply, wizardFile, wizardToColumns, wizardToRows } from "../helpers/wizard";
 
 test.describe.configure({ mode: "serial", timeout: 240_000 });
 
@@ -296,39 +297,18 @@ test("сквозной путь: от пустой базы до возврат�
   const uploadContext = await browser.newContext();
   const uploadPage = await uploadContext.newPage();
   await login(uploadPage, byKey("admin"));
-  await uploadPage.goto("/import");
-  // старый CSV-импорт полей — вторая вкладка за мастером (фаза 72, D43)
-  await uploadPage.getByRole("tab", { name: "Поля по CSV" }).click();
-  await uploadPage.getByLabel("Домен", { exact: true }).selectOption("exam");
-
+  // поля профилей грузит мастер импорта: файл-список с почтой ученика,
+  // колонку «ielts» он узнаёт сам — это текущий балл домена «Экзамены»
   const upload = async (value: string, name: string) => {
-    await Promise.all([
-      uploadPage.waitForResponse((r) =>
-        r.url().includes("/api/import/preview/"),
-      ),
-      uploadPage.setInputFiles("input[type=file]", {
-        name,
-        mimeType: "text/csv",
-        buffer: Buffer.from(`email,ielts\n${NEW_STUDENT},${value}\n`, "utf8"),
-      }),
-    ]);
-    const mapping = uploadPage.locator("table.tbl tbody tr");
-    await expect(mapping.first()).toBeVisible();
-    await mapping.nth(0).locator("select").selectOption("student");
-    await mapping
-      .nth(1)
-      .locator("select")
-      .selectOption("students.ExamProfile.ielts_current");
-    await uploadPage
-      .getByRole("button", { name: "Показать предпросмотр" })
-      .click();
+    await uploadPage.goto("/import");
+    await wizardFile(uploadPage, name, `email,ielts\n${NEW_STUDENT},${value}\n`);
+    await wizardToColumns(uploadPage);
+    await expect(uploadPage.locator("table.tbl tbody tr").filter({ hasText: "Текущий балл IELTS" }).first()).toBeVisible();
+    await wizardToRows(uploadPage);
     // ждём сам ответ применения, а не «шестьсот миллисекунд, наверное,
     // хватит»: применение идёт запросом и под нагрузкой отвечает дольше,
     // а следующая же строка читает профиль (найдено прогоном фазы 51)
-    await Promise.all([
-      uploadPage.waitForResponse((r) => r.url().includes("/api/import/apply/")),
-      uploadPage.getByRole("button", { name: /Применить/ }).click(),
-    ]);
+    await wizardApply(uploadPage);
   };
 
   const examContext = await browser.newContext();
@@ -342,9 +322,11 @@ test("сквозной путь: от пустой базы до возврат�
   expect(profile.ielts_current).toBe("7.5");
 
   await examPage.goto("/import");
+  // у загрузки мастера две строки истории: отчёт и пачка домена — отменяется пачка
   const batch = examPage
     .locator("table.tbl tbody tr")
     .filter({ hasText: "баллы.csv" })
+    .filter({ has: examPage.getByRole("button", { name: "Отменить", exact: true }) })
     .first();
   await expect(batch).toContainText("администратор за домен «Экзамены»");
   await batch.getByRole("button", { name: "Отменить", exact: true }).click();
