@@ -202,6 +202,16 @@
   background: linear-gradient(90deg, transparent, var(--surface-2) 12%, var(--surface-2) 88%, transparent);
 }
 
+/* открытый раздел в списке разделов: тот же отлив, что под курсором, цветом акцента */
+.rowline--current,
+.rowline--current:hover {
+  background: linear-gradient(90deg, transparent, var(--accent-bg) 12%, var(--accent-bg) 88%, transparent);
+}
+
+.rowline--current .rowline__title {
+  color: var(--accent-ink);
+}
+
 /* инициалы на серой подложке */
 .rowline__lead {
   display: grid;

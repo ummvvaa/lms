@@ -4156,19 +4156,22 @@ export interface SchoolRule {
   title: string
   hint: string
   unit: string
-  group: string
-  /** `bool` — «да» (1) или «нет» (0), `int` — число в границах */
-  kind: 'int' | 'bool'
+  /** код раздела экрана — `SchoolRulesScreen.sections` */
+  section: string
+  /** `bool` — «да» (1) или «нет» (0), `int` — число в границах, `decimal` — дробное с шагом `step` */
+  kind: 'int' | 'bool' | 'decimal'
   value: number
   default: number
   minimum: number
   maximum: number
+  step: number
   is_default: boolean
 }
 
 export interface SchoolRulesScreen {
+  sections: { code: string; title: string; note: string }[]
   rules: SchoolRule[]
-  history: { id: number; code: string; title: string; old_value: string; new_value: string; actor: string; created_at: string }[]
+  history: { id: number; code: string; section: string; title: string; old_value: string; new_value: string; actor: string; created_at: string }[]
 }
 
 export const useSchoolRules = () =>

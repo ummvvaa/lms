@@ -15498,3 +15498,382 @@ msgstr "{where}: student «{name}» not found. Similar students not yet in the f
 #, python-brace-format
 msgid "{where}: ученик «{name}» не найден — напишите ФИО как в LMS; если ученика в LMS нет, заведите его или уберите строку"
 msgstr "{where}: student «{name}» not found — write the name as in the LMS; if the student is not in the LMS, add them or remove the row"
+
+#: core/school_rules.py
+msgid "Процент посещаемости, «день без причины», напоминание учителю"
+msgstr "Attendance percentage, “day without a reason”, teacher reminder"
+
+#: core/school_rules.py
+msgid "Оценки и журнал"
+msgstr "Marks and gradebook"
+
+#: core/school_rules.py
+msgid "Кто отстаёт по предмету, окно итогов четверти, журналы без записей"
+msgstr "Who is falling behind in a subject, the term marks window, gradebooks without entries"
+
+#: core/school_rules.py
+msgid "Пределы файлов, оценки за ДЗ в четвертной, кто не сдаёт вовремя"
+msgstr "File limits, homework marks in the term mark, who does not submit on time"
+
+#: core/school_rules.py
+msgid "Корзины «кого дёргать», резкий скачок в очереди, сроки документов"
+msgstr "“Who needs a nudge” buckets, a sharp jump in the queue, document dates"
+
+#: core/school_rules.py
+msgid "Дедлайны и окна"
+msgstr "Deadlines and windows"
+
+#: core/school_rules.py
+msgid "Что считается «скоро», «горит» и «давно» в кабинетах, на главной и у помощника"
+msgstr "What counts as “soon”, “urgent” and “long ago” in the cabinets, on the home page and for the assistant"
+
+#: core/school_rules.py
+msgid "Напоминания"
+msgstr "Reminders"
+
+#: core/school_rules.py
+msgid "За сколько дней ученику приходят напоминания и появляются задачи"
+msgstr "How many days ahead students get reminders and tasks appear"
+
+#: core/school_rules.py
+msgid "Файлы и подготовка"
+msgstr "Files and preparation"
+
+#: core/school_rules.py
+msgid "Пределы материалов и аудио, размер тренировки, слабая тема"
+msgstr "Limits for materials and audio, practice size, weak topic"
+
+
+#: core/school_rules.py
+msgid "«День без причины»: пропущено уроков не меньше"
+msgstr "“Day without a reason”: lessons missed, at least"
+
+#: core/school_rules.py
+msgid "День попадает в «Риски» как пропущенный без причины, если «н» за день не меньше этого числа и не меньше доли из правила ниже"
+msgstr "A day goes to “Risks” as missed without a reason if the number of “A” marks that day is at least this number and at least the share from the rule below"
+
+#: core/school_rules.py
+msgid "«День без причины»: доля пропущенных уроков дня"
+msgstr "“Day without a reason”: share of the day's lessons missed"
+
+#: core/school_rules.py
+msgid "Какая часть уроков дня должна быть пропущена без причины. 100 — только если пропущены все уроки дня"
+msgstr "What share of the day's lessons must be missed without a reason. 100 means only when every lesson of the day is missed"
+
+#: core/school_rules.py
+msgid "Напоминание о неотмеченном уроке"
+msgstr "Reminder about an unmarked lesson"
+
+#: core/school_rules.py
+msgid "Через сколько минут после звонка с урока учителю приходит напоминание отметить посещаемость. Проверка идёт раз в пять минут"
+msgstr "How many minutes after the end-of-lesson bell the teacher is reminded to mark attendance. The check runs every five minutes"
+
+#: core/school_rules.py
+msgid "Окно посещаемости у помощника"
+msgstr "Assistant attendance window"
+
+#: core/school_rules.py
+msgid "За сколько последних дней помощник считает посещаемость, когда его спрашивают, кто в риске"
+msgstr "How many recent days the assistant counts attendance over when asked who is at risk"
+
+#: core/school_rules.py
+msgid "Профиль дисциплины давно не обновлялся"
+msgstr "Discipline profile not updated for a long time"
+
+#: core/school_rules.py
+msgid "Если отметок уроков у ученика нет, а профиль дисциплины не правили дольше этого срока, помощник называет ученика"
+msgstr "If a student has no lesson marks and the discipline profile has not been edited for longer than this, the assistant names the student"
+
+#: core/school_rules.py
+msgid "Окно итогов четверти"
+msgstr "Term marks window"
+
+#: core/school_rules.py
+msgid "За сколько дней до конца четверти учителю в журнале открывается выставление итогов"
+msgstr "How many days before the end of term final marks entry opens for the teacher in the gradebook"
+
+#: core/school_rules.py
+msgid "Журнал без оценок"
+msgstr "Gradebook without marks"
+
+#: core/school_rules.py
+msgid "Журнал попадает в список Кымбат, если за столько последних дней уроки шли, а оценок не поставлено ни одной"
+msgstr "A gradebook appears in Kymbat's list if lessons took place over this many recent days and not a single mark was given"
+
+#: core/school_rules.py
+msgid "Окно неотмеченных уроков у куратора"
+msgstr "Curator's unmarked lessons window"
+
+#: core/school_rules.py
+msgid "За сколько последних дней куратор видит число уроков своей группы без отметки посещаемости"
+msgstr "How many recent days the curator sees the number of their group's lessons without an attendance mark for"
+
+#: core/school_rules.py
+msgid "Mock Test давно не было"
+msgstr "No Mock Test for a long time"
+
+#: core/school_rules.py
+msgid "Последний Mock Test старше этого срока или его не было вовсе — ученик в корзине куратора"
+msgstr "The last Mock Test is older than this or there was none at all — the student is in the curator's bucket"
+
+#: core/school_rules.py
+msgid "Экзамен скоро"
+msgstr "Exam soon"
+
+#: core/school_rules.py
+msgid "Экзамен ближе этого срока, а балл далеко от цели — ученик в корзине «далеко от цели»"
+msgstr "The exam is closer than this and the score is far from the target — the student is in the “far from target” bucket"
+
+#: core/school_rules.py
+msgid "Отставание от цели по IELTS"
+msgstr "Gap to the IELTS target"
+
+#: core/school_rules.py
+msgid "До цели не хватает столько баллов или больше — балл считается далёким от цели"
+msgstr "This many points or more short of the target — the score counts as far from the target"
+
+#: core/school_rules.py
+msgid "Отставание от цели по SAT"
+msgstr "Gap to the SAT target"
+
+#: core/school_rules.py
+msgid "Резкий скачок IELTS"
+msgstr "Sharp IELTS jump"
+
+#: core/school_rules.py
+msgid "Новый балл в очереди отличается от прежнего на столько или больше — строка подсвечена: проверить сертификат"
+msgstr "The new score in the queue differs from the previous one by this much or more — the row is highlighted: check the certificate"
+
+#: core/school_rules.py
+msgid "Резкий скачок SAT"
+msgstr "Sharp SAT jump"
+
+#: core/school_rules.py
+msgid "Расхождение в очереди"
+msgstr "Discrepancy in the queue"
+
+#: core/school_rules.py
+msgid "Новое значение отличается от прежнего на такую долю или больше — у строки чип «Расхождение»"
+msgstr "The new value differs from the previous one by this share or more — the row gets the “Discrepancy” chip"
+
+#: core/school_rules.py
+msgid "Документ истекает"
+msgstr "Document expiring"
+
+#: core/school_rules.py
+msgid "Подтверждённый документ со сроком считается истекающим за столько дней до срока"
+msgstr "A confirmed document with an expiry date counts as expiring this many days before the date"
+
+#: core/school_rules.py
+msgid "Уведомление о сроке документа"
+msgstr "Document expiry notification"
+
+#: core/school_rules.py
+msgid "За столько дней до срока документа куратору и ученику приходит уведомление"
+msgstr "This many days before the document's expiry date the curator and the student get a notification"
+
+#: core/school_rules.py
+msgid "Задача ученика «скоро срок»"
+msgstr "Student task “due soon”"
+
+#: core/school_rules.py
+msgid "Задача со сроком в ближайшие столько дней стоит на главной куратора в «скоро срок»"
+msgstr "A task due within this many days is shown under “due soon” on the curator's home page"
+
+#: core/school_rules.py
+msgid "Срок горит"
+msgstr "Deadline is urgent"
+
+#: core/school_rules.py
+msgid "До срока столько дней или меньше: чип срока у задачи на главной ученика, выделенный дедлайн стипендии"
+msgstr "This many days or fewer left: the due chip on a task on the student's home page, a highlighted scholarship deadline"
+
+#: core/school_rules.py
+msgid "Скорый дедлайн"
+msgstr "Upcoming deadline"
+
+#: core/school_rules.py
+msgid "О дедлайне в ближайшие столько дней говорит дайджест и разбор списка вузов у помощника"
+msgstr "The digest and the assistant's review of the university list mention a deadline within this many days"
+
+#: core/school_rules.py
+msgid "Ближайшие сроки"
+msgstr "Nearest dates"
+
+#: core/school_rules.py
+msgid "Окно «скоро»: срочные дедлайны в кабинете Асем и в планах, ближайшие стипендии, «Скоро» на главной 8–10, СОР и СОЧ у помощника учителя, красный цвет дедлайна у ученика"
+msgstr "The “soon” window: urgent deadlines in Assem's cabinet and in plans, nearest scholarships, “Soon” on the Grade 8–10 home page, SAU and Term SA for the teacher assistant, the red colour of a student's deadline"
+
+#: core/school_rules.py
+msgid "Горизонт кабинетов"
+msgstr "Cabinet horizon"
+
+#: core/school_rules.py
+msgid "На сколько дней вперёд кабинеты директоров и помощник показывают экзамены, олимпиады, старты и дедлайны; жёлтый цвет дедлайна у ученика"
+msgstr "How many days ahead the directors' cabinets and the assistant show exams, olympiads, competitions and deadlines; the yellow colour of a student's deadline"
+
+#: core/school_rules.py
+msgid "Горизонт дашборда поступления"
+msgstr "Admissions dashboard horizon"
+
+#: core/school_rules.py
+msgid "На сколько дней вперёд дашборд поступления собирает дедлайны вузов"
+msgstr "How many days ahead the admissions dashboard collects university deadlines"
+
+#: core/school_rules.py
+msgid "Дедлайны вплотную"
+msgstr "Deadlines back to back"
+
+#: core/school_rules.py
+msgid "Два дедлайна в списке ученика ближе друг к другу, чем на столько дней, — помощник это отметит"
+msgstr "Two deadlines in a student's list closer to each other than this many days — the assistant will point it out"
+
+#: core/school_rules.py
+msgid "Ученик давно не входил"
+msgstr "Student has not signed in for a long time"
+
+#: core/school_rules.py
+msgid "Не входил дольше этого срока — попадает в число «молчащих» в кабинете Салтанат"
+msgstr "Has not signed in for longer than this — counted among the “silent” in Saltanat's cabinet"
+
+#: core/school_rules.py
+msgid "Раунд давно не сверяли"
+msgstr "Round not checked for a long time"
+
+#: core/school_rules.py
+msgid "Дедлайн раунда не сверяли с сайтом вуза дольше этого срока — он в счётчике кабинета Асем"
+msgstr "The round deadline has not been checked against the university site for longer than this — it is counted in Assem's cabinet"
+
+#: core/school_rules.py
+msgid "План давно не открывали"
+msgstr "Plan not opened for a long time"
+
+#: core/school_rules.py
+msgid "Ученик не открывал план дольше этого срока — на главной появляется сюжет про план"
+msgstr "The student has not opened the plan for longer than this — a prompt about the plan appears on the home page"
+
+#: core/school_rules.py
+msgid "Напоминание об экзамене"
+msgstr "Exam reminder"
+
+#: core/school_rules.py
+msgid "За столько дней до даты экзамена ученику приходит напоминание"
+msgstr "This many days before the exam date the student gets a reminder"
+
+#: core/school_rules.py
+msgid "Напоминание о дедлайне вуза"
+msgstr "University deadline reminder"
+
+#: core/school_rules.py
+msgid "За столько дней до дедлайна раунда ученику приходит напоминание"
+msgstr "This many days before the round deadline the student gets a reminder"
+
+#: core/school_rules.py
+msgid "Напоминание о задаче"
+msgstr "Task reminder"
+
+#: core/school_rules.py
+msgid "За столько дней до срока задачи ученику приходит напоминание"
+msgstr "This many days before the task is due the student gets a reminder"
+
+#: core/school_rules.py
+msgid "Задача о регистрации на экзамен"
+msgstr "Exam registration task"
+
+#: core/school_rules.py
+msgid "За столько дней до даты экзамена у ученика появляется задача о регистрации; то же окно — у списка целей Кымбат"
+msgstr "This many days before the exam date the student gets a registration task; Kymbat's list of targets uses the same window"
+
+#: core/school_rules.py
+msgid "Напоминание о стипендии"
+msgstr "Scholarship reminder"
+
+#: core/school_rules.py
+msgid "За столько дней до дедлайна стипендии приходит напоминание и появляется задача «Подать»"
+msgstr "This many days before the scholarship deadline a reminder is sent and the “Apply” task appears"
+
+#: core/school_rules.py
+msgid "Срок задачи о документах"
+msgstr "Due date of the documents task"
+
+#: core/school_rules.py
+msgid "Задача «донести документы», которую ставит куратор или Асем, получает срок через столько дней"
+msgstr "The “bring the documents” task set by the curator or Assem is due in this many days"
+
+#: core/school_rules.py
+msgid "Если дата следующего Mock Test не назначена, помощник советует назначить его через столько дней"
+msgstr "If the next Mock Test has no date, the assistant suggests scheduling it in this many days"
+
+#: core/school_rules.py
+msgid "Предел файла материала"
+msgstr "Material file limit"
+
+#: core/school_rules.py
+msgid "Один файл материала олимпиадной группы — не больше. Тот же предел у файла ДЗ, пока хранилище файлов ДЗ не подключено"
+msgstr "One file of an olympiad group material — no larger. The same limit applies to a homework file until the homework file storage is connected"
+
+#: core/school_rules.py
+msgid "Файлов в одном материале"
+msgstr "Files per material"
+
+#: core/school_rules.py
+msgid "Сколько файлов можно приложить к одному материалу"
+msgstr "How many files can be attached to one material"
+
+#: core/school_rules.py
+msgid "Предел аудио задания"
+msgstr "Question audio limit"
+
+#: core/school_rules.py
+msgid "Аудиофайл к заданию Listening в банке заданий — не больше"
+msgstr "The audio file for a Listening question in the question bank — no larger"
+
+#: core/school_rules.py
+msgid "Заданий в тренировке"
+msgstr "Questions per practice"
+
+#: core/school_rules.py
+msgid "Сколько заданий в одной тренировке центра подготовки, если ученик не выбрал иначе"
+msgstr "How many questions one practice in the prep centre has unless the student chooses otherwise"
+
+#: core/school_rules.py
+msgid "Слабая тема"
+msgstr "Weak topic"
+
+#: core/school_rules.py
+msgid "Тема в тренажёре считается слабой, если доля верных ответов ниже"
+msgstr "A topic in the drills counts as weak if the share of correct answers is below"
+
+#: core/school_rules.py
+msgid "Месячный лимит расходов на ИИ"
+msgstr "Monthly AI spending limit"
+
+#: core/school_rules.py
+msgid "В долларах за календарный месяц. Лимит исчерпан — операции с моделью отключаются с понятным текстом. 0 — без лимита"
+msgstr "In dollars per calendar month. Once the limit is used up, model operations are switched off with a clear message. 0 means no limit"
+
+
+
+#: core/school_rules.py
+msgid "«{rule}»: нужно число с одним знаком после запятой"
+msgstr "“{rule}”: a number with one decimal place is required"
+
+#: core/school_rules.py
+msgid "«{rule}»: значение с шагом {step}"
+msgstr "“{rule}”: the value must be in steps of {step}"
+
+#: core/school_rules.py
+msgid "день|дня|дней"
+msgstr "day|days"
+
+#: core/school_rules.py
+msgid "балл|балла|баллов"
+msgstr "point|points"
+
+#: core/school_rules.py
+msgid "урок|урока|уроков"
+msgstr "lesson|lessons"
+
+#: core/school_rules.py
+msgid "Сколько школа готова тратить на модель в месяц"
+msgstr "How much the school is ready to spend on the model per month"

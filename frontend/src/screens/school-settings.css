@@ -1,7 +1,30 @@
-/* Настройки школы: правило строкой — слева смысл, справа число и кнопки */
+/* Настройки школы: разделы списком слева, правила раздела справа */
+.rules__layout {
+  display: grid;
+  grid-template-columns: calc(var(--space) * 66) minmax(0, 1fr);
+  gap: var(--gap-block);
+  align-items: start;
+}
+
+.rules__layout > .datacard {
+  margin: 0;
+}
+
+.rules__stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-block);
+  min-width: 0;
+}
+
+.rules__stack > .datacard {
+  margin: 0;
+}
+
+/* правило строкой — слева смысл, справа число и кнопки */
 .rules__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, calc(var(--space) * 30));
+  grid-template-columns: minmax(0, 1fr) minmax(0, calc(var(--space) * 52));
   gap: var(--gap-block);
   align-items: start;
   padding: calc(var(--space) * 2) 0;

@@ -147,3 +147,97 @@ def test_yes_no_rule_and_lesson_length_are_settings_too(admin):
     assert api.patch("/api/school-rules/lesson_minutes_default/", {"value": 5}, format="json").status_code == 400
     assert api.patch("/api/school-rules/lesson_minutes_default/", {"value": 45}, format="json").status_code == 200
     assert school_rules.value(school_rules.LESSON_MINUTES_DEFAULT) == 45
+
+
+# --- Разделы экрана и дробные правила (05.10.2026) ----------------------------
+
+
+def test_every_rule_sits_in_a_listed_section(admin):
+    """Экран делится на разделы: у каждого правила — раздел из списка, пустых разделов нет."""
+    body = client_of(admin).get("/api/school-rules/").json()
+    codes = [section["code"] for section in body["sections"]]
+    assert codes == [section.code for section in school_rules.SECTIONS]
+    assert all(section["title"] and section["note"] for section in body["sections"])
+    used = {row["section"] for row in body["rules"]}
+    assert used == set(codes)
+    assert len({rule.code for rule in school_rules.RULES}) == len(school_rules.RULES)
+
+
+#: Умолчания равны тому, что было зашито в коде и `.env` до переноса: после выката
+#: поведение прода не меняется, пока администратор сам не поменял правило
+FORMER_CONSTANTS = {
+    "day_absent_min": 2,
+    "day_absent_share": 60,
+    "unmarked_remind_minutes": 10,
+    "assistant_attendance_days": 30,
+    "profile_stale_days": 14,
+    "finals_window_days": 6,
+    "empty_journal_days": 14,
+    "unmarked_lessons_days": 7,
+    "mock_stale_days": 30,
+    "exam_soon_days": 60,
+    "ielts_gap": 1.0,
+    "sat_gap": 100,
+    "ielts_jump": 1.5,
+    "sat_jump": 150,
+    "queue_gap_share": 20,
+    "document_expiring_days": 60,
+    "document_notice_days": 14,
+    "curator_task_soon_days": 2,
+    "deadline_close_days": 7,
+    "deadline_near_days": 14,
+    "deadline_soon_days": 30,
+    "deadline_horizon_days": 60,
+    "deadline_dashboard_days": 120,
+    "deadline_tight_days": 3,
+    "student_silent_days": 30,
+    "round_stale_days": 30,
+    "plan_idle_days": 7,
+    "remind_exam_days": 14,
+    "remind_deadline_days": 14,
+    "remind_task_days": 3,
+    "remind_exam_task_days": 30,
+    "remind_scholarship_days": 21,
+    "documents_task_days": 7,
+    "next_mock_days": 21,
+    "material_file_mb": 15,
+    "material_max_files": 10,
+    "prep_audio_mb": 20,
+    "practice_size": 10,
+    "practice_weak_share": 60,
+    "llm_monthly_limit": 0,
+}
+
+
+def test_defaults_equal_the_former_constants():
+    values = school_rules.values()
+    assert {code: values[code] for code in FORMER_CONSTANTS} == FORMER_CONSTANTS
+    for code, default in FORMER_CONSTANTS.items():
+        rule = school_rules.BY_CODE[code]
+        assert rule.minimum <= default <= rule.maximum
+
+
+def test_decimal_rule_keeps_tenths_and_reads_a_comma(admin):
+    """Балл IELTS — дробный: запятая и точка читаются одинаково, шаг — половина балла."""
+    api = client_of(admin)
+    rule = next(row for row in api.get("/api/school-rules/").json()["rules"] if row["code"] == "ielts_jump")
+    assert (rule["kind"], rule["value"], rule["step"], rule["minimum"]) == ("decimal", 1.5, 0.5, 0.5)
+
+    body = api.patch("/api/school-rules/ielts_jump/", {"value": "2,5"}, format="json").json()
+    rule = next(row for row in body["rules"] if row["code"] == "ielts_jump")
+    assert rule["value"] == 2.5 and rule["is_default"] is False
+    assert SchoolRule.objects.get(code="ielts_jump").value == 25
+    assert school_rules.value(school_rules.IELTS_JUMP) == 2.5
+    assert (body["history"][0]["old_value"], body["history"][0]["new_value"]) == ("1.5", "2.5")
+    assert body["history"][0]["section"] == "curator"
+
+    # то же значение точкой — правки нет
+    api.patch("/api/school-rules/ielts_jump/", {"value": 2.5}, format="json")
+    assert AuditLog.objects.filter(model_label=school_rules.AUDIT_LABEL).count() == 1
+
+    for wrong in ("2.3", "0", "9.5", "1.55", "полтора"):
+        assert api.patch("/api/school-rules/ielts_jump/", {"value": wrong}, format="json").status_code == 400
+    assert school_rules.value(school_rules.IELTS_JUMP) == 2.5
+
+    api.post("/api/school-rules/ielts_jump/reset/")
+    assert school_rules.value(school_rules.IELTS_JUMP) == 1.5

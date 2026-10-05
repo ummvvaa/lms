@@ -240,6 +240,7 @@ export function Row({
   onOpen,
   openLabel,
   muted = false,
+  current = false,
 }: {
   icon?: IconName
   tone?: TileTone
@@ -266,6 +267,8 @@ export function Row({
   onOpen?: () => void
   openLabel?: string
   muted?: boolean
+  /** строка списка разделов, раздел которой сейчас открыт */
+  current?: boolean
 }) {
   const hasValueSlot = value !== undefined
   const empty = hasValueSlot && isEmptyValue(value)
@@ -323,10 +326,10 @@ export function Row({
       )}
     </>
   )
-  const className = `rowline${muted ? ' rowline--muted' : ''}${whole ? ' rowline--link' : ''}`
+  const className = `rowline${muted ? ' rowline--muted' : ''}${whole ? ' rowline--link' : ''}${current ? ' rowline--current' : ''}`
   if (whole && to !== undefined)
     return (
-      <Link className={className} to={to}>
+      <Link className={className} to={to} aria-current={current ? 'page' : undefined}>
         {inner}
       </Link>
     )
