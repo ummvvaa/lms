@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from django.utils.translation import gettext as _
 
 from core.domains import DOMAINS, ROLE_ADMIN, ROLE_STUDENT, domain_of_role
+from core.phrasing import counted
 
 
 @dataclass
@@ -30,6 +31,8 @@ class Step:
     count: int | None = None
     total: int | None = None
     action: str = ""
+    #: что уже есть словами («181 ученик») — у выполненного шага вместо подсказки
+    summary: str = ""
 
 
 @dataclass
@@ -57,7 +60,10 @@ class Checklist:
                 {
                     "code": s.code,
                     "title": s.title,
-                    "hint": s.hint,
+                    # подсказка — о том, что сделать: у выполненного шага её нет,
+                    # там стоит, что уже есть (D81: «в школе нет ни одного ученика» при 181)
+                    "hint": "" if s.done else s.hint,
+                    "summary": s.summary if s.done else "",
                     "path": s.path,
                     "done": s.done,
                     "count": s.count,
@@ -83,6 +89,7 @@ def _students_step() -> Step:
         done=count > 0,
         count=count,
         action=_("Завести учеников"),
+        summary=counted(count, "ученик|ученика|учеников"),
     )
 
 

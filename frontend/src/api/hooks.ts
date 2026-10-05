@@ -3556,6 +3556,8 @@ export interface StartStep {
   count: number | null
   total: number | null
   action: string
+  /** что уже есть словами («181 ученик») — у выполненного шага вместо подсказки */
+  summary: string
 }
 
 export interface GettingStarted {

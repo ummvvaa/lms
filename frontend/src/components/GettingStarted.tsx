@@ -64,9 +64,11 @@ export default function GettingStarted() {
               icon={step.done ? 'check' : 'checklist'}
               tone={step.done ? 'good' : 'neutral'}
               title={step.title}
-              note={step.hint}
+              // подсказка — у невыполненного шага; у выполненного — что уже есть
+              // словами («181 ученик»), и тогда метка с тем же числом не нужна
+              note={step.done ? step.summary : step.hint}
               right={
-                step.count !== null ? (
+                step.count !== null && !(step.done && step.summary) ? (
                   <Chip size="sm" className="num">
                     {step.total !== null ? t('{count} из {total}', { count: step.count, total: step.total }) : step.count}
                   </Chip>

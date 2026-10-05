@@ -204,6 +204,23 @@ def test_checklist_marks_students_done_once_they_appear(learners):
     students_step = next(s for s in checklist["steps"] if s["code"] == "students")
     assert students_step["done"] is True
     assert students_step["count"] == 3
+    # у выполненного шага — что уже есть, а не подсказка пустой школы (D81)
+    assert students_step["hint"] == ""
+    assert students_step["summary"] == "3 ученика"
+
+
+@pytest.mark.django_db
+def test_hint_of_the_empty_school_stays_only_at_the_undone_step():
+    director = make_user("clear.hint@school.kz", Role.DIRECTOR_ADMISSION)
+
+    steps = build_checklist(director).as_dict()["steps"]
+
+    students_step = next(s for s in steps if s["code"] == "students")
+    assert students_step["done"] is False
+    assert "нет ни одного ученика" in students_step["hint"] and students_step["summary"] == ""
+    # правило общее: подсказка — о том, что сделать, и у сделанного её нет
+    assert all(step["hint"] for step in steps if not step["done"])
+    assert not any(step["hint"] for step in steps if step["done"])
 
 
 @pytest.mark.django_db
