@@ -304,6 +304,7 @@ export const en: Record<string, string> = {
   'У уроков этих групп нет времени начала. Отметьте группы в расписании звонков или добавьте новое.': 'Lessons of these groups have no start time. Tick the groups in a bell schedule or add a new one.',
   'Уроки накладки выделены в неделе. Нажмите урок, чтобы перенести, отменить или поставить замену': 'The clashing lessons are highlighted in the week. Click a lesson to move or cancel it, or set a substitute',
   'Формат: колонки узнаются по заголовкам, пустая ячейка ничего не стирает — guides/ADMISSION_IMPORT.md и guides/FIELDS_IMPORT.md в репозитории': 'Format: columns are recognised by their headers, an empty cell erases nothing — guides/ADMISSION_IMPORT.md and guides/FIELDS_IMPORT.md in the repository',
+  'Хранилище не подтвердило часть файла — сообщите администратору: бакет не отдаёт ETag': 'The storage did not confirm a file part — tell the administrator: the bucket does not return ETag',
   'Эти колонки мастер не узнал или вы переназначаете их сами. Выберите, куда положить колонку; без выбора она будет пропущена.': 'The wizard did not recognise these columns, or you are reassigning them yourself. Choose where each column goes; without a choice it is skipped.',
   'в этом разделе правила ещё не меняли': 'no rules in this section have been changed yet',
   'В этот день ничего не намечено.': 'Nothing is planned for this day.',

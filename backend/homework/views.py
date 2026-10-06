@@ -286,9 +286,14 @@ def upload_complete(request, pk: int):
         store.abort(row.key, row.upload_id)
         row.delete()
         return _bad(_("Файл не собрался из частей — загрузите его ещё раз"))
-    size = store.size(row.key)
     try:
-        found = hwfiles.refine(hwfiles.sniff(store.head(row.key, hwfiles.HEAD_BYTES)), row.name)
+        size = store.size(row.key)
+        head = store.head(row.key, hwfiles.HEAD_BYTES)
+    except StorageError as error:
+        # бакет не ответил: файл на месте, строка ждёт — повтор «завершить» соберёт её
+        return _bad(str(error))
+    try:
+        found = hwfiles.refine(hwfiles.sniff(head), row.name)
         hwfiles.check_size(row.name, size, found.content_type)
     except hwfiles.FileRejected as error:
         store.delete(row.key)

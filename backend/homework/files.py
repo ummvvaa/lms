@@ -66,8 +66,9 @@ def sniff(head: bytes) -> Sniffed:
         return Sniffed("audio/wav", FileKind.AUDIO)
     if head[4:8] == b"ftyp":
         brand = head[8:12]
-        if brand in (b"heic", b"heix", b"mif1", b"heim", b"heis"):
-            # HEIC браузеры не показывают — скачивается; телефон обычно отдаёт JPEG
+        if brand in (b"heic", b"heix", b"heim", b"heis", b"hevc", b"hevx", b"mif1", b"msf1"):
+            # HEIC и HEIF (в том числе серии и видеокадры с iPhone) браузеры
+            # не показывают — скачивается; камера через сайт обычно отдаёт JPEG
             return Sniffed("image/heic", FileKind.OTHER)
         if brand in (b"M4A ", b"M4B "):
             return Sniffed("audio/mp4", FileKind.AUDIO)
@@ -116,15 +117,22 @@ def refine(found: Sniffed, name: str) -> Sniffed:
 
 
 def limits() -> dict:
-    """Пределы для экрана — теми же числами, что проверка."""
+    """Пределы для экрана — теми же числами, что проверка.
+
+    Без бакета файл идёт на диск сервера с пределом материалов (15 МБ):
+    экран говорит действующий предел, а не «видео до 500 МБ», которое
+    хранилище тут же отобьёт (06.10.2026).
+    """
     from core import school_rules
+    from homework import storage
 
     values = school_rules.values()
-    return {
-        "file_mb": values[school_rules.HOMEWORK_FILE_MB],
-        "video_mb": values[school_rules.HOMEWORK_VIDEO_MB],
-        "max_files": values[school_rules.HOMEWORK_MAX_FILES],
-    }
+    file_mb = values[school_rules.HOMEWORK_FILE_MB]
+    video_mb = values[school_rules.HOMEWORK_VIDEO_MB]
+    if not storage.configured():
+        local_mb = max(1, storage.LocalStorage().max_bytes() // (1024 * 1024))
+        file_mb, video_mb = min(file_mb, local_mb), min(video_mb, local_mb)
+    return {"file_mb": file_mb, "video_mb": video_mb, "max_files": values[school_rules.HOMEWORK_MAX_FILES]}
 
 
 def check_size(name: str, size: int, content_type: str) -> None:

@@ -193,16 +193,26 @@ class S3Storage:
         self.delete(key)
 
     def size(self, key: str) -> int:
+        """Размер объекта; объекта нет — 0, бакет не ответил — ошибка хранилища.
+
+        Раньше любой сбой читался как «файл пустой», и загруженный файл
+        удалялся вместе со строкой (06.10.2026): отказ в правах на HEAD или
+        минутный сбой сети выглядели как пустая загрузка.
+        """
         try:
             return int(self.client.head_object(Bucket=self.bucket, Key=key)["ContentLength"])
-        except Exception:
-            return 0
+        except Exception as error:
+            if _missing(error):
+                return 0
+            raise StorageError(_("Хранилище не ответило — попробуйте ещё раз через минуту")) from error
 
     def head(self, key: str, count: int) -> bytes:
         try:
             answer = self.client.get_object(Bucket=self.bucket, Key=key, Range=f"bytes=0-{count - 1}")
-        except Exception:
-            return b""
+        except Exception as error:
+            if _missing(error):
+                return b""
+            raise StorageError(_("Хранилище не ответило — попробуйте ещё раз через минуту")) from error
         return answer["Body"].read()
 
     def link(self, key: str, *, name: str, content_type: str, inline: bool) -> str:
@@ -232,6 +242,14 @@ class S3Storage:
 
     def delete(self, key: str) -> None:
         self.client.delete_object(Bucket=self.bucket, Key=key)
+
+
+def _missing(error: Exception) -> bool:
+    """Ответ S3 «объекта нет» (404, NoSuchKey) — в отличие от отказа и сбоя сети."""
+    answer = getattr(error, "response", None) or {}
+    code = str(answer.get("Error", {}).get("Code", ""))
+    status = answer.get("ResponseMetadata", {}).get("HTTPStatusCode")
+    return code in ("404", "NoSuchKey", "NotFound") or status == 404
 
 
 def configured() -> bool:

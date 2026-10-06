@@ -16150,3 +16150,7 @@ msgstr "“{domain}” is kept only for grade 11 — the values are skipped"
 #: students/admission_import.py
 msgid "Значения полей профилей можно отменить целиком: «История загрузок» → «Отменить»"
 msgstr "Profile field values can be reverted as a whole: Upload history → Cancel"
+
+#: homework/storage.py
+msgid "Хранилище не ответило — попробуйте ещё раз через минуту"
+msgstr "The storage did not respond — try again in a minute"

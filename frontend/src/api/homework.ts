@@ -156,19 +156,42 @@ export async function uploadHomeworkFile(
   options.onStart?.(plan.file)
   const parts: { number: number; etag: string }[] = []
   if (plan.method === 'single' && plan.url) {
-    await putBytes(plan.url, file, (loaded) => options.onProgress?.(loaded / Math.max(file.size, 1)))
+    await putRetrying(plan.url, file, (loaded) => options.onProgress?.(loaded / Math.max(file.size, 1)))
   } else {
     const size = plan.part_size ?? file.size
     let sent = 0
     for (const part of plan.parts ?? []) {
       const chunk = file.slice((part.number - 1) * size, part.number * size)
-      const etag = await putBytes(part.url, chunk, (loaded) => options.onProgress?.((sent + loaded) / Math.max(file.size, 1)))
+      const etag = await putRetrying(part.url, chunk, (loaded) => options.onProgress?.((sent + loaded) / Math.max(file.size, 1)))
+      // подпись части бакет отдаёт заголовком ETag; без неё собрать файл нельзя —
+      // такое бывает, если CORS бакета не открывает заголовок (`check_storage`)
+      if (!etag) throw new Error(t('Хранилище не подтвердило часть файла — сообщите администратору: бакет не отдаёт ETag'))
       sent += chunk.size
       parts.push({ number: part.number, etag })
     }
   }
   return post<HomeworkFile>(`/homework/files/${plan.file}/complete/`, { parts })
 }
+
+/** Сколько раз повторить кусок при обрыве связи или ответе 5xx: на телефоне связь рвётся посреди видео. */
+const PUT_TRIES = 3
+
+async function putRetrying(url: string, body: Blob, onProgress: (loaded: number) => void): Promise<string> {
+  let last: Error = new Error()
+  for (let attempt = 1; attempt <= PUT_TRIES; attempt += 1) {
+    try {
+      return await putBytes(url, body, onProgress)
+    } catch (error) {
+      last = error instanceof Error ? error : new Error(String(error))
+      if (!(error instanceof RetryableUpload) || attempt === PUT_TRIES) throw last
+      await new Promise((resolve) => setTimeout(resolve, 800 * attempt))
+    }
+  }
+  throw last
+}
+
+/** Обрыв связи или сбой хранилища: такой кусок стоит отправить ещё раз. */
+class RetryableUpload extends Error {}
 
 /** PUT байтов на подписанный адрес с ходом загрузки; ответ — ETag (нужен частям). */
 function putBytes(url: string, body: Blob, onProgress: (loaded: number) => void): Promise<string> {
@@ -184,9 +207,12 @@ function putBytes(url: string, body: Blob, onProgress: (loaded: number) => void)
     request.upload.onprogress = (event) => onProgress(event.loaded)
     request.onload = () => {
       if (request.status >= 200 && request.status < 300) resolve((request.getResponseHeader('ETag') ?? '').replace(/"/g, ''))
-      else reject(new Error(t('Файл не загрузился (HTTP {status}) — попробуйте ещё раз', { status: request.status })))
+      else {
+        const message = t('Файл не загрузился (HTTP {status}) — попробуйте ещё раз', { status: request.status })
+        reject(request.status >= 500 ? new RetryableUpload(message) : new Error(message))
+      }
     }
-    request.onerror = () => reject(new Error(t('Файл не загрузился: нет связи с хранилищем — попробуйте ещё раз')))
+    request.onerror = () => reject(new RetryableUpload(t('Файл не загрузился: нет связи с хранилищем — попробуйте ещё раз')))
     request.send(body)
   })
 }
