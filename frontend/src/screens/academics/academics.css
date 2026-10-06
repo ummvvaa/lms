@@ -556,15 +556,34 @@ body [data-slot='button'][data-variant].acad__heatcell {
 }
 
 /* --- Общее ------------------------------------------------------------------- */
+/* Правило ширины для всех экранов (30.09.2026): таблицы и списки — на всю
+   ширину контента; единственный блок в двух колонках тоже на всю ширину,
+   а не в левой полосе с пустотой справа. Узкая форма стоит рядом
+   с полезным соседним блоком, а не одна у левого края.
+
+   Колонки — flex, а не grid (06.10.2026): у сетки единственный блок
+   растягивался только псевдоклассом `:only-child`, и на проде карточка
+   «Журналов» стояла в левой полосе на 63 % ширины с обрезанными шапками.
+   Flex делит ширину долями 1,7 : 1, а один блок занимает всё сам —
+   ни от числа соседей, ни от того, что в разметку добавил браузер
+   или расширение, правило не зависит */
 .acad__cols {
-  display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  display: flex;
   gap: var(--gap-block);
-  align-items: start;
+  align-items: flex-start;
 }
 
-.acad__cols--even {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+.acad__cols > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.acad__cols > :first-child {
+  flex-grow: 1.7;
+}
+
+.acad__cols--even > :first-child {
+  flex-grow: 1;
 }
 
 .acad__stack {
@@ -578,16 +597,8 @@ body [data-slot='button'][data-variant].acad__heatcell {
   margin: 0;
 }
 
-/* Правило ширины для всех экранов (30.09.2026): таблицы и списки — на всю
-   ширину контента; единственный блок в двух колонках тоже на всю ширину,
-   а не в левой полосе с пустотой справа. Узкая форма стоит рядом
-   с полезным соседним блоком, а не одна у левого края */
-.acad__cols > :only-child {
-  grid-column: 1 / -1;
-}
-
-.acad__cols--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.acad__cols--three > :first-child {
+  flex-grow: 1;
 }
 
 /* «Риски»: причины строки — отдельной строкой под именем */
@@ -673,10 +684,14 @@ body [data-slot='button'][data-variant].acad__heatcell {
 }
 
 @media (max-width: 759px) {
-  .acad__cols,
-  .acad__cols--even,
-  .acad__cols--three {
-    grid-template-columns: minmax(0, 1fr);
+  .acad__cols {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .acad__cols > *,
+  .acad__cols > :first-child {
+    flex: none;
   }
 
   .acad__tl {

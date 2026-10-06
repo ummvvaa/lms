@@ -744,6 +744,7 @@ export const en: Record<string, string> = {
   'Журналы без оценок': 'Gradebooks without marks',
   'Журналы учителей': 'Teachers’ gradebooks',
   'Жёсткий график': 'Rigid schedule',
+  'время не назначено': 'time not set',
   'за {n} день|за {n} дня|за {n} дней': 'over the last {n} day|over the last {n} days',
   'За заслуги': 'Merit-based',
   'За неделю': 'Past week',

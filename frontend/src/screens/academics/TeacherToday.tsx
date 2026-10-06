@@ -72,7 +72,14 @@ export default function TeacherToday() {
         }
       />
       <StatRow>
-        <Kpi label={t('Уроков сегодня')} value={live.length || null} none={t('нет')} note={first && last ? `${first.bell.split('–')[0]}–${last.bell.split('–')[1]}` : ''} />
+        {/* урок без звонков своей группы приходит с пустым `bell`: подпись «с — по»
+            только когда время есть у обоих крайних уроков (D88) */}
+        <Kpi
+          label={t('Уроков сегодня')}
+          value={live.length || null}
+          none={t('нет')}
+          note={first && last ? (first.bell && last.bell ? `${first.bell.split('–')[0]}–${last.bell.split('–')[1]}` : t('время не назначено')) : ''}
+        />
         <Kpi
           label={t('Не отмечено')}
           value={data.unmarked.length || null}
