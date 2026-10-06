@@ -52,7 +52,7 @@ from academics.payloads import (
     teacher_dict,
     user_name,
 )
-from academics.results import calendar_period, course_context, student_attendance, student_summary
+from academics.results import calendar_period, course_context, prime_lessons, student_attendance, student_summary
 from academics.views import _bad, _cohort, _date, _forbid, _group_param, _int, _lesson_for, _not_found, _teacher
 from accounts.models import Role, User
 from core import school_rules, stored_text
@@ -911,11 +911,13 @@ def school_grades_payload(code: str) -> dict:
     worst = []
     attendance_all = []
     stats_cache: dict[tuple[int, int], object] = {}
-    courses = list(Course.objects.select_related("subject", "cohort", "cohort__group").all())
+    courses = list(Course.objects.select_related("subject", "cohort", "cohort__group", "teacher").all())
+    prime_lessons(start, end)
     contexts = {course.pk: course_context(course, start, end, scale, quarter=quarter) for course in courses}
     for group in groups:
         cells = []
-        students = list(Student.objects.filter(group=group, is_active=True))
+        students = list(Student.objects.filter(group=group, is_active=True).select_related("group"))
+        own = {s.pk for s in students}
         for subject in subjects:
             values = []
             for course in courses:
@@ -923,7 +925,7 @@ def school_grades_payload(code: str) -> dict:
                     continue
                 context = contexts[course.pk]
                 for sid in context.student_ids:
-                    if sid in {s.pk for s in students}:
+                    if sid in own:
                         stats = context.stats(sid)
                         stats_cache[(course.pk, sid)] = stats
                         if stats.quarter_pct is not None:
@@ -955,19 +957,32 @@ def school_grades_payload(code: str) -> dict:
             attendance_all.append(att)
         heat.append({"group": group.code, "group_id": group.pk, "cells": cells, "attendance": att})
     worst.sort(key=lambda r: (r["attendance"]["pct"], r["full_name"]))
-    empty_journals = []
-    # окно «журнал без оценок» — настройка школы; сегодняшний день входит в счёт
+    # окно «журнал без оценок» — настройка школы; сегодняшний день входит в счёт.
+    # Уроки окна и уроки с оценками — по одному запросу на всех: раньше здесь
+    # было по запросу на курс и по запросу на каждый его урок (D75, 06.10.2026)
     empty_days = school_rules.value(school_rules.EMPTY_JOURNAL_DAYS)
     two_weeks = today() - dt.timedelta(days=empty_days - 1)
-    for course in courses:
-        past = [
-            lesson
-            for lesson in course.lessons.filter(date__gte=two_weeks, date__lte=today(), status=LessonStatus.PLANNED)
-            if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
-        ]
-        if past and not any(lesson.grades.exists() for lesson in past):
-            empty_journals.append(course_dict(course))
-    from academics.models import QuarterResult
+    recent = [
+        lesson
+        for lesson in Lesson.objects.filter(date__gte=two_weeks, date__lte=today(), status=LessonStatus.PLANNED)
+        .select_related("course", "course__cohort")
+        .order_by("date", "slot", "id")
+        if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
+    ]
+    from academics.models import Grade, QuarterResult
+
+    graded = set(
+        Grade.objects.filter(lesson_id__in=[lesson.pk for lesson in recent])
+        .values_list("lesson__course_id", flat=True)
+        .distinct()
+    )
+    held = {lesson.course_id for lesson in recent}
+    # список короткий: экран показывает название и учителя, остальное — в журнале
+    empty_journals = [
+        {"id": course.pk, "title": f"{course.subject.name} · {course.cohort.name}", "teacher": person(course.teacher)}
+        for course in courses
+        if course.pk in held and course.pk not in graded
+    ]
 
     finals = QuarterResult.objects.filter(quarter=quarter).values("course").distinct().count() if quarter else 0
     return {

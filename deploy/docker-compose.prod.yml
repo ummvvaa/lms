@@ -64,12 +64,19 @@ services:
   backend:
     <<: *backend
     entrypoint: ["/app/entrypoint.sh"]
+    # Сервер — 2 vCPU и 3,8 ГБ: два воркера по четыре потока (запросы ждут
+    # базу, а не считают), приложение грузится один раз в мастере и делится
+    # с воркерами страницами памяти (`--preload`). Четыре воркера по два
+    # потока держали 1,5 ГБ в покое (06.10.2026). Файл пульса — в памяти,
+    # а не на диске контейнера
     command:
       - gunicorn
       - config.wsgi:application
       - --bind=0.0.0.0:8000
-      - --workers=4
-      - --threads=2
+      - --workers=2
+      - --threads=4
+      - --preload
+      - --worker-tmp-dir=/dev/shm
       - --timeout=60
       - --graceful-timeout=30
       - --max-requests=1000
@@ -95,7 +102,9 @@ services:
   celery-worker:
     <<: *backend
     entrypoint: []
-    command: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=4", "--max-tasks-per-child=200"]
+    # два процесса на 2 vCPU: задачи редкие (подбор, разбор файлов, отчёты),
+    # четыре делили те же два ядра и держали лишнюю память
+    command: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=2", "--max-tasks-per-child=200"]
     volumes:
       - media:/app/media
       - private_media:/app/private

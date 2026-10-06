@@ -334,11 +334,18 @@ class CourseContext:
 
 def course_lessons(course: Course, start: dt.date, end: dt.date, *, live_only: bool = True) -> list[Lesson]:
     rows = Lesson.objects.filter(course=course, date__gte=start, date__lte=end).select_related(
-        "course", "course__subject", "course__cohort"
+        "course", "course__subject", "course__cohort", "course__cohort__group", "teacher", "substitute"
     )
     if live_only:
         rows = rows.exclude(status=LessonStatus.CANCELLED)
     return list(rows.order_by("date", "slot", "id"))
+
+
+def prime_lessons(start: dt.date, end: dt.date) -> None:
+    """Прочитать уроки школы за период в кэш запроса один раз — перед циклом по всем курсам."""
+    store = cache.current()
+    if store is not None:
+        store.live_lessons(start, end)
 
 
 def course_context(
@@ -349,18 +356,26 @@ def course_context(
     key = (course.pk, start, end, quarter.pk if quarter is not None else None)
     if store is not None and key in store.contexts:
         return store.contexts[key]
-    if store is not None:
+    # уроки школы за период читаются целиком только там, где их спросили сами
+    # (успеваемость школы, посещаемость): журнал одного курса на этом читал
+    # все 28 тысяч строк года ради своих сорока (D75, 06.10.2026)
+    if store is not None and store.has_lessons(start, end):
         lessons = [lesson for lesson in store.live_lessons(start, end) if lesson.course_id == course.pk]
     else:
         lessons = course_lessons(course, start, end)
     ids = member_ids(course.cohort, min(end, today()))
     extra = set()
     if lessons:
-        from academics.models import Attendance, Grade
+        pks = {lesson.pk for lesson in lessons}
+        if store is not None:
+            # отметки и оценки периода уже в кэше запроса — ещё два запроса на курс не нужны
+            extra |= {sid for lesson_id, sid in store.attendance_rows(start, end) if lesson_id in pks}
+            extra |= {sid for lesson_id, sid in store.grade_rows(start, end) if lesson_id in pks}
+        else:
+            from academics.models import Attendance, Grade
 
-        pks = [lesson.pk for lesson in lessons]
-        extra |= set(Attendance.objects.filter(lesson_id__in=pks).values_list("student_id", flat=True))
-        extra |= set(Grade.objects.filter(lesson_id__in=pks).values_list("student_id", flat=True))
+            extra |= set(Attendance.objects.filter(lesson_id__in=pks).values_list("student_id", flat=True))
+            extra |= set(Grade.objects.filter(lesson_id__in=pks).values_list("student_id", flat=True))
     for sid in sorted(extra):
         if sid not in ids:
             ids.append(sid)
@@ -369,7 +384,13 @@ def course_context(
         finals = {row.student_id: row for row in QuarterResult.objects.filter(course=course, quarter=quarter)}
     from homework import services as homework
 
-    included, weight = homework.quarter_rule()
+    # правило ДЗ — одно на запрос, а не запрос к правилам на каждый курс школы
+    if store is not None and "quarter_rule" in store.memo:
+        included, weight = store.memo["quarter_rule"]
+    else:
+        included, weight = homework.quarter_rule()
+        if store is not None:
+            store.memo["quarter_rule"] = (included, weight)
     context = CourseContext(
         course=course,
         lessons=lessons,

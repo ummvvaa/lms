@@ -357,6 +357,12 @@ def conflicts_between(start: dt.date, end: dt.date) -> list[dict]:
     """
     from academics import calendar as school_calendar
 
+    # неделя расписания, кабинет Кымбат и дайджест спрашивают одно и то же
+    # по нескольку раз за запрос — ответ считается один раз на период
+    store = cache.current()
+    memo_key = ("conflicts", start, end)
+    if store is not None and memo_key in store.memo:
+        return store.memo[memo_key]
     with cache.scope():
         calendar = school_calendar.load()
         rows = list(
@@ -372,22 +378,37 @@ def conflicts_between(start: dt.date, end: dt.date) -> list[dict]:
         codes = _group_codes(rows)
         for date, day in by_day.items():
             day.sort(key=lambda pair: (pair[1][0] if pair[1] else dt.time.max, pair[0].slot, pair[0].pk))
-            for i, (a, a_span) in enumerate(day):
-                for b, b_span in day[i + 1 :]:
-                    if not overlaps(a_span, a.slot, b_span, b.slot):
-                        continue
-                    found = _pair_conflict(a, b, date)
-                    if found is not None:
-                        when = time_words(_later(a_span, b_span), a.slot)
-                        out.append(
-                            {
-                                "date": date,
-                                "slot": a.slot,
-                                "time": when,
-                                **found.as_dict(),
-                                "where": _where(found, a, b, codes),
-                            }
-                        )
+
+            def check(a: Lesson, a_span: Span | None, b: Lesson, b_span: Span | None, date: dt.date = date) -> None:
+                if not overlaps(a_span, a.slot, b_span, b.slot):
+                    return
+                found = _pair_conflict(a, b, date)
+                if found is not None:
+                    out.append(
+                        {
+                            "date": date,
+                            "slot": a.slot,
+                            "time": time_words(_later(a_span, b_span), a.slot),
+                            **found.as_dict(),
+                            "where": _where(found, a, b, codes),
+                        }
+                    )
+
+            # уроки со временем идут по времени начала: всё, что начинается после
+            # конца `a`, с ним не пересекается — дальше не смотрим. Уроки без
+            # времени сравниваются по номеру со всеми
+            timed = [pair for pair in day if pair[1] is not None]
+            bare = [pair for pair in day if pair[1] is None]
+            for i, (a, a_span) in enumerate(timed):
+                for b, b_span in timed[i + 1 :]:
+                    if b_span[0] >= a_span[1]:
+                        break
+                    check(a, a_span, b, b_span)
+                for b, b_span in bare:
+                    check(a, a_span, b, b_span)
+            for i, (a, a_span) in enumerate(bare):
+                for b, b_span in bare[i + 1 :]:
+                    check(a, a_span, b, b_span)
         # урок без времени — тоже накладка: одна запись на состав, на первом его уроке периода
         seen: set[int] = set()
         for lesson in rows:
@@ -407,7 +428,9 @@ def conflicts_between(start: dt.date, end: dt.date) -> list[dict]:
                         "where": _where(found, lesson, None, codes),
                     }
                 )
-        return out
+    if store is not None:
+        store.memo[memo_key] = out
+    return out
 
 
 def _group_codes(rows) -> dict[int, str]:

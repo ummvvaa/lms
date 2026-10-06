@@ -296,7 +296,28 @@ def assignments_map(lesson_ids: list[int]) -> dict[int, Assignment]:
 
 
 def graded_map(lesson_ids: list[int], student_ids: list[int]) -> dict[tuple[int, int], int]:
-    """`(урок, ученик)` → оценка за ДЗ, где работа проверена с оценкой."""
+    """`(урок, ученик)` → оценка за ДЗ, где работа проверена с оценкой.
+
+    Внутри кэша запроса (успеваемость школы — сотни курсов) оценки за ДЗ
+    читаются один раз на всех и дальше берутся из памяти.
+    """
+    from academics import cache
+
+    store = cache.current()
+    if store is not None:
+        if "homework_graded" not in store.memo:
+            store.memo["homework_graded"] = {
+                (lesson_id, student_id): grade
+                for lesson_id, student_id, grade in Submission.objects.filter(
+                    assignment__requires_submission=True, checked_at__isnull=False, grade__isnull=False
+                ).values_list("assignment__lesson_id", "student_id", "grade")
+            }
+        wanted_lessons, wanted_students = set(lesson_ids), set(student_ids)
+        return {
+            key: grade
+            for key, grade in store.memo["homework_graded"].items()
+            if key[0] in wanted_lessons and key[1] in wanted_students
+        }
     rows = Submission.objects.filter(
         assignment__lesson_id__in=lesson_ids,
         assignment__requires_submission=True,

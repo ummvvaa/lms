@@ -347,7 +347,8 @@ export interface Journal {
   }
   today_lesson: AcadLesson | null
   topics: AcadLesson[]
-  all_lessons: AcadLesson[]
+  /** уроки периода строкой: список на телефоне и выбор урока для СОР или СОЧ */
+  all_lessons: Pick<AcadLesson, 'id' | 'date' | 'weekday' | 'slot' | 'kind' | 'kind_label' | 'state' | 'is_live' | 'marked' | 'topic'>[]
   scale: AcadMeta['scale']
   may_edit: boolean
   is_owner: boolean
@@ -505,7 +506,8 @@ export interface SchoolGrades {
   kpis: { attendance: number | null; risk: number; empty_journals: number; empty_journal_days: number; finals: number; quarter_ends: string | null }
   risk: (AcadStudent & { subjects: string[] })[]
   worst_attendance: (AcadStudent & { attendance: StudentGrades['attendance'] })[]
-  empty_journals: AcadCourse[]
+  /** журналы без оценок за окно школы: короткой строкой — название и учитель */
+  empty_journals: { id: number; title: string; teacher: AcadPerson | null }[]
   has_courses: boolean
 }
 

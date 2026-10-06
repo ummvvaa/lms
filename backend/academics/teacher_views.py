@@ -33,7 +33,16 @@ from academics.calendar import (
 )
 from academics.cohorts import member_ids
 from academics.models import Course, Excuse, Lesson, LessonKind, LessonStatus, Quarter, RequestStatus, Scheme
-from academics.payloads import cohort_dict, course_dict, lesson_dict, person, student_brief, teacher_dict, user_name
+from academics.payloads import (
+    cohort_dict,
+    course_dict,
+    lesson_brief,
+    lesson_dict,
+    person,
+    student_brief,
+    teacher_dict,
+    user_name,
+)
 from academics.results import ResultRefused, calendar_period, course_context, late_fields, set_finals
 from academics.views import _excuse_dict, _forbid, _int, _not_found
 from core import school_rules, stored_text
@@ -106,10 +115,12 @@ def today_screen(request):
     journal_rows = []
     quarter = calendar.current_quarter()
     for course in courses:
+        # `lesson_groups` ходит в курс и состав каждого урока: связи берутся сразу
         lessons = list(
             Lesson.objects.filter(course=course, status=LessonStatus.PLANNED)
             .filter(Q(date__gte=quarter.starts) if quarter else Q())
             .filter(Q(date__lte=quarter.ends) if quarter else Q())
+            .select_related("course", "course__cohort")
         )
         past = [
             lesson for lesson in lessons if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
@@ -348,7 +359,7 @@ def journal_payload(course: Course, user, period: str) -> dict:
         },
         "today_lesson": lesson_dict(today_lesson, calendar) if today_lesson else None,
         "topics": past_topics,
-        "all_lessons": [lesson_dict(lesson, calendar) for lesson in context.lessons],
+        "all_lessons": [lesson_brief(lesson, calendar) for lesson in context.lessons],
         "scale": {
             "weight_fo": scale.weight_fo,
             "weight_sor": scale.weight_sor,

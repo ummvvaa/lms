@@ -172,6 +172,27 @@ def lesson_dict(lesson: Lesson, calendar: SchoolCalendar, *, students: int | Non
     }
 
 
+def lesson_brief(lesson: Lesson, calendar: SchoolCalendar) -> dict:
+    """Урок строкой списка: дата, номер, вид, состояние, тема — без курса, состава и учителя.
+
+    Журнал отдавал полный `lesson_dict` на каждый урок периода, повторяя
+    предмет, состав и учителя сорок раз (61 КБ на двух учеников, D75); списку
+    уроков на телефоне и выбору урока для СОР этого не нужно.
+    """
+    return {
+        "id": lesson.pk,
+        "date": lesson.date,
+        "weekday": WEEKDAYS_SHORT[lesson.date.weekday()],
+        "slot": lesson.slot,
+        "kind": lesson.kind,
+        "kind_label": kind_label(lesson),
+        "state": calendar.slot_state(lesson.date, lesson.slot, groups=lesson_groups(lesson)),
+        "is_live": lesson.is_live,
+        "marked": lesson.is_marked,
+        "topic": lesson.topic,
+    }
+
+
 def student_brief(student) -> dict:
     return {
         "id": student.pk,
