@@ -65,12 +65,12 @@ export function addDays(iso: string, days: number): string {
 /** Кто учится, одним словом для сетки: состав или учитель. */
 export type Perspective = 'teacher' | 'group' | 'student' | 'edit'
 
-function chipClass(lesson: AcadLesson, conflict: boolean): string {
+function chipClass(lesson: AcadLesson, conflict: boolean, clash: boolean): string {
   const kind = lesson.cohort.kind
   const sub = kind === 'subgroup' ? (lesson.cohort.number === 1 ? ' les--sub1' : ' les--sub2') : kind === 'stream' ? ' les--stream' : ''
   const changed = lesson.substitute || lesson.status === 'moved' ? ' les--changed' : ''
   const off = lesson.status === 'cancelled' ? ' les--off' : ''
-  return `les${sub}${changed}${off}${conflict ? ' les--conflict' : ''}`
+  return `les${sub}${changed}${off}${conflict ? ' les--conflict' : ''}${clash ? ' les--clash' : ''}`
 }
 
 function chipTag(lesson: AcadLesson): string {
@@ -93,6 +93,7 @@ export function LessonChip({
   lesson,
   perspective,
   conflict = false,
+  clash = false,
   unmarked = false,
   number = false,
   onOpen,
@@ -100,6 +101,8 @@ export function LessonChip({
   lesson: AcadLesson
   perspective: Perspective
   conflict?: boolean
+  /** урок разбираемой накладки: выделен сильнее остальных накладок недели */
+  clash?: boolean
   unmarked?: boolean
   /** номер урока в карточке: ряд недели — время, а сеток звонков на экране несколько */
   number?: boolean
@@ -113,7 +116,7 @@ export function LessonChip({
   ].filter(Boolean)
   const tag = chipTag(lesson)
   return (
-    <Button variant="ghost" className={chipClass(lesson, conflict)} onClick={() => onOpen(lesson)}>
+    <Button variant="ghost" className={chipClass(lesson, conflict, clash)} data-clash={clash ? '' : undefined} onClick={() => onOpen(lesson)}>
       <span className="les__s">{lesson.subject.title}</span>
       {meta.length > 0 && <span className="les__m">{meta.join(' · ')}</span>}
       {tag && <span className="les__tag">{tag}</span>}
@@ -172,6 +175,7 @@ function CellLessons({
   onToggle,
   perspective,
   conflicts,
+  clashes,
   unmarked,
   number,
   onOpen,
@@ -183,11 +187,13 @@ function CellLessons({
   onToggle: (key: string) => void
   perspective: Perspective
   conflicts: Set<number>
+  clashes: Set<number>
   unmarked: Set<number>
   number: boolean
   onOpen: (lesson: AcadLesson) => void
 }) {
-  const open = expanded.has(cellKey)
+  // разбираемая накладка на виду, даже если урок третий в клетке
+  const open = expanded.has(cellKey) || lessons.some((lesson, index) => index >= MAX_IN_CELL && clashes.has(lesson.id))
   const shown = open ? lessons : lessons.slice(0, MAX_IN_CELL)
   const rest = lessons.length - shown.length
   return (
@@ -198,6 +204,7 @@ function CellLessons({
           lesson={lesson}
           perspective={perspective}
           conflict={conflicts.has(lesson.id)}
+          clash={clashes.has(lesson.id)}
           unmarked={unmarked.has(lesson.id)}
           number={number}
           onOpen={onOpen}
@@ -270,6 +277,8 @@ function WeekTable({
   onOpen,
   onAdd,
   conflictIds,
+  clashIds,
+  focus,
   unmarkedIds,
   fill = false,
 }: {
@@ -278,6 +287,10 @@ function WeekTable({
   onOpen: (lesson: AcadLesson) => void
   onAdd?: (date: string, row: AcadWeekRow) => void
   conflictIds?: number[]
+  /** два урока разбираемой накладки: выделены и показаны на экране */
+  clashIds?: number[]
+  /** день, который надо показать: на телефоне открывается он, не сегодня */
+  focus?: string
   unmarkedIds?: number[]
   /** неделя на всю высоту окна: ряды уроков тянутся до низа экрана */
   fill?: boolean
@@ -286,8 +299,22 @@ function WeekTable({
   const days = week.days.filter((day) => new Date(`${day.date}T00:00:00`).getDay() % 6 !== 0)
   const [picked, setPicked] = useState<string>(() => {
     const today = days.find((day) => day.is_today)
-    return today ? today.date : (days[0]?.date ?? '')
+    return (focus && days.some((day) => day.date === focus) ? focus : '') || (today ? today.date : (days[0]?.date ?? ''))
   })
+  useEffect(() => {
+    if (focus && days.some((day) => day.date === focus)) setPicked(focus)
+    // день приходит из адреса: смена недели или накладки открывает её день
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, week.from])
+  const clashKey = (clashIds ?? []).join(',')
+  useEffect(() => {
+    // разбираемая накладка — на виду: сетка подкручивается к первому её уроку,
+    // когда неделя дорисована (на телефоне день сменяется тем же проходом)
+    if (!clashKey) return
+    const timer = window.setTimeout(() => document.querySelector<HTMLElement>('.les[data-clash]')?.scrollIntoView({ block: 'center', inline: 'nearest' }), 80)
+    return () => window.clearTimeout(timer)
+    // `week` целиком: пока вид грузится, на экране прежняя неделя без этих уроков
+  }, [clashKey, week, picked])
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const toggle = (key: string) =>
     setExpanded((old) => {
@@ -298,6 +325,7 @@ function WeekTable({
     })
   const rows = week.rows
   const conflicts = new Set(conflictIds ?? [])
+  const clashes = new Set(clashIds ?? [])
   const unmarked = new Set(unmarkedIds ?? [])
   const at = (date: string, key: string) => week.lessons.filter((lesson) => lesson.date === date && rowOf(lesson.starts, lesson.slot) === key)
   const ghostsAt = (date: string, key: string) => week.ghosts.filter((ghost) => ghost.date === date && rowOf(ghost.starts, ghost.slot) === key)
@@ -333,6 +361,7 @@ function WeekTable({
                       onToggle={toggle}
                       perspective={perspective}
                       conflicts={conflicts}
+                      clashes={clashes}
                       unmarked={unmarked}
                       number={week.mixed}
                       onOpen={onOpen}
@@ -382,6 +411,7 @@ function WeekTable({
             isNow={isNow}
             perspective={perspective}
             conflicts={conflicts}
+            clashes={clashes}
             unmarked={unmarked}
             expanded={expanded}
             onToggle={toggle}
@@ -403,6 +433,7 @@ function WeekRow({
   isNow,
   perspective,
   conflicts,
+  clashes,
   unmarked,
   expanded,
   onToggle,
@@ -417,6 +448,7 @@ function WeekRow({
   isNow: (day: AcadDay, key: string) => boolean
   perspective: Perspective
   conflicts: Set<number>
+  clashes: Set<number>
   unmarked: Set<number>
   expanded: Set<string>
   onToggle: (key: string) => void
@@ -445,6 +477,7 @@ function WeekRow({
               onToggle={onToggle}
               perspective={perspective}
               conflicts={conflicts}
+              clashes={clashes}
               unmarked={unmarked}
               number={mixed}
               onOpen={onOpen}

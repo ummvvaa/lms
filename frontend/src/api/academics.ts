@@ -208,6 +208,8 @@ export interface AcadConflict {
   slot?: number
   /** с какого времени уроки пересекаются: «13:15» по звонкам групп */
   time?: string
+  /** в каком виде недели накладку видно целиком: «Разобрать» открывает его */
+  where?: { view: 'group' | 'teacher' | 'room'; key: string }
 }
 
 export interface AcadRequest {

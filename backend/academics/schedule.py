@@ -369,6 +369,7 @@ def conflicts_between(start: dt.date, end: dt.date) -> list[dict]:
         for lesson in rows:
             by_day.setdefault(lesson.date, []).append((lesson, lesson_span(lesson, calendar)))
         out: list[dict] = []
+        codes = _group_codes(rows)
         for date, day in by_day.items():
             day.sort(key=lambda pair: (pair[1][0] if pair[1] else dt.time.max, pair[0].slot, pair[0].pk))
             for i, (a, a_span) in enumerate(day):
@@ -378,7 +379,15 @@ def conflicts_between(start: dt.date, end: dt.date) -> list[dict]:
                     found = _pair_conflict(a, b, date)
                     if found is not None:
                         when = time_words(_later(a_span, b_span), a.slot)
-                        out.append({"date": date, "slot": a.slot, "time": when, **found.as_dict()})
+                        out.append(
+                            {
+                                "date": date,
+                                "slot": a.slot,
+                                "time": when,
+                                **found.as_dict(),
+                                "where": _where(found, a, b, codes),
+                            }
+                        )
         # урок без времени — тоже накладка: одна запись на состав, на первом его уроке периода
         seen: set[int] = set()
         for lesson in rows:
@@ -389,8 +398,43 @@ def conflicts_between(start: dt.date, end: dt.date) -> list[dict]:
             text = bells_problem(lesson_groups(lesson), calendar, cohort_name=cohort.name)
             if text:
                 found = Conflict("bells", text, lesson.pk, None)
-                out.append({"date": lesson.date, "slot": lesson.slot, "time": "", **found.as_dict()})
+                out.append(
+                    {
+                        "date": lesson.date,
+                        "slot": lesson.slot,
+                        "time": "",
+                        **found.as_dict(),
+                        "where": _where(found, lesson, None, codes),
+                    }
+                )
         return out
+
+
+def _group_codes(rows) -> dict[int, str]:
+    """Коды групп всех составов этих уроков — одним запросом."""
+    from students.models import StudyGroup
+
+    ids = {g for lesson in rows for g in group_ids_of(lesson.course.cohort)}
+    return dict(StudyGroup.objects.filter(pk__in=ids).values_list("pk", "code")) if ids else {}
+
+
+def _where(found: Conflict, a: Lesson, b: Lesson | None, codes: dict[int, str]) -> dict:
+    """В каком виде недели накладку видно целиком: «Разобрать» открывает его.
+
+    Накладки считаются по всей школе, а неделя показывает один вид — группу,
+    учителя или кабинет; урок чужой группы в неделе группы не найти, и кнопка
+    молчала (06.10.2026). Учитель — его неделя, кабинет — кабинет, общие
+    ученики — группа, которая есть у обоих составов, урок без звонков — его
+    группа.
+    """
+    if found.kind == "teacher" and a.actual_teacher_id is not None:
+        return {"view": "teacher", "key": str(a.actual_teacher_id)}
+    if found.kind == "room" and a.room:
+        return {"view": "room", "key": a.room.strip()}
+    mine = group_ids_of(a.course.cohort)
+    shared = [g for g in mine if b is not None and g in set(group_ids_of(b.course.cohort))]
+    picked = (shared or mine or [None])[0]
+    return {"view": "group", "key": codes.get(picked, "") if picked is not None else ""}
 
 
 def _later(a: Span | None, b: Span | None) -> Span | None:

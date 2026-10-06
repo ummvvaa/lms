@@ -5,10 +5,10 @@
  *
  * Образец — `route(['kymbat', 'admin'], '/schedule')` референса.
  */
-import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
-import { useAcadMeta, useDecideRequest, useScheduleWeek, type AcadLesson, type ScheduleWeek } from '../../api/academics'
+import { useAcadMeta, useDecideRequest, useScheduleWeek, type AcadConflict, type AcadLesson, type ScheduleWeek } from '../../api/academics'
 import { useAuth } from '../../auth/AuthContext'
 import EditDrawer from '../../components/EditDrawer'
 import Field from '../../components/Field'
@@ -24,6 +24,15 @@ import { formatDateTime } from '../../lib/format'
 import { shiftDay } from '../../lib/dates'
 
 type View = 'group' | 'teacher' | 'room'
+
+const VIEWS: View[] = ['group', 'teacher', 'room']
+
+/** Урок, кабинет, учитель, группа накладки — одной строкой для карточки над неделей. */
+function clashOf(conflicts: AcadConflict[], clash: string): AcadConflict | null {
+  const [lesson, other] = clash.split(',').map((part) => Number(part) || null)
+  if (!lesson) return null
+  return conflicts.find((c) => c.lesson === lesson && (c.other ?? null) === other) ?? conflicts.find((c) => c.lesson === lesson || c.other === lesson) ?? null
+}
 
 function RejectDialog({ id, onClose }: { id: number; onClose: () => void }) {
   const decide = useDecideRequest()
@@ -106,10 +115,32 @@ export default function ScheduleEditor() {
   const meta = useAcadMeta()
   const today = meta.data?.today ?? ''
   const [start, setStart] = useWeekStart()
-  const [view, setView] = useState<View>('group')
-  const [key, setKey] = useState('')
+  // вид, ключ и разбираемая накладка живут в адресе рядом с неделей (`?from=`):
+  // «Разобрать» у накладки и ссылка из дайджеста открывают нужную неделю в нужном виде
+  const [params, setParams] = useSearchParams()
+  const view: View = VIEWS.find((item) => item === params.get('view')) ?? 'group'
+  const key = params.get('key') ?? ''
+  const clash = params.get('clash') ?? ''
+  const patch = (changes: Record<string, string | null>) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        Object.entries(changes).forEach(([name, value]) => (value ? next.set(name, value) : next.delete(name)))
+        return next
+      },
+      { replace: true },
+    )
+  const setView = (next: View) => patch({ view: next === 'group' ? null : next, key: null, clash: null })
+  const setKey = (next: string) => patch({ key: next || null, clash: null })
   const from = start || (today ? weekStart(today) : '')
   const week = useScheduleWeek({ from: from || undefined, view, key: key || undefined })
+  const clashing = week.data ? clashOf(week.data.conflicts, clash) : null
+  const clashIds = clashing ? [clashing.lesson, clashing.other].filter((id): id is number => id !== null) : []
+  useEffect(() => {
+    // накладку убрали (перенесли, отменили урок) — подсветка уходит сама
+    if (clash && week.data && !week.isPlaceholderData && !clashing) patch({ clash: null })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clash, clashing, week.data, week.isPlaceholderData])
   const [opened, setOpened] = useState<AcadLesson | null>(null)
   // ряд недели — время; номер урока известен, если в это время он один
   const [adding, setAdding] = useState<{ date: string; slot?: number; starts?: string } | null>(null)
@@ -175,10 +206,7 @@ export default function ScheduleEditor() {
             <div className="wknav__group">
               <Segmented
                 value={view}
-                onChange={(next) => {
-                  setView(next)
-                  setKey('')
-                }}
+                onChange={setView}
                 label={t('Вид')}
                 items={[
                   { value: 'group', label: t('По группе') },
@@ -190,7 +218,33 @@ export default function ScheduleEditor() {
             </div>
             <WeekNav start={from} today={today} onChange={setStart} />
           </div>
-          <WeekGrid week={data} perspective="edit" onOpen={setOpened} onAdd={(date, row) => setAdding({ date, slot: row.slot ?? undefined, starts: row.starts })} conflictIds={data.conflict_ids} fill />
+          {clashing && (
+            <div className="card card-pad acad__nobells">
+              <Rows>
+                <Row
+                  icon="alert"
+                  tone="bad"
+                  title={clashing.text}
+                  note={`${clashing.date ? dateWords(clashing.date) : ''}${clashing.time ? `, ${clashing.time}` : ''} · ${t('Уроки накладки выделены в неделе. Нажмите урок, чтобы перенести, отменить или поставить замену')}`}
+                  acts={
+                    <Button variant="outline" size="sm" onClick={() => patch({ clash: null })}>
+                      {t('Снять выделение')}
+                    </Button>
+                  }
+                />
+              </Rows>
+            </div>
+          )}
+          <WeekGrid
+            week={data}
+            perspective="edit"
+            onOpen={setOpened}
+            onAdd={(date, row) => setAdding({ date, slot: row.slot ?? undefined, starts: row.starts })}
+            conflictIds={data.conflict_ids}
+            clashIds={clashIds}
+            focus={clashing?.date}
+            fill
+          />
           <div className="acad__cols acad__cols--even">
             <div className="acad__stack">
               <DataCard title={t('Накладки')} count={data.conflicts.length || undefined} empty={data.conflicts.length === 0 && (data.next_week_conflicts ? t('на этой неделе нет, на следующей — {count}', { count: data.next_week_conflicts }) : t('на этой неделе нет'))}>
@@ -203,7 +257,20 @@ export default function ScheduleEditor() {
                       title={c.text}
                       note={`${c.date ? dateWords(c.date) : ''}, ${c.time ?? t('{slot} урок', { slot: c.slot })}`}
                       acts={
-                        <Button variant="secondary" size="sm" onClick={() => setOpened(data.lessons.find((l) => l.id === c.other) ?? data.lessons.find((l) => l.id === c.lesson) ?? null)}>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() =>
+                            // неделя накладки в том виде, где видны оба её урока
+                            // (учитель, кабинет или группа — `where` с сервера)
+                            patch({
+                              from: c.date ? weekStart(c.date) : null,
+                              view: c.where && c.where.view !== 'group' ? c.where.view : null,
+                              key: c.where?.key || null,
+                              clash: [c.lesson, c.other].filter((id) => id !== null).join(','),
+                            })
+                          }
+                        >
                           {t('Разобрать')}
                         </Button>
                       }

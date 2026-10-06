@@ -95,7 +95,13 @@ def plan() -> Plan:
             "Учётные записи учителей и кураторов посева": _fictional_users(),
         },
         files=StudentDocument.all_objects.filter(student_id__in=ids).exclude(file="").count(),
-        names=list(rows.order_by("last_name", "first_name").values_list("email", flat=True)[:50]),
+        # у 8–10 почты нет — вместо неё ФИО, иначе список не склеить
+        names=[
+            email or f"{last} {first}"
+            for last, first, email in rows.order_by("last_name", "first_name").values_list(
+                "last_name", "first_name", "email"
+            )[:50]
+        ],
     )
 
 
