@@ -87,6 +87,8 @@ MIDDLEWARE = [
     "accounts.permissions.StudentParallelGateMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # ответы API — без кэша браузера; выгрузки ставят заголовок сами
+    "core.cache_headers.NoStoreApiMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

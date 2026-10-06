@@ -7,6 +7,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, get, patch, post } from './client'
+import { patchJournal, type MarksAnswer } from './journalPatch'
 
 export interface AcadSubject {
   id: number
@@ -402,7 +403,7 @@ export interface EnglishLevelInfo {
 }
 
 export const useSetEnglishLevel = () =>
-  useAcadMutation((input: { student: number; level: string; since?: string }) => post<EnglishLevelInfo>(`/acad/students/${input.student}/english-level/`, input), true)
+  useAcadMutation((input: { student: number; level: string; since?: string }) => post<EnglishLevelInfo>(`/acad/students/${input.student}/english-level/`, input), { saved: true })
 
 export interface TeacherStudent {
   english?: EnglishLevelInfo
@@ -625,13 +626,27 @@ export function useLessonDetail(id: number | null) {
   })
 }
 
-/** Любая запись учебной части сбрасывает всё учебное: журнал, урок, неделю. */
-function useAcadMutation<TInput, TOut>(fn: (input: TInput) => Promise<TOut>, saved = false) {
+/**
+ * Любая запись учебной части сбрасывает всё учебное: журнал, урок, неделю.
+ *
+ * Отметка и оценка (`marks`) — особый случай (D75): клетки открытых журналов
+ * берутся из ответа сразу, перезапрос идёт за сводками; `meta` (год, четверти,
+ * шкала) от них не меняется, уведомлений автору они не создают — эти запросы
+ * не повторяются. Остальные записи (четверть, шкала, расписание) сбрасывают
+ * и `meta`, и уведомления, как раньше.
+ */
+function useAcadMutation<TInput, TOut>(fn: (input: TInput) => Promise<TOut>, options: { saved?: boolean; marks?: boolean } = {}) {
   const client = useQueryClient()
   return useMutation({
-    meta: saved ? { saved: true } : undefined,
+    meta: options.saved ? { saved: true } : undefined,
     mutationFn: fn,
-    onSuccess: () => {
+    onSuccess: (answer) => {
+      if (options.marks) {
+        const fresh = answer as unknown as MarksAnswer
+        client.setQueriesData<Journal>({ queryKey: ['acad', 'journal'] }, (old) => (old ? patchJournal(old, fresh) : old))
+        void client.invalidateQueries({ queryKey: ['acad'], predicate: (query) => query.queryKey[1] !== 'meta' })
+        return
+      }
       void client.invalidateQueries({ queryKey: ['acad'] })
       void client.invalidateQueries({ queryKey: ['notifications'] })
     },
@@ -639,20 +654,24 @@ function useAcadMutation<TInput, TOut>(fn: (input: TInput) => Promise<TOut>, sav
 }
 
 export const useSaveAttendance = () =>
-  useAcadMutation((input: { lesson: number; rows?: { student: number; mark: string; arrived?: string }[]; all_present?: boolean }) =>
-    post<LessonDetail & { written: number; grades_dropped: number }>(`/acad/lessons/${input.lesson}/attendance/`, input),
+  useAcadMutation(
+    (input: { lesson: number; rows?: { student: number; mark: string; arrived?: string }[]; all_present?: boolean }) =>
+      post<LessonDetail & { written: number; grades_dropped: number }>(`/acad/lessons/${input.lesson}/attendance/`, input),
+    { marks: true },
   )
 
 export const useSetGrade = () =>
-  useAcadMutation((input: { lesson: number; student: number; value: number | null; comment?: string }) =>
-    post<LessonDetail & { grade: number | null; comment: string }>(`/acad/lessons/${input.lesson}/grade/`, input),
+  useAcadMutation(
+    (input: { lesson: number; student: number; value: number | null; comment?: string }) =>
+      post<LessonDetail & { grade: number | null; comment: string }>(`/acad/lessons/${input.lesson}/grade/`, input),
+    { marks: true },
   )
 
 export const useLessonMeta = () =>
   useAcadMutation(
     (input: { lesson: number; topic?: string; homework?: string; kind?: string; number?: number | null; max_score?: number | null }) =>
       patch<{ lesson: AcadLesson }>(`/acad/lessons/${input.lesson}/meta/`, input),
-    true,
+    { saved: true },
   )
 
 export const useTeacherToday = (enabled = true) =>
@@ -683,7 +702,7 @@ export const useJournalFinal = () =>
   useAcadMutation(
     (input: { course: number; quarter: number; rows: { student: number; final: number | null; reason?: string }[] }) =>
       post<Journal & { written: number }>(`/acad/journals/${input.course}/final/`, input),
-    true,
+    { saved: true },
   )
 
 export const useRequests = (enabled = true) =>
@@ -809,7 +828,7 @@ export const useTeacherDetail = (id: number | null) =>
   useQuery({ queryKey: ['acad', 'teacher', id], queryFn: () => get<TeacherRow>(`/acad/teachers/${id}/`), enabled: id !== null })
 
 export const useUpdateTeacher = () =>
-  useAcadMutation((input: { id: number; subjects?: number[]; room?: string }) => patch<TeacherRow>(`/acad/teachers/${input.id}/`, input), true)
+  useAcadMutation((input: { id: number; subjects?: number[]; room?: string }) => patch<TeacherRow>(`/acad/teachers/${input.id}/`, input), { saved: true })
 
 export const useRemindTeacher = () => useAcadMutation((id: number) => post<{ reminded: number }>(`/acad/teachers/${id}/remind/`, {}))
 
@@ -817,7 +836,7 @@ export const useRemindAllTeachers = () => useAcadMutation(() => post<{ teachers:
 
 /** Раздел отчёта родителям у журнала: GE/EEP, SAT Verbal, SAT Math или нет. */
 export const useCourseReportRole = () =>
-  useAcadMutation((input: { course: number; report_role: string }) => post<AcadCourse>(`/acad/journals/${input.course}/report-role/`, input), true)
+  useAcadMutation((input: { course: number; report_role: string }) => post<AcadCourse>(`/acad/journals/${input.course}/report-role/`, input), { saved: true })
 
 export const useReassignCourse = () =>
   useAcadMutation((input: { course: number; teacher: number; since: string }) => post<AcadCourse>(`/acad/journals/${input.course}/reassign/`, input))
@@ -902,7 +921,7 @@ export const useMyLessons = (date: string, enabled = true) =>
 
 export const useYear = () => useQuery({ queryKey: ['acad', 'year'], queryFn: () => get<YearScreen>('/acad/year/') })
 
-export const useSaveYear = () => useAcadMutation((input: Record<string, unknown>) => patch<YearScreen>('/acad/year/', input), true)
+export const useSaveYear = () => useAcadMutation((input: Record<string, unknown>) => patch<YearScreen>('/acad/year/', input), { saved: true })
 
 export const useCloseQuarter = () =>
   useAcadMutation((input: { id: number; closed: boolean }) => post<{ quarter: { id: number; closed: boolean } }>(`/acad/year/quarters/${input.id}/close/`, input))
@@ -1173,7 +1192,7 @@ export const useReport = (id: number | null) =>
   })
 
 export const useSaveReportWord = () =>
-  useAcadMutation((input: { id: number; curator_word: string }) => patch<ReportDetail>(`/acad/reports/${input.id}/`, { curator_word: input.curator_word }), true)
+  useAcadMutation((input: { id: number; curator_word: string }) => patch<ReportDetail>(`/acad/reports/${input.id}/`, { curator_word: input.curator_word }), { saved: true })
 
 export const useCheckReport = () =>
   useAcadMutation((input: { id: number; curator_word?: string }) => post<ReportDetail>(`/acad/reports/${input.id}/check/`, input.curator_word === undefined ? {} : { curator_word: input.curator_word }))
@@ -1219,7 +1238,7 @@ export const useSaveReportTexts = () =>
   useAcadMutation(
     (input: { id: number; texts?: Partial<Record<SchoolTextField, string>>; reviews?: { id: number; text: string }[] }) =>
       patch<ReportDetail>(`/acad/reports/${input.id}/`, { ...(input.texts ?? {}), ...(input.reviews ? { reviews: input.reviews } : {}) }),
-    true,
+    { saved: true },
   )
 
 /** Убрать блок отзыва учителя другого предмета. */

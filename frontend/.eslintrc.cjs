@@ -22,6 +22,8 @@ module.exports = {
   overrides: [
     // словари — это и есть переводы; правила эти файлы проверяют, а не наоборот
     { files: ['src/i18n/kk.ts', 'src/i18n/en.ts'], rules: { 'i18n-text': 'off' } },
+    // проверки vitest пишут названия и данные для разработчика, не для интерфейса
+    { files: ['src/**/*.test.ts'], rules: { 'i18n-text': 'off' } },
     // сами правила пишут сообщения разработчику, а не интерфейсу
     { files: ['eslint-rules/**', '.eslintrc.cjs'], env: { node: true }, rules: { '@typescript-eslint/no-require-imports': 'off', 'i18n-text': 'off' } },
   ],
