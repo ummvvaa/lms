@@ -81,7 +81,7 @@ def nearest_soch(student: Student) -> Lesson | None:
     current = today()
     lessons = (
         schedule.lessons_between(current, current + dt.timedelta(days=120))
-        .filter(kind=LessonKind.SOCH)
+        .filter(kind=LessonKind.SOCH, course__subject__in_lms=True)
         .exclude(status=LessonStatus.CANCELLED)
     )
     found = sorted(
@@ -131,7 +131,7 @@ def week(*, student: Student, **_kwargs) -> dict:
         lessons_count = tn(by_day[day], "{n} урок|{n} урока|{n} уроков")
         lines.append(f"{date_with_weekday(day)}: {lessons_count}")
     for lesson in sorted(lessons, key=lambda row: (row.date, row.slot)):
-        if lesson.kind != LessonKind.FO:
+        if lesson.kind != LessonKind.FO and lesson.in_lms:
             lines.append(f"{kind_label(lesson)} — {lesson.course.subject.name}, {date_with_weekday(lesson.date)}")
     for row in Activity.objects.filter(student=student, category="olympiad", date__gte=monday, date__lte=sunday):
         lines.append(_("Олимпиада: {title}, {date}").format(title=row.title, date=date_with_weekday(row.date)))

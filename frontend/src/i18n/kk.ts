@@ -3931,4 +3931,5 @@ export const kk: Record<string, string> = {
   'Скачать XLSX': 'XLSX жүктеп алу',
   'Страница {page} из {pages}': '{page}/{pages} бет',
   'Экран': 'Экран',
+  'в LMS только расписание': 'LMS-те тек кесте',
 }

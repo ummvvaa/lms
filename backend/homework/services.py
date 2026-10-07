@@ -46,7 +46,12 @@ def teaches(user, lesson: Lesson) -> bool:
 
 
 def may_set(user, lesson: Lesson) -> bool:
-    """Задаёт ДЗ со сдачей тот, кто ведёт урок, и администратор."""
+    """Задаёт ДЗ со сдачей тот, кто ведёт урок, и администратор.
+
+    У предмета «только расписание» ДЗ в LMS нет (решение владельца, 07.10.2026).
+    """
+    if not lesson.in_lms:
+        return False
     if getattr(user, "role", "") == ROLE_ADMIN:
         return True
     return getattr(user, "role", "") != ROLE_STUDENT and teaches(user, lesson)
@@ -54,6 +59,8 @@ def may_set(user, lesson: Lesson) -> bool:
 
 def may_check(user, lesson: Lesson) -> bool:
     """Проверяет учитель урока или журнала, Кымбат и администратор."""
+    if not lesson.in_lms:
+        return False
     role = getattr(user, "role", "")
     if role in (ROLE_ADMIN, EXAM_DIRECTOR):
         return True
@@ -368,7 +375,9 @@ def completion(student_ids: list[int], start: dt.date, end: dt.date) -> dict[int
     first = _at(start, dt.time(0, 0))
     last = min(now, _at(end, dt.time(23, 59, 59)))
     rows = list(
-        Assignment.objects.filter(requires_submission=True, due_at__gte=first, due_at__lte=last)
+        Assignment.objects.filter(
+            requires_submission=True, due_at__gte=first, due_at__lte=last, lesson__course__subject__in_lms=True
+        )
         .exclude(lesson__status=LessonStatus.CANCELLED)
         .filter(lesson__archived_at__isnull=True)
         .select_related("lesson", "lesson__course", "lesson__course__cohort")

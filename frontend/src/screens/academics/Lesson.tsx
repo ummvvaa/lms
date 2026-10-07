@@ -235,6 +235,20 @@ export default function LessonScreen() {
   )
   const back = me?.role === 'teacher' ? (data.course ? { label: t('Журнал'), to: `/journals/${data.course.id}` } : { label: t('Сегодня'), to: '/dashboard' }) : { label: t('Расписание'), to: '/schedule' }
 
+  // предмет «только расписание»: урок есть в неделе, а журнала, оценок и ДЗ в LMS нет
+  if (!lesson.subject.in_lms)
+    return (
+      <div>
+        <ScreenHead title={lesson.subject.title} crumb={{ label: t('Расписание'), to: '/schedule' }} subtitle={`${lesson.weekday}, ${dateWords(lesson.date)} · ${t('{slot} урок', { slot: lesson.slot })}, ${lesson.bell} · ${lesson.room}`} />
+        <DataCard title={t('Урок')}>
+          <Rows>
+            <Row title={t('Учитель')} value={lesson.actual_teacher?.full_name ?? ''} none={t('не назначен')} />
+            <Row title={t('Журнал')} value={t('в LMS только расписание')} />
+          </Rows>
+        </DataCard>
+      </div>
+    )
+
   if (me?.role === 'student')
     return (
       <div>

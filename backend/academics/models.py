@@ -27,8 +27,9 @@ class Scheme(models.TextChoices):
 
     #: ФО, СОР, СОЧ и итог четверти — обычный предмет
     KZ = "kz", gettext_lazy("ФО, СОР и СОЧ, итог за четверть")
-    #: только ФО, в табель не идёт — курсы подготовки (IELTS, SAT)
-    FO = "fo", gettext_lazy("Только ФО, в табель не идёт")
+    #: только ФО из 10, без СОР, СОЧ и итога четверти — EEP, GE, SAT и другие
+    #: предметы, которые школа ведёт в LMS (решение владельца, 07.10.2026)
+    FO = "fo", gettext_lazy("Только ФО из 10")
 
 
 class Subject(models.Model):
@@ -46,7 +47,12 @@ class Subject(models.Model):
     sor_max = models.PositiveSmallIntegerField(gettext_lazy("Максимум СОР по умолчанию"), default=15)
     soch_max = models.PositiveSmallIntegerField(gettext_lazy("Максимум СОЧ по умолчанию"), default=25)
     order = models.PositiveSmallIntegerField(gettext_lazy("Порядок"), default=100)
-    is_active = models.BooleanField(gettext_lazy("Ведётся"), default=True)
+    #: показывать предмет в списках выбора (форма урока, предметы учителя, составы)
+    is_active = models.BooleanField(gettext_lazy("Показывать в списках"), default=True)
+    #: ведётся в LMS: журнал, оценки, ДЗ, успеваемость и отчёты родителям. Остальные
+    #: предметы — «только расписание»: урок стоит в неделе, но журнала у него нет —
+    #: основной журнал школа ведёт в Kundelik (решение владельца, 07.10.2026)
+    in_lms = models.BooleanField(gettext_lazy("Ведётся в LMS"), default=True)
     #: посев для разработки — вычищается `purge_fictional`
     is_fictional = models.BooleanField(gettext_lazy("Вымышленный"), default=False)
 
@@ -646,6 +652,11 @@ class Lesson(Archivable):
     @property
     def is_marked(self) -> bool:
         return self.marked_at is not None
+
+    @property
+    def in_lms(self) -> bool:
+        """Урок предмета, который ведётся в LMS: у него журнал, отметки, оценки и ДЗ."""
+        return self.course.subject.in_lms
 
 
 class Mark(models.TextChoices):

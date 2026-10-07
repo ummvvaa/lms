@@ -98,7 +98,7 @@ def _quarter(calendar):
 def own_courses(user) -> list[Course]:
     """Свои журналы: по ним «отстаёт» и «нет оценок». Замена журнала не даёт."""
     return list(
-        Course.objects.filter(teacher=user, archived_at__isnull=True)
+        Course.objects.filter(teacher=user, archived_at__isnull=True, subject__in_lms=True)
         .select_related("subject", "cohort", "cohort__group")
         .order_by("subject__order", "cohort__name")
     )

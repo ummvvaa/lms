@@ -23,7 +23,7 @@ export default function StudentSchedule() {
   if (!week.data) return null
   const data = week.data
   const changes = data.lessons.filter((lesson) => lesson.status !== 'planned' || lesson.substitute)
-  const assessments = data.lessons.filter((lesson) => lesson.is_live && lesson.kind !== 'fo').sort((a, b) => a.date.localeCompare(b.date))
+  const assessments = data.lessons.filter((lesson) => lesson.is_live && lesson.kind !== 'fo' && lesson.subject.in_lms).sort((a, b) => a.date.localeCompare(b.date))
   const open = (lesson: AcadLesson) => navigate(`/lessons/${lesson.id}`)
 
   if (data.lessons.length === 0 && !start)
@@ -62,7 +62,7 @@ export default function StudentSchedule() {
                   tone="info"
                   title={`${lesson.kind_label} · ${lesson.subject.title}`}
                   note={[`${lesson.weekday}, ${dateWords(lesson.date)}`, t('{slot} урок', { slot: lesson.slot }), lesson.topic].filter(Boolean).join(' · ')}
-                  to={`/lessons/${lesson.id}`}
+                  to={lesson.subject.in_lms ? `/lessons/${lesson.id}` : undefined}
                 />
               ))}
             </Rows>
@@ -78,7 +78,7 @@ export default function StudentSchedule() {
                   tone="warn"
                   title={`${lesson.subject.short_title} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{slot} урок', { slot: lesson.slot })}`}
                   note={`${lesson.substitute ? `${t('замена:')} ${lesson.substitute.short}` : lesson.status_title}${lesson.reason ? ` · ${lesson.reason}` : ''}`}
-                  to={`/lessons/${lesson.id}`}
+                  to={lesson.subject.in_lms ? `/lessons/${lesson.id}` : undefined}
                 />
               ))}
             </Rows>

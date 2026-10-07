@@ -214,7 +214,7 @@ def assessment_days(student: Student, today: dt.date) -> list[dict]:
     end = today + dt.timedelta(days=FUTURE_DAYS)
     days: list[dict] = []
     for lesson in student_lessons(student.pk, start, end):
-        if lesson.kind == LessonKind.FO or not lesson.is_live:
+        if lesson.kind == LessonKind.FO or not lesson.is_live or not lesson.in_lms:
             continue
         subject = lesson.course.subject
         # «СОР 2» не рвётся между словом и номером: неразрывный пробел

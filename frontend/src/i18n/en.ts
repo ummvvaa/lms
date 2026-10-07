@@ -3929,4 +3929,5 @@ export const en: Record<string, string> = {
   'Скачать XLSX': 'Download XLSX',
   'Страница {page} из {pages}': 'Page {page} of {pages}',
   'Экран': 'Screen',
+  'в LMS только расписание': 'schedule only in the LMS',
 }

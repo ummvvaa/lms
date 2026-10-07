@@ -86,7 +86,7 @@ function LessonsToday() {
                 </Chip>
               ) : undefined
             }
-            to={`/lessons/${lesson.id}`}
+            to={lesson.subject.in_lms ? `/lessons/${lesson.id}` : undefined}
           />
         ))}
       </Rows>

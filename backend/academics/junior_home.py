@@ -55,7 +55,12 @@ def _average(student: Student, start: dt.date, end: dt.date, scale, quarter) -> 
 
 
 def _assessments(student: Student, start: dt.date, end: dt.date, calendar) -> list:
-    lessons = schedule.lessons_between(start, end).exclude(kind=LessonKind.FO).exclude(status=LessonStatus.CANCELLED)
+    lessons = (
+        schedule.lessons_between(start, end)
+        .filter(course__subject__in_lms=True)
+        .exclude(kind=LessonKind.FO)
+        .exclude(status=LessonStatus.CANCELLED)
+    )
     return [lesson for lesson in schedule.for_student(list(lessons), student.pk) if lesson.is_live]
 
 
@@ -235,7 +240,7 @@ def home_payload(student: Student) -> dict:
     # --- последние оценки ---
     recent = []
     for row in (
-        Grade.objects.filter(student=student, lesson__date__lte=current)
+        Grade.objects.filter(student=student, lesson__date__lte=current, lesson__course__subject__in_lms=True)
         .select_related("lesson", "lesson__course__subject")
         .order_by("-lesson__date", "-lesson__slot")[: RECENT_ROWS * 3]
     ):

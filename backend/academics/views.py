@@ -394,6 +394,15 @@ def _cohort(pk):
     return Cohort.objects.filter(pk=pk).first()
 
 
+def _schedule_only(lesson: Lesson):
+    """Отказ по уроку предмета «только расписание»: журнала у него в LMS нет."""
+    return _forbid(
+        _("«{subject}» в LMS — только расписание: журнал, оценки и ДЗ ведутся не здесь").format(
+            subject=lesson.course.subject.name
+        )
+    )
+
+
 def _lesson_for(user, pk: int) -> Lesson | None:
     """Урок в границах роли. Чужой — как несуществующий."""
     lesson = (
@@ -520,6 +529,7 @@ def lesson_detail(request, pk: int):
     payload["may_edit"] = rights.edits_schedule(role)
     payload["may_remind"] = (
         rights.reminds(role)
+        and lesson.in_lms
         and lesson.actual_teacher_id is not None
         and lesson.is_live
         and not lesson.is_marked
@@ -557,6 +567,8 @@ def lesson_attendance(request, pk: int):
     lesson = _lesson_for(request.user, pk)
     if lesson is None:
         return _not_found()
+    if not lesson.in_lms:
+        return _schedule_only(lesson)
     if not rights.marks_lesson(request.user, lesson):
         return _forbid(_("Посещаемость отмечает учитель урока"))
     calendar = school_calendar.load()
@@ -586,6 +598,8 @@ def lesson_grade(request, pk: int):
     lesson = _lesson_for(request.user, pk)
     if lesson is None:
         return _not_found()
+    if not lesson.in_lms:
+        return _schedule_only(lesson)
     if not rights.grades_lesson(request.user, lesson):
         return _forbid(_("Оценку ставит учитель урока"))
     calendar = school_calendar.load()
@@ -627,6 +641,8 @@ def lesson_meta(request, pk: int):
     lesson = _lesson_for(request.user, pk)
     if lesson is None:
         return _not_found()
+    if not lesson.in_lms:
+        return _schedule_only(lesson)
     if not (rights.grades_lesson(request.user, lesson) or rights.edits_schedule(request.user.role)):
         return _forbid(_("Тему и задание пишет учитель урока"))
     fields = {k: v for k, v in request.data.items() if k in ("topic", "homework", "kind", "number", "max_score")}
@@ -797,6 +813,8 @@ def lesson_remind(request, pk: int):
     lesson = _lesson_for(request.user, pk)
     if lesson is None:
         return _not_found()
+    if not lesson.in_lms:
+        return _schedule_only(lesson)
     if lesson.is_marked or not lesson.is_live:
         return _bad(_("Урок уже отмечен"))
     from academics.teachers import lesson_words
@@ -952,7 +970,9 @@ def student_grades_payload(student: Student, period: str, *, for_student: bool) 
     from academics.models import Grade
 
     grade_rows = (
-        Grade.objects.filter(student=student, lesson__date__gte=start, lesson__date__lte=end_seen)
+        Grade.objects.filter(
+            student=student, lesson__date__gte=start, lesson__date__lte=end_seen, lesson__course__subject__in_lms=True
+        )
         .select_related("lesson", "lesson__course", "lesson__course__subject")
         .order_by("-lesson__date", "-lesson__slot")
     )
@@ -1019,6 +1039,7 @@ def homework_grades(student, start: dt.date, end: dt.date):
             assignment__requires_submission=True,
             assignment__lesson__date__gte=start,
             assignment__lesson__date__lte=end,
+            assignment__lesson__course__subject__in_lms=True,
         )
         .exclude(assignment__lesson__status="cancelled")
         .select_related("assignment__lesson__course__subject")
@@ -1145,6 +1166,7 @@ def my_lessons(request):
         for lesson in schedule.for_student(
             list(
                 schedule.lessons_between(day, day + dt.timedelta(days=30))
+                .filter(course__subject__in_lms=True)
                 .exclude(kind=LessonKind.FO)
                 .exclude(status=LessonStatus.CANCELLED)
             ),
@@ -1231,7 +1253,12 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
     if view == "month":
         first, last = _month_bounds(month, day)
         last = min(last, today())
-        rows = list(schedule.lessons_between(first, last).exclude(status=LessonStatus.CANCELLED))
+        # посещаемость — только по предметам, которые ведутся в LMS
+        rows = list(
+            schedule.lessons_between(first, last)
+            .exclude(status=LessonStatus.CANCELLED)
+            .filter(course__subject__in_lms=True)
+        )
         rows = schedule.for_groups(rows, [group.pk])
         marks = marking.marks_map(rows, ids)
         arrivals = marking.arrivals_map(rows, ids)
@@ -1287,7 +1314,12 @@ def attendance_payload(group: StudyGroup | None, *, view: str, day: dt.date, mon
         }
     # день
     rows = schedule.for_groups(
-        list(schedule.lessons_between(day, day).exclude(status=LessonStatus.CANCELLED)), [group.pk]
+        list(
+            schedule.lessons_between(day, day)
+            .exclude(status=LessonStatus.CANCELLED)
+            .filter(course__subject__in_lms=True)
+        ),
+        [group.pk],
     )
     marks = marking.marks_map(rows, ids)
     # во сколько пришли опоздавшие: в клетке «оп 10», а не только «оп»
@@ -1510,7 +1542,9 @@ def curator_home(request):
     groups = list(StudyGroup.objects.filter(pk__in=group_ids).order_by("code"))
     day = today()
     now_slot = None
-    today_rows = schedule.for_groups(list(schedule.lessons_between(day, day)), group_ids)
+    today_rows = schedule.for_groups(
+        list(schedule.lessons_between(day, day).filter(course__subject__in_lms=True)), group_ids
+    )
     blocks = []
     absent_now: list[str] = []
     for group in groups:

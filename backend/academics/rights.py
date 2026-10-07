@@ -101,6 +101,9 @@ def marks_lesson(user, lesson) -> bool:
     куратор, математику — директор талантов, и каждый отмечает свой урок.
     Остальные права роли от этого не расширяются.
     """
+    if not lesson.in_lms:
+        # предмет «только расписание»: журнал школа ведёт не в LMS
+        return False
     role = getattr(user, "role", "")
     if role == ROLE_ADMIN:
         return True
@@ -111,6 +114,8 @@ def marks_lesson(user, lesson) -> bool:
 
 def grades_lesson(user, lesson) -> bool:
     """Ставит оценку тот же, кто отмечает; Кымбат правит оценки после окна."""
+    if not lesson.in_lms:
+        return False
     role = getattr(user, "role", "")
     if role in (ROLE_ADMIN, EXAM_DIRECTOR):
         return True
@@ -118,7 +123,12 @@ def grades_lesson(user, lesson) -> bool:
 
 
 def owns_course(user, course) -> bool:
-    """Журнал ведёт его учитель; Кымбат и администратор открывают любой."""
+    """Журнал ведёт его учитель; Кымбат и администратор открывают любой.
+
+    У предмета «только расписание» журнала нет ни у кого.
+    """
+    if not course.subject.in_lms:
+        return False
     role = getattr(user, "role", "")
     if role in ACADEMICS_READERS:
         return True
@@ -127,6 +137,8 @@ def owns_course(user, course) -> bool:
 
 def sees_course(user, course) -> bool:
     """Читает журнал: учитель свой, Кымбат и администратор любой, куратор — своих групп."""
+    if not course.subject.in_lms:
+        return False
     role = getattr(user, "role", "")
     if owns_course(user, course):
         return True

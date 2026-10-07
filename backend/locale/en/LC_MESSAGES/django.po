@@ -566,8 +566,8 @@ msgid "ФО, СОР и СОЧ, итог за четверть"
 msgstr "FA, SAU and Term SA, term mark"
 
 #: academics/models.py:31
-msgid "Только ФО, в табель не идёт"
-msgstr "FA only, not included in the report card"
+msgid "Только ФО из 10"
+msgstr "FA only, out of 10"
 
 #: academics/models.py:37 core/domains.py:382 core/domains.py:692
 #: core/domains.py:1194 core/domains.py:1216 core/labels.py:35
@@ -625,8 +625,8 @@ msgid "Порядок"
 msgstr "Order"
 
 #: academics/models.py:49
-msgid "Ведётся"
-msgstr "Taught"
+msgid "Показывать в списках"
+msgstr "Show in lists"
 
 #: academics/models.py:51 academics/models.py:89 academics/models.py:109
 #: academics/models.py:380 accounts/models.py:118 students/models.py:118
@@ -16580,3 +16580,9 @@ msgstr "Screen"
 
 msgid "Этот экран недоступен для записи действий"
 msgstr "This screen is not available for usage tracking"
+
+msgid "Ведётся в LMS"
+msgstr "Kept in the LMS"
+
+msgid "«{subject}» в LMS — только расписание: журнал, оценки и ДЗ ведутся не здесь"
+msgstr "“{subject}” is schedule-only in the LMS: the gradebook, grades and homework are kept elsewhere"

@@ -921,7 +921,7 @@ def stale_unmarked(calendar: SchoolCalendar, start: dt.date, end: dt.date) -> li
     return [
         lesson
         for lesson in lessons_between(start, end)
-        .filter(status=LessonStatus.PLANNED, marked_at__isnull=True)
+        .filter(status=LessonStatus.PLANNED, marked_at__isnull=True, course__subject__in_lms=True)
         .exclude(teacher__isnull=True, substitute__isnull=True)
         if calendar.lesson_finished(lesson.date, lesson.slot, lesson_groups(lesson))
     ]

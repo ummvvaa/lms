@@ -171,7 +171,9 @@ def marks_map(lessons: list[Lesson], student_ids: Iterable[int], *, raw: bool = 
             late_rules = None
     out: dict[tuple[int, int], str] = {}
     for lesson in lessons:
-        if not lesson.is_marked:
+        # урок предмета «только расписание» в посещаемость не идёт: даже прежние
+        # отметки — журнал этого предмета школа ведёт не в LMS
+        if not lesson.is_marked or not lesson.in_lms:
             continue
         for sid in ids:
             mark = rows.get((lesson.pk, sid), PRESENT)

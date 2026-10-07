@@ -37,9 +37,9 @@ def teaches(user) -> bool:
     """
     if user is None or not getattr(user, "pk", None):
         return False
-    if Course.objects.filter(teacher=user, archived_at__isnull=True).exists():
+    if Course.objects.filter(teacher=user, archived_at__isnull=True, subject__in_lms=True).exists():
         return True
-    return Lesson.objects.filter(substitute=user, date__gte=today()).exists()
+    return Lesson.objects.filter(substitute=user, date__gte=today(), course__subject__in_lms=True).exists()
 
 
 def teachers() -> list[User]:
@@ -53,9 +53,13 @@ def profile_of(user: User) -> TeacherProfile:
 
 
 def courses_of(user: User) -> list[Course]:
-    """Журналы учителя — по предмету, потом по составу."""
+    """Журналы учителя — по предмету, потом по составу.
+
+    Только предметы, которые ведутся в LMS: у «только расписание» журнала нет
+    (решение владельца, 07.10.2026).
+    """
     return list(
-        Course.objects.filter(teacher=user)
+        Course.objects.filter(teacher=user, subject__in_lms=True)
         .select_related("subject", "cohort", "cohort__group")
         .order_by("subject__order", "cohort__name")
     )
@@ -64,14 +68,16 @@ def courses_of(user: User) -> list[Course]:
 def taught_student_ids(user: User, on: dt.date | None = None) -> list[int]:
     """Ученики всех составов учителя на дату — граница его видимости."""
     seen: list[int] = []
-    for course in Course.objects.filter(teacher=user).select_related("cohort"):
+    for course in Course.objects.filter(teacher=user, subject__in_lms=True).select_related("cohort"):
         for sid in member_ids(course.cohort, on):
             if sid not in seen:
                 seen.append(sid)
     # ученики уроков, где учитель заменяет сегодня, тоже видны — иначе
     # заменяющему нечего отмечать
     day = on or today()
-    for lesson in Lesson.objects.filter(substitute=user, date=day).select_related("course__cohort"):
+    for lesson in Lesson.objects.filter(substitute=user, date=day, course__subject__in_lms=True).select_related(
+        "course__cohort"
+    ):
         for sid in member_ids(lesson.course.cohort, day):
             if sid not in seen:
                 seen.append(sid)
@@ -79,9 +85,9 @@ def taught_student_ids(user: User, on: dt.date | None = None) -> list[int]:
 
 
 def lessons_of(user: User, start: dt.date, end: dt.date):
-    """Уроки учителя за период: свои и замены."""
+    """Уроки учителя за период: свои и замены — по предметам, которые ведутся в LMS."""
     return (
-        Lesson.objects.filter(date__gte=start, date__lte=end)
+        Lesson.objects.filter(date__gte=start, date__lte=end, course__subject__in_lms=True)
         .filter(Q(teacher=user, substitute__isnull=True) | Q(substitute=user))
         .select_related("course", "course__subject", "course__cohort", "course__cohort__group", "teacher", "substitute")
         .order_by("date", "slot")
@@ -104,6 +110,7 @@ def unmarked_lessons(user: User | None, calendar, *, days: int = 6) -> list[Less
         date__lte=day,
         status=LessonStatus.PLANNED,
         marked_at__isnull=True,
+        course__subject__in_lms=True,
     ).select_related("course", "course__subject", "course__cohort", "teacher", "substitute")
     if user is not None:
         rows = rows.filter(Q(teacher=user, substitute__isnull=True) | Q(substitute=user))

@@ -564,8 +564,8 @@ msgid "ФО, СОР и СОЧ, итог за четверть"
 msgstr "ҚБ, БЖБ және ТЖБ, тоқсандық баға"
 
 #: academics/models.py:31
-msgid "Только ФО, в табель не идёт"
-msgstr "Тек ҚБ, табельге кірмейді"
+msgid "Только ФО из 10"
+msgstr "Тек ҚБ, 10 балдан"
 
 #: academics/models.py:37 core/domains.py:382 core/domains.py:692
 #: core/domains.py:1194 core/domains.py:1216 core/labels.py:35
@@ -623,8 +623,8 @@ msgid "Порядок"
 msgstr "Реті"
 
 #: academics/models.py:49
-msgid "Ведётся"
-msgstr "Оқытылады"
+msgid "Показывать в списках"
+msgstr "Тізімдерде көрсету"
 
 #: academics/models.py:51 academics/models.py:89 academics/models.py:109
 #: academics/models.py:380 accounts/models.py:118 students/models.py:118
@@ -16499,3 +16499,9 @@ msgstr "Экран"
 
 msgid "Этот экран недоступен для записи действий"
 msgstr "Бұл экранда әрекеттерді тіркеу қолжетімсіз"
+
+msgid "Ведётся в LMS"
+msgstr "LMS-те жүргізіледі"
+
+msgid "«{subject}» в LMS — только расписание: журнал, оценки и ДЗ ведутся не здесь"
+msgstr "«{subject}» LMS-те тек кесте: журнал, бағалар мен үй жұмысы мұнда жүргізілмейді"

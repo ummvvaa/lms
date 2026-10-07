@@ -534,7 +534,7 @@ def test_grading_column_sets_the_scheme_of_new_subjects_only(short_year, admin):
     assert sat.scheme == Scheme.KZ
     assert [w["text"] for w in report["warnings"] if w["kind"] == "scheme"] == [
         "Предмет «SAT»: в LMS — «ФО, СОР и СОЧ, итог за четверть», "
-        "в файле — «Только ФО, в табель не идёт»; схема не меняется"
+        "в файле — «Только ФО из 10»; схема не меняется"
     ]
     # пустая ячейка — как без колонки: ФО, СОР и СОЧ, и просьба проверить
     assert schemes["Физика"] == Scheme.KZ

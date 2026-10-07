@@ -116,11 +116,24 @@ export function LessonChip({
     lesson.cohort.kind === 'group' && perspective === 'group' ? '' : lesson.cohort.short_name,
   ].filter(Boolean)
   const tag = chipTag(lesson)
-  return (
-    <Button variant="ghost" className={chipClass(lesson, conflict, clash)} data-clash={clash ? '' : undefined} onClick={() => onOpen(lesson)}>
+  const body = (
+    <>
       <span className="les__s">{lesson.subject.title}</span>
       {meta.length > 0 && <span className="les__m">{meta.join(' · ')}</span>}
       {tag && <span className="les__tag">{tag}</span>}
+    </>
+  )
+  // предмет «только расписание»: журнала в LMS нет — урок виден, но не открывается;
+  // в правке расписания он открывается, как любой
+  if (!lesson.subject.in_lms && perspective !== 'edit')
+    return (
+      <div className={`${chipClass(lesson, conflict, clash)} les--static`} data-clash={clash ? '' : undefined}>
+        {body}
+      </div>
+    )
+  return (
+    <Button variant="ghost" className={chipClass(lesson, conflict, clash)} data-clash={clash ? '' : undefined} onClick={() => onOpen(lesson)}>
+      {body}
       {unmarked && (
         <Chip tone="warn" size="sm">
           {t('не отмечен')}

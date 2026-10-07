@@ -44,7 +44,12 @@ def _remind(calendar, now, day, sent) -> int:
 
     wait = dt.timedelta(minutes=school_rules.value(school_rules.UNMARKED_REMIND_MINUTES))
     rows = Lesson.objects.filter(
-        date=day, status=LessonStatus.PLANNED, marked_at__isnull=True, reminded_at__isnull=True
+        date=day,
+        status=LessonStatus.PLANNED,
+        marked_at__isnull=True,
+        reminded_at__isnull=True,
+        # урок предмета «только расписание» в LMS не отмечают — и не напоминают
+        course__subject__in_lms=True,
     ).select_related("course", "course__subject", "course__cohort", "teacher", "substitute")
     for lesson in rows:
         bell = calendar.bell(lesson.slot, school_calendar.lesson_groups(lesson))

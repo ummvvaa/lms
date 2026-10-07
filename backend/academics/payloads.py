@@ -45,6 +45,8 @@ def subject_dict(subject: Subject) -> dict:
         "title_en": subject.title_en,
         "scheme": subject.scheme,
         "scheme_title": subject.get_scheme_display(),
+        # «только расписание» — урок в неделе без журнала, оценок и ДЗ
+        "in_lms": subject.in_lms,
         "sor_max": subject.sor_max,
         "soch_max": subject.soch_max,
     }

@@ -23,6 +23,8 @@ export interface AcadSubject {
   short_title: string
   scheme: 'kz' | 'fo'
   scheme_title: string
+  /** ведётся в LMS; нет — «только расписание»: урок в неделе без журнала, оценок и ДЗ */
+  in_lms: boolean
   sor_max: number
   soch_max: number
 }

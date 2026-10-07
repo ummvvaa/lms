@@ -412,10 +412,14 @@ def course_context(
 
 
 def student_courses(student_id: int, on: dt.date | None = None) -> list[Course]:
-    """Журналы, где ученик состоит на дату — по порядку предметов."""
+    """Журналы, где ученик состоит на дату — по порядку предметов.
+
+    Только предметы, которые ведутся в LMS: оценки, успеваемость и отчёты
+    по «только расписание» не считаются (решение владельца, 07.10.2026).
+    """
     cohorts = cohorts_of_student(student_id, on)
     return list(
-        Course.objects.filter(cohort_id__in=cohorts)
+        Course.objects.filter(cohort_id__in=cohorts, subject__in_lms=True)
         .select_related("subject", "cohort", "cohort__group", "teacher")
         .order_by("subject__order", "cohort__name")
     )
@@ -581,7 +585,9 @@ def unexcused_days(
         absent = sum(1 for _l, mark in rows if mark == ABSENT)
         if absent < min_absent:
             continue
-        day_lessons = for_student([lesson for lesson in live_lessons(start, end) if lesson.date == day], student_id)
+        day_lessons = for_student(
+            [lesson for lesson in live_lessons(start, end) if lesson.date == day and lesson.in_lms], student_id
+        )
         if day_lessons and absent >= max(min_absent, round(len(day_lessons) * share + 0.4999)):
             out.append(day)
     return out

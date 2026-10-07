@@ -906,13 +906,17 @@ def school_grades_payload(code: str) -> dict:
     start, end, title, quarter = calendar_period(calendar, code)
     end = min(end, today())
     groups = list(StudyGroup.objects.filter(is_active=True).order_by("code"))
-    subjects = list(Subject.objects.filter(is_active=True, scheme=Scheme.KZ, courses__isnull=False).distinct())
+    # колонки — предметы, которые ведутся в LMS (решение владельца, 07.10.2026);
+    # у «только ФО» клетка — средняя ФО в процентах от максимума
+    subjects = list(Subject.objects.filter(in_lms=True, courses__isnull=False).distinct())
     heat = []
     risk = []
     worst = []
     attendance_all = []
     stats_cache: dict[tuple[int, int], object] = {}
-    courses = list(Course.objects.select_related("subject", "cohort", "cohort__group", "teacher").all())
+    courses = list(
+        Course.objects.filter(subject__in_lms=True).select_related("subject", "cohort", "cohort__group", "teacher")
+    )
     prime_lessons(start, end)
     contexts = {course.pk: course_context(course, start, end, scale, quarter=quarter) for course in courses}
     for group in groups:
@@ -929,8 +933,9 @@ def school_grades_payload(code: str) -> dict:
                     if sid in own:
                         stats = context.stats(sid)
                         stats_cache[(course.pk, sid)] = stats
-                        if stats.quarter_pct is not None:
-                            values.append(stats.quarter_pct)
+                        value = stats.fo_pct if subject.scheme == Scheme.FO else stats.quarter_pct
+                        if value is not None:
+                            values.append(value)
             avg = round(sum(values) / len(values)) if values else None
             cells.append({"subject": subject.pk, "pct": avg, "tone": _tone(avg)})
         pcts = []
@@ -1027,7 +1032,7 @@ def school_grades_cell(request):
     start, end, title, quarter = calendar_period(calendar, str(request.query_params.get("period") or _default_period()))
     end = min(end, today())
     group = _group_param(request.query_params.get("group"))
-    subject = Subject.objects.filter(pk=_int(request.query_params.get("subject"))).first()
+    subject = Subject.objects.filter(pk=_int(request.query_params.get("subject")), in_lms=True).first()
     if group is None or subject is None:
         return _not_found()
     rows = []
@@ -1091,7 +1096,9 @@ def group_grades_payload(group: StudyGroup, code: str) -> dict:
         Student.objects.filter(group=group, is_active=True).select_related("group").order_by("last_name", "first_name")
     )
     courses = [
-        c for c in Course.objects.select_related("subject", "cohort", "teacher") if group.pk in group_ids_of(c.cohort)
+        c
+        for c in Course.objects.filter(subject__in_lms=True).select_related("subject", "cohort", "teacher")
+        if group.pk in group_ids_of(c.cohort)
     ]
     subjects = []
     seen = set()

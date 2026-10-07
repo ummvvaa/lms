@@ -433,6 +433,7 @@ def student_assignments(student) -> list[Assignment]:
             lesson__course__cohort_id__in=cohorts_of_student(student.pk),
             lesson__date__gte=since,
             lesson__archived_at__isnull=True,
+            lesson__course__subject__in_lms=True,
         )
         .exclude(lesson__status="cancelled")
         .select_related(
@@ -543,9 +544,9 @@ def _checkable(user):
     """Задания со сдачей, которые человек проверяет: свои уроки; Кымбат и администратор — все."""
     from django.db.models import Q
 
-    rows = Assignment.objects.filter(requires_submission=True, lesson__archived_at__isnull=True).exclude(
-        lesson__status="cancelled"
-    )
+    rows = Assignment.objects.filter(
+        requires_submission=True, lesson__archived_at__isnull=True, lesson__course__subject__in_lms=True
+    ).exclude(lesson__status="cancelled")
     if user.role not in (ROLE_ADMIN, services.EXAM_DIRECTOR):
         rows = rows.filter(Q(lesson__teacher=user) | Q(lesson__substitute=user) | Q(lesson__course__teacher=user))
     return rows.select_related(

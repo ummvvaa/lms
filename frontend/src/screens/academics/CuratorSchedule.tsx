@@ -76,7 +76,7 @@ export default function CuratorSchedule() {
                   tone="warn"
                   title={`${lesson.subject.short_title} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{slot} урок', { slot: lesson.slot })}`}
                   note={`${lesson.substitute ? `${t('замена:')} ${lesson.substitute.short}` : lesson.status_title}${lesson.reason ? ` · ${lesson.reason}` : ''}`}
-                  to={`/lessons/${lesson.id}`}
+                  to={lesson.subject.in_lms ? `/lessons/${lesson.id}` : undefined}
                 />
               ))}
             </Rows>
