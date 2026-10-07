@@ -112,12 +112,12 @@ const HOMEWORK_REVIEW: NavItem = { path: '/homework-review', label: tk('Пров
 
 /**
  * Кому открыта «Проверка ДЗ»: учителю, Кымбат и администратору (им — вся
- * школа) и сотруднику, который ведёт уроки. Куратору раздел закрыт на сервере
- * (`CURATOR_READ_ROUTES`), даже если он ведёт уроки.
+ * школа) и сотруднику, который ведёт уроки, включая куратора. Сервер
+ * ограничивает проверку его уроками (`homework.services.may_check`).
  */
 export function homeworkReviewOpen(role: Role, teaches = false): boolean {
   if (['teacher', 'director_exam', 'admin'].includes(role)) return true
-  return teaches && role !== 'curator' && role !== 'student'
+  return teaches && role !== 'student'
 }
 
 export const NAV: Record<Role, NavItem[]> = {
@@ -340,9 +340,10 @@ export function curatorMayOpen(pathname: string): boolean {
  * родителям» — общие с учителем, Кымбат и администратором: адрес один,
  * экран смотрит на роль. Такие экраны не «только кураторские»,
  * поэтому лежат отдельным списком, но открыты куратору так же, как его
- * собственные разделы.
+ * собственные разделы. «Проверка ДЗ» дополнительно требует своих уроков:
+ * отдельный шлюз `homeworkReviewOpen` в App проверяет `teaches`.
  */
-export const CURATOR_SHARED = ['/attendance', '/schedule', '/grades', '/reports']
+export const CURATOR_SHARED = ['/attendance', '/schedule', '/grades', '/reports', '/homework-review']
 
 /**
  * Экраны, которых нет ни у кого, кроме куратора (фаза 61).
