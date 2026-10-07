@@ -27,6 +27,7 @@ from academics.models import (
     ReportTemplate,
     ReviewKind,
     Scheme,
+    Subject,
 )
 from academics.schedule import create_once
 from academics.tests.conftest import days, login, school_day
@@ -132,10 +133,12 @@ def grade_lines(report) -> dict[str, str]:
     return {line.title: line.value for line in report.lines.all() if line.section == ReportSection.GRADES}
 
 
-def test_variant_one_averages_fo_and_variant_two_lists_them(grades, pupils, calendar):
+def test_variant_one_averages_fo_and_variant_two_lists_them(grades, pupils, calendar, subjects):
+    # физкультура — «только расписание»: журнал школа ведёт не в LMS (07.10.2026)
+    Subject.objects.filter(pk=subjects["pe"].pk).update(in_lms=False)
     review = grade_lines(build(pupils["aliya"], ReportTemplate.REVIEW, calendar))
     assert review["Алгебра"] == "8,5", "средняя только по ФО, СОР 17 не входит"
-    assert "Физкультура" not in review, "предмет «Только ФО» в табель не идёт"
+    assert "Физкультура" not in review, "предмет «только расписание» в табель не идёт"
     progress = grade_lines(build(pupils["aliya"], ReportTemplate.PROGRESS, calendar))
     assert progress["Алгебра"] == "8, 9", "список ФО по порядку уроков"
     assert "Физкультура" not in progress
@@ -253,7 +256,6 @@ def test_ai_unavailable_leaves_fields_empty(grades, pupils, calendar):
 @pytest.fixture
 def sat_course(year, subjects, cohorts, make_user, calendar, pupils):
     """SAT Verbal у BOSTON с комментарием учителя к оценке."""
-    from academics.models import Subject
 
     sat = Subject.objects.create(code="sat", title="SAT", short_title="SAT", scheme=Scheme.FO, order=9)
     trainer = make_user("teacher", "trainer@example.kz", full_name="Тренерова Мадина Ержановна")

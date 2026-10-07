@@ -166,3 +166,52 @@ def test_year_screen_lists_subjects_with_counts_and_switch(subjects, lesson, as_
     )
     subjects["alg"].refresh_from_db()
     assert subjects["alg"].in_lms is False
+
+
+# --- Отчёты родителям: только предметы, которые ведутся в LMS -------------------------
+
+
+@pytest.mark.parametrize("template", ["standard", "review", "progress"])
+def test_report_never_names_schedule_only_subjects(
+    template, school_subjects, subjects, lesson, teacher, cohorts, pupils, calendar
+):
+    from academics import marks as marking
+    from academics import reports as reporting
+    from academics.calendar import scale_of
+    from academics.models import ParentReport, ReportPeriod
+    from academics.report_drafts import collect
+
+    scale = scale_of(calendar.year)
+    sat = create_once(
+        subject=school_subjects["sat"],
+        teacher=teacher,
+        cohort=cohorts["boston"],
+        date=school_day(-3, calendar),
+        slot=4,
+        room="204",
+    )
+    marking.set_grade(sat, pupils["aliya"], 9, actor=teacher, calendar=calendar, scale=scale, comment="Хорошо")
+    # оценка и пропуск по алгебре стоят, пока она ещё велась в LMS
+    marking.set_grade(lesson, pupils["aliya"], 7, actor=teacher, calendar=calendar, scale=scale, comment="Алгебра")
+    marking.save_attendance(
+        lesson, [{"student": pupils["damir"].pk, "mark": "absent"}], actor=teacher, calendar=calendar
+    )
+    Subject.objects.exclude(pk__in=[s.pk for s in school_subjects.values()]).update(in_lms=False)
+
+    report = reporting.build_report(
+        pupils["aliya"],
+        kind=ReportPeriod.CUSTOM,
+        start=days(-30),
+        end=days(0),
+        calendar=calendar,
+        config=reporting.report_settings(calendar),
+        template=template,
+        language="ru",
+    )
+    text = " ".join(f"{line.title} {line.value} {line.note}" for line in report.lines.all())
+    assert "SAT" in text
+    for title in ("Алгебра", "Английский язык", "Физкультура"):
+        assert title not in text, f"«{title}» — только расписание, в отчёте его нет"
+    facts = collect(ParentReport.objects.get(pk=report.pk))
+    assert {item.course.subject.code for item in facts.courses} <= {s.code for s in school_subjects.values()}
+    assert all("Алгебра" not in comment for item in facts.courses for comment in item.comments)

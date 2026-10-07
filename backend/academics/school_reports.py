@@ -34,7 +34,6 @@ from academics.models import (
     ReportRole,
     ReportSection,
     ReportTemplate,
-    Scheme,
 )
 from students.models import GroupLanguage, Student
 
@@ -136,15 +135,17 @@ class SubjectGrades:
 
 
 def fo_grades(student_id: int, start: dt.date, end: dt.date) -> list[SubjectGrades]:
-    """ФО за период по предметам табеля («ФО, СОР, СОЧ») в порядке предметов.
+    """ФО за период по предметам, которые ведутся в LMS, в порядке предметов.
 
-    Предметы «Только ФО» (SAT, классный час, профориентация) не идут, СОР
-    и СОЧ — тоже: они в баллах из максимума. Предмет без оценок остаётся
-    строкой с пустой клеткой.
+    Табель — предметы «ведётся в LMS» (решение владельца, 07.10.2026): EEP, GE,
+    SAT, Creative Writing, Профориентация, все — только ФО из 10. Предметы
+    «только расписание» в отчёт не попадают ни строкой, ни словом
+    (`student_courses` их не отдаёт). СОР и СОЧ не идут: они в баллах из
+    максимума. Предмет без оценок остаётся строкой с пустой клеткой.
     """
     from academics.results import student_courses
 
-    courses = [c for c in student_courses(student_id, min(end, today())) if c.subject.scheme == Scheme.KZ]
+    courses = student_courses(student_id, min(end, today()))
     by_subject: dict[int, SubjectGrades] = {}
     for course in courses:
         by_subject.setdefault(course.subject_id, SubjectGrades(subject=course.subject, values=[]))
