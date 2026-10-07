@@ -27,6 +27,7 @@ from rest_framework.response import Response
 
 from academics.models import Lesson
 from academics.payloads import person, student_brief, user_name
+from core import usage
 from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT
 from core.scope import visible_students
 from homework import files as hwfiles
@@ -531,6 +532,7 @@ def my_submit(request, pk: int):
         )
     except services.HomeworkRefused as error:
         return _bad(str(error))
+    usage.track(request, "homework.submit")
     return Response(_detail_payload(student, row))
 
 
@@ -672,6 +674,7 @@ def review_check(request, pk: int):
         )
     except services.HomeworkRefused as error:
         return _bad(str(error))
+    usage.track(request, "homework.check")
     return Response(submission_dict(row, for_student=False))
 
 

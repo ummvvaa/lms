@@ -9,6 +9,7 @@
  * учеников, число на главной и корзина не расходятся.
  */
 import { useState } from 'react'
+import { useTrack } from '../../usage/context'
 import { useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { useAssignTask, useCuratorDocuments, useRemindDocuments, type DocumentCell } from '../../api/hooks'
@@ -54,6 +55,7 @@ type DocumentsMatrixRow = {
 }
 
 export default function CuratorDocuments() {
+  const trackFilter = useTrack('filter.change')
   const navigate = useNavigate()
   const [group, setGroup] = useGroup()
   const [params, setParams] = useSearchParams()
@@ -168,7 +170,7 @@ export default function CuratorDocuments() {
             tone={count.collected === count.total ? 'good' : 'accent'}
             label={t(count.title)}
             value={`${count.collected} / ${count.total}`}
-            onClick={() => setFilter('missing')}
+            onClick={() => { if (filter !== 'missing') trackFilter(); setFilter('missing') }}
           />
         ))}
       </StatRow>

@@ -16286,3 +16286,297 @@ msgstr "The question bank import cannot be undone from history"
 
 msgid "Мастер импорта"
 msgstr "Import wizard"
+
+msgid "Анкета первого входа"
+msgstr "First login questionnaire"
+
+msgid "В пакете действий есть неизвестные поля"
+msgstr "The event batch contains unknown fields"
+
+msgid "Вопрос помощнику"
+msgstr "Question to the assistant"
+
+msgid "Вопросы для эссе"
+msgstr "Essay questions"
+
+msgid "Время по Алматы"
+msgstr "Almaty time"
+
+msgid "Вход"
+msgstr "Login"
+
+msgid "Вход в платформу"
+msgstr "Platform login"
+
+msgid "Выберите разрез сводки"
+msgstr "Choose a summary grouping"
+
+msgid "Выдача ссылки пользователю"
+msgstr "Issue a user access link"
+
+msgid "Выдача ссылки ученику"
+msgstr "Issue a student access link"
+
+msgid "Дайджест"
+msgstr "Digest"
+
+msgid "Дедлайны"
+msgstr "Deadlines"
+
+msgid "Действие"
+msgstr "Action"
+
+msgid "Действие пользователя"
+msgstr "User action"
+
+msgid "Действий"
+msgstr "Actions"
+
+msgid "Действия пользователей"
+msgstr "User actions"
+
+msgid "Достижения школы"
+msgstr "School achievements"
+
+msgid "Журнал предмета"
+msgstr "Subject journal"
+
+msgid "Заведение учеников файлом"
+msgstr "Create students from a file"
+
+msgid "Запись действий недоступна для этой роли"
+msgstr "This role cannot record usage events"
+
+msgid "Запуск операции помощника"
+msgstr "Start an assistant operation"
+
+msgid "Запуск рассылки приглашений"
+msgstr "Start sending invitations"
+
+msgid "Идентификатор события"
+msgstr "Event identifier"
+
+msgid "Изменение оценки"
+msgstr "Change a grade"
+
+msgid "Изменение фильтра"
+msgstr "Change a filter"
+
+msgid "Импорт банка заданий"
+msgstr "Import the question bank"
+
+msgid "Импорт контактов родителей"
+msgstr "Import parent contacts"
+
+msgid "Импорт расписания"
+msgstr "Timetable import"
+
+msgid "Импорт результатов Mock Test"
+msgstr "Import Mock Test results"
+
+msgid "Импорт соревнований"
+msgstr "Import competitions"
+
+msgid "Импорт составов подгрупп"
+msgstr "Import subgroup rosters"
+
+msgid "Импорт стипендий"
+msgstr "Import scholarships"
+
+msgid "Импорт требований вузов"
+msgstr "Import university requirements"
+
+msgid "Импорт через мастер"
+msgstr "Import through the wizard"
+
+msgid "Интерфейс"
+msgstr "Interface"
+
+msgid "Использование"
+msgstr "Usage"
+
+msgid "Использование доступно администратору и директору школы"
+msgstr "Usage is available to the administrator and school director"
+
+msgid "Карточка ученика"
+msgstr "Student card"
+
+msgid "Конструктор эссе"
+msgstr "Essay builder"
+
+msgid "Мои группы"
+msgstr "My groups"
+
+msgid "Неизвестная роль"
+msgstr "Unknown role"
+
+msgid "Неизвестное действие"
+msgstr "Unknown action"
+
+msgid "Неизвестное значение фильтра"
+msgstr "Unknown filter value"
+
+msgid "Неизвестный экран"
+msgstr "Unknown screen"
+
+msgid "Обновление отчётов родителям"
+msgstr "Refresh parent reports"
+
+msgid "Объяснение соответствия вузу"
+msgstr "Explain university suitability"
+
+msgid "Олимпиадная группа"
+msgstr "Olympiad group"
+
+msgid "Открытие экрана"
+msgstr "Open a screen"
+
+msgid "Отметка об отправке отчёта"
+msgstr "Mark a report as sent"
+
+msgid "Очередь"
+msgstr "Queue"
+
+msgid "Переключение вкладки"
+msgstr "Switch a tab"
+
+msgid "Подготовка"
+msgstr "Preparation"
+
+msgid "Подготовка текста отчёта"
+msgstr "Prepare report text"
+
+msgid "Подготовка файлов отчётов"
+msgstr "Prepare report files"
+
+msgid "Пользователей"
+msgstr "Users"
+
+msgid "Пользователь №{number}"
+msgstr "User #{number}"
+
+msgid "Последнее действие"
+msgstr "Last action"
+
+msgid "Правка отчёта родителям"
+msgstr "Edit a parent report"
+
+msgid "Проверка ДЗ"
+msgstr "Homework review"
+
+msgid "Проверка домашнего задания"
+msgstr "Review homework"
+
+msgid "Проверка задания"
+msgstr "Assignment review"
+
+msgid "Проверка отчётов родителям"
+msgstr "Check parent reports"
+
+msgid "Проверка требований вузов"
+msgstr "Verify university requirements"
+
+msgid "Проверьте начало и конец периода"
+msgstr "Check the start and end of the period"
+
+msgid "Разбор активности помощником"
+msgstr "Parse an activity with the assistant"
+
+msgid "Разбор изображения помощником"
+msgstr "Parse an image with the assistant"
+
+msgid "Разбор информации о вузе"
+msgstr "Parse university information"
+
+msgid "Разбор текста помощником"
+msgstr "Parse text with the assistant"
+
+msgid "Разбор файла помощником"
+msgstr "Parse a file with the assistant"
+
+msgid "Разрез"
+msgstr "Grouping"
+
+msgid "Расходы на ИИ"
+msgstr "AI costs"
+
+msgid "Результат подбора"
+msgstr "Selection result"
+
+msgid "Результаты Mock Test"
+msgstr "Mock Test results"
+
+msgid "Ресурс"
+msgstr "Resource"
+
+msgid "Ресурсы"
+msgstr "Resources"
+
+msgid "Риски"
+msgstr "Risks"
+
+msgid "Роадмап"
+msgstr "Roadmap"
+
+msgid "Роль на момент действия"
+msgstr "Role at the time of the action"
+
+msgid "Сборка отчётов родителям"
+msgstr "Build parent reports"
+
+msgid "Сводка"
+msgstr "Summary"
+
+msgid "Сводный вид"
+msgstr "Overview"
+
+msgid "Сдача домашнего задания"
+msgstr "Submit homework"
+
+msgid "Сервер"
+msgstr "Server"
+
+msgid "Скачивание выгрузки"
+msgstr "Download an export"
+
+msgid "Смена шаблона отчёта"
+msgstr "Change a report template"
+
+msgid "События"
+msgstr "Events"
+
+msgid "Сохранение итоговых оценок"
+msgstr "Save final grades"
+
+msgid "Справочник"
+msgstr "Directory"
+
+msgid "Справочник стипендий"
+msgstr "Scholarship directory"
+
+msgid "ТОП-30"
+msgstr "TOP-30"
+
+msgid "Таблица"
+msgstr "Table"
+
+msgid "Треки"
+msgstr "Tracks"
+
+msgid "Удалённый пользователь"
+msgstr "Deleted user"
+
+msgid "Успеваемость"
+msgstr "Academic performance"
+
+msgid "Установка пароля"
+msgstr "Set a password"
+
+msgid "Учителя"
+msgstr "Teachers"
+
+msgid "Экран"
+msgstr "Screen"
+
+msgid "Этот экран недоступен для записи действий"
+msgstr "This screen is not available for usage tracking"

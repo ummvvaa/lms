@@ -28,6 +28,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.curators import curated_group_ids, picked_groups
+from core import usage
 from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT
 from core.parallels import mock_groups, mocks_open, section_open
 from core.phrasing import counted
@@ -300,6 +301,8 @@ def mock_apply(request):
     except IntegrityError:
         return _bad(_("Mock Test этого экзамена для этой группы на эту дату уже загружен"))
 
+    if record.rows_applied:
+        usage.track(request, "import.mock.apply")
     return Response(
         {
             "import": record.pk,

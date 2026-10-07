@@ -28,6 +28,8 @@ from django.utils.functional import Promise
 from django.utils.translation import gettext as _
 from django.utils.translation import pgettext
 
+from core import usage
+
 #: сколько строк листа уходит в предпросмотр. Файл отдаётся целиком; экрану
 #: тысяча строк ни к чему — их число предпросмотр называет словами
 PREVIEW_ROWS = 500
@@ -224,4 +226,5 @@ def workbook_of_sheets(
         filename, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     response["Cache-Control"] = "private, no-store"
+    usage.track(request, "export.download")
     return response

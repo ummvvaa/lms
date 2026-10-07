@@ -7,9 +7,11 @@
  */
 import { createContext, useContext, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ApiError, get, post } from '../api/client'
+import { post } from '../api/client'
 import type { Me } from '../api/types'
-import { claimTab, releaseTab } from './tabOwner'
+import { releaseTab } from './tabOwner'
+import { claimSession, readSession } from './sessionRead'
+import { beginUsageSessionChange, finishUsageSessionChange } from '../usage/session'
 
 interface AuthValue {
   me: Me | null
@@ -31,46 +33,37 @@ const AuthContext = createContext<AuthValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
 
-  /**
-   * Во вкладке другой человек: память вкладки стёрта (`claimTab`), а с ней
-   * уходят и ответы прежнего пользователя из кэша — кроме самой сессии.
-   * Выход это делает сам; сюда попадает вход после истёкшей сессии
-   * и вход в соседней вкладке того же браузера.
-   */
-  const claim = (me: Me | null) => {
-    // открытые экраны перечитываются сразу, закрытые — забываются
-    if (me && claimTab(me.id))
-      void queryClient.resetQueries({ predicate: (query) => query.queryKey[0] !== 'me' })
-    return me
-  }
-
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['me'],
-    queryFn: async () => {
-      try {
-        return claim(await get<Me>('/auth/me/'))
-      } catch (error) {
-        // «не вошёл» — это только ответ сервера 401/403. Обрыв связи,
-        // перезапуск бэкенда и ответ прокси — не ответ: запрос остаётся
-        // на паузе до переподключения, сессия и экран не трогаются (D3)
-        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) return null
-        throw error
-      }
-    },
+    queryFn: () => readSession(queryClient),
     staleTime: 60_000,
   })
 
   const setMe = (me: Me | null) => {
-    claim(me)
+    finishUsageSessionChange(me?.id ?? null)
+    claimSession(queryClient, me)
     queryClient.setQueryData(['me'], me)
     // права и состав экранов зависят от роли — прежние ответы больше не годятся
     void queryClient.invalidateQueries({ queryKey: ['domains'] })
   }
 
+  const changingSession = async <T,>(request: () => Promise<T>): Promise<T> => {
+    beginUsageSessionChange()
+    await queryClient.cancelQueries({ queryKey: ['me'] })
+    try {
+      return await request()
+    } catch (error) {
+      // Ответ мог потеряться уже после смены cookie: прежнему кэшу не доверяем.
+      finishUsageSessionChange(null)
+      void queryClient.invalidateQueries({ queryKey: ['me'] })
+      throw error
+    }
+  }
+
   const password = useMutation({
     mutationFn: ({ email, password }: { email: string; password: string }) =>
       // почта, логин или подтверждённая личная почта — различает сервер
-      post<Me>('/auth/login/', { login: email, password }),
+      changingSession(() => post<Me>('/auth/login/', { login: email, password })),
     onSuccess: setMe,
   })
 
@@ -81,7 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const setByToken = useMutation({
-    mutationFn: (body: { token: string; new_password: string }) => post<Me>('/auth/password/set/', body),
+    mutationFn: (body: { token: string; new_password: string }) =>
+      changingSession(() => post<Me>('/auth/password/set/', body)),
     onSuccess: setMe,
   })
 
@@ -90,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const link = useMutation({
-    mutationFn: (token: string) => post<Me>('/auth/magic-link/redeem/', { token }),
+    mutationFn: (token: string) => changingSession(() => post<Me>('/auth/magic-link/redeem/', { token })),
     onSuccess: setMe,
   })
 
@@ -99,8 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const out = useMutation({
-    mutationFn: () => post<{ detail: string }>('/auth/logout/'),
+    mutationFn: () => changingSession(() => post<{ detail: string }>('/auth/logout/')),
     onSuccess: () => {
+      finishUsageSessionChange(null)
       releaseTab()
       queryClient.setQueryData(['me'], null)
       queryClient.clear()

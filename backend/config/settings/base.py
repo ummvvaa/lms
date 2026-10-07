@@ -176,6 +176,8 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "60/min",
         "user": "600/min",
+        # Буфер интерфейса уходит раз в десять секунд, пакет ограничен ста событиями.
+        "usage": "30/min",
         # вход: потолок поверх адресной блокировки. Низким его делать нельзя —
         # за одним школьным адресом сидит вся школа
         "login": env("LOGIN_RATE", "60/min"),
@@ -390,6 +392,11 @@ SYNC_EXTRA_HOSTS = env_list("SYNC_EXTRA_HOSTS", "")
 # (`core.school_rules`, разделы «Напоминания» и «Дедлайны и окна»), не здесь
 
 CELERY_BEAT_SCHEDULE = {
+    "purge-usage-events": {
+        "task": "core.purge_usage_events",
+        # Воскресенье, 04:15 по Алматы; оставляем последние 365 суток.
+        "schedule": crontab(hour=4, minute=15, day_of_week=0),
+    },
     "send-invite-queue": {
         "task": "accounts.drain_invite_queue",
         # Срок в базе: следующая отправка с 09:00 по Алматы. Повторный

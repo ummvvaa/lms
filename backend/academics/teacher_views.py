@@ -45,7 +45,7 @@ from academics.payloads import (
 )
 from academics.results import ResultRefused, calendar_period, course_context, late_fields, set_finals
 from academics.views import _excuse_dict, _forbid, _int, _not_found
-from core import school_rules, stored_text
+from core import school_rules, stored_text, usage
 from core.domains import ROLE_TEACHER
 from students.models import Student
 
@@ -441,6 +441,8 @@ def journal_final(request, pk: int):
         written = set_finals(course, quarter, rows, actor=request.user, scale=scale_of(calendar.year))
     except ResultRefused as error:
         return Response({"detail": str(error)}, status=http.HTTP_400_BAD_REQUEST)
+    if written:
+        usage.track(request, "journal.final.set")
     return Response({"written": written, **journal_payload(course, request.user, f"q{quarter.number}")})
 
 

@@ -431,3 +431,35 @@ class SchoolRule(models.Model):
 
     def __str__(self) -> str:
         return f"{self.code} = {self.value}"
+
+
+class UsageEvent(models.Model):
+    """Принятое действие без объекта, текста запроса и данных ученика."""
+
+    class Source(models.TextChoices):
+        SERVER = "server", gettext_lazy("Сервер")
+        CLIENT = "client", gettext_lazy("Интерфейс")
+
+    event_id = models.UUIDField(gettext_lazy("Идентификатор события"), unique=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=gettext_lazy("Пользователь"),
+        related_name="usage_events",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    role = models.CharField(gettext_lazy("Роль на момент действия"), max_length=32)
+    action = models.CharField(gettext_lazy("Действие"), max_length=64)
+    screen = models.CharField(gettext_lazy("Экран"), max_length=64)
+    occurred_at = models.DateTimeField(gettext_lazy("Когда"))
+    source = models.CharField(gettext_lazy("Источник"), max_length=6, choices=Source.choices)
+
+    class Meta:
+        verbose_name = gettext_lazy("Действие пользователя")
+        verbose_name_plural = gettext_lazy("Действия пользователей")
+        ordering = ("-occurred_at", "-pk")
+        indexes = [models.Index(fields=("occurred_at", "action"), name="usage_time_action_idx")]
+
+    def __str__(self) -> str:
+        return f"{self.action} · {self.occurred_at.isoformat()}"

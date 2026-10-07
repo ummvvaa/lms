@@ -18,6 +18,7 @@ import { Button } from '../components/ui/button'
 import { t, tn } from '../i18n'
 import { usePhone } from '../phone'
 import { formatDayMonth, formatDayMonthShort, formatYearMonth } from '../lib/format'
+import { useTrack } from '../usage/context'
 import './dashboards/student.css'
 
 const KIND_TONE: Record<string, CalendarCellTone> = {
@@ -33,6 +34,7 @@ const KIND_TONE: Record<string, CalendarCellTone> = {
 }
 
 export default function Calendar() {
+  const trackFilter = useTrack('filter.change')
   const { data, isLoading, error } = useCalendar()
   const navigate = useNavigate()
   const phone = usePhone()
@@ -90,13 +92,13 @@ export default function Calendar() {
   const monthCard = (
     <DataCard title={t('Месяц')}>
       <div className="stucal__head">
-        <Button variant="outline" size="icon-sm" aria-label={t('Прошлый месяц')} onClick={() => setShift(shift - 1)}>
+        <Button variant="outline" size="icon-sm" aria-label={t('Прошлый месяц')} onClick={() => { trackFilter(); setShift(shift - 1) }}>
           <Icon name="chevronLeft" size={15} />
         </Button>
         <span className="stucal__title">
           {formatYearMonth(month.getFullYear(), month.getMonth())}
         </span>
-        <Button variant="outline" size="icon-sm" aria-label={t('Следующий месяц')} onClick={() => setShift(shift + 1)}>
+        <Button variant="outline" size="icon-sm" aria-label={t('Следующий месяц')} onClick={() => { trackFilter(); setShift(shift + 1) }}>
           <Icon name="chevronRight" size={15} />
         </Button>
       </div>
@@ -172,7 +174,7 @@ export default function Calendar() {
           ]}
         />
         {view === 'month' && shift !== 0 && (
-          <Button variant="link" size="sm" onClick={() => setShift(0)}>
+          <Button variant="link" size="sm" onClick={() => { trackFilter(); setShift(0) }}>
             {t('К сегодня')}
           </Button>
         )}

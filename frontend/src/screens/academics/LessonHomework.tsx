@@ -228,7 +228,7 @@ export default function LessonHomeworkCards({
             <>
               <div className="hwset__opts">
                 <span className="t-caps">{t('Срок сдачи')}</span>
-                <Segmented value={due} onChange={setDue} label={t('Срок сдачи')} items={dueItems} />
+                <Segmented usageFilter={false} value={due} onChange={setDue} label={t('Срок сдачи')} items={dueItems} />
                 {due === 'custom' && (
                   <Field.Row>
                     <Field kind="date" name="due-day" label={t('День')} value={day} onChange={setDay} min={lesson.date} />
@@ -238,7 +238,7 @@ export default function LessonHomeworkCards({
               </div>
               <div className="hwset__opts">
                 <span className="t-caps">{t('После срока')}</span>
-                <Segmented value={policy} onChange={setPolicy} label={t('После срока')} items={policies} />
+                <Segmented usageFilter={false} value={policy} onChange={setPolicy} label={t('После срока')} items={policies} />
               </div>
             </>
           )}

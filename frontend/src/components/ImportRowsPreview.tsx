@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { t, tk } from '../i18n'
+import { useTrack } from '../usage/context'
 import { usePhone } from '../phone'
 import DataTable, { type Column } from './DataTable'
 import Field from './Field'
@@ -57,6 +58,7 @@ export function ImportPagination({
 /** Все строки доступны через поиск, фильтр состояния и страницы по 50. */
 export default function ImportPreview({ rows }: { rows: ImportPreviewRow[] }) {
   const phone = usePhone()
+  const trackFilter = useTrack('filter.change')
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const [requestedPage, setPage] = useState(1)
@@ -129,6 +131,7 @@ export default function ImportPreview({ rows }: { rows: ImportPreviewRow[] }) {
     <div className="import-preview">
       <div className="import-preview__filters">
         <Field
+          usageFilter
           name="import-search"
           label={t('Поиск по ФИО или записи')}
           value={query}
@@ -144,6 +147,7 @@ export default function ImportPreview({ rows }: { rows: ImportPreviewRow[] }) {
           size="sm"
           aria-pressed={!status}
           onClick={() => {
+            if (status) trackFilter()
             setStatus('')
             setPage(1)
           }}
@@ -159,6 +163,7 @@ export default function ImportPreview({ rows }: { rows: ImportPreviewRow[] }) {
               size="sm"
               aria-pressed={status === value}
               onClick={() => {
+                if (status !== value) trackFilter()
                 setStatus(value)
                 setPage(1)
               }}

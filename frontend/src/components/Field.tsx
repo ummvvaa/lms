@@ -16,11 +16,12 @@
  * `Field.Row` ставит два или три поля в ряд, на телефоне — друг под другом.
  * `Field.Static` — подпись и значение без поля, когда править нечего.
  */
-import { useId, type ReactNode } from 'react'
+import { useId, useRef, type ReactNode } from 'react'
 import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
 import { Textarea } from './ui/textarea'
 import { SelectField } from './SelectField'
+import { useTrack } from '../usage/context'
 
 export interface FieldOption {
   value: string
@@ -28,6 +29,8 @@ export interface FieldOption {
 }
 
 interface FieldBase {
+  /** Только фильтр списка; событие не содержит значения или подписи поля. */
+  usageFilter?: boolean
   name: string
   label: string
   /** подпись под полем: формат, пример, откуда берётся значение */
@@ -81,6 +84,15 @@ export interface CheckboxFieldProps extends FieldBase {
 export type FieldProps = TextFieldProps | TextareaFieldProps | SelectFieldProps | CheckboxFieldProps
 
 function Field(props: FieldProps) {
+  const trackFilter = useTrack('filter.change')
+  const focusValue = useRef('')
+  const filterFocus = () => {
+    if (props.usageFilter) focusValue.current = 'value' in props ? String(props.value ?? '') : ''
+  }
+  const filterBlur = () => {
+    if (props.usageFilter && 'value' in props && String(props.value ?? '') !== focusValue.current)
+      trackFilter()
+  }
   const generated = useId()
   const id = props.id ?? `field-${generated}`
   const hintId = `${id}-hint`
@@ -122,7 +134,10 @@ function Field(props: FieldProps) {
           <Checkbox
             {...shared}
             checked={props.checked}
-            onCheckedChange={(checked) => props.onChange?.(Boolean(checked))}
+            onCheckedChange={(checked) => {
+              if (props.usageFilter && Boolean(checked) !== props.checked) trackFilter()
+              props.onChange?.(Boolean(checked))
+            }}
           />
           <span className="field__checklabel">{props.label}</span>
         </label>
@@ -141,6 +156,8 @@ function Field(props: FieldProps) {
         rows={props.rows}
         readOnly={props.readOnly}
         autoFocus={props.autoFocus}
+        onFocus={filterFocus}
+        onBlur={filterBlur}
         onChange={(event) => props.onChange?.(event.target.value)}
       />
     )
@@ -150,7 +167,10 @@ function Field(props: FieldProps) {
         {...shared}
         aria-label={props.label}
         value={props.value === null || props.value === undefined ? '' : String(props.value)}
-        onChange={(event) => props.onChange?.(event.target.value)}
+        onChange={(event) => {
+          if (props.usageFilter && event.target.value !== String(props.value ?? '')) trackFilter()
+          props.onChange?.(event.target.value)
+        }}
       >
         {props.placeholder !== undefined && <option value="">{props.placeholder}</option>}
         {props.options.map((option) => (
@@ -175,6 +195,8 @@ function Field(props: FieldProps) {
         readOnly={props.readOnly}
         autoFocus={props.autoFocus}
         autoComplete={props.autoComplete}
+        onFocus={filterFocus}
+        onBlur={filterBlur}
         onChange={(event) => props.onChange?.(event.target.value)}
       />
     )

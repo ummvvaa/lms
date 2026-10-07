@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Role } from '../api/types'
-import { curatorMayOpen, homeworkReviewOpen, navFor, tabsFor } from './nav'
+import { curatorMayOpen, homeworkReviewOpen, navFor, tabsFor, usageOpen } from './nav'
 
 const reviewPath = '/homework-review'
 const reviewPages = [reviewPath, `${reviewPath}/42`]
@@ -41,6 +41,18 @@ describe('проверка ДЗ в навигации', () => {
   it('чужие разделы по-прежнему закрыты куратору', () => {
     for (const path of ['/users', '/import', '/school-settings']) {
       expect(curatorMayOpen(path)).toBe(false)
+    }
+  })
+})
+
+
+describe('usage permissions', () => {
+  it('exposes analytics only to the administrator and school director, including direct navigation', () => {
+    const roles: Role[] = ['student', 'teacher', 'curator', 'director_exam', 'admin', 'director_behavior', 'director_admission', 'director_talent', 'director_sport']
+    for (const role of roles) {
+      const allowed = role === 'admin' || role === 'director_behavior'
+      expect(usageOpen(role)).toBe(allowed)
+      expect(navFor(role).filter((item) => item.path === '/usage')).toHaveLength(allowed ? 1 : 0)
     }
   })
 })

@@ -53,7 +53,7 @@ from academics.results import (
     unexcused_days,
 )
 from accounts.curators import curated_group_ids
-from core import school_rules, stored_text
+from core import school_rules, stored_text, usage
 from core.domains import ROLE_CURATOR, ROLE_STUDENT, ROLE_TEACHER
 from core.scope import sees_student, visible_students
 from students.models import Student, StudyGroup
@@ -563,12 +563,15 @@ def lesson_attendance(request, pk: int):
     rows = request.data.get("rows") or []
     if not isinstance(rows, list):
         return _bad(_("Не переданы отметки"))
+    was_marked = lesson.marked_at is not None
     try:
         result = marking.save_attendance(
             lesson, rows, actor=request.user, calendar=calendar, all_present=bool(request.data.get("all_present"))
         )
     except marking.MarkRefused as error:
         return _bad(str(error))
+    if result["written"] or result["grades_dropped"] or not was_marked:
+        usage.track(request, "journal.attendance.set")
     lesson.refresh_from_db()
     scale = scale_of(calendar.year)
     return Response({**result, "lesson": lesson_dict(lesson, calendar), "roster": _roster(lesson, calendar, scale)})
@@ -603,6 +606,7 @@ def lesson_grade(request, pk: int):
         )
     except marking.MarkRefused as error:
         return _bad(str(error))
+    usage.track(request, "journal.grade.set")
     lesson.refresh_from_db()
     return Response(
         {

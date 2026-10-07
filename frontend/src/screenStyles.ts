@@ -42,3 +42,5 @@ import './screens/resources.css'
 import './screens/career.css'
 import './screens/homework/myWork.css'
 import './screens/card.css'
+
+import './screens/usage.css'

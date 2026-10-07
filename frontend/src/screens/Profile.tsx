@@ -39,10 +39,11 @@ function SettingsBlock() {
     <DataCard title={t('Тема')}>
       {languagesOf(me).length > 1 && (
         <Field.Static label={t('Язык')}>
-          <Segmented value={offeredLanguage(me)} onChange={(value) => prefs.mutate({ language: value })} label={t('Язык')} items={languagesOf(me).map((item) => ({ value: item.value, label: item.label }))} />
+          <Segmented usageFilter={false} value={offeredLanguage(me)} onChange={(value) => prefs.mutate({ language: value })} label={t('Язык')} items={languagesOf(me).map((item) => ({ value: item.value, label: item.label }))} />
         </Field.Static>
       )}
       <Segmented
+        usageFilter={false}
         value={me.theme}
         onChange={(value) => {
           applyTheme(value)

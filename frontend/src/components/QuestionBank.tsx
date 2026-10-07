@@ -135,6 +135,7 @@ export function QuestionBank() {
           ] as const
         ).map(([name, blank, options]) => (
           <SelectField
+            usageFilter
             key={name}
             aria-label={t(blank)}
             value={filters[name]}

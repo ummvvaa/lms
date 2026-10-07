@@ -15,6 +15,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core import usage
 from core.actor import importing
 from core.deletion import ArchiveDeleteMixin, HardDeleteMixin, refuse
 from core.domains import ROLE_STUDENT, can_write, owns_model
@@ -325,6 +326,8 @@ def import_requirements_view(request):
         batch.note = gettext_noop("Отмена вернёт прежние пороги, но заведённые программы и требования не удалит")
     batch.save(update_fields=["rows_created", "rows_updated", "rows_failed", "note"])
     payload["batch"] = batch.pk
+    if batch.rows_created or batch.rows_updated:
+        usage.track(request, "import.requirements.apply")
     return Response(payload)
 
 
@@ -1092,4 +1095,6 @@ def import_scholarships_view(request):
         batch.note = gettext_noop("Отмена вернёт прежние значения, но заведённые стипендии не удалит")
     batch.save(update_fields=["rows_created", "rows_updated", "rows_failed", "note"])
     payload["batch"] = batch.pk
+    if batch.rows_created or batch.rows_updated:
+        usage.track(request, "import.scholarships.apply")
     return Response(payload)

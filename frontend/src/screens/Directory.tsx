@@ -183,7 +183,7 @@ export default function Directory() {
       <div className="acad__stack">
         <PhoneFold active={Boolean(search)}>
           <div className="acad__toolbar">
-            <Field name="search" label={t('Поиск')} value={search} placeholder={t('Найти вуз по названию или стране')} onChange={setSearch} />
+            <Field usageFilter name="search" label={t('Поиск')} value={search} placeholder={t('Найти вуз по названию или стране')} onChange={setSearch} />
           </div>
         </PhoneFold>
         {list.isLoading && <Loading kind="table" />}

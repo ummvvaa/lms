@@ -4,6 +4,7 @@
  * форма та же, что в «Пользователях» (ссылка на пароль уходит на почту).
  */
 import { useEffect, useState } from 'react'
+import { useTrack } from '../../usage/context'
 import { toast } from 'sonner'
 import {
   useAcadMeta,
@@ -241,6 +242,7 @@ function TeacherDrawer({ id, teachers, onClose }: { id: number; teachers: Teache
 }
 
 export default function Teachers() {
+  const trackFilter = useTrack('filter.change')
   const { data, isLoading, error } = useTeachers()
   const remindAll = useRemindAllTeachers()
   const [filter, setFilter] = useState<Filter>('all')
@@ -334,12 +336,12 @@ export default function Teachers() {
               ['free', t('Без уроков'), data.rows.filter((row) => !row.hours).length],
             ] as [Filter, string, number][]
           ).map(([value, label, count]) => (
-            <Button key={value} variant={filter === value ? 'default' : 'outline'} size="sm" onClick={() => setFilter(value)}>
+            <Button key={value} variant={filter === value ? 'default' : 'outline'} size="sm" onClick={() => { if (value !== filter) trackFilter(); setFilter(value) }}>
               {label} <Chip size="sm">{count}</Chip>
             </Button>
           ))}
         </div>
-        <Field kind="text" name="search" label={t('Найти учителя')} value={search} onChange={setSearch} />
+        <Field usageFilter kind="text" name="search" label={t('Найти учителя')} value={search} onChange={setSearch} />
       </div>
       <div className="acad__stack">
         <div className="card">

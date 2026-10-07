@@ -48,6 +48,7 @@ from accounts.serializers import (
     UserWriteSerializer,
 )
 from accounts.services import create_user, deactivate, link_email_identity, touch_identity
+from core import usage
 from core.models import ArchiveEntry
 from core.phrasing import tn
 
@@ -96,6 +97,7 @@ def _start_session(request, user):
     get_token(request)
     # вошёл по логину — почты у него может не быть вовсе
     touch_identity(user, user.email)
+    usage.track(request, "auth.login")
     return Response(MeSerializer(user).data)
 
 
@@ -412,6 +414,8 @@ def users(request):
         # в журнал, и без ссылки на экране завести человека нечем
         payload = UserSerializer(user).data
         payload["invite"] = _invite_payload(user, token, sent_to)
+        if token:
+            usage.track(request, "access.link.issue")
         return Response(payload, status=status.HTTP_201_CREATED)
 
     from accounts import states
@@ -671,6 +675,8 @@ def user_invite_link(request, pk: int):
 
     token, sent_to = magic_link.issue_for(user, purpose=LinkPurpose.INVITE, actor=request.user)
     log.info("Ссылка-приглашение для %s выпущена администратором %s", user.handle, request.user.handle)
+    if token:
+        usage.track(request, "access.link.issue")
     return Response(_invite_payload(user, token, sent_to))
 
 
@@ -713,6 +719,8 @@ def student_password_link(request, pk: int):
         text=f"ссылка на пароль до {moment}" + (f", копия письмом на {sent_to}" if sent_to else ""),
         actor=request.user,
     )
+    if token:
+        usage.track(request, "access.student_link.issue")
     return Response(
         {
             "link": magic_link.link_for(LinkPurpose.RESET, token),
@@ -792,6 +800,8 @@ def users_bulk(request):
         from accounts import mailing
 
         result = mailing.bulk_invite(people, actor=request.user, force=payload.validated_data["force"])
+        if result["sent"] + result["queued"]:
+            usage.track(request, "access.invite.bulk")
         return Response({**_mailing_result(result), "done": result["sent"], "issued": []})
 
     done, skipped, issued = 0, [], []
@@ -956,6 +966,7 @@ def credentials_export(request):
 
     response = HttpResponse(body, content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = 'attachment; filename="uchetnye-zapisi.csv"'
+    usage.track(request, "export.download")
     return response
 
 
@@ -987,6 +998,8 @@ def invite(request):
                     raise
         people.append(user)
     result = mailing.bulk_invite(people, actor=request.user, force=serializer.validated_data["force"])
+    if result["sent"] + result["queued"]:
+        usage.track(request, "access.invite.bulk")
     payload = _mailing_result(result)
     if created:
         payload["detail"] = _("Заведено учётных записей: {created}. {result}").format(

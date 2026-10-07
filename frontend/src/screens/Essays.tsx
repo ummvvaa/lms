@@ -638,6 +638,7 @@ export default function Essays() {
         actions={
           <>
             <SelectField
+              usageFilter
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
               aria-label={t('Статус')}
@@ -650,6 +651,7 @@ export default function Essays() {
               ))}
             </SelectField>
             <SelectField
+              usageFilter
               value={typeFilter}
               onChange={(event) => setTypeFilter(event.target.value)}
               aria-label={t('Тип документа')}

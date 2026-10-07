@@ -22,9 +22,11 @@ import { NativeSelect } from './ui/native-select'
 import { Button } from './ui/button'
 import { Row, Rows } from './patterns'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet'
+import { useTrack } from '../usage/context'
 
 type SelectProps = Omit<React.ComponentProps<'select'>, 'size'> & {
   size?: 'sm' | 'default'
+  usageFilter?: boolean
 }
 
 interface Choice {
@@ -63,13 +65,18 @@ function textOf(node: ReactNode): string {
   return ''
 }
 
-export function SelectField({ children, value, onChange, className, disabled, ...rest }: SelectProps) {
+export function SelectField({ children, value, onChange, className, disabled, usageFilter = false, ...rest }: SelectProps) {
   const phone = usePhone()
   const [open, setOpen] = useState(false)
+  const trackFilter = useTrack('filter.change')
+  const change = (event: ChangeEvent<HTMLSelectElement>) => {
+    if (usageFilter && event.target.value !== String(value ?? '')) trackFilter()
+    onChange?.(event)
+  }
 
   if (!phone)
     return (
-      <NativeSelect value={value} onChange={onChange} className={className} disabled={disabled} {...rest}>
+      <NativeSelect value={value} onChange={change} className={className} disabled={disabled} {...rest}>
         {children}
       </NativeSelect>
     )
@@ -80,7 +87,7 @@ export function SelectField({ children, value, onChange, className, disabled, ..
   const pick = (next: string) => {
     setOpen(false)
     // вызывающий код читает `event.target.value` — отдаём ему ровно это
-    onChange?.({ target: { value: next } } as ChangeEvent<HTMLSelectElement>)
+    change({ target: { value: next } } as ChangeEvent<HTMLSelectElement>)
   }
 
   return (

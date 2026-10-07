@@ -9,6 +9,7 @@ import ConnectionBanner from './components/ConnectionBanner'
 import OfflineScreen from './components/OfflineScreen'
 import { useConnection } from './api/useConnection'
 import { AuthProvider, useAuth } from './auth/AuthContext'
+import UsageProvider, { UsageScreenVisit } from './usage/UsageProvider'
 import { language, languageReady, loadLanguage, rememberLanguage, setLanguage } from './i18n'
 import { offeredLanguage } from './components/ProfileMenu'
 import { applyTheme } from './theme'
@@ -22,6 +23,7 @@ import {
   DOMAIN_ONLY,
   homeworkReviewOpen,
   IMPORT_ROLES,
+  usageOpen,
   SCHEDULE_EDIT_ONLY,
   REPORT_ROLES,
   SCHEDULE_EDITORS,
@@ -57,6 +59,7 @@ import { t } from './i18n'
 // росла с каждым разделом, а ученик скачивал журналы, импорт и обзор школы.
 // Вход и смена пароля — сразу: они нужны до того, как известна роль
 const Users = lazy(() => import('./screens/Users'))
+const Usage = lazy(() => import('./screens/Usage'))
 const CuratorQueue = lazy(() => import('./screens/curator/Queue'))
 const CuratorStudents = lazy(() => import('./screens/curator/Students'))
 const CuratorTasks = lazy(() => import('./screens/curator/Tasks'))
@@ -192,6 +195,7 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
     (ADMIN_ONLY.includes(location.pathname) && me.role !== 'admin') ||
     // мастер импорта — у администратора и Кымбат; остальные вносят руками
     (location.pathname === '/import' && !IMPORT_ROLES.includes(me.role)) ||
+    (location.pathname === '/usage' && !usageOpen(me.role)) ||
     // справочник ведёт его домен: чужому директору там нечего делать
     (location.pathname === '/subjects' && me.role !== 'director_talent') ||
     (location.pathname === '/sport-types' && me.role !== 'director_sport') ||
@@ -220,7 +224,12 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
     (CURATOR_ONLY.includes(location.pathname) && me.role !== 'curator')
   if (forbidden) return <Navigate to="/dashboard" replace />
 
-  return <Shell />
+  return (
+    <>
+      <UsageScreenVisit />
+      <Shell />
+    </>
+  )
 }
 
 /**
@@ -297,6 +306,7 @@ function Routing() {
         <Route path="/suggestions/:id" element={<Suggestions />} />
         <Route path="/digest" element={<Digest />} />
         <Route path="/users" element={<Users />} />
+        <Route path="/usage" element={<Usage />} />
 
         {/* Кабинет куратора (фаза 61): очередь, ученики, задачи, свои группы */}
         <Route path="/queue" element={<CuratorQueue />} />
@@ -397,9 +407,11 @@ export default function App() {
           экрана, человек видит заглушку загрузки, а не прежний экран без отклика */}
       <BrowserRouter useTransitions={false}>
         <AuthProvider>
-          <PersonalSettings>
-            <Routing />
-          </PersonalSettings>
+          <UsageProvider>
+            <PersonalSettings>
+              <Routing />
+            </PersonalSettings>
+          </UsageProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

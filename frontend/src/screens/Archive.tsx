@@ -257,7 +257,7 @@ export default function Archive() {
 
       <div className="acad__toolbar">
         <Segmented<string> value={kind} onChange={setKind} label={t('Тип записи')} items={[{ value: '', label: t('Все {count}', { count: all.length }) }, ...kinds.map((value) => ({ value, label: `${value} ${all.filter((row) => row.kind === value).length}` }))]} />
-        <Field kind="checkbox" name="pending" label={t('Показывать только то, что ещё в архиве')} checked={onlyPending} onChange={setOnlyPending} />
+        <Field usageFilter kind="checkbox" name="pending" label={t('Показывать только то, что ещё в архиве')} checked={onlyPending} onChange={setOnlyPending} />
       </div>
 
       {flash && (

@@ -147,6 +147,7 @@ export default function BuildReportDialog({
           <div className="field">
             <span className="field__label t-caps">{t('Кому')}</span>
             <Segmented<Who>
+              usageFilter={false}
               value={who}
               onChange={setWho}
               label={t('Кому')}
@@ -190,6 +191,7 @@ export default function BuildReportDialog({
           <div className="field">
             <span className="field__label t-caps">{t('Формат файла')}</span>
             <Segmented<FileType>
+              usageFilter={false}
               value={format}
               onChange={setFormat}
               label={t('Формат файла')}

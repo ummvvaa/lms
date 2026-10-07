@@ -214,7 +214,7 @@ export default function ScheduleEditor() {
                   { value: 'room', label: t('По кабинету') },
                 ]}
               />
-              <Field kind="select" name="key" label={view === 'group' ? t('Группа') : view === 'teacher' ? t('Учитель') : t('Кабинет')} value={key || data.key} onChange={setKey} options={keyOptions} />
+              <Field usageFilter kind="select" name="key" label={view === 'group' ? t('Группа') : view === 'teacher' ? t('Учитель') : t('Кабинет')} value={key || data.key} onChange={setKey} options={keyOptions} />
             </div>
             <WeekNav start={from} today={today} onChange={setStart} />
           </div>

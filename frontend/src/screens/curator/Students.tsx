@@ -145,7 +145,7 @@ export default function CuratorStudents() {
             })),
           ]}
         />
-        <Field kind="text" name="search" label={t('Фильтр по имени')} value={search} onChange={setSearch} placeholder={t('Фамилия или имя')} className="cfilters__search" />
+        <Field usageFilter kind="text" name="search" label={t('Фильтр по имени')} value={search} onChange={setSearch} placeholder={t('Фамилия или имя')} className="cfilters__search" />
       </div>
 
       <div className="card">

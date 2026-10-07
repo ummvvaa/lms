@@ -25,6 +25,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core import usage
 from core.domains import ROLE_STUDENT
 from students import admission_import, credentials
 from students.models import AdmissionImport, CredentialKind, Student
@@ -366,6 +367,8 @@ def admission_apply(request):
         )
     except admission_import.FileRejected as error:
         return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+    if record.students_updated or record.attempts_created or record.documents_created or record.credentials_saved:
+        usage.track(request, "import.wizard.apply")
     return Response(admission_import.record_payload(record), status=status.HTTP_201_CREATED)
 
 

@@ -1,4 +1,5 @@
 /** Мелкие примитивы интерфейса: шапка экрана, показатель, чип, карточка блока. */
+import { useTrack } from '../usage/context'
 import {
   Children,
   Fragment,
@@ -252,6 +253,7 @@ export function ScreenTabs<T extends string>({
   onChange: (next: T) => void
   items: { value: T; label: ReactNode }[]
 }) {
+  const track = useTrack('tab.change')
   // на телефоне полоса прокручивается вбок (фаза 75), и выбранная
   // вкладка обязана быть на виду — иначе человек не знает, где он
   const box = useRef<HTMLDivElement>(null)
@@ -263,7 +265,14 @@ export function ScreenTabs<T extends string>({
 
   return (
     <div ref={box}>
-      <Tabs value={value} onValueChange={(next) => onChange(next as T)} className="tabs">
+      <Tabs
+        value={value}
+        onValueChange={(next) => {
+          if (next !== value) track()
+          onChange(next as T)
+        }}
+        className="tabs"
+      >
         <TabsList className="tabs__list">
           <TabsIndicator />
           {items.map((item) => (

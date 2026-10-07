@@ -55,7 +55,7 @@ from academics.payloads import (
 from academics.results import calendar_period, course_context, prime_lessons, student_attendance, student_summary
 from academics.views import _bad, _cohort, _date, _forbid, _group_param, _int, _lesson_for, _not_found, _teacher
 from accounts.models import Role, User
-from core import school_rules, stored_text
+from core import school_rules, stored_text, usage
 from core.domains import ROLE_ADMIN
 from core.i18n import language_of, render
 from students.models import Student, StudyGroup
@@ -606,6 +606,7 @@ def cohort_members_import(request):
     if not found.ok:
         return Response({**payload, "detail": _("Сначала исправьте ошибки в файле")}, status=http.HTTP_400_BAD_REQUEST)
     subgroup_members.apply(found, since, actor=request.user)
+    usage.track(request, "import.cohorts.apply")
     return Response({**payload, "applied": True})
 
 
@@ -1604,6 +1605,12 @@ def schedule_import_apply(request):
         return _bad(str(error))
     if report["errors"]:
         return Response(report, status=http.HTTP_400_BAD_REQUEST)
+    if report["applied"] and (
+        any(part["created"] or part["updated"] for part in report["sections"])
+        or report["lessons_to_create"]
+        or report["curator_changes"]
+    ):
+        usage.track(request, "import.schedule.apply")
     response = Response(report)
     # пароли открытым текстом: ни в кэш браузера, ни в прокси
     response["Cache-Control"] = "private, no-store"

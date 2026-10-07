@@ -29,6 +29,7 @@ import { Row, Rows, Segmented } from './patterns'
 import { Button } from './ui/button'
 import CalendarCell from './CalendarCell'
 import { formatDayMonthShort, formatYearMonth, monthName, weekdayName } from '../lib/format'
+import { useTrack } from '../usage/context'
 import './calendar-card.css'
 
 /** Дни недели от понедельника на языке интерфейса: «Пн», «Дс», «Mon». */
@@ -109,6 +110,7 @@ export default function CalendarCard({
   withDateColumn?: boolean
 }) {
   const navigate = useNavigate()
+  const trackFilter = useTrack('filter.change')
   const phone = usePhone()
   const [shift, setShift] = useState(0)
   const [mode, setMode] = useState<Mode>(() => storedMode(storageKey))
@@ -154,10 +156,10 @@ export default function CalendarCard({
       <b>
         {formatYearMonth(month.getFullYear(), month.getMonth())}
       </b>
-      <Button variant="ghost" size="icon-sm" className="calcard__nav" onClick={() => setShift((n) => n - 1)} aria-label={t('Предыдущий месяц')}>
+      <Button variant="ghost" size="icon-sm" className="calcard__nav" onClick={() => { trackFilter(); setShift((n) => n - 1) }} aria-label={t('Предыдущий месяц')}>
         <Icon name="chevronLeft" size={14} />
       </Button>
-      <Button variant="ghost" size="icon-sm" className="calcard__nav" onClick={() => setShift((n) => n + 1)} aria-label={t('Следующий месяц')}>
+      <Button variant="ghost" size="icon-sm" className="calcard__nav" onClick={() => { trackFilter(); setShift((n) => n + 1) }} aria-label={t('Следующий месяц')}>
         <Icon name="chevronRight" size={14} />
       </Button>
     </div>

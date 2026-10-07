@@ -19,7 +19,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
 from accounts.curators import curated_group_ids, picked_groups
-from core import jobs
+from core import jobs, usage
 from core.domains import DOMAINS, ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, curator_confirms, domain_of_role
 from core.scope import sees_student
 from suggestions import commands as command_registry
@@ -509,6 +509,7 @@ def paste(request):
         retry_task="suggestions.parse_paste",
         retry_payload=kwargs,
     )
+    usage.track(request, "assistant.text.parse")
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
 
@@ -578,6 +579,7 @@ def upload(request):
         retry_task="suggestions.parse_file",
         retry_payload=kwargs,
     )
+    usage.track(request, "assistant.file.parse")
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
 
@@ -638,6 +640,7 @@ def explain_match(request):
         retry_task="suggestions.explain_match",
         retry_payload=kwargs,
     )
+    usage.track(request, "assistant.match.explain")
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
 
@@ -672,6 +675,7 @@ def essay_questions(request):
         retry_task="suggestions.essay_questions",
         retry_payload=kwargs,
     )
+    usage.track(request, "assistant.essay.questions")
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
 
@@ -740,6 +744,7 @@ def run_operation(request):
         retry_task="suggestions.run_operation",
         retry_payload=kwargs,
     )
+    usage.track(request, "assistant.operation.start")
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
 
@@ -765,6 +770,7 @@ def parse_university(request):
         retry_task="suggestions.parse_university",
         retry_payload=kwargs,
     )
+    usage.track(request, "assistant.university.parse")
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
 
@@ -803,6 +809,7 @@ def verify_requirements(request):
         retry_task="suggestions.verify_requirements",
         retry_payload=kwargs,
     )
+    usage.track(request, "assistant.requirements.verify")
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
 
@@ -836,6 +843,7 @@ def parse_activity(request):
         retry_task="suggestions.parse_activity",
         retry_payload=kwargs,
     )
+    usage.track(request, "assistant.activity.parse")
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
 
@@ -891,6 +899,7 @@ def parse_image(request):
         task_id=task.id,
         link=f"/students/{payload.validated_data['student']}",
     )
+    usage.track(request, "assistant.image.parse")
     return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
 
 
@@ -1027,6 +1036,7 @@ def assistant_ask(request):
     if not thread.title:
         thread.title = question[:200]
     thread.save(update_fields=["title", "updated_at"])
+    usage.track(request, "assistant.ask")
 
     return Response(
         {

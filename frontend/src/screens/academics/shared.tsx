@@ -20,6 +20,7 @@ import { toast } from 'sonner'
 import { markTone, useSetGrade, type AcadDay, type AcadLesson, type AcadMark, type AcadSubject, type AcadWeek, type AcadWeekRow } from '../../api/academics'
 import { mondayOf, shiftDay, timeInSchoolZone } from '../../lib/dates'
 import { formatDayMonth } from '../../lib/format'
+import { useTrack } from '../../usage/context'
 import './academics.css'
 
 /** «25 сентября» из `ГГГГ-ММ-ДД`. */
@@ -496,20 +497,25 @@ function WeekRow({
 
 /** Стрелки недели и «К сегодня». */
 export function WeekNav({ start, today, onChange }: { start: string; today: string; onChange: (start: string) => void }) {
+  const trackFilter = useTrack('filter.change')
+  const change = (next: string) => {
+    if (next !== start) trackFilter()
+    onChange(next)
+  }
   const end = addDays(start, 4)
   return (
     <div className="wknav__group">
-      <Button variant="outline" size="icon-sm" aria-label={t('Прошлая неделя')} onClick={() => onChange(addDays(start, -7))}>
+      <Button variant="outline" size="icon-sm" aria-label={t('Прошлая неделя')} onClick={() => change(addDays(start, -7))}>
         <Icon name="chevronLeft" size={15} />
       </Button>
       <span className="wknav__title">
         {Number(start.slice(8))}–{dateWords(end)}
       </span>
-      <Button variant="outline" size="icon-sm" aria-label={t('Следующая неделя')} onClick={() => onChange(addDays(start, 7))}>
+      <Button variant="outline" size="icon-sm" aria-label={t('Следующая неделя')} onClick={() => change(addDays(start, 7))}>
         <Icon name="chevronRight" size={15} />
       </Button>
       {weekStart(today) !== start && (
-        <Button variant="link" size="sm" onClick={() => onChange(weekStart(today))}>
+        <Button variant="link" size="sm" onClick={() => change(weekStart(today))}>
           {t('К сегодня')}
         </Button>
       )}
@@ -671,6 +677,7 @@ export function GroupPick({
   if (items.length <= 5) return <Segmented value={value} onChange={onChange} label={t('Группа')} items={items} />
   return (
     <Field
+      usageFilter
       kind="select"
       name="group"
       label={t('Группа')}

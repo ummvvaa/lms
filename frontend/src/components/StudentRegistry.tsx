@@ -7,6 +7,7 @@
  * нет домена» — пункт меню вёл в тупик.
  */
 import { useState } from 'react'
+import { useTrack } from '../usage/context'
 import { useNavigate } from 'react-router'
 import { useStudents } from '../api/hooks'
 import AddStudent from './AddStudent'
@@ -18,6 +19,7 @@ import { Input } from './ui/input'
 import { Button } from './ui/button'
 
 export default function StudentRegistry() {
+  const trackFilter = useTrack('filter.change')
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const students = useStudents({ search, page_size: 500 })
@@ -32,6 +34,7 @@ export default function StudentRegistry() {
 
       <div className="toolbar">
         <Input
+          usageFilter
           placeholder={t('Поиск по имени или почте')}
           aria-label={t('Поиск по имени')}
           value={search}
@@ -55,7 +58,7 @@ export default function StudentRegistry() {
               : t('Заведите первого ученика руками или загрузите список файлом.')
           }
           action={search ? t('Очистить поиск') : undefined}
-          onAction={search ? () => setSearch('') : undefined}
+          onAction={search ? () => { trackFilter(); setSearch('') } : undefined}
         />
       )}
 

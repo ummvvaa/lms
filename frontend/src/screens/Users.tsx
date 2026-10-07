@@ -449,12 +449,12 @@ export default function Users() {
         <div className="acad__stack">
           <PhoneFold active={Boolean(search || roleFilter || groupFilter || parallelFilter || neverLoggedIn)}>
             <div className="acad__toolbar">
-              <Field name="search" label={t('Поиск')} value={search} placeholder={t('Поиск по имени или почте')} onChange={(value) => setFilter('search', value)} />
-              <Field kind="select" name="role" label={t('Роль')} value={roleFilter} onChange={(value) => setFilter('role', value)} options={[{ value: '', title: t('Все роли') }, ...ROLES.map((r) => ({ value: r.value, title: t(r.title) }))]} />
-              <Field kind="select" name="group" label={t('Группа')} value={groupFilter} onChange={(value) => setFilter('group', value)} options={[{ value: '', title: t('Все группы') }, ...(page?.groups ?? []).map((code) => ({ value: code, title: code }))]} />
-              <Field kind="select" name="parallel" label={t('Параллель')} value={parallelFilter} onChange={(value) => setFilter('parallel', value)} options={PARALLEL_FILTER.map((item) => ({ value: item.value, title: item.value ? item.title : t(item.title) }))} />
-              <Field kind="checkbox" name="inactive" label={t('Показать неактивных ({n})', { n: inactive })} checked={showInactive} onChange={setShowInactive} />
-              <Field kind="checkbox" name="never_logged_in" label={t('Не входили ни разу')} checked={neverLoggedIn} onChange={(value) => setFilter('never_logged_in', value ? 'true' : '')} />
+              <Field usageFilter name="search" label={t('Поиск')} value={search} placeholder={t('Поиск по имени или почте')} onChange={(value) => setFilter('search', value)} />
+              <Field usageFilter kind="select" name="role" label={t('Роль')} value={roleFilter} onChange={(value) => setFilter('role', value)} options={[{ value: '', title: t('Все роли') }, ...ROLES.map((r) => ({ value: r.value, title: t(r.title) }))]} />
+              <Field usageFilter kind="select" name="group" label={t('Группа')} value={groupFilter} onChange={(value) => setFilter('group', value)} options={[{ value: '', title: t('Все группы') }, ...(page?.groups ?? []).map((code) => ({ value: code, title: code }))]} />
+              <Field usageFilter kind="select" name="parallel" label={t('Параллель')} value={parallelFilter} onChange={(value) => setFilter('parallel', value)} options={PARALLEL_FILTER.map((item) => ({ value: item.value, title: item.value ? item.title : t(item.title) }))} />
+              <Field usageFilter kind="checkbox" name="inactive" label={t('Показать неактивных ({n})', { n: inactive })} checked={showInactive} onChange={setShowInactive} />
+              <Field usageFilter kind="checkbox" name="never_logged_in" label={t('Не входили ни разу')} checked={neverLoggedIn} onChange={(value) => setFilter('never_logged_in', value ? 'true' : '')} />
             </div>
           </PhoneFold>
 

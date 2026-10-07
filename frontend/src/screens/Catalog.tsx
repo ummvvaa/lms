@@ -8,6 +8,7 @@
  * (инвариант №10).
  */
 import { useState } from 'react'
+import { useTrack } from '../usage/context'
 import { useAddToMyList, useCatalog, useCatalogFacets, usePickPrograms, useRemoveFromMyList, useWhatIf, type CatalogCard } from '../api/hooks'
 import DataTable, { type Column } from '../components/DataTable'
 import Field from '../components/Field'
@@ -146,11 +147,11 @@ function WhatIfPanel() {
         <DataCard title={t('Если сдать лучше')}>
           <div className="catalog__sliders">
             <span className="t-caps">IELTS</span>
-            <Segmented value={ielts} onChange={(value) => { setIelts(value); run({ ielts: value }) }} label="IELTS" items={steps([0, 0.5, 1, 1.5, 2])} />
+            <Segmented usageFilter={false} value={ielts} onChange={(value) => { setIelts(value); run({ ielts: value }) }} label="IELTS" items={steps([0, 0.5, 1, 1.5, 2])} />
             <span className="t-caps">SAT</span>
-            <Segmented value={sat} onChange={(value) => { setSat(value); run({ sat: value }) }} label="SAT" items={steps([0, 50, 100, 150, 200, 300])} />
+            <Segmented usageFilter={false} value={sat} onChange={(value) => { setSat(value); run({ sat: value }) }} label="SAT" items={steps([0, 50, 100, 150, 200, 300])} />
             <span className="t-caps">GPA</span>
-            <Segmented value={gpa} onChange={(value) => { setGpa(value); run({ gpa: value }) }} label="GPA" items={steps([0, 0.1, 0.2, 0.3, 0.5])} />
+            <Segmented usageFilter={false} value={gpa} onChange={(value) => { setGpa(value); run({ gpa: value }) }} label="GPA" items={steps([0, 0.1, 0.2, 0.3, 0.5])} />
           </div>
         </DataCard>
       </div>
@@ -208,6 +209,7 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
 }
 
 export default function Catalog() {
+  const trackFilter = useTrack('filter.change')
   const [mode, setMode] = useState<Mode>('catalog')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const facets = useCatalogFacets()
@@ -261,12 +263,12 @@ export default function Catalog() {
   ]
 
   const filterCard = (
-    <DataCard title={t('Фильтры')} right={hasFilters ? <Button variant="link" size="sm" onClick={() => setFilters({})}>{t('Сбросить')}</Button> : undefined}>
-      <Field kind="text" name="search" label={t('Поиск')} value={filters.search ?? ''} onChange={(value) => setFilter('search', value)} placeholder={t('Вуз или программа')} />
-      <Field kind="select" name="level" label={t('Соответствие')} value={filters.level ?? ''} onChange={(value) => setFilter('level', value)} placeholder={t('Любое')} options={(facets.data?.levels ?? []).map((level) => ({ value: level.code, title: `${level.title} · ${level.from}–${level.to}%` }))} />
-      <Field kind="select" name="country" label={t('Страна')} value={filters.country ?? ''} onChange={(value) => setFilter('country', value)} placeholder={t('Все страны')} options={(facets.data?.countries ?? []).map((country) => ({ value: country, title: t(country) }))} />
-      <Field kind="select" name="major" label={t('Специальность')} value={filters.major ?? ''} onChange={(value) => setFilter('major', value)} placeholder={t('Все специальности')} options={(facets.data?.majors ?? []).map((major) => ({ value: major, title: major }))} />
-      <Field kind="select" name="round_type" label={t('Раунд')} value={filters.round_type ?? ''} onChange={(value) => setFilter('round_type', value)} placeholder={t('Любой раунд')} options={(facets.data?.round_types ?? []).map((round) => ({ value: round, title: round }))} />
+    <DataCard title={t('Фильтры')} right={hasFilters ? <Button variant="link" size="sm" onClick={() => { trackFilter(); setFilters({}) }}>{t('Сбросить')}</Button> : undefined}>
+      <Field usageFilter kind="text" name="search" label={t('Поиск')} value={filters.search ?? ''} onChange={(value) => setFilter('search', value)} placeholder={t('Вуз или программа')} />
+      <Field usageFilter kind="select" name="level" label={t('Соответствие')} value={filters.level ?? ''} onChange={(value) => setFilter('level', value)} placeholder={t('Любое')} options={(facets.data?.levels ?? []).map((level) => ({ value: level.code, title: `${level.title} · ${level.from}–${level.to}%` }))} />
+      <Field usageFilter kind="select" name="country" label={t('Страна')} value={filters.country ?? ''} onChange={(value) => setFilter('country', value)} placeholder={t('Все страны')} options={(facets.data?.countries ?? []).map((country) => ({ value: country, title: t(country) }))} />
+      <Field usageFilter kind="select" name="major" label={t('Специальность')} value={filters.major ?? ''} onChange={(value) => setFilter('major', value)} placeholder={t('Все специальности')} options={(facets.data?.majors ?? []).map((major) => ({ value: major, title: major }))} />
+      <Field usageFilter kind="select" name="round_type" label={t('Раунд')} value={filters.round_type ?? ''} onChange={(value) => setFilter('round_type', value)} placeholder={t('Любой раунд')} options={(facets.data?.round_types ?? []).map((round) => ({ value: round, title: round }))} />
     </DataCard>
   )
 

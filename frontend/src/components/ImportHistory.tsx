@@ -306,6 +306,7 @@ export default function ImportHistory() {
     >
       <div className="import-history__filters">
         <Field
+          usageFilter
           kind="date"
           name="since"
           label={t('с')}
@@ -316,6 +317,7 @@ export default function ImportHistory() {
           }}
         />
         <Field
+          usageFilter
           kind="date"
           name="until"
           label={t('по')}
@@ -326,6 +328,7 @@ export default function ImportHistory() {
           }}
         />
         <Field
+          usageFilter
           kind="select"
           name="import-kind"
           label={t('Вид загрузки')}

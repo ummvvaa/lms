@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from celery import shared_task
+from django.db import OperationalError
 from django.utils import timezone
 
 
@@ -36,3 +37,26 @@ def snapshot_readiness() -> int:
         )
         created += 1
     return created
+
+
+@shared_task(
+    name="core.record_usage_events",
+    ignore_result=True,
+    acks_late=True,
+    autoretry_for=(OperationalError,),
+    retry_backoff=True,
+    retry_kwargs={"max_retries": 3},
+)
+def record_usage_events(events: list[dict]) -> int:
+    """Пакет аналитики, повтор которого не создаёт новых строк."""
+    from core.usage import store_events
+
+    return store_events(events)
+
+
+@shared_task(name="core.purge_usage_events", ignore_result=True)
+def purge_usage_events() -> int:
+    """Недельная очистка событий старше года."""
+    from core.usage import purge_old_events
+
+    return purge_old_events()

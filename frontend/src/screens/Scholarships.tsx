@@ -7,6 +7,7 @@
  * приходит с плашкой от сервера, а не подставляется экраном (инвариант №14).
  */
 import { useState } from 'react'
+import { useTrack } from '../usage/context'
 import { toast } from 'sonner'
 import { useSaveScholarship, useSavedScholarships, useScholarshipOverview, useScholarshipPick, useScholarships, type ScholarshipRow } from '../api/hooks'
 import DataTable, { type Column } from '../components/DataTable'
@@ -122,6 +123,7 @@ function PickPanel({ onOpen }: { onOpen: (id: number) => void }) {
 }
 
 export default function Scholarships() {
+  const trackFilter = useTrack('filter.change')
   const [mode, setMode] = useState<Mode>('catalog')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [open, setOpen] = useState<ScholarshipRow | null>(null)
@@ -163,12 +165,12 @@ export default function Scholarships() {
   ]
 
   const filterCard = (
-    <DataCard title={t('Фильтры')} right={hasFilters ? <Button variant="link" size="sm" onClick={() => setFilters({})}>{t('Сбросить')}</Button> : undefined}>
-      <Field kind="text" name="q" label={t('Поиск')} value={filters.q ?? ''} onChange={(value) => setFilter('q', value)} placeholder={t('Название или организатор')} />
-      <Field kind="select" name="country" label={t('Страна')} value={filters.country ?? ''} onChange={(value) => setFilter('country', value)} placeholder={t('Все страны')} options={(facets?.countries ?? []).map((country) => ({ value: country, title: t(country) }))} />
-      <Field kind="select" name="level" label={t('Уровень обучения')} value={filters.level ?? ''} onChange={(value) => setFilter('level', value)} placeholder={t('Любой уровень')} options={(facets?.levels ?? []).map((level) => ({ value: level.value, title: level.title }))} />
-      <Field kind="select" name="funding_type" label={t('Тип финансирования')} value={filters.funding_type ?? ''} onChange={(value) => setFilter('funding_type', value)} placeholder={t('Любое финансирование')} options={(facets?.funding_types ?? []).map((item) => ({ value: item.value, title: item.title }))} />
-      <Field kind="select" name="basis" label={t('Основание')} value={filters.basis ?? ''} onChange={(value) => setFilter('basis', value)} placeholder={t('Любое основание')} options={(facets?.bases ?? []).map((item) => ({ value: item.value, title: item.title }))} />
+    <DataCard title={t('Фильтры')} right={hasFilters ? <Button variant="link" size="sm" onClick={() => { trackFilter(); setFilters({}) }}>{t('Сбросить')}</Button> : undefined}>
+      <Field usageFilter kind="text" name="q" label={t('Поиск')} value={filters.q ?? ''} onChange={(value) => setFilter('q', value)} placeholder={t('Название или организатор')} />
+      <Field usageFilter kind="select" name="country" label={t('Страна')} value={filters.country ?? ''} onChange={(value) => setFilter('country', value)} placeholder={t('Все страны')} options={(facets?.countries ?? []).map((country) => ({ value: country, title: t(country) }))} />
+      <Field usageFilter kind="select" name="level" label={t('Уровень обучения')} value={filters.level ?? ''} onChange={(value) => setFilter('level', value)} placeholder={t('Любой уровень')} options={(facets?.levels ?? []).map((level) => ({ value: level.value, title: level.title }))} />
+      <Field usageFilter kind="select" name="funding_type" label={t('Тип финансирования')} value={filters.funding_type ?? ''} onChange={(value) => setFilter('funding_type', value)} placeholder={t('Любое финансирование')} options={(facets?.funding_types ?? []).map((item) => ({ value: item.value, title: item.title }))} />
+      <Field usageFilter kind="select" name="basis" label={t('Основание')} value={filters.basis ?? ''} onChange={(value) => setFilter('basis', value)} placeholder={t('Любое основание')} options={(facets?.bases ?? []).map((item) => ({ value: item.value, title: item.title }))} />
     </DataCard>
   )
 

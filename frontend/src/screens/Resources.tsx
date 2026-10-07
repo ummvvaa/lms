@@ -229,6 +229,7 @@ export default function Resources() {
 
       <div className="toolbar">
         <Input
+          usageFilter
           className="res__search"
           placeholder={t('Заголовок, описание или метка')}
           value={filters.q ?? ''}

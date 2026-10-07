@@ -43,7 +43,10 @@ class MustChangePasswordMiddleware:
 
     def __call__(self, request):
         path = request.path
-        if path.startswith("/api/") and not path.startswith(PASSWORD_GATE_ALLOWED):
+        usage_allowed = (path == "/api/usage/registry/" and request.method in ("GET", "HEAD", "OPTIONS")) or (
+            path == "/api/usage/" and request.method == "POST"
+        )
+        if path.startswith("/api/") and not path.startswith(PASSWORD_GATE_ALLOWED) and not usage_allowed:
             user = getattr(request, "user", None)
             if user is not None and user.is_authenticated and user.must_change_password:
                 from django.http import JsonResponse
@@ -65,6 +68,7 @@ class MustChangePasswordMiddleware:
 #: строки, документы, задачи и эссе, список своих групп, очередь.
 CURATOR_READ_ROUTES = frozenset(
     {
+        "usage-registry",
         # помощник в углу: кнопки под куратора и история своих диалогов
         "assistant-quick",
         "assistant-threads",
@@ -195,6 +199,7 @@ CURATOR_READ_ROUTES = frozenset(
 #: Запись — только решения по очереди и служебное каркаса
 CURATOR_WRITE_ROUTES = frozenset(
     {
+        "usage",
         # вопрос помощнику и новый диалог; ученики — только своих групп
         "assistant-ask",
         "assistant-threads",
@@ -484,6 +489,7 @@ CURATOR_HIDDEN_ROUTES = frozenset(
 #: и права учебной части (`academics.rights`).
 TEACHER_READ_ROUTES = frozenset(
     {
+        "usage-registry",
         # кабинет учителя: сегодня, расписание, журналы, урок, ученик глазами учителя
         "acad-meta",
         "acad-teacher-today",
@@ -523,6 +529,7 @@ TEACHER_READ_ROUTES = frozenset(
 #: Вопрос помощнику и новый диалог — запись истории переписки, а не данных
 TEACHER_WRITE_ROUTES = frozenset(
     {
+        "usage",
         "assistant-ask",
         "assistant-threads",
         "acad-lesson-attendance",

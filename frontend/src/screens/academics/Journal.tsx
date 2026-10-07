@@ -193,6 +193,7 @@ function CellEditor({
         <div>
           <span className="t-caps">{t('Посещаемость')}</span>
           <Segmented
+            usageFilter={false}
             value={value.mark ?? 'present'}
             onChange={(next) => {
               if (markLocked) return
@@ -381,6 +382,7 @@ function AssessmentDialog({ journal, onClose }: { journal: JournalData; onClose:
   return (
     <Modal title={t('Запланировать СОР или СОЧ')} note={journal.course.title} onClose={onClose}>
       <Segmented
+        usageFilter={false}
         value={kind}
         onChange={(next) => {
           setKind(next)

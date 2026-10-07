@@ -471,6 +471,7 @@ function ReportDrawer({
             <div className="field">
               <span className="field__label t-caps">{t('Вид отчёта')}</span>
               <Segmented<ReportTemplate>
+                usageFilter={false}
                 value={data.template}
                 onChange={(template) =>
                   data.may_write &&
@@ -485,6 +486,7 @@ function ReportDrawer({
               <div className="field">
                 <span className="field__label t-caps">{t('Язык')}</span>
                 <Segmented<'ru' | 'kk'>
+                  usageFilter={false}
                   value={data.language}
                   onChange={(language) =>
                     data.may_write &&
@@ -602,7 +604,7 @@ function ExportDialog({ ids, group, period, onClose }: { ids: number[]; group: s
     <Modal title={t('Скачать архивом')} note={ids.length ? t('Отмечено: {count}', { count: ids.length }) : t('Все проверенные отчёты периода')} onClose={onClose}>
       {!job && (
         <>
-          <Segmented<FileType> value={type} onChange={setType} label={t('Формат')} items={[{ value: 'pdf', label: 'PDF' }, { value: 'docx', label: 'Word' }]} />
+          <Segmented<FileType> usageFilter={false} value={type} onChange={setType} label={t('Формат')} items={[{ value: 'pdf', label: 'PDF' }, { value: 'docx', label: 'Word' }]} />
           <div className="acad__actions">
             <Button
               disabled={start.isPending}

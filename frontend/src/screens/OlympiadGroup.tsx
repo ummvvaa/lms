@@ -74,10 +74,10 @@ export default function OlympiadGroup() {
         <div className="acad__stack">
           <PhoneFold active={filtered}>
             <div className="acad__toolbar">
-              <Field name="q" label={t('Поиск')} value={query} placeholder={t('Фамилия или имя')} onChange={setQuery} />
+              <Field usageFilter name="q" label={t('Поиск')} value={query} placeholder={t('Фамилия или имя')} onChange={setQuery} />
               {/* школа ведёт только выпускников: делим по группам, класса в фильтре нет */}
-              <Field kind="select" name="group" label={t('Группа')} value={group} onChange={setGroup} options={[{ value: '', title: t('все группы') }, ...(list.data?.groups ?? []).map((code) => ({ value: code, title: code }))]} />
-              <Field kind="checkbox" name="members" label={t('только те, кто в группе')} checked={onlyMembers} onChange={setOnlyMembers} />
+              <Field usageFilter kind="select" name="group" label={t('Группа')} value={group} onChange={setGroup} options={[{ value: '', title: t('все группы') }, ...(list.data?.groups ?? []).map((code) => ({ value: code, title: code }))]} />
+              <Field usageFilter kind="checkbox" name="members" label={t('только те, кто в группе')} checked={onlyMembers} onChange={setOnlyMembers} />
             </div>
           </PhoneFold>
           <DataCard

@@ -17,6 +17,7 @@
  * с причиной — остальные при этом сохраняются.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTrack } from '../usage/context'
 import { motion } from 'motion/react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
@@ -141,6 +142,7 @@ const FILTER_TITLES: Record<string, string> = {
 }
 
 export default function TableScreen() {
+  const trackFilter = useTrack('filter.change')
   const navigate = useNavigate()
   const phone = usePhone()
   const { me } = useAuth()
@@ -715,6 +717,7 @@ export default function TableScreen() {
       <PhoneFold active={Boolean(search || group || parallel)}>
       <div className="toolbar">
         <Input
+          usageFilter
           placeholder={t('Поиск по имени')}
           value={search}
           onChange={(e) => {
@@ -723,6 +726,7 @@ export default function TableScreen() {
           }}
         />
         <SelectField
+          usageFilter
           value={group}
           onChange={(e) => {
             setGroup(e.target.value)
@@ -739,6 +743,7 @@ export default function TableScreen() {
         {/* домен поступления и экзаменов ведётся только у 11 — выбирать там нечего */}
         {(myDomain?.parallels ?? []).length > 1 && (
           <SelectField
+            usageFilter
             aria-label={t('Параллель')}
             value={parallel}
             onChange={(e) => {
@@ -832,6 +837,7 @@ export default function TableScreen() {
           onAction={
             search || group || parallel
               ? () => {
+                  trackFilter()
                   setSearch('')
                   setGroup('')
                   setParallel('')

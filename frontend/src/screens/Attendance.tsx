@@ -33,6 +33,7 @@ import { usePhone } from '../phone'
 import { ExcuseDialog } from './academics/GradesTab'
 import { absentWords, dateShort, dateWords, GroupPick, lateAsAbsentWords } from './academics/shared'
 import { formatMonthYear } from '../lib/format'
+import { useTrack } from '../usage/context'
 import './attendance.css'
 
 type View = 'day' | 'month' | 'days'
@@ -162,6 +163,7 @@ export default function Attendance() {
 type Sheet = NonNullable<ReturnType<typeof useAcadAttendance>['data']>
 
 function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (next: string) => void }) {
+  const trackFilter = useTrack('filter.change')
   const phone = usePhone()
   const navigate = useNavigate()
   const remind = useRemindLesson()
@@ -193,9 +195,9 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
   return (
     <div className="acad__stack">
       <div className="att__bar">
-        <Field kind="date" name="date" label={t('День')} value={date} max={todayAlmaty()} onChange={onDate} className="att__date" />
+        <Field usageFilter kind="date" name="date" label={t('День')} value={date} max={todayAlmaty()} onChange={onDate} className="att__date" />
         {date !== todayAlmaty() && (
-          <Button variant="link" size="sm" onClick={() => onDate(todayAlmaty())}>
+          <Button variant="link" size="sm" onClick={() => { trackFilter(); onDate(todayAlmaty()) }}>
             {t('К сегодня')}
           </Button>
         )}
@@ -335,6 +337,7 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
 }
 
 function MonthView({ data, month, onMonth }: { data: Sheet; month: string; onMonth: (next: string) => void }) {
+  const trackFilter = useTrack('filter.change')
   const phone = usePhone()
   const [excusing, setExcusing] = useState<{ student: number; from: string; to: string } | null>(null)
   const rows = data.rows as AttendanceMonthRow[]
@@ -358,13 +361,13 @@ function MonthView({ data, month, onMonth }: { data: Sheet; month: string; onMon
     <div className="acad__stack">
       <div className="att__bar">
         <div className="wknav__group">
-          <Button variant="outline" size="sm" aria-label={t('Предыдущий месяц')} onClick={() => onMonth(shiftMonth(month, -1))}>
+          <Button variant="outline" size="sm" aria-label={t('Предыдущий месяц')} onClick={() => { trackFilter(); onMonth(shiftMonth(month, -1)) }}>
             {t('Раньше')}
           </Button>
           <span className="wknav__title" aria-live="polite">
             {data.month_title || monthTitle(month)}
           </span>
-          <Button variant="outline" size="sm" aria-label={t('Следующий месяц')} disabled={month >= thisMonth()} onClick={() => onMonth(shiftMonth(month, 1))}>
+          <Button variant="outline" size="sm" aria-label={t('Следующий месяц')} disabled={month >= thisMonth()} onClick={() => { trackFilter(); onMonth(shiftMonth(month, 1)) }}>
             {t('Позже')}
           </Button>
         </div>
@@ -456,6 +459,7 @@ function MonthView({ data, month, onMonth }: { data: Sheet; month: string; onMon
 
 /** Прежние отметки дня — история до перехода на уроки, только чтение. */
 function OldDays({ groupId, groupCode }: { groupId: number | null; groupCode: string }) {
+  const trackFilter = useTrack('filter.change')
   const phone = usePhone()
   const [month, setMonth] = useState(thisMonth())
   const journal = useAttendanceJournal(groupId ? String(groupId) : '', month, false, groupId !== null)
@@ -474,11 +478,11 @@ function OldDays({ groupId, groupCode }: { groupId: number | null; groupCode: st
     <div className="acad__stack">
       <div className="att__bar">
         <div className="wknav__group">
-          <Button variant="outline" size="sm" onClick={() => setMonth(shiftMonth(month, -1))}>
+          <Button variant="outline" size="sm" onClick={() => { trackFilter(); setMonth(shiftMonth(month, -1)) }}>
             {t('Раньше')}
           </Button>
           <span className="wknav__title">{monthTitle(month)}</span>
-          <Button variant="outline" size="sm" disabled={month >= thisMonth()} onClick={() => setMonth(shiftMonth(month, 1))}>
+          <Button variant="outline" size="sm" disabled={month >= thisMonth()} onClick={() => { trackFilter(); setMonth(shiftMonth(month, 1)) }}>
             {t('Позже')}
           </Button>
         </div>

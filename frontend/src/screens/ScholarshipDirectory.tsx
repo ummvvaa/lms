@@ -159,6 +159,7 @@ export default function ScholarshipDirectory() {
           <PhoneFold active={Boolean(search)}>
           <div className="toolbar">
             <Input
+              usageFilter
               placeholder={t('Название или организатор')}
               value={search}
               onChange={(event) => setSearch(event.target.value)}

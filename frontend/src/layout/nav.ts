@@ -120,6 +120,12 @@ export function homeworkReviewOpen(role: Role, teaches = false): boolean {
   return teaches && role !== 'student'
 }
 
+/** Аналитика использования доступна администратору и директору школы. */
+export function usageOpen(role: Role): boolean {
+  return role === 'admin' || role === 'director_behavior'
+}
+const USAGE: NavItem = { path: '/usage', label: tk('Использование'), icon: 'usage', group: 'data' }
+
 export const NAV: Record<Role, NavItem[]> = {
   student: [
     // --- основное: он сам и его путь ---
@@ -165,6 +171,7 @@ export const NAV: Record<Role, NavItem[]> = {
     RESOURCES_STUDENT,
   ],
   director_behavior: [
+    USAGE,
     ...DIRECTOR_COMMON,
     TEMPLATES,
     RESOURCES,
@@ -243,6 +250,7 @@ export const NAV: Record<Role, NavItem[]> = {
   // у администратора дашборд и есть сводный вид — отдельного пункта
   // «Сводный вид» ему не заводим, он вёл бы на тот же экран
   admin: [
+    USAGE,
     ...DIRECTOR_COMMON,
     IMPORT,
     ...ACADEMICS,
@@ -504,6 +512,7 @@ export const STAFF_ONLY = [
   '/call-rules',
   '/olympiad-group',
   '/spend',
+  '/usage',
   '/school-settings',
 ]
 

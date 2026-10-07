@@ -151,8 +151,8 @@ function SplitDrawer({ groups, subjects, initial, onClose }: { groups: GroupRow[
       )}
       {step === 2 && (
         <div className="acad__form">
-          <Segmented<'2' | '3'> value={String(parts) as '2' | '3'} onChange={(value) => setParts(Number(value) as 2 | 3)} label={t('Подгрупп')} items={[{ value: '2', label: t('Две') }, { value: '3', label: t('Три') }]} />
-          <Segmented value={rule} onChange={setRule} label={t('Как делить')} items={[{ value: 'alpha', label: t('По списку') }, { value: 'level', label: t('По уровню английского') }, { value: 'hand', label: t('Вручную') }]} />
+          <Segmented<'2' | '3'> usageFilter={false} value={String(parts) as '2' | '3'} onChange={(value) => setParts(Number(value) as 2 | 3)} label={t('Подгрупп')} items={[{ value: '2', label: t('Две') }, { value: '3', label: t('Три') }]} />
+          <Segmented usageFilter={false} value={rule} onChange={setRule} label={t('Как делить')} items={[{ value: 'alpha', label: t('По списку') }, { value: 'level', label: t('По уровню английского') }, { value: 'hand', label: t('Вручную') }]} />
           <Field kind="date" name="since" label={t('Деление действует с')} value={since} onChange={setSince} />
         </div>
       )}
@@ -485,7 +485,7 @@ export default function Cohorts() {
         <Kpi label={t('Не в подгруппе')} value={data.kpis.not_split || null} none={t('нет')} note={data.kpis.not_split ? t('учеников без подгруппы по предмету') : t('все распределены')} tone={data.kpis.not_split ? 'warn' : undefined} />
       </StatRow>
       <div className="acad__stack">
-        <DataCard title={t('Группы')} count={groups.length || undefined} right={<Field kind="text" name="search" label={t('Найти группу')} value={search} onChange={setSearch} />}>
+        <DataCard title={t('Группы')} count={groups.length || undefined} right={<Field usageFilter kind="text" name="search" label={t('Найти группу')} value={search} onChange={setSearch} />}>
           <DataTable columns={columns} rows={groups} rowKey={(g) => g.id} empty={t('групп не найдено')} fit />
         </DataCard>
         <DataCard

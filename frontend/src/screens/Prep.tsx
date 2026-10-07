@@ -462,6 +462,7 @@ function PracticePicker({ exam, onStart }: { exam: string; onStart: (session: Pr
         </div>
         <span className="eyebrow prep__filterhead">{t('Сложность')}</span>
         <Segmented
+          usageFilter={false}
           value={difficulty}
           onChange={setDifficulty}
           label={t('Сложность')}

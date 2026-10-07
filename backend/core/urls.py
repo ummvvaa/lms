@@ -2,9 +2,13 @@
 
 from django.urls import path
 
-from core import curator, views
+from core import curator, usage_views, views
 
 urlpatterns = [
+    path("usage/", usage_views.summary, name="usage"),
+    path("usage/registry/", usage_views.registry, name="usage-registry"),
+    path("usage/events/", usage_views.events_list, name="usage-events"),
+    path("usage/export/", usage_views.export, name="usage-export"),
     # --- фаза 47: фоновые операции ---
     path("jobs/", views.jobs_list, name="jobs"),
     path("jobs/<int:pk>/dismiss/", views.job_dismiss, name="job-dismiss"),

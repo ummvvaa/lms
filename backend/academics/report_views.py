@@ -29,6 +29,7 @@ from academics.payloads import student_brief, user_name
 from academics.results import calendar_period
 from academics.views import _bad, _forbid, _group_param, _int, _not_found
 from accounts.curators import curated_group_ids, curator_of
+from core import usage
 from core.domains import ROLE_CURATOR
 from core.exports import file_response
 from core.scope import visible_students
@@ -394,6 +395,8 @@ def reports_build(request):
                 request_draft(row, actor=request.user)
     if rows and one is None:
         reporting.notify_curators(rows, rows[0].title)
+    if rows:
+        usage.track(request, "report.build")
     return Response(
         {
             "built": len(rows),
@@ -461,12 +464,16 @@ def report(request, pk: int):
             return refusal
         if row.status == ReportStatus.SENT:
             return _bad(_("Отчёт уже отправлен родителям: тексты не меняются"))
+        changed = False
         if "curator_word" in request.data and reporting.set_word(
             row, actor=request.user, curator_word=str(request.data.get("curator_word") or "")
         ):
             row.save(update_fields=["curator_word", "word_by", "word_at"])
+            changed = True
         if row.template != ReportTemplate.STANDARD:
-            _save_texts(row, request.data, request.user)
+            changed = _save_texts(row, request.data, request.user) or changed
+        if changed:
+            usage.track(request, "report.edit")
     return Response(report_detail(row, request.user))
 
 
@@ -474,7 +481,7 @@ def report(request, pk: int):
 TEXT_LIMIT = 4000
 
 
-def _save_texts(report: ParentReport, data, actor) -> None:
+def _save_texts(report: ParentReport, data, actor) -> bool:
     """Тексты отчёта по шаблону школы: поля отчёта и отзывы учителей."""
     from core.audit import record_event
 
@@ -506,6 +513,7 @@ def _save_texts(report: ParentReport, data, actor) -> None:
         report.texts_edited_at = timezone.now()
         report.save(update_fields=["texts_edited_at"])
         record_event(student=report.student, code="report_texts", text=reporting.event_text(report), actor=actor)
+    return bool(changed)
 
 
 @extend_schema(request=None, responses={200: dict})
@@ -528,6 +536,7 @@ def report_review(request, pk: int, review_id: int):
     if review.kind != ReviewKind.SUBJECT:
         return _bad(_("Постоянный блок не убирается — оставьте его пустым, и он не попадёт в файл"))
     review.delete()
+    usage.track(request, "report.edit")
     return Response(report_detail(row, request.user))
 
 
@@ -551,6 +560,7 @@ def report_draft(request, pk: int):
         return _bad(_("Отчёт уже отправлен родителям: тексты не меняются"))
     request_draft(row, actor=request.user, overwrite=True)
     row.refresh_from_db()
+    usage.track(request, "report.draft.start")
     return Response(report_detail(row, request.user))
 
 
@@ -567,7 +577,10 @@ def report_check(request, pk: int):
     if row is None:
         return _not_found()
     word = request.data.get("curator_word")
+    before = (row.status, row.curator_word)
     reporting.check(row, actor=request.user, curator_word=str(word) if word is not None else None)
+    if before != (row.status, row.curator_word):
+        usage.track(request, "report.check")
     return Response(report_detail(row, request.user))
 
 
@@ -603,6 +616,7 @@ def report_refresh(request, pk: int):
             request_draft(row, actor=request.user, overwrite=True)
             redrafting = True
         row.refresh_from_db()
+    usage.track(request, "report.refresh")
     return Response(
         {
             "changed": before != row.fingerprint,
@@ -691,6 +705,8 @@ def report_switch(request, pk: int):
 
         request_draft(fresh, actor=request.user)
         fresh.refresh_from_db()
+    if fresh.pk != row.pk:
+        usage.track(request, "report.template.set")
     return Response(
         {
             "report": fresh.pk,
@@ -730,7 +746,9 @@ def report_pdf(request, pk: int):
         return _bad(str(error))
     if marks:
         reporting.mark_exported(row, actor=request.user)
-    return file_response(content=content, filename=name, content_type=content_type)
+    response = file_response(content=content, filename=name, content_type=content_type)
+    usage.track(request, "export.download")
+    return response
 
 
 @extend_schema(responses={200: None})
@@ -777,9 +795,11 @@ def reports_zip(request):
             curators[row.student.group_id] = _curator_name(row.student)
     content = render_zip(rows, curators=curators)
     group_code = picked.code if picked else "Все группы"  # i18n-skip: имя архива — как имена файлов отчётов
-    return file_response(
+    response = file_response(
         content=content, filename=reporting.zip_name(group_code, rows[0].title), content_type="application/zip"
     )
+    usage.track(request, "export.download")
+    return response
 
 
 @extend_schema(request=None, responses={200: dict})
@@ -798,6 +818,7 @@ def report_sent(request, pk: int):
         reporting.mark_sent(row, actor=request.user, sent=bool(request.data.get("sent", True)))
     except reporting.ReportRefused as error:
         return _bad(str(error))
+    usage.track(request, "report.sent.set")
     return Response(report_detail(row, request.user))
 
 
@@ -816,6 +837,8 @@ def reports_check(request):
         if row.status == ReportStatus.DRAFT:
             reporting.check(row, actor=request.user)
             done += 1
+    if done:
+        usage.track(request, "report.check")
     return Response({"checked": done})
 
 
@@ -844,6 +867,8 @@ def reports_refresh(request):
                 kept += 1
             else:
                 request_draft(fresh, actor=request.user, overwrite=True)
+    if total:
+        usage.track(request, "report.refresh")
     return Response({"refreshed": total, "changed": changed, "kept": kept})
 
 
@@ -865,6 +890,8 @@ def reports_sent(request):
             done += 1
         except reporting.ReportRefused:
             skipped.append(row.student.full_name)
+    if done:
+        usage.track(request, "report.sent.set")
     return Response({"sent": done, "skipped": skipped})
 
 
@@ -911,6 +938,7 @@ def reports_export(request):
     group_code = picked.code if picked else (rows[0].student.group.code if rows[0].student.group_id else "")
     name = reporting.zip_name(group_code or "Все группы", rows[0].title)  # i18n-skip: имя архива, как у файлов
     job = start_export(user=request.user, ids=[row.pk for row in rows], file_format=file_format, zip_name=name)
+    usage.track(request, "report.export.start")
     return Response({"job": job, "total": len(rows)})
 
 
@@ -938,7 +966,9 @@ def reports_export_file(request, job: str):
     if found is None:
         return _not_found()
     payload, name = found
-    return file_response(content=payload, filename=name, content_type="application/zip")
+    response = file_response(content=payload, filename=name, content_type="application/zip")
+    usage.track(request, "export.download")
+    return response
 
 
 def _unused():  # pragma: no cover

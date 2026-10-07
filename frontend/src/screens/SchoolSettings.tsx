@@ -102,6 +102,7 @@ function RuleRow({ rule }: { rule: SchoolRule }) {
       <div className="rules__edit">
         {rule.kind === 'bool' ? (
           <Segmented
+            usageFilter={false}
             value={draft.trim() === '0' ? '0' : '1'}
             onChange={(next) => {
               setDraft(next)

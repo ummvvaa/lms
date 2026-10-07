@@ -6,6 +6,7 @@
  * телефон, не открывая карточку.
  */
 import { useState } from 'react'
+import { useTrack } from '../usage/context'
 import { useNavigate } from 'react-router'
 import { useContactRows, useContacts, useStudents } from '../api/hooks'
 import DeleteButton from '../components/DeleteButton'
@@ -22,6 +23,7 @@ import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
 import PhoneFold from '../components/PhoneFold'
 
 export default function Contacts() {
+  const trackFilter = useTrack('filter.change')
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
@@ -49,6 +51,7 @@ export default function Contacts() {
       <PhoneFold active={Boolean(search)}>
       <div className="toolbar">
         <Input
+          usageFilter
           placeholder={t('Поиск по имени, телефону или ученику')}
           aria-label={t('Поиск по контактам')}
           value={search}
@@ -116,7 +119,7 @@ export default function Contacts() {
               : t('Заведите первый контакт руками; список файлом загружает администратор.')
           }
           action={search ? t('Очистить поиск') : t('Добавить контакт')}
-          onAction={search ? () => setSearch('') : () => setAdding(true)}
+          onAction={search ? () => { trackFilter(); setSearch('') } : () => setAdding(true)}
         />
       )}
 

@@ -17,6 +17,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core import usage
 from core.audience import Audience, DeclaredAudience
 from core.deletion import ArchiveDeleteMixin, refuse
 from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, domain_of_role, owns_model
@@ -340,7 +341,10 @@ def enrollment_apply(request):
 
     payload = EnrollmentApplySerializer(data=request.data)
     payload.is_valid(raise_exception=True)
-    return Response(enroll(rows=payload.validated_data["rows"], actor=request.user))
+    result = enroll(rows=payload.validated_data["rows"], actor=request.user)
+    if result["created"]:
+        usage.track(request, "import.students.apply")
+    return Response(result)
 
 
 @extend_schema(request=ImportPreviewRequestSerializer, responses={200: dict})
@@ -381,13 +385,14 @@ def contacts_apply(request):
 
     payload = EnrollmentApplySerializer(data=request.data)
     payload.is_valid(raise_exception=True)
-    return Response(
-        apply_rows(
-            rows=payload.validated_data["rows"],
-            actor=request.user,
-            file_name=str(request.data.get("file_name", ""))[:250],
-        )
+    result = apply_rows(
+        rows=payload.validated_data["rows"],
+        actor=request.user,
+        file_name=str(request.data.get("file_name", ""))[:250],
     )
+    if result["created"]:
+        usage.track(request, "import.contacts.apply")
+    return Response(result)
 
 
 @extend_schema(request=ImportPreviewRequestSerializer, responses={200: dict})
@@ -428,13 +433,14 @@ def competitions_apply(request):
 
     payload = EnrollmentApplySerializer(data=request.data)
     payload.is_valid(raise_exception=True)
-    return Response(
-        apply_rows(
-            rows=payload.validated_data["rows"],
-            actor=request.user,
-            file_name=str(request.data.get("file_name", ""))[:250],
-        )
+    result = apply_rows(
+        rows=payload.validated_data["rows"],
+        actor=request.user,
+        file_name=str(request.data.get("file_name", ""))[:250],
     )
+    if result["created"]:
+        usage.track(request, "import.competitions.apply")
+    return Response(result)
 
 
 class StudentScopedViewSet(DeclaredAudience, ArchiveDeleteMixin, viewsets.ModelViewSet):
@@ -938,6 +944,7 @@ def portfolio_cv(request):
     response = HttpResponse(portfolio.cv_html(student), content_type="text/html; charset=utf-8")
     response["Content-Disposition"] = 'attachment; filename="cv.html"'
     response["Cache-Control"] = "private, no-store"
+    usage.track(request, "export.download")
     return response
 
 

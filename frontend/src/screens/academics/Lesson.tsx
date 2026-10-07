@@ -102,6 +102,7 @@ function RosterLine({
       <div className="roster__att">
         {mayMark ? (
           <Segmented
+            usageFilter={false}
             value={row.mark ?? 'present'}
             onChange={(mark) => {
               if (disabled) return

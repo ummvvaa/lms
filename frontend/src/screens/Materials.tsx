@@ -136,12 +136,14 @@ export default function Materials() {
         <>
           <div className="card card-pad mat__filters">
             <Input
+              usageFilter
               placeholder={t('Поиск по названию и теме')}
               value={query}
               aria-label={t('Поиск материалов')}
               onChange={(event) => setQuery(event.target.value)}
             />
             <SelectField
+              usageFilter
               value={subject}
               aria-label={t('Предмет')}
               onChange={(event) => setSubject(event.target.value)}

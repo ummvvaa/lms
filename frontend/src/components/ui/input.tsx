@@ -2,8 +2,11 @@ import * as React from 'react'
 import { Input as InputPrimitive } from '@base-ui/react/input'
 
 import { cn } from '@/lib/utils'
+import { useTrack } from '../../usage/context'
 
-function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
+function Input({ className, type, usageFilter = false, onFocus, onBlur, ...props }: React.ComponentProps<'input'> & { usageFilter?: boolean }) {
+  const trackFilter = useTrack('filter.change')
+  const focusValue = React.useRef('')
   return (
     <InputPrimitive
       type={type}
@@ -13,6 +16,14 @@ function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
         className,
       )}
       {...props}
+      onFocus={(event) => {
+        if (usageFilter) focusValue.current = event.currentTarget.value
+        onFocus?.(event)
+      }}
+      onBlur={(event) => {
+        if (usageFilter && event.currentTarget.value !== focusValue.current) trackFilter()
+        onBlur?.(event)
+      }}
     />
   )
 }

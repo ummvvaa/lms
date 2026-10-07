@@ -17,6 +17,7 @@ import Icon, { type IconName } from '../layout/icons'
 import { Button } from './ui/button'
 import { toneOf, type Tone } from './ui'
 import { t } from '../i18n'
+import { useTrack } from '../usage/context'
 import './patterns.css'
 
 /** Цвет раздела. Подбор и план — оранжевый, подготовка — бирюза,
@@ -68,13 +69,16 @@ export function Segmented<T extends string>({
   onChange,
   items,
   label,
+  usageFilter = true,
 }: {
   value: T
   onChange: (next: T) => void
   items: { value: T; label: ReactNode; icon?: IconName }[]
   /** подпись группы для читалки экрана */
   label?: string
+  usageFilter?: boolean
 }) {
+  const track = useTrack('filter.change')
   return (
     <div className="segrow" role="group" aria-label={label}>
       {items.map((item) => (
@@ -83,7 +87,10 @@ export function Segmented<T extends string>({
           type="button"
           className={`segrow__item${item.value === value ? ' segrow__item--on' : ''}`}
           aria-pressed={item.value === value}
-          onClick={() => onChange(item.value)}
+          onClick={() => {
+            if (usageFilter && item.value !== value) track()
+            onChange(item.value)
+          }}
         >
           {item.icon && <Icon name={item.icon} size={14} />}
           {item.label}

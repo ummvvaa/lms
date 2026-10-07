@@ -11,6 +11,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core import usage
 from core.deletion import HardDeleteMixin
 from core.domains import ROLE_STUDENT, can_write
 from prep import services
@@ -183,15 +184,16 @@ def questions_import(request):
             media[handle.name] = (handle.read(), handle.content_type or "application/octet-stream")
 
     dry_run = str(request.data.get("dry_run", "")).lower() in {"1", "true", "yes"}
-    return Response(
-        import_questions(
-            content,
-            media=media,
-            dry_run=dry_run,
-            actor=request.user,
-            file_name=uploaded.name,
-        ).as_dict()
+    result = import_questions(
+        content,
+        media=media,
+        dry_run=dry_run,
+        actor=request.user,
+        file_name=uploaded.name,
     )
+    if not dry_run and (result.created or result.passages):
+        usage.track(request, "import.questions.apply")
+    return Response(result.as_dict())
 
 
 @extend_schema(responses={200: dict})

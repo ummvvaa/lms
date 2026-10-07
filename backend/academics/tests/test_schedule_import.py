@@ -12,6 +12,7 @@ from __future__ import annotations
 import datetime as dt
 import io
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from openpyxl import Workbook, load_workbook
@@ -632,6 +633,32 @@ def test_only_admin_imports(short_year, admin, kymbat, curator, teacher):
     assert applied.status_code == 200
     assert applied["Cache-Control"] == "private, no-store"
     assert len(applied.json()["credentials"]) == 3
+
+
+def test_curator_only_import_counts_once_but_preview_and_repeat_do_not(short_year, admin, monkeypatch):
+    _apply(small_book(), admin)
+    changed_groups = [{**row, "ID куратора": "С03"} if row["Группа"] == "BOSTON" else row for row in GROUPS]
+    data = small_book(groups=changed_groups)
+    tracker = Mock()
+    monkeypatch.setattr("core.usage.track", tracker)
+    client = login(admin)
+
+    preview = _upload(client, "/api/acad/schedule/import/preview/", data)
+    assert preview.status_code == 200
+    tracker.assert_not_called()
+
+    applied = _upload(client, "/api/acad/schedule/import/apply/", data, fingerprint=schedule_import.fingerprint(data))
+    report = applied.json()
+    assert applied.status_code == 200 and report["applied"], report
+    assert not any(part["created"] or part["updated"] for part in report["sections"])
+    assert report["lessons_to_create"] == 0 and len(report["curator_changes"]) == 1
+    assert curator_of(StudyGroup.objects.get(code="BOSTON")).curator.login == "c03.test"
+    tracker.assert_called_once()
+    assert tracker.call_args.args[1] == "import.schedule.apply"
+
+    repeated = _upload(client, "/api/acad/schedule/import/apply/", data, fingerprint=schedule_import.fingerprint(data))
+    assert repeated.status_code == 200 and repeated.json()["curator_changes"] == []
+    tracker.assert_called_once()
 
 
 def test_staff_passwords_download_as_a_book(short_year, admin):

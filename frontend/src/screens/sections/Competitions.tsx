@@ -7,6 +7,7 @@
  * соревнование одно, а строк в базе столько, сколько выступало.
  */
 import { useMemo, useState } from 'react'
+import { useTrack } from '../../usage/context'
 import { useNavigate } from 'react-router'
 import {
   useCompetitionRows,
@@ -39,6 +40,7 @@ const LEVELS = [
 ]
 
 export default function Competitions() {
+  const trackFilter = useTrack('filter.change')
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
@@ -185,6 +187,7 @@ export default function Competitions() {
 
       <div className="toolbar">
         <Input
+          usageFilter
           placeholder={t('Поиск по названию или результату')}
           aria-label={t('Поиск по соревнованиям')}
           value={search}
@@ -206,7 +209,7 @@ export default function Competitions() {
           note={table.length > 0 ? t('Строка на каждого участника') : undefined}
           empty={table.length === 0 && (search ? t('по этому поиску ничего нет — очистите поиск') : t('заведите первое соревнование — руками или файлом'))}
           emptyAction={
-            <Button variant="secondary" size="sm" onClick={search ? () => setSearch('') : () => setAdding(true)}>
+            <Button variant="secondary" size="sm" onClick={search ? () => { trackFilter(); setSearch('') } : () => setAdding(true)}>
               {search ? t('Очистить поиск') : t('Добавить соревнование')}
             </Button>
           }

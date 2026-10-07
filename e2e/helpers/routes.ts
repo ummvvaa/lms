@@ -116,6 +116,7 @@ export const ROUTES: Record<string, string[]> = {
     "/homework-review",
   ],
   director_behavior: [
+    "/usage",
     "/dashboard",
     "/overview",
     "/suggestions",
@@ -162,6 +163,7 @@ export const ROUTES: Record<string, string[]> = {
     "/task-templates",
   ],
   admin: [
+    "/usage",
     "/badges",
     "/dashboard",
     "/users",

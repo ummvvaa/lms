@@ -210,6 +210,7 @@ export function LessonForm({
     <Modal title={lesson ? t('Изменить урок') : t('Новый урок')} note={lesson ? `${lesson.subject.title} · ${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}` : t('Урок заводится один раз и повторяется по неделям')} onClose={onClose} wide>
       {lesson && !lesson.is_one_off && (
         <Segmented
+          usageFilter={false}
           value={scope}
           onChange={setScope}
           label={t('Что меняем')}
@@ -224,6 +225,7 @@ export function LessonForm({
         <Field kind="select" name="teacher" label={t('Учитель')} value={teacher} onChange={setTeacher} options={[{ value: '', title: t('Учитель не назначен') }, ...staff.map((row) => ({ value: String(row.id), title: row.full_name }))]} />
       </Field.Row>
       <Segmented
+        usageFilter={false}
         value={kind}
         onChange={(next) => !onlyThis && setKind(next)}
         label={t('Кто учится')}
@@ -245,6 +247,7 @@ export function LessonForm({
       />
       {!lesson && (
         <Segmented
+          usageFilter={false}
           value={repeat}
           onChange={setRepeat}
           label={t('Повтор')}
@@ -454,6 +457,7 @@ function DeleteDialog({ lesson, onClose }: { lesson: AcadLesson; onClose: () => 
     <Modal title={t('Удалить урок')} note={`${lesson.subject.title} · ${lesson.cohort.name} · ${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{n} урок', { n: lesson.slot })}`} onClose={onClose}>
       {!lesson.is_one_off && (
         <Segmented
+          usageFilter={false}
           value={scope}
           onChange={setScope}
           label={t('Что удаляем')}
