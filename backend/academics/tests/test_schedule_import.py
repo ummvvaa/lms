@@ -445,6 +445,8 @@ def test_director_who_teaches_marks_own_lessons_and_nothing_more(short_year, adm
     # роль не меняется — только в отчёт
     assert director.role == Role.DIRECTOR_TALENT and director.login is None
     assert report["roles_kept"] == [{"full_name": "Алгебраев А.", "role": "Директор талантов", "file": "учитель"}]
+    # правило «отмечает тот, кто ведёт» — для предметов, которые ведутся в LMS
+    Subject.objects.update(in_lms=True)
 
     client = login(director)
     assert client.get("/api/auth/me/").json()["teaches"] is True
@@ -533,8 +535,7 @@ def test_grading_column_sets_the_scheme_of_new_subjects_only(short_year, admin):
     sat.refresh_from_db()
     assert sat.scheme == Scheme.KZ
     assert [w["text"] for w in report["warnings"] if w["kind"] == "scheme"] == [
-        "Предмет «SAT»: в LMS — «ФО, СОР и СОЧ, итог за четверть», "
-        "в файле — «Только ФО из 10»; схема не меняется"
+        "Предмет «SAT»: в LMS — «ФО, СОР и СОЧ, итог за четверть», " "в файле — «Только ФО из 10»; схема не меняется"
     ]
     # пустая ячейка — как без колонки: ФО, СОР и СОЧ, и просьба проверить
     assert schemes["Физика"] == Scheme.KZ
@@ -546,8 +547,14 @@ def test_grading_column_sets_the_scheme_of_new_subjects_only(short_year, admin):
 def test_book_without_grading_column_works_as_before(short_year, admin):
     report = _apply(small_book(), admin)
     assert report["errors"] == []
-    assert set(Subject.objects.values_list("scheme", flat=True)) == {Scheme.KZ}
-    assert len([w for w in report["warnings"] if w["kind"] == "subject"]) == len(SUBJECTS)
+    # без колонки — ФО, СОР и СОЧ; предметы школы, которые ведутся в LMS, — только ФО из 10
+    assert set(Subject.objects.filter(in_lms=False).values_list("scheme", flat=True)) == {Scheme.KZ}
+    assert set(Subject.objects.filter(in_lms=True).values_list("title", flat=True)) == {
+        "Creative Writing",
+        "Английский язык (EEP)",
+    }
+    assert set(Subject.objects.filter(in_lms=True).values_list("scheme", flat=True)) == {Scheme.FO}
+    assert len([w for w in report["warnings"] if w["kind"] == "subject"]) == 3
 
 
 def test_unknown_grading_is_an_error(short_year, admin):
@@ -585,6 +592,10 @@ def test_curator_marks_the_lesson_they_teach_and_only_it(short_year, admin):
     Lesson.objects.filter(pk=own.pk).update(date=past)
     own.refresh_from_db()
     other = Lesson.objects.filter(course__subject__title="Алгебра", course__cohort__group__code="BOSTON").first()
+    # классный час ведётся в LMS только если школа так решит: правило проверяется на таком
+    Subject.objects.update(in_lms=True)
+    own.refresh_from_db()
+    other.refresh_from_db()
     assert marks_lesson(curator, own)
     assert not marks_lesson(curator, other)
     client = login(curator)
@@ -696,13 +707,24 @@ def test_real_book_imports_once_and_the_second_time_changes_nothing(short_year, 
     assert list(
         BellSchedule.objects.get(title="Звонки 8–9").bells.order_by("number").values_list("number", flat=True)
     ) == list(range(1, 9))
-    # «без оценок» — «Только ФО», в табель не идёт; остальное — ФО, СОР и СОЧ
+    # «без оценок» — «Только ФО»; предметы, которые ведутся в LMS, — тоже только ФО из 10
     assert set(Subject.objects.filter(scheme=Scheme.FO).values_list("title", flat=True)) == {
         "SAT",
         "Классный час",
         "Профориентация",
+        "Английский язык (EEP)",
+        "Английский язык (GE)",
+        "Creative Writing",
     }
-    assert Subject.objects.filter(scheme=Scheme.KZ).count() == 21
+    assert Subject.objects.filter(scheme=Scheme.KZ).count() == 18
+    # в LMS ведутся пять предметов школы (SAT — один), остальные — только расписание
+    assert set(Subject.objects.filter(in_lms=True).values_list("title", flat=True)) == {
+        "SAT",
+        "Профориентация",
+        "Английский язык (EEP)",
+        "Английский язык (GE)",
+        "Creative Writing",
+    }
     assert not [w for w in report["warnings"] if w["kind"] in ("subject", "scheme")]
     assert set(BellSchedule.objects.values_list("title", flat=True)) == {"Звонки 8–9", "Звонки 10", "Звонки 11"}
 

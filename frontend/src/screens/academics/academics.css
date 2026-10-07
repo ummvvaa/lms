@@ -828,3 +828,13 @@ body [data-slot='button'][data-variant].acad__heatcell {
     margin-bottom: calc(var(--space) * 1);
   }
 }
+
+/* «Предметы» на экране года: на телефоне выбор «ведётся в LMS» не вылезает
+   из карточки строки — занимает остаток рядом с подписью */
+@media (max-width: 759px) {
+  .tbl .subjects__lms {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 100%;
+  }
+}

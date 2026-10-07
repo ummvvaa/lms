@@ -68,6 +68,7 @@ urlpatterns = [
     path("acad/risks/", views.risks, name="acad-risks"),
     # учебный год
     path("acad/year/", schedule_views.year, name="acad-year"),
+    path("acad/subjects/<int:pk>/", schedule_views.subject_in_lms, name="acad-subject"),
     path("acad/year/quarters/<int:pk>/close/", schedule_views.quarter_close, name="acad-quarter-close"),
     # отчёты родителям
     path("acad/reports/", report_views.reports, name="acad-reports"),

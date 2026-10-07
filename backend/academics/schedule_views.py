@@ -1321,7 +1321,49 @@ def year_payload() -> dict:
             },
         },
         "subjects": [subject_dict(s) for s in Subject.objects.all()],
+        "subject_rows": subject_rows(),
     }
+
+
+def subject_rows() -> list[dict]:
+    """Предметы на экране года: ведётся ли в LMS, уроков в неделю, учителей."""
+    from django.db.models import Count, Q
+
+    from academics.models import LessonSeries
+
+    weekly = dict(
+        LessonSeries.objects.filter(ends__gte=today(), course__archived_at__isnull=True)
+        .values_list("course__subject")
+        .annotate(n=Count("id"))
+    )
+    rows = Subject.objects.annotate(
+        teacher_count=Count(
+            "courses__teacher",
+            filter=Q(courses__archived_at__isnull=True, courses__teacher__isnull=False),
+            distinct=True,
+        )
+    ).order_by("-in_lms", "order", "title")
+    return [{**subject_dict(s), "weekly": weekly.get(s.pk, 0), "teachers": s.teacher_count} for s in rows]
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+@cached
+def subject_in_lms(request, pk: int):
+    """Переключить предмет: ведётся в LMS или только расписание. Пишется в журнал."""
+    from core.audit import apply_changes
+
+    refusal = _editor(request)
+    if refusal:
+        return refusal
+    subject = Subject.objects.filter(pk=pk).first()
+    if subject is None:
+        return _not_found()
+    if "in_lms" not in request.data:
+        return _bad(_("Не передано, ведётся ли предмет в LMS"))
+    apply_changes(subject, {"in_lms": bool(request.data.get("in_lms"))}, actor=request.user)
+    return Response({"rows": subject_rows()})
 
 
 @extend_schema(responses={200: dict})

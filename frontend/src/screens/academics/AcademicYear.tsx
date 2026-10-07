@@ -7,11 +7,13 @@
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useCloseQuarter, useSaveYear, useYear, type BellSchedule, type YearScreen } from '../../api/academics'
+import { useCloseQuarter, useSaveYear, useSubjectInLms, useYear, type BellSchedule, type SubjectRow, type YearScreen } from '../../api/academics'
 import { useStudyGroups } from '../../api/hooks'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import DataTable, { type Column } from '../../components/DataTable'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
+import { SelectField } from '../../components/SelectField'
 import RowMenu, { RowMenuItem } from '../../components/RowMenu'
 import { Row, Rows } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
@@ -289,6 +291,56 @@ function SubjectsKkDialog({ year, onClose }: { year: YearScreen; onClose: () => 
   )
 }
 
+/**
+ * Предметы: ведётся в LMS или только расписание (решение владельца, 07.10.2026).
+ * Основной журнал школа ведёт в Kundelik; у «только расписание» урок стоит
+ * в неделе, а журнала, оценок и ДЗ нет. Таблица во всю ширину страницы.
+ */
+function SubjectsCard({ rows }: { rows: SubjectRow[] }) {
+  const toggle = useSubjectInLms()
+  const kept = rows.filter((row) => row.in_lms).length
+  const columns: Column<SubjectRow>[] = [
+    {
+      key: 'title',
+      title: t('Предмет'),
+      width: 'auto',
+      phone: 'head',
+      sortBy: (row) => row.title,
+      cell: (row) => (
+        <>
+          <b>{row.title}</b>
+          {row.in_lms && <span className="t-note"> · {row.scheme_title}</span>}
+        </>
+      ),
+    },
+    { key: 'weekly', title: t('Уроков в неделю'), width: '16%', align: 'right', sortBy: (row) => row.weekly, cell: (row) => <span className="num">{row.weekly}</span> },
+    { key: 'teachers', title: t('Учителей'), width: '12%', align: 'right', sortBy: (row) => row.teachers, cell: (row) => <span className="num">{row.teachers}</span> },
+    {
+      key: 'in_lms',
+      title: t('В LMS'),
+      width: '26%',
+      sortBy: (row) => (row.in_lms ? 0 : 1),
+      cell: (row) => (
+        <SelectField
+          className="subjects__lms"
+          aria-label={t('{subject}: ведётся в LMS или только расписание', { subject: row.title })}
+          value={row.in_lms ? 'yes' : 'no'}
+          disabled={toggle.isPending}
+          onChange={(event) => toggle.mutate({ id: row.id, in_lms: event.target.value === 'yes' }, { onError: (e) => toast.error(e.message) })}
+        >
+          <option value="yes">{t('ведётся в LMS')}</option>
+          <option value="no">{t('только расписание')}</option>
+        </SelectField>
+      ),
+    },
+  ]
+  return (
+    <DataCard title={t('Предметы')} count={rows.length || undefined} right={<span className="t-note">{t('ведутся в LMS: {kept} из {total}', { kept, total: rows.length })}</span>} empty={rows.length === 0 && t('предметов нет — их заводит импорт расписания')}>
+      {rows.length > 0 && <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} fit />}
+    </DataCard>
+  )
+}
+
 function NewYearDialog({ onClose }: { onClose: () => void }) {
   const save = useSaveYear()
   const [title, setTitle] = useState('')
@@ -479,6 +531,7 @@ export default function AcademicYear() {
           )}
         </div>
       </div>
+      <SubjectsCard rows={data.subject_rows ?? []} />
       {dialog === 'quarters' && <QuartersDialog year={data} onClose={() => setDialog(null)} />}
       {dialog === 'scale' && <ScaleDialog year={data} onClose={() => setDialog(null)} />}
       {dialog === 'reports' && <ReportsDialog year={data} onClose={() => setDialog(null)} />}

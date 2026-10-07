@@ -148,3 +148,21 @@ def test_teacher_sees_only_kept_subjects_in_today(school_subjects, schedule_only
     ids = {row["id"] for row in answer.get("journals", [])}
     assert kept.course_id in ids
     assert lesson.course_id not in ids
+
+
+def test_year_screen_lists_subjects_with_counts_and_switch(subjects, lesson, as_kymbat, as_curator):
+    rows = {row["code"]: row for row in as_kymbat.get("/api/acad/year/").json()["subject_rows"]}
+    assert rows["alg"]["in_lms"] is True
+    assert rows["alg"]["teachers"] == 1
+    answer = as_kymbat.patch(f"/api/acad/subjects/{subjects['alg'].pk}/", {"in_lms": False}, format="json")
+    assert answer.status_code == 200
+    assert {row["code"]: row["in_lms"] for row in answer.json()["rows"]}["alg"] is False
+    from core.models import AuditLog
+
+    assert AuditLog.objects.filter(field_name="in_lms", new_value="нет").exists()
+    assert (
+        as_curator.patch(f"/api/acad/subjects/{subjects['alg'].pk}/", {"in_lms": True}, format="json").status_code
+        == 403
+    )
+    subjects["alg"].refresh_from_db()
+    assert subjects["alg"].in_lms is False

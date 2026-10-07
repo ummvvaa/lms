@@ -543,6 +543,11 @@ export interface BellSchedule {
   bells: { number: number; starts: string; ends: string }[]
 }
 
+export interface SubjectRow extends AcadSubject {
+  weekly: number
+  teachers: number
+}
+
 export interface YearScreen {
   year: { id: number; title: string; starts: string; ends: string } | null
   quarters: {
@@ -573,6 +578,8 @@ export interface YearScreen {
     sections: Record<'attendance' | 'grades' | 'exams' | 'documents' | 'curator' | 'discipline', boolean>
   }
   subjects: AcadSubject[]
+  /** предметы на экране года: ведётся ли в LMS, уроков в неделю, учителей */
+  subject_rows: SubjectRow[]
 }
 
 export interface AcadDashboard {
@@ -926,6 +933,9 @@ export const useMyLessons = (date: string, enabled = true) =>
 export const useYear = () => useQuery({ queryKey: ['acad', 'year'], queryFn: () => get<YearScreen>('/acad/year/') })
 
 export const useSaveYear = () => useAcadMutation((input: Record<string, unknown>) => patch<YearScreen>('/acad/year/', input), { saved: true })
+
+export const useSubjectInLms = () =>
+  useAcadMutation((input: { id: number; in_lms: boolean }) => patch<{ rows: SubjectRow[] }>(`/acad/subjects/${input.id}/`, { in_lms: input.in_lms }), { saved: true })
 
 export const useCloseQuarter = () =>
   useAcadMutation((input: { id: number; closed: boolean }) => post<{ quarter: { id: number; closed: boolean } }>(`/acad/year/quarters/${input.id}/close/`, input))

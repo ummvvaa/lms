@@ -88,6 +88,11 @@ def _row(subject: Subject) -> SubjectRow:
     )
 
 
+def is_kept_title(title: str) -> bool:
+    """Предмет школы, который ведётся в LMS: по названию из файла или экрана."""
+    return any(_key(title) in names for _label, names in KEPT)
+
+
 def kept_subjects(extra_titles: list[str] | None = None) -> tuple[list[tuple[str, list[Subject]]], list[str]]:
     """Шесть предметов школы в базе: что нашлось и чего нет."""
     subjects = list(Subject.objects.all())

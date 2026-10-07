@@ -3930,4 +3930,10 @@ export const en: Record<string, string> = {
   'Страница {page} из {pages}': 'Page {page} of {pages}',
   'Экран': 'Screen',
   'в LMS только расписание': 'schedule only in the LMS',
+  'В LMS': 'In the LMS',
+  '{subject}: ведётся в LMS или только расписание': '{subject}: kept in the LMS or schedule only',
+  'ведётся в LMS': 'kept in the LMS',
+  'только расписание': 'schedule only',
+  'ведутся в LMS: {kept} из {total}': 'kept in the LMS: {kept} of {total}',
+  'предметов нет — их заводит импорт расписания': 'no subjects yet — the schedule import adds them',
 }

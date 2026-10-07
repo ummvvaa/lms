@@ -16586,3 +16586,6 @@ msgstr "Kept in the LMS"
 
 msgid "«{subject}» в LMS — только расписание: журнал, оценки и ДЗ ведутся не здесь"
 msgstr "“{subject}” is schedule-only in the LMS: the gradebook, grades and homework are kept elsewhere"
+
+msgid "Не передано, ведётся ли предмет в LMS"
+msgstr "Missing whether the subject is kept in the LMS"

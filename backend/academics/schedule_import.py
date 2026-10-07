@@ -585,16 +585,23 @@ class _Writer:
             scheme = SCHEMES.get(row.grading, Scheme.KZ)
             found = known.get(_key(title))
             if found is None:
+                from academics.keep_subjects import is_kept_title
+
+                # в LMS ведутся только предметы, которых нет в Kundelik; новый предмет
+                # не из них — «только расписание», включают его в «Учебном году»
+                kept = is_kept_title(title)
                 found = Subject.objects.create(
                     code=self._subject_code(title),
                     title=title[:100],
                     short_title=title[:32],
-                    scheme=scheme,
+                    # шесть предметов школы — только ФО из 10 (решение владельца, 07.10.2026)
+                    scheme=Scheme.FO if kept else scheme,
                     order=100,
+                    in_lms=kept,
                 )
                 known[_key(title)] = found
                 section.created += 1
-                if not row.grading:
+                if not row.grading and not kept:
                     self.report.warn(
                         "subject",
                         _("Новый предмет «{subject}»: оценивание в файле не указано — ФО, СОР и СОЧ, проверьте").format(
