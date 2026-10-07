@@ -8,6 +8,7 @@
  * (инвариант №10).
  */
 import { useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { useTrack } from '../usage/context'
 import { useAddToMyList, useCatalog, useCatalogFacets, usePickPrograms, useRemoveFromMyList, useWhatIf, type CatalogCard } from '../api/hooks'
 import DataTable, { type Column } from '../components/DataTable'
@@ -19,9 +20,11 @@ import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead } from '../comp
 import { Button } from '../components/ui/button'
 import { t, tk } from '../i18n'
 import { formatDate } from '../lib/format'
+import MyUniversities from './MyUniversities'
 import './catalog.css'
 
-type Mode = 'catalog' | 'pick' | 'whatif'
+type Mode = 'mine' | 'catalog' | 'pick' | 'whatif'
+const MODES: Mode[] = ['mine', 'catalog', 'pick', 'whatif']
 
 const TIERS: { value: string; title: string; hint: string }[] = [
   { value: 'reach', title: 'reach', hint: tk('с запасом вверх') },
@@ -210,7 +213,11 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
 
 export default function Catalog() {
   const trackFilter = useTrack('filter.change')
-  const [mode, setMode] = useState<Mode>('catalog')
+  // режим — в адресе: «Мои вузы» открываются ссылкой `?mode=mine` с главной, из календаря и напоминаний
+  const [params, setParams] = useSearchParams()
+  const asked = params.get('mode') as Mode | null
+  const mode: Mode = asked && MODES.includes(asked) ? asked : 'catalog'
+  const setMode = (next: Mode) => setParams(next === 'catalog' ? {} : { mode: next }, { replace: true })
   const [filters, setFilters] = useState<Record<string, string>>({})
   const facets = useCatalogFacets()
   const catalog = useCatalog(filters)
@@ -289,6 +296,7 @@ export default function Catalog() {
           onChange={setMode}
           label={t('Режим')}
           items={[
+            { value: 'mine', label: t('Мои вузы') },
             { value: 'catalog', label: t('Каталог') },
             { value: 'pick', label: t('Подобрать словами') },
             { value: 'whatif', label: t('Что откроется, если') },
@@ -296,6 +304,7 @@ export default function Catalog() {
         />
       </div>
 
+      {mode === 'mine' && <MyUniversities onMode={setMode} />}
       {mode === 'pick' && <PickPanel limitReached={limitReached} />}
       {mode === 'whatif' && <WhatIfPanel />}
 

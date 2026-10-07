@@ -17,6 +17,7 @@ from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
 from core.domains import ROLE_STUDENT
+from core.parallels import MY_UNIVERSITIES_PATH, TASKS_PATH, student_screen
 from students.models import Activity, Competition, ExamGoal, Student
 
 #: как далеко смотрим назад и вперёд — календарь, а не архив
@@ -119,7 +120,7 @@ def events_for(student: Student, today: dt.date | None = None) -> list[dict]:
                     "deadline",
                     _("Дедлайн: {university}").format(university=row.program.university.name),
                     deadline,
-                    "/universities",
+                    MY_UNIVERSITIES_PATH,
                 )
             )
 
@@ -130,6 +131,8 @@ def events_for(student: Student, today: dt.date | None = None) -> list[dict]:
     saved = SavedScholarship.objects.filter(student=student, scholarship__deadline__isnull=False).select_related(
         "scholarship"
     )
+    if not student_screen("/scholarships"):
+        saved = saved.none()
     for row in saved:
         deadline = row.scholarship.deadline
         if _within(deadline, today):
@@ -168,7 +171,7 @@ def events_for(student: Student, today: dt.date | None = None) -> list[dict]:
     ):
         due = task.effective_due_date
         if _within(due, today):
-            events.append(_event("task", _("Задача: {task}").format(task=task.title), due, "/roadmap"))
+            events.append(_event("task", _("Задача: {task}").format(task=task.title), due, TASKS_PATH))
 
     events.sort(key=lambda e: e["date"])
     return events

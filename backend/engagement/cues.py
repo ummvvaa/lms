@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.utils.translation import gettext
 
 from core import school_rules
+from core.parallels import student_screen
 from engagement.models import CueCondition, HomeCue
 from students.models import Student
 
@@ -124,6 +125,9 @@ def build(student: Student) -> list[dict]:
     for rule in HomeCue.objects.filter(is_active=True):
         check = CHECKS.get(rule.condition)
         if check is None:
+            continue
+        # сюжет ведёт на экран, убранный из кабинета ученика, — не показывается
+        if not student_screen(rule.action_path.split("?")[0]):
             continue
         eyebrow = check(student)
         if eyebrow is None:

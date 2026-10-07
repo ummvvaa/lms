@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router'
 import { ApiError } from '../api/client'
 import { useTeacherProfile } from '../api/academics'
-import { useJourney, useUpdatePreferences } from '../api/hooks'
+import { useUpdatePreferences } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import Field from '../components/Field'
 import PersonalEmail from '../components/PersonalEmail'
@@ -127,31 +127,8 @@ function PasswordBlock() {
   )
 }
 
-/** Возврат раздела «Мой путь»: после пяти шагов пункт уходит из меню. */
-function JourneyPin() {
-  const [pinned, setPinned] = useState(localStorage.getItem('journey.pinned') === '1')
-  const toggle = () => {
-    const next = !pinned
-    setPinned(next)
-    if (next) localStorage.setItem('journey.pinned', '1')
-    else localStorage.removeItem('journey.pinned')
-  }
-  return (
-    <Row
-      title={t('Мой путь')}
-      value={pinned ? t('в меню') : t('скрыт из меню')}
-      acts={
-        <Button variant="outline" size="sm" onClick={toggle}>
-          {pinned ? t('Скрыть шаги пути') : t('Показать шаги пути')}
-        </Button>
-      }
-    />
-  )
-}
-
 export default function Profile() {
   const { me } = useAuth()
-  const journey = useJourney(me?.role === 'student' && me.has_admission !== false)
   if (!me) return null
 
   return (
@@ -167,7 +144,6 @@ export default function Profile() {
             {me.role === 'student' && <Row title={t('Группа')} value={me.group || null} none={t('не указана')} />}
             {me.role === 'teacher' && <TeacherRows />}
             <Row title={t('Последний вход')} value={formatWhen(me.last_login)} />
-            {me.role === 'student' && journey.data?.complete && <JourneyPin />}
             {/* личная почта — вход и «Забыли пароль» после подтверждения письмом */}
             {me.role === 'student' && <PersonalEmail identities={me.identities} />}
           </Rows>

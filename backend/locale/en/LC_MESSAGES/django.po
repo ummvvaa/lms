@@ -16589,3 +16589,6 @@ msgstr "“{subject}” is schedule-only in the LMS: the gradebook, grades and h
 
 msgid "Не передано, ведётся ли предмет в LMS"
 msgstr "Missing whether the subject is kept in the LMS"
+
+msgid "Посмотреть задачи"
+msgstr "See tasks"

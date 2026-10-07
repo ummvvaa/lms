@@ -20,6 +20,7 @@ from django.utils.translation import gettext_noop
 from core import school_rules
 from core.i18n import language_of, render
 from core.models import Notification
+from core.parallels import MY_UNIVERSITIES_PATH, TASKS_PATH, student_screen
 from roadmap.models import Task, TaskCategory, TaskPriority, TaskStatus
 from students.models import ExamGoal
 
@@ -85,6 +86,9 @@ def create_scholarship_tasks(today: dt.date | None = None) -> int:
 
     from universities.models import SavedScholarship
 
+    # стипендий у ученика больше нет (решение владельца, 07.10.2026): задача вела бы в никуда
+    if not student_screen("/scholarships"):
+        return 0
     today = today or _today()
     horizon = today + dt.timedelta(days=school_rules.value(school_rules.REMIND_SCHOLARSHIP_DAYS))
     created = 0
@@ -180,7 +184,7 @@ def send_event_reminders(today: dt.date | None = None) -> int:
             row.student.user,
             kind=Notification.Kind.EVENT_REMINDER,
             template=gettext_noop("Дедлайн подачи в {university} — {date}"),
-            link="/universities",
+            link=MY_UNIVERSITIES_PATH,
             university=row.program.university.name,
             date=f"{row.admission_round.deadline:%d.%m.%Y}",
         )
@@ -189,6 +193,8 @@ def send_event_reminders(today: dt.date | None = None) -> int:
     saved = SavedScholarship.objects.filter(scholarship__deadline=scholarship_day).select_related(
         "scholarship", "student__user"
     )
+    if not student_screen("/scholarships"):
+        saved = saved.none()
     for row in saved:
         sent += _notify_once(
             row.student.user,
@@ -210,7 +216,7 @@ def send_event_reminders(today: dt.date | None = None) -> int:
             task.student.user,
             kind=Notification.Kind.EVENT_REMINDER,
             template=gettext_noop("Срок задачи «{title}» — {date}"),
-            link="/roadmap",
+            link=TASKS_PATH,
             title=task.title,
             date=f"{task.due_date:%d.%m.%Y}",
         )
@@ -226,7 +232,7 @@ def send_event_reminders(today: dt.date | None = None) -> int:
                 task.student.user,
                 kind=Notification.Kind.EVENT_REMINDER,
                 template=gettext_noop("Срок задачи «{title}» — {date}"),
-                link="/roadmap",
+                link=TASKS_PATH,
                 title=task.title,
                 date=f"{task.effective_due_date:%d.%m.%Y}",
             )

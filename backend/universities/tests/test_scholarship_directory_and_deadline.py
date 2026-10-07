@@ -164,7 +164,7 @@ def test_student_saves_and_removes(api, student_user, student, scholarship):
 
 
 @pytest.mark.django_db
-def test_saved_deadline_shows_up_in_the_calendar(student, scholarship):
+def test_saved_deadline_shows_up_in_the_calendar(student, scholarship, scholarships_on_screen):
     """Событие календаря берётся из стипендии, а не копируется в базу."""
     SavedScholarship.objects.create(student=student, scholarship=scholarship)
     events = events_for(student)
@@ -175,7 +175,7 @@ def test_saved_deadline_shows_up_in_the_calendar(student, scholarship):
 
 
 @pytest.mark.django_db
-def test_reminder_and_task_appear_before_the_deadline(student, student_user, scholarship):
+def test_reminder_and_task_appear_before_the_deadline(student, student_user, scholarship, scholarships_on_screen):
     """За N дней приходит напоминание и появляется задача роадмапа."""
     from core.models import Notification, SchoolRule
     from roadmap.reminders import run_daily
@@ -195,6 +195,28 @@ def test_reminder_and_task_appear_before_the_deadline(student, student_user, sch
     again = run_daily()
     assert again["scholarship_tasks_created"] == 0
     assert Task.objects.filter(student=student, scholarship=scholarship).count() == 1
+
+
+@pytest.fixture
+def scholarships_on_screen(monkeypatch):
+    """Стипендии снова на экране ученика: механизм дедлайнов цел и включится вместе с разделом."""
+    from core import parallels
+
+    monkeypatch.setattr(parallels, "HIDDEN_PATHS", parallels.HIDDEN_PATHS - {"/scholarships"})
+
+
+@pytest.mark.django_db
+def test_hidden_scholarships_give_no_events_tasks_or_reminders(student, student_user, scholarship):
+    """Стипендий у ученика нет (решение владельца, 07.10.2026): ни события, ни задачи, ни письма в никуда."""
+    from core.models import Notification, SchoolRule
+    from roadmap.reminders import run_daily
+
+    SchoolRule.objects.create(code="remind_scholarship_days", value=10)
+    SavedScholarship.objects.create(student=student, scholarship=scholarship)
+    assert [event for event in events_for(student) if event["kind"] == "scholarship"] == []
+    assert run_daily()["scholarship_tasks_created"] == 0
+    assert not Task.objects.filter(student=student, scholarship=scholarship).exists()
+    assert not Notification.objects.filter(recipient=student_user, link="/scholarships").exists()
 
 
 @pytest.mark.django_db

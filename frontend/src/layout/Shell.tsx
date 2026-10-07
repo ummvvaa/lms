@@ -1,7 +1,7 @@
 /** Каркас: тёмное меню по роли на ноутбуке, тёмная полоса и нижний бар на телефоне, область экрана. */
 import { Suspense, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
-import { useJourney, useLocks, useMaterialsState, useNotifications, useUpdatePreferences } from '../api/hooks'
+import { useLocks, useMaterialsState, useNotifications, useUpdatePreferences } from '../api/hooks'
 import { AssistantScreenProvider } from '../assistant/context'
 import AssistantWidget from '../components/AssistantWidget'
 import JobsPanel from '../components/JobsPanel'
@@ -22,7 +22,6 @@ import { Dialog, DialogContent, DialogTitle } from '../components/ui/dialog'
 import './shell.css'
 import { t } from '../i18n'
 import CuratorCabinet from '../screens/curator/Cabinet'
-import { readFlag } from '../lib/storage'
 import { usePhone } from '../phone'
 
 export default function Shell() {
@@ -37,12 +36,6 @@ export default function Shell() {
   // замки разделов ученика: раздел, который откроется после его шага,
   // показывается с объяснением, а не пустым экраном
   const locks = useLocks(me?.role === 'student' && me.has_admission !== false)
-  // «Мой путь» уходит из меню, когда все пять шагов пройдены:
-  // раздел, в котором больше нечего делать, не должен занимать строку.
-  // Вернуть его можно из профиля — тогда он снова в меню
-  const journey = useJourney(me?.role === 'student' && me.has_admission !== false)
-  // приватное окно и закрытые куки роняли весь каркас на чтении хранилища
-  const showJourney = readFlag('journey.pinned')
   // непрочитанное у пункта — число в пилюле: считается по адресам
   // уведомлений, а не по отдельному счётчику на каждый раздел
   const notifications = useNotifications()
@@ -74,13 +67,12 @@ export default function Shell() {
 
   if (!me) return null
 
-  let items = navFor(me.role, me.can_see_whole_school, {
+  const items = navFor(me.role, me.can_see_whole_school, {
     materials: materials.data?.has_access ?? false,
     curator: materials.data?.is_curator ?? false,
     sections: me.sections,
     teaches: me.teaches,
   })
-  if (journey.data?.complete && !showJourney) items = items.filter((item) => item.path !== '/journey')
 
   const unreadLinks = (notifications.data?.rows ?? [])
     .filter((row) => !row.is_read && row.link)

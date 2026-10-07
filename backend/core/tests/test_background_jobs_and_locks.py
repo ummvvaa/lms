@@ -159,8 +159,8 @@ def test_locked_sections_explain_themselves(api, student_user, student):
     """Закрытый раздел объясняется словами и говорит, что сделать."""
     api.force_authenticate(student_user)
     locks = {row["path"]: row for row in api.get("/api/journey/locks/").data["locks"]}
-    assert locks["/selection"]["locked"] is True
-    assert "внесёте баллы" in locks["/selection"]["reason"]
+    # «Подбор вузов» открыт без условий (решение владельца, 07.10.2026)
+    assert "/selection" not in locks
     assert locks["/plan"]["locked"] is True
     assert locks["/plan"]["reason"] == "Откроется, когда выберете вузы"
     assert locks["/plan"]["to"] == "/selection"
@@ -174,7 +174,6 @@ def test_lock_lifts_as_soon_as_the_step_is_done(api, student_user, student):
 
     api.force_authenticate(student_user)
     locks = {row["path"]: row for row in api.get("/api/journey/locks/").data["locks"]}
-    assert locks["/selection"]["locked"] is False
     assert locks["/plan"]["locked"] is True, "план ждёт своего шага — выбора вузов"
 
     from universities.models import Program, StudentUniversity, University

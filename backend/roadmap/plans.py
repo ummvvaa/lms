@@ -16,6 +16,7 @@ from django.utils import timezone, translation
 from django.utils.translation import gettext
 
 from core.i18n import active_language, language_of, render
+from core.parallels import TASKS_PATH
 from roadmap.models import ApplicationPlan, TaskCategory, TaskPriority
 from suggestions.engine import apply_suggestion
 from suggestions.models import Suggestion, SuggestionChange, SuggestionSource, SuggestionStatus
@@ -268,7 +269,8 @@ def ensure_for_program(student, program, *, user) -> ApplicationPlan | None:
         kind="plan",
         title=render(language_of(user), "План по вузу «{university}»", university=program.university.name),
         task_id=task.id,
-        link=f"/plan/{plan.pk}",
+        # плана у ученика на экране больше нет: задачи плана — на главной
+        link=TASKS_PATH,
         retry_task="roadmap.generate_plan",
         retry_payload={"plan_id": plan.pk},
     )

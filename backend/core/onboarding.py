@@ -276,10 +276,10 @@ def _student_steps(student) -> list[Step]:
             code="plan",
             title=_("План на год открыт"),
             hint=_("Задачи собираются из ваших вузов и их дедлайнов"),
-            path="/roadmap",
+            path="/dashboard",
             done=tasks > 0,
             count=tasks,
-            action=_("Посмотреть план"),
+            action=_("Посмотреть задачи"),
         ),
     ]
 

@@ -1,18 +1,18 @@
 /**
- * «Мои вузы»: список ученика строками — приоритет, категория, соответствие
+ * «Мои вузы» — вкладка «Каталога вузов» (решение владельца, 07.10.2026):
+ * список ученика строками — приоритет, категория, соответствие
  * требованиям и разрыв словами; разбор раскрывается под строкой.
  *
  * Процент — соответствие заведённым требованиям, не шанс поступления
  * (инвариант №11). Внутренних ярлыков здесь нет (инвариант №7).
  */
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useCatalog, useChangeTier, useMyUniversities, useRemoveFromMyList, useSetPriority } from '../api/hooks'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { MatchBreakdown } from '../components/MatchCard'
 import { Row, Rows, StatRow } from '../components/patterns'
-import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, UnverifiedNote } from '../components/ui'
+import { Chip, DataCard, ErrorNote, Kpi, Loading, UnverifiedNote } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t, tk, tn } from '../i18n'
 import { formatDate } from '../lib/format'
@@ -25,8 +25,10 @@ const TIERS = [
   { value: 'safety', title: tk('подстраховка') },
 ]
 
-export default function MyUniversities() {
-  const navigate = useNavigate()
+/** Режимы каталога, куда ведут кнопки вкладки. */
+type CatalogMode = 'catalog' | 'whatif'
+
+export default function MyUniversities({ onMode }: { onMode: (mode: CatalogMode) => void }) {
   const mine = useMyUniversities()
   // строки каталога знают, что у ученика уже в списке и что он может убрать
   const catalog = useCatalog({})
@@ -54,20 +56,6 @@ export default function MyUniversities() {
 
   return (
     <div>
-      <ScreenHead
-        title={t('Мои вузы')}
-        subtitle={results.length === 0 ? undefined : tn(results.length, '{n} программа · по {open} вы проходите уже сейчас|{n} программы · по {open} вы проходите уже сейчас|{n} программ · по {open} вы проходите уже сейчас', { open: openCount })}
-        actions={
-          <>
-            <Button variant="outline" size="sm" onClick={() => navigate('/catalog?mode=whatif')}>
-              {t('Что откроется, если')}
-            </Button>
-            <Button size="sm" onClick={() => navigate('/catalog')}>
-              {t('Найти ещё в каталоге')}
-            </Button>
-          </>
-        }
-      />
       <StatRow>
         <Kpi label={t('В списке')} value={results.length || null} none={t('нет')} />
         <Kpi label={t('Проходите')} value={openCount || null} none={t('нет')} tone={openCount ? 'good' : undefined} />
@@ -79,9 +67,17 @@ export default function MyUniversities() {
           <DataCard
             title={t('Список подачи')}
             count={results.length || undefined}
+            note={results.length === 0 ? undefined : tn(results.length, '{n} программа · по {open} вы проходите уже сейчас|{n} программы · по {open} вы проходите уже сейчас|{n} программ · по {open} вы проходите уже сейчас', { open: openCount })}
+            right={
+              results.length > 0 ? (
+                <Button variant="link" size="sm" onClick={() => onMode('whatif')}>
+                  {t('Что откроется, если')}
+                </Button>
+              ) : undefined
+            }
             empty={results.length === 0 && t('выберите программы в каталоге — по каждой видно, проходите ли вы, а дедлайны сами станут задачами')}
             emptyAction={
-              <Button variant="secondary" size="sm" onClick={() => navigate('/catalog')}>
+              <Button variant="secondary" size="sm" onClick={() => onMode('catalog')}>
                 {t('Открыть каталог')}
               </Button>
             }

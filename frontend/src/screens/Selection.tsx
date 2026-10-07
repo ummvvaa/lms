@@ -16,8 +16,6 @@ import {
   useActiveSelection,
   useAddToMyList,
   useCatalogFacets,
-  useFavorites,
-  usePlanActions,
   useSelectionExplain,
   useSelectionRun,
   useSelectionRuns,
@@ -26,14 +24,12 @@ import {
   type SelectionRun,
 } from '../api/hooks'
 import Field from '../components/Field'
-import Icon from '../layout/icons'
 import Progress from '../components/Progress'
 import { Row, Rows, StatRow } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t, tk } from '../i18n'
 import { formatDate } from '../lib/format'
-import { ApiError } from '../api/client'
 
 const TIER_TONE: Record<string, Tone> = { dream: 'info', reach: 'warn', match: 'accent', safety: 'good' }
 
@@ -45,7 +41,6 @@ const TIER_NOTE: Record<string, string> = {
 }
 
 /** План по программе уже есть: сервер отвечает 409 с кодом — текст ответа на языке человека. */
-const planExists = (error: Error) => error instanceof ApiError && (error.status === 409 || (error.payload as { code?: string } | null)?.code === 'plan_exists')
 
 /** Форма запуска: специальность, уровень, страны из справочника. */
 function LaunchForm({ onStarted }: { onStarted: (run: SelectionRun) => void }) {
@@ -151,16 +146,8 @@ function Explain({ run, program }: { run: number; program: number }) {
 
 /** Строка вуза в результате: два числа — и оба соответствие, не шанс. */
 function ResultRow({ run, row }: { run: SelectionRun; row: SelectionResultRow }) {
-  const favorites = useFavorites(false)
   const addToList = useAddToMyList()
-  const plans = usePlanActions()
-  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
-  const [favorite, setFavorite] = useState(row.is_favorite)
-  const toggleFavorite = () => {
-    const action = favorite ? favorites.remove : favorites.add
-    action.mutate(row.program, { onSuccess: () => setFavorite(!favorite), onError: (error) => toast.error(error.message) })
-  }
   return (
     <div className="sel__result" data-program={row.program}>
       <Row
@@ -175,9 +162,6 @@ function ResultRow({ run, row }: { run: SelectionRun; row: SelectionResultRow })
         }
         acts={
           <>
-            <Button variant="ghost" size="icon-sm" aria-label={favorite ? t('Убрать из избранного') : t('В избранное')} aria-pressed={favorite} onClick={toggleFavorite}>
-              <Icon name="heart" size={16} />
-            </Button>
             <Button variant="outline" size="sm" onClick={() => setOpen(!open)}>
               {open ? t('Свернуть разбор') : t('Почему такой процент')}
             </Button>
@@ -186,9 +170,6 @@ function ResultRow({ run, row }: { run: SelectionRun; row: SelectionResultRow })
                 {t('В мой список')}
               </Button>
             )}
-            <Button variant="ghost" size="sm" disabled={plans.create.isPending} onClick={() => plans.create.mutate({ program: row.program }, { onSuccess: (plan) => navigate(`/plan/${plan.id}`), onError: (error) => (planExists(error) ? navigate('/plan') : toast.error(error.message)) })}>
-              {t('Создать план')}
-            </Button>
           </>
         }
       />

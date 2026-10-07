@@ -159,12 +159,14 @@ def test_essay_editor_takes_the_screen_with_the_assistant():
     assert ".essay__bubble--me" in css, "ответы ученика — своим цветом"
 
 
-def test_journey_leaves_the_menu_when_it_is_done():
-    """Пять шагов пройдены — пункт уходит из меню, возврат из профиля."""
+def test_journey_is_not_in_the_student_cabinet():
+    """«Мой путь» убран из кабинета ученика (решение владельца, 07.10.2026): пункта нет, закрепления в профиле нет."""
     shell = read("layout", "Shell.tsx")
-    assert "journey.data?.complete" in shell and "'/journey'" in shell
+    assert "journey" not in shell
     profile = read("screens", "Profile.tsx")
-    assert "journey.pinned" in profile and "Показать шаги пути" in profile
+    assert "journey.pinned" not in profile
+    nav = read("layout", "nav.ts")
+    assert "{ path: '/journey'" not in nav and "'/journey'" in nav.split("STUDENT_HIDDEN =")[1].split("\n")[0]
     # полосы «шаг выполнен — следующий…» на экранах больше нет: подсказок нет (27.09.2026)
     assert "StepDone" not in shell
 

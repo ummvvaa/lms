@@ -104,8 +104,6 @@ const TEMPLATES: NavItem = {
 /** Ресурсы школы (фаза 45): читают все, ведут пять директоров вместе —
  *  владельца-домена у раздела нет, и пункт стоит у каждого. */
 const RESOURCES: NavItem = { path: '/resources', label: tk('Ресурсы'), icon: 'openbook', group: 'data' }
-/** У ученика тот же раздел стоит в «Работе»: это то, что он читает, а не справочник. */
-const RESOURCES_STUDENT: NavItem = { path: '/resources', label: tk('Ресурсы'), icon: 'openbook', group: 'work' }
 
 /** Проверка ДЗ со сдачей в LMS (30.09.2026): у учителя и у того, кто ведёт уроки при другой роли. */
 const HOMEWORK_REVIEW: NavItem = { path: '/homework-review', label: tk('Проверка ДЗ'), icon: 'homework', group: 'work', short: tk('ДЗ') }
@@ -135,9 +133,6 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/grades', label: tk('Оценки'), icon: 'book', group: 'main' },
     // сдача ДЗ в LMS: к сдаче, на проверке, проверено — у всех параллелей
     { path: '/homework', label: tk('Домашние задания'), icon: 'homework', group: 'main', short: tk('ДЗ') },
-    // лестница пяти шагов: пока путь не пройден, она и есть главная,
-    // а после — возвращается этим пунктом (фаза 37)
-    { path: '/journey', label: tk('Мой путь'), icon: 'route', group: 'main' },
     // календарь: экзамены, дедлайны, соревнования и задачи одним взглядом (фаза 39)
     { path: '/calendar', label: tk('Календарь'), icon: 'calendar', group: 'main' },
     // «Портфолио» — с фазы 38 ученик рассказывает о себе сам: баллы,
@@ -152,23 +147,16 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/sport', label: tk('Спорт'), icon: 'ball', group: 'achievements' },
 
     // --- поступление: куда и на какие деньги ---
-    { path: '/catalog', label: tk('Каталог вузов'), icon: 'search', group: 'admission' },
-    { path: '/favorites', label: tk('Избранное'), icon: 'heart', group: 'admission' },
-    { path: '/universities', label: tk('Мои вузы'), icon: 'bookmark', group: 'admission', short: tk('Вузы') },
-    // план по конкретному вузу — со своими задачами и дедлайном (фаза 41)
-    { path: '/plan', label: tk('План поступления'), icon: 'checklist', group: 'admission' },
-    // стипендии и гранты: свой раздел, а не строчка в каталоге вузов (фаза 44)
-    { path: '/scholarships', label: tk('Стипендии'), icon: 'card', group: 'admission' },
+    // «Мои вузы» — вкладка каталога (решение владельца, 07.10.2026)
+    { path: '/catalog', label: tk('Каталог вузов'), icon: 'search', group: 'admission', short: tk('Вузы') },
     // профтест: анкета и разбор направлений (фаза 45)
     { path: '/career', label: tk('Профтест'), icon: 'compass', group: 'admission' },
 
     // --- работа: то, что делается руками ---
     { path: '/essays', label: tk('Эссе'), icon: 'doc', group: 'work' },
     { path: '/prep', label: tk('Подготовка'), icon: 'pencil', group: 'work', nested: true },
-    { path: '/roadmap', label: tk('Роадмап'), icon: 'flag', group: 'work' },
     // достижения-бейджи
     { path: '/achievements', label: tk('Достижения'), icon: 'star', group: 'work' },
-    RESOURCES_STUDENT,
   ],
   director_behavior: [
     USAGE,
@@ -284,7 +272,7 @@ export const NAV: Record<Role, NavItem[]> = {
 export const TABS: Record<Role, string[]> = {
   // у ученика в баре — главная, расписание, ДЗ и вузы: ДЗ открывают каждый день,
   // оценки реже — они в «Ещё»; у 8–10 вузов нет, их место добирают оценки
-  student: ['/dashboard', '/schedule', '/homework', '/universities'],
+  student: ['/dashboard', '/schedule', '/homework', '/catalog'],
   director_behavior: ['/dashboard', '/attendance', '/risks', '/suggestions'],
   director_admission: ['/dashboard', '/table', '/suggestions', '/directory'],
   director_exam: ['/dashboard', '/table', '/suggestions', '/mocks'],
@@ -390,8 +378,16 @@ export interface NavExtras {
   teaches?: boolean
 }
 
+/**
+ * Экраны, убранные из кабинета ученика (решение владельца, 07.10.2026): пункта
+ * нет, прямой адрес ведёт на главную. Данные и маршруты API остаются — задачи
+ * на главной, стипендии и ресурсы у сотрудников. Тот же список на сервере —
+ * `core/parallels.py`, `HIDDEN_PATHS`; «Мои вузы» — вкладка каталога.
+ */
+export const STUDENT_HIDDEN = ['/journey', '/plan', '/scholarships', '/roadmap', '/resources', '/favorites']
+
 /** Все адреса разделов ученика: чтобы понять, что адрес — раздел, закрытый параллели. */
-const STUDENT_SECTION_PATHS = [...NAV.student.map((item) => item.path), '/onboarding', '/materials', '/profile']
+const STUDENT_SECTION_PATHS = [...NAV.student.map((item) => item.path), '/onboarding', '/materials', '/profile', ...STUDENT_HIDDEN]
 
 /**
  * Открыт ли ученику адрес по параллели его группы.

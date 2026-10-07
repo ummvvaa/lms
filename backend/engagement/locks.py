@@ -39,24 +39,12 @@ def locks_for(student: Student) -> list[dict]:
     """
     from universities.models import MatchRun, StudentUniversity
 
-    exam = getattr(student, "exam", None)
-    has_numbers = any(
-        getattr(exam, name, None) not in (None, "")
-        for name in ("gpa", "ielts_current", "sat_current", "ielts_target", "sat_target")
-    )
-    has_goals = student.exam_goals.exists() if hasattr(student, "exam_goals") else False
     has_universities = StudentUniversity.objects.filter(student=student).exists()
     has_run = MatchRun.objects.filter(student=student).exists()
 
+    # «Подбор вузов» открыт без условий (решение владельца, 07.10.2026): без баллов
+    # и целей экран сам говорит, что считать не из чего
     rows = [
-        {
-            "path": "/selection",
-            "locked": not (has_numbers or has_goals),
-            "reason": gettext("Откроется, когда внесёте баллы или цели по экзаменам"),
-            "hint": gettext("Подбор считает соответствие требованиям по вашим числам: без них считать нечего"),
-            "action": gettext("Заполнить портфолио"),
-            "to": "/my-data",
-        },
         {
             "path": "/plan",
             "locked": not (has_universities or has_run),

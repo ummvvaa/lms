@@ -380,6 +380,25 @@ def document_open(student, doc_type: str) -> bool:
 _BY_ROUTE: dict[str, Section] = {route: section for section in SECTIONS for route in section.routes}
 
 
+#: Экраны, убранные из кабинета ученика (решение владельца, 07.10.2026):
+#: «Мой путь», план поступления, стипендии, роадмап, ресурсы, избранное.
+#: «Мои вузы» — вкладка «Каталога вузов» (`/catalog?mode=mine`). Маршруты
+#: разделов остаются: задачи живут на главной, данные читают сотрудники
+#: и календарь; данные не удаляются. Пункта меню нет, прямой адрес ведёт
+#: на главную.
+HIDDEN_PATHS: frozenset[str] = frozenset(
+    {"/journey", "/plan", "/scholarships", "/roadmap", "/resources", "/favorites", "/universities"}
+)
+#: куда теперь ведут ссылки на убранные экраны
+TASKS_PATH = "/dashboard"
+MY_UNIVERSITIES_PATH = "/catalog?mode=mine"
+
+
+def student_screen(path: str) -> bool:
+    """Есть ли у ученика экран по этому адресу (не убран из кабинета)."""
+    return path not in HIDDEN_PATHS
+
+
 def sections_for(parallel: int) -> list[Section]:
     """Разделы, открытые параллели, в порядке меню."""
     return [section for section in SECTIONS if parallel in section.parallels]
@@ -388,7 +407,7 @@ def sections_for(parallel: int) -> list[Section]:
 def student_paths(student) -> list[str]:
     """Адреса экранов, открытые ученику, — меню и маршруты фронта берут их отсюда."""
     parallel = parallel_of(student)
-    return [path for section in sections_for(parallel) for path in section.paths]
+    return [path for section in sections_for(parallel) for path in section.paths if student_screen(path)]
 
 
 def section_open(code: str, parallel: int) -> bool:

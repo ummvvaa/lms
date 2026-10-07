@@ -72,7 +72,6 @@ const MockResults = lazy(() => import('./screens/mocks/MockImports').then((modul
 const Dashboard = lazy(() => import('./screens/dashboards/Dashboard'))
 const TableScreen = lazy(() => import('./screens/TableScreen'))
 const ImportScreen = lazy(() => import('./screens/ImportScreen'))
-const MyUniversities = lazy(() => import('./screens/MyUniversities'))
 const Catalog = lazy(() => import('./screens/Catalog'))
 const Directory = lazy(() => import('./screens/Directory'))
 const Archive = lazy(() => import('./screens/Archive'))
@@ -375,7 +374,8 @@ function Routing() {
         <Route path="/olympiads" element={<Olympiads />} />
         <Route path="/sport" element={<Sport />} />
         <Route path="/roadmap" element={<Roadmap />} />
-        <Route path="/universities" element={<MyUniversities />} />
+        {/* «Мои вузы» — вкладка каталога (07.10.2026): старые ссылки ведут туда */}
+        <Route path="/universities" element={<Navigate to="/catalog?mode=mine" replace />} />
         <Route path="/catalog" element={<Catalog />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/prep" element={<Prep />} />
