@@ -65,7 +65,7 @@ class RequirementImportReport:
             "updated": self.updated,
             "unchanged": self.unchanged,
             "errors": self.errors,
-            "rows": self.rows[:30],
+            "rows": self.rows,
         }
 
 
@@ -120,8 +120,17 @@ def import_requirements(
 
         university_name = cell("university").strip()
         program_name = cell("program").strip()
+        preview = {
+            "row": number,
+            "program": " · ".join(part for part in (university_name, program_name) if part),
+            "status": "error",
+            "state": "",
+            "reason": "",
+        }
+        report.rows.append(preview)
         if not university_name or not program_name:
-            report.errors.append(_("строка {number}: пустой вуз или программа").format(number=number))
+            preview["reason"] = _("строка {number}: пустой вуз или программа").format(number=number)
+            report.errors.append(preview["reason"])
             continue
 
         try:
@@ -131,7 +140,8 @@ def import_requirements(
                 if target not in ("university", "program", "level") and target in reverse
             }
         except ValueError as exc:
-            report.errors.append(_("строка {number}: {error}").format(number=number, error=exc))
+            preview["reason"] = _("строка {number}: {error}").format(number=number, error=exc)
+            report.errors.append(preview["reason"])
             continue
 
         university, _created = University.objects.get_or_create(
@@ -149,6 +159,7 @@ def import_requirements(
         if requirement is None:
             AdmissionRequirement.objects.create(program=program, **clean)
             report.created += 1
+            preview["status"] = "created"
             state = _("создано")
         else:
             changed = [k for k, v in clean.items() if k != "checked_at" and getattr(requirement, k) != v]
@@ -157,12 +168,14 @@ def import_requirements(
             requirement.save()
             if changed:
                 report.updated += 1
+                preview["status"] = "updated"
                 state = _("обновлено: {fields}").format(fields=", ".join(changed))
             else:
                 report.unchanged += 1
+                preview["status"] = "skipped"
                 state = _("без изменений")
 
-        report.rows.append({"row": number, "program": str(program), "state": state})
+        preview.update(program=str(program), state=state)
 
     if dry_run:
         transaction.set_rollback(True)

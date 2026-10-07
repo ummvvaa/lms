@@ -1001,6 +1001,8 @@ def record_payload(record) -> dict:
     """Отчёт о загрузке — то, что показывает последний шаг мастера."""
     return {
         "id": record.pk,
+        "kind": "wizard",
+        "kind_title": _("Мастер импорта"),
         "created_at": record.created_at,
         "file_name": record.file_name,
         "uploaded_by": author_name(record.uploaded_by, record.uploaded_by_title),

@@ -9,7 +9,7 @@
  * 2. что заполняем — таблица «колонка → поле → домен → владелец →
  *    строк с данными» из реестра, чипы доменов, нераспознанное поимённо,
  *    счёт «будет записано»;
- * 3. проверка строк — ошибки, правка, пропуск, фильтр «только с ошибками»;
+ * 3. проверка всех строк — поиск, состояния, правка и пропуск;
  * 4. готово — отчёт по доменам, пропуски по видам, выгрузка, карточка.
  *
  * Владелец домена видит все колонки, но чужие помечены «домен не ваш,
@@ -28,10 +28,10 @@ import {
   type AdmissionPreview,
 } from '../api/hooks'
 import { downloadFile } from '../api/client'
-import { Chip, DataCard, ErrorNote, withNumbers } from './ui'
+import { Chip, DataCard, EmptyNote, ErrorNote, withNumbers } from './ui'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
-import { Checkbox } from './ui/checkbox'
+import ImportPreview from './ImportRowsPreview'
 import { SelectField } from './SelectField'
 import WizardSteps from './WizardSteps'
 import DataTable from './DataTable'
@@ -52,7 +52,6 @@ const STEPS: { step: Step; title: string }[] = [
 const DOMAIN_ROW = 'домен'
 
 type WizardColumn = AdmissionPreview['columns'][number]
-type SheetRow = AdmissionPreview['sheets'][number]['rows'][number]
 
 export default function ImportWizard() {
   const navigate = useNavigate()
@@ -64,7 +63,6 @@ export default function ImportWizard() {
   const [fixes, setFixes] = useState<Record<string, Fix>>({})
   // назначения человека: заголовок файла → колонка реестра; пусто — «не загружать»
   const [assigned, setAssigned] = useState<Record<string, string>>({})
-  const [onlyBad, setOnlyBad] = useState(false)
   const [report, setReport] = useState<AdmissionImportReport | null>(null)
   const check = useAdmissionPreview()
   const apply = useAdmissionApply()
@@ -72,7 +70,13 @@ export default function ImportWizard() {
 
   const fixList = (next = fixes): Fix[] => Object.values(next).filter((fix) => fix.skip || fix.student)
 
-  const run = (selected: File, nextFixes: Fix[] = [], forGroup = group, nextAssigned = assigned, resetDomains = false) => {
+  const run = (
+    selected: File,
+    nextFixes: Fix[] = [],
+    forGroup = group,
+    nextAssigned = assigned,
+    resetDomains = false,
+  ) => {
     setReport(null)
     check.mutate(
       { file: selected, fixes: nextFixes, group: forGroup, assigned: nextAssigned },
@@ -152,7 +156,10 @@ export default function ImportWizard() {
   const counts = preview?.counts
   const errorsLeft = counts ? counts.errors : 0
   // строки ручного назначения: неузнанные заголовки и те, что человек уже назначил
-  const assignRows = useMemo(() => [...new Set([...Object.keys(assigned), ...(preview?.unknown_columns ?? [])])], [assigned, preview])
+  const assignRows = useMemo(
+    () => [...new Set([...Object.keys(assigned), ...(preview?.unknown_columns ?? [])])],
+    [assigned, preview],
+  )
   // список выбора — весь реестр сервера, по доменам; «Ученик» и ФИО — отдельной группой
   const assignGroups = useMemo(() => {
     const groups = new Map<string, { key: string; title: string }[]>()
@@ -164,34 +171,33 @@ export default function ImportWizard() {
   }, [preview])
 
   return (
-    <>
-      <WizardSteps steps={STEPS.map((row) => t(row.title))} current={step} />
+    <div className="import-flow">
+      <WizardSteps stackedOnPhone steps={STEPS.map((row) => t(row.title))} current={step} />
 
       {step === 1 && (
         <DataCard
           title={t('Файл')}
-          note={t('Таблица с ФИО: лист книги Excel — учебная группа, для CSV группу выбирают здесь. Список с почтой или логином ученика — любой лист или CSV, группа не нужна')}
+          right={<Chip size="sm">{t('Шаг {step} из {total}', { step, total: 4 })}</Chip>}
+          note={file?.name}
         >
-          <div className="toolbar">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                void downloadFile('/admission-imports/template/', 'shablon-importa.xlsx').catch(
-                  (error: Error) => toast.error(error.message),
-                )
-              }
-            >
-              {t('Шаблон')}
-            </Button>
-            <span className="muted">
-              {t('Формат: колонки узнаются по заголовкам, пустая ячейка ничего не стирает — guides/ADMISSION_IMPORT.md и guides/FIELDS_IMPORT.md в репозитории')}
-            </span>
-          </div>
+          <p className="import-flow__hint">
+            {t(
+              'Таблица с ФИО: лист книги Excel — учебная группа, для CSV группу выбирают здесь. Список с почтой или логином ученика — любой лист или CSV, группа не нужна',
+            )}
+          </p>
+          <p className="import-flow__hint">
+            {t('Колонки узнаются по заголовкам. Пустая ячейка ничего не стирает.')}
+          </p>
           <label className="wizard__group">
             <span className="eyebrow">{t('Группа для CSV')}</span>
-            <SelectField aria-label={t('Группа для CSV')} value={group} onChange={(e) => setGroup(e.target.value)}>
-              <option value="">{t('— для книги Excel и списка по почте не нужна —')}</option>
+            <SelectField
+              aria-label={t('Группа для CSV')}
+              value={group}
+              onChange={(e) => setGroup(e.target.value)}
+            >
+              <option value="" data-short={t('Не нужна')}>
+                {t('— для книги Excel и списка по почте не нужна —')}
+              </option>
               {(groups.data?.results ?? []).map((row) => (
                 <option key={row.id} value={row.code}>
                   {row.code}
@@ -249,19 +255,43 @@ export default function ImportWizard() {
                     {t('Листов без группы:')} {counts.sheets_skipped}
                   </Chip>
                 )}
-                <span className="toolbar__spacer" />
-                {/* строк нет, но есть неузнанные колонки — дальше можно: колонку ученика назначают на шаге 2 */}
-                <Button size="sm" onClick={() => setStep(2)} disabled={counts.rows === 0 && preview.unknown_columns.length === 0}>
-                  {t('Дальше')}
-                </Button>
               </div>
             </>
           )}
+          <div className="import-flow__actions">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                void downloadFile('/admission-imports/template/', 'shablon-importa.xlsx').catch(
+                  (error: Error) => toast.error(error.message),
+                )
+              }
+            >
+              {t('Шаблон')}
+            </Button>
+            {preview && counts && (
+              <>
+                {/* строк нет, но есть неузнанные колонки — дальше можно: колонку ученика назначают на шаге 2 */}
+                <Button
+                  size="sm"
+                  onClick={() => setStep(2)}
+                  disabled={counts.rows === 0 && preview.unknown_columns.length === 0}
+                >
+                  {t('Дальше')}
+                </Button>
+              </>
+            )}
+          </div>
         </DataCard>
       )}
 
       {step === 2 && preview && (
-        <DataCard title={t('Что заполняем')} note={t('Колонка → поле → домен: из реестра соответствий')}>
+        <DataCard
+          title={t('Что заполняем')}
+          right={<Chip size="sm">{t('Шаг {step} из {total}', { step, total: 4 })}</Chip>}
+          note={t('Колонка → поле → домен: из реестра соответствий')}
+        >
           {/* чипы доменов: выбрать или снять; чужой домен снять нельзя — он и так не пишется */}
           <div className="wizard__chips">
             {preview.domains.map((code) => {
@@ -285,8 +315,14 @@ export default function ImportWizard() {
           </div>
 
           <DataTable
+            fit
             columns={[
-              { key: 'title', title: t('Колонка в файле'), width: '26%', cell: (column: WizardColumn) => column.header || column.title },
+              {
+                key: 'title',
+                title: t('Колонка в файле'),
+                width: '26%',
+                cell: (column: WizardColumn) => column.header || column.title,
+              },
               {
                 key: 'field',
                 title: t('Поле'),
@@ -302,8 +338,18 @@ export default function ImportWizard() {
                   </span>
                 ),
               },
-              { key: 'domain', title: t('Домен'), width: '16%', cell: (column: WizardColumn) => column.domain_title },
-              { key: 'owner', title: t('Владелец'), width: '14%', cell: (column: WizardColumn) => column.owner },
+              {
+                key: 'domain',
+                title: t('Домен'),
+                width: '16%',
+                cell: (column: WizardColumn) => column.domain_title,
+              },
+              {
+                key: 'owner',
+                title: t('Владелец'),
+                width: '14%',
+                cell: (column: WizardColumn) => column.owner,
+              },
               {
                 key: 'rows',
                 title: t('Строк с данными'),
@@ -315,7 +361,7 @@ export default function ImportWizard() {
                   return (
                     <>
                       <span className="num">{column.rows_with_data}</span>
-                      {!mine && <Chip size="sm">{t('домен не ваш, будет пропущен')}</Chip>}
+                      {!mine && <Chip className="badge--sentence">{t('домен не ваш, будет пропущен')}</Chip>}
                       {mine && !on && <Chip size="sm">{t('не будет записано')}</Chip>}
                     </>
                   )
@@ -331,18 +377,30 @@ export default function ImportWizard() {
           {assignRows.length > 0 && (
             <>
               <p className="muted wizard__unknown">
-                {t('Эти колонки мастер не узнал или вы переназначаете их сами. Выберите, куда положить колонку; без выбора она будет пропущена.')}
+                {t(
+                  'Эти колонки мастер не узнал или вы переназначаете их сами. Выберите, куда положить колонку; без выбора она будет пропущена.',
+                )}
               </p>
               <DataTable
                 fit
                 columns={[
-                  { key: 'header', title: t('Колонка в файле'), width: '40%', cell: (header: string) => header },
+                  {
+                    key: 'header',
+                    title: t('Колонка в файле'),
+                    width: '40%',
+                    cell: (header: string) => header,
+                  },
                   {
                     key: 'target',
                     title: t('Куда положить'),
                     width: '60%',
                     cell: (header: string) => (
-                      <SelectField aria-label={header} value={assigned[header] ?? ''} disabled={check.isPending} onChange={(event) => assign(header, event.target.value)}>
+                      <SelectField
+                        aria-label={header}
+                        value={assigned[header] ?? ''}
+                        disabled={check.isPending}
+                        onChange={(event) => assign(header, event.target.value)}
+                      >
                         <option value="">{t('— не загружать —')}</option>
                         {assignGroups.map((group) => (
                           <optgroup key={group.title} label={group.title}>
@@ -363,7 +421,7 @@ export default function ImportWizard() {
             </>
           )}
 
-          <div className="toolbar">
+          <div className="import-flow__actions">
             <span className="wizard__sum">
               {withNumbers(t('Будет записано — полей: {fields}, доменов: {domains}, строк: {rows}'), summary)}
             </span>
@@ -379,105 +437,53 @@ export default function ImportWizard() {
       )}
 
       {step === 3 && preview && counts && (
-        <DataCard title={t('Проверка строк')} note={`${t('Листов:')} ${counts.sheets}`}>
-          <div className="toolbar">
-            <Chip tone="good" className="num">
-              {t('Строк готово:')} {counts.ready}
+        <DataCard
+          title={t('Проверка строк')}
+          note={file?.name}
+          right={
+            <Chip tone={errorsLeft > 0 ? 'warn' : 'good'} size="sm">
+              {errorsLeft > 0 ? t('Есть ошибки') : t('Готово к применению')}
             </Chip>
-            {counts.errors > 0 && (
-              <Chip tone="warn" className="num">
-                {t('Строк с ошибкой:')} {counts.errors}
-              </Chip>
-            )}
-            {counts.overwrites > 0 && (
-              <Chip tone="info" className="num">
-                {t('Перезапишется:')} {counts.overwrites}
-              </Chip>
-            )}
-            <label className="users__check">
-              <Checkbox checked={onlyBad} onCheckedChange={(on) => setOnlyBad(Boolean(on))} />
-              {t('только с ошибками')}
-            </label>
-            <span className="toolbar__spacer" />
-            {errorsLeft > 0 && (
-              <Button size="sm" variant="outline" disabled={check.isPending} onClick={skipAllBad}>
-                {t('Пропустить строки с ошибкой')}
-              </Button>
-            )}
-            <Button size="sm" variant="outline" onClick={() => setStep(2)}>
-              {t('Назад')}
-            </Button>
-            {/* пока есть неразобранные ошибки — не применяем: строку правят или пропускают */}
-            <Button size="sm" disabled={apply.isPending || counts.ready === 0 || errorsLeft > 0} onClick={applyAll}>
-              {t('Применить')}
-            </Button>
-          </div>
+          }
+        >
           {errorsLeft > 0 && (
-            <p className="muted">{t('Пока есть строки с ошибкой, применить нельзя: отнесите их ученику или пропустите')}</p>
+            <p className="import-flow__hint">
+              {t('Пока есть строки с ошибкой, применить нельзя: отнесите их ученику или пропустите')}
+            </p>
           )}
-
-          {preview.sheets.map((sheet) => (
-            <div key={sheet.name} className="aimp__sheet">
-              <h3 className="aimp__title">
-                {sheet.name}
-                {sheet.error ? (
-                  <Chip tone="warn">{sheet.error}</Chip>
-                ) : (
-                  <span className="muted">
-                    {sheet.by_key
-                      ? t('список по почте или логину · готово {ready} · пропуск {skipped}', { ready: sheet.ready, skipped: sheet.skipped })
-                      : t('группа {group} · готово {ready} · пропуск {skipped}', {
-                          group: sheet.group_code,
-                          ready: sheet.ready,
-                          skipped: sheet.skipped,
-                        })}
-                  </span>
-                )}
-              </h3>
-              {sheet.rows.length > 0 && (
-                <DataTable
-                  columns={[
-                    { key: 'n', title: t('Строка'), width: '8%', align: 'right', cell: (row: SheetRow) => <span className="num">{row.index}</span> },
-                    { key: 'raw', title: sheet.by_key ? t('Почта или логин в файле') : t('ФИО в таблице'), width: '20%', cell: (row: SheetRow) => row.raw_name },
-                    {
-                      key: 'student',
-                      title: t('Ученик'),
-                      width: '26%',
-                      cell: (row: SheetRow) => {
-                        const key = `${sheet.name}:${row.index}`
-                        if (row.skip) return <span className="t-note">{t('пропущена')}</span>
-                        return (
-                          <div className="aimp__fix">
-                            {row.student_name ? (
-                              <span>{row.student_name}</span>
-                            ) : row.candidates.length === 0 ? (
-                              // по почте или логину ученик либо найден, либо нет: выбирать не из кого
-                              <span className="t-note">{t('не найден')}</span>
-                            ) : (
-                              <SelectField aria-label={t('Кому отнести строку')} value={String(fixes[key]?.student ?? '')} onChange={(event) => setFix(key, { key, student: event.target.value ? Number(event.target.value) : null })}>
-                                <option value="">{t('— выберите ученика —')}</option>
-                                {row.candidates.map((candidate) => (
-                                  <option key={candidate.student} value={candidate.student}>
-                                    {candidate.full_name}
-                                  </option>
-                                ))}
-                              </SelectField>
-                            )}
-                            {row.error && (
-                              <Button size="sm" variant="ghost" onClick={() => setFix(key, { key, skip: true })}>
-                                {t('Пропустить')}
-                              </Button>
-                            )}
-                          </div>
-                        )
-                      },
-                    },
-                    {
-                      key: 'found',
-                      title: t('Что нашлось'),
-                      width: '24%',
-                      cell: (row: SheetRow) =>
-                        [
+          {counts.overwrites > 0 && (
+            <p className="import-flow__hint num">
+              {t('Перезапишется:')} {counts.overwrites}
+            </p>
+          )}
+          {preview.sheets
+            .filter((sheet) => sheet.error)
+            .map((sheet) => (
+              <p key={sheet.name} className="import-preview__error">
+                {sheet.name}: {sheet.error}
+              </p>
+            ))}
+          <ImportPreview
+            rows={preview.sheets.flatMap((sheet) =>
+              sheet.rows.map((row) => {
+                const key = `${sheet.name}:${row.index}`
+                return {
+                  key,
+                  number: row.index,
+                  name: row.student_name || row.raw_name,
+                  search: [row.raw_name, row.student_name, sheet.name, sheet.group_code].join(' '),
+                  status: row.skip ? 'skipped' : row.error ? 'error' : 'updated',
+                  detail: (
+                    <div className="import-preview__values">
+                      <span className="t-note">
+                        {t('Лист')}: {sheet.name}
+                        {sheet.group_code ? ` · ${sheet.group_code}` : ''}
+                      </span>
+                      {row.student_name && row.raw_name !== row.student_name && (
+                        <span className="t-note">{t('В файле: {value}', { value: row.raw_name })}</span>
+                      )}
+                      <span>
+                        {[
                           row.phone,
                           row.gpa === null ? '' : `GPA ${row.gpa}`,
                           row.scores.map((score) => `${score.exam} ${score.value}`).join(' · '),
@@ -486,45 +492,98 @@ export default function ImportWizard() {
                           ...row.fields.map((field) => `${field.title}: ${field.value}`),
                         ]
                           .filter(Boolean)
-                          .join(' · ') || <span className="t-note">{t('ничего')}</span>,
-                    },
-                    {
-                      key: 'notes',
-                      title: t('Замечания'),
-                      width: '22%',
-                      cell: (row: SheetRow) => (
-                        <>
-                          {row.error && (
-                            <Chip tone="warn" size="sm">
-                              {row.error}
-                            </Chip>
-                          )}
-                          {row.warnings.map((warning) => (
-                            <div key={warning} className="t-note">
-                              {warning}
-                            </div>
+                          .join(' · ') || t('ничего')}
+                      </span>
+                    </div>
+                  ),
+                  reason: (
+                    <>
+                      {row.error && <span>{row.error}</span>}
+                      {row.warnings.map((warning) => (
+                        <span key={warning}>{warning}</span>
+                      ))}
+                      {row.overwrites.map((change) => (
+                        <span key={change.key}>
+                          {t('Перезапишется: {field} {old} → {new}', {
+                            field: change.title,
+                            old: change.old,
+                            new: change.new,
+                          })}
+                        </span>
+                      ))}
+                    </>
+                  ),
+                  actions: !row.skip && (
+                    <>
+                      {!row.student_name && row.candidates.length > 0 && (
+                        <SelectField
+                          disabled={check.isPending}
+                          aria-label={t('Кому отнести строку')}
+                          value={String(fixes[key]?.student ?? '')}
+                          onChange={(event) =>
+                            setFix(key, {
+                              key,
+                              student: event.target.value ? Number(event.target.value) : null,
+                            })
+                          }
+                        >
+                          <option value="">{t('— выберите ученика —')}</option>
+                          {row.candidates.map((candidate) => (
+                            <option key={candidate.student} value={candidate.student}>
+                              {candidate.full_name}
+                            </option>
                           ))}
-                          {row.overwrites.map((change) => (
-                            <div key={change.key} className="t-note">
-                              {t('Перезапишется: {field} {old} → {new}', { field: change.title, old: change.old, new: change.new })}
-                            </div>
-                          ))}
-                        </>
-                      ),
-                    },
-                  ]}
-                  rows={sheet.rows.filter((row) => !onlyBad || row.error)}
-                  rowKey={(row) => `${sheet.name}:${row.index}`}
-                  rowClass={(row) => (row.error ? 'aimp__row--bad' : undefined)}
-                />
-              )}
-            </div>
-          ))}
+                        </SelectField>
+                      )}
+                      {row.error && (
+                        <Button
+                          disabled={check.isPending}
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setFix(key, { key, skip: true })}
+                        >
+                          {t('Пропустить')}
+                        </Button>
+                      )}
+                    </>
+                  ),
+                }
+              }),
+            )}
+          />
+          <div className="import-flow__actions">
+            <Button
+              variant="outline"
+              disabled={check.isPending || apply.isPending}
+              onClick={() => setStep(2)}
+            >
+              {t('Назад')}
+            </Button>
+            {errorsLeft > 0 && (
+              <Button variant="outline" disabled={check.isPending} onClick={skipAllBad}>
+                {t('Пропустить строки с ошибкой')}
+              </Button>
+            )}
+            <Button
+              disabled={check.isPending || apply.isPending || counts.ready === 0 || errorsLeft > 0}
+              onClick={applyAll}
+            >
+              {t('Применить')}
+            </Button>
+          </div>
         </DataCard>
       )}
 
       {step === 4 && report && (
-        <DataCard title={t('Готово')} note={`${t('Листов:')} ${report.sheets} · ${report.file_name}`}>
+        <DataCard
+          title={t('Готово')}
+          right={
+            <Chip tone="good" size="sm">
+              {t('Шаг {step} из {total}', { step, total: 4 })}
+            </Chip>
+          }
+          note={`${t('Листов:')} ${report.sheets} · ${report.file_name}`}
+        >
           <div className="toolbar">
             <Chip tone="good" className="num">
               {t('Учеников обновлено:')} {report.students_updated}
@@ -538,18 +597,6 @@ export default function ImportWizard() {
             <Chip tone="neutral" className="num">
               {t('Паролей записано:')} {report.credentials_saved}
             </Chip>
-            <span className="toolbar__spacer" />
-            {report.first_student && (
-              <Button size="sm" variant="outline" onClick={() => navigate(`/students/${report.first_student}`)}>
-                {t('Открыть карточку')}
-              </Button>
-            )}
-            <ExportButton
-              path={`/admission-imports/${report.id}/export/`}
-              fallback="otchet-importa.xlsx"
-              title={tk('Отчёт импорта')}
-              label={tk('Скачать отчёт')}
-            />
           </div>
 
           {/* по доменам — числами: строки «домен» из отчёта */}
@@ -575,10 +622,25 @@ export default function ImportWizard() {
           )}
 
           {report.rows.filter((row) => row.kind !== DOMAIN_ROW).length === 0 && (
-            <p className="muted">{t('Всё загрузилось без замечаний')}</p>
+            <EmptyNote what={tk('Всё загрузилось без замечаний')} />
           )}
-          <div className="toolbar">
-            <span className="toolbar__spacer" />
+          <div className="import-flow__actions">
+            {report.first_student && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate(`/students/${report.first_student}`)}
+              >
+                {t('Открыть карточку')}
+              </Button>
+            )}
+            <ExportButton
+              path={`/admission-imports/${report.id}/export/`}
+              fallback="otchet-importa.xlsx"
+              title={tk('Отчёт импорта')}
+              label={tk('Скачать отчёт')}
+            />
+
             <Button
               size="sm"
               variant="outline"
@@ -589,6 +651,7 @@ export default function ImportWizard() {
                 setReport(null)
                 setFixes({})
                 setChosen([])
+                setAssigned({})
               }}
             >
               {t('Загрузить ещё файл')}
@@ -596,6 +659,6 @@ export default function ImportWizard() {
           </div>
         </DataCard>
       )}
-    </>
+    </div>
   )
 }

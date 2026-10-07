@@ -183,7 +183,15 @@ def questions_import(request):
             media[handle.name] = (handle.read(), handle.content_type or "application/octet-stream")
 
     dry_run = str(request.data.get("dry_run", "")).lower() in {"1", "true", "yes"}
-    return Response(import_questions(content, media=media, dry_run=dry_run).as_dict())
+    return Response(
+        import_questions(
+            content,
+            media=media,
+            dry_run=dry_run,
+            actor=request.user,
+            file_name=uploaded.name,
+        ).as_dict()
+    )
 
 
 @extend_schema(responses={200: dict})

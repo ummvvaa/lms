@@ -142,12 +142,14 @@ class ReadinessSnapshot(models.Model):
 class ImportBatch(models.Model):
     """Одна загрузка файла: кто, когда, что и с каким результатом.
 
-    Нужна, чтобы загрузку можно было отменить целиком. Механика та же,
-    что у отката предложений: обратный набор изменений через журнал.
+    Для загрузок с отменой механика та же, что у отката предложений:
+    обратный набор изменений через журнал. Банк заданий хранит только след.
     """
 
     class Kind(models.TextChoices):
         STUDENTS = "students", gettext_lazy("Данные учеников")
+        CONTACTS = "contacts", gettext_lazy("Контакты родителей")
+        COMPETITIONS = "competitions", gettext_lazy("Соревнования")
         REQUIREMENTS = "requirements", gettext_lazy("Требования вузов")
         QUESTIONS = "questions", gettext_lazy("Банк заданий")
         SCHOLARSHIPS = "scholarships", gettext_lazy("Стипендии")
@@ -195,6 +197,10 @@ class ImportBatch(models.Model):
 
     def __str__(self) -> str:
         return f"{self.file_name or self.get_kind_display()} · {self.created_at:%d.%m.%Y}"
+
+    @property
+    def can_revert(self) -> bool:
+        return self.status == self.Status.APPLIED and self.kind != self.Kind.QUESTIONS
 
 
 class ArchiveEntry(models.Model):

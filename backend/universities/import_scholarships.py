@@ -95,7 +95,7 @@ class ScholarshipImportReport:
             "updated": self.updated,
             "unchanged": self.unchanged,
             "errors": self.errors,
-            "rows": self.rows[:30],
+            "rows": self.rows,
         }
 
 
@@ -169,8 +169,11 @@ def import_scholarships(
             return _row[i] if i is not None and i < len(_row) else ""
 
         name = cell("name").strip()
+        preview = {"row": number, "name": name, "status": "error", "state": "", "reason": ""}
+        report.rows.append(preview)
         if not name:
-            report.errors.append(_("строка {number}: пустое название стипендии").format(number=number))
+            preview["reason"] = _("строка {number}: пустое название стипендии").format(number=number)
+            report.errors.append(preview["reason"])
             continue
 
         try:
@@ -180,7 +183,8 @@ def import_scholarships(
                 if target != "name" and target in reverse
             }
         except ValueError as exc:
-            report.errors.append(_("строка {number}: {error}").format(number=number, error=exc))
+            preview["reason"] = _("строка {number}: {error}").format(number=number, error=exc)
+            report.errors.append(preview["reason"])
             continue
 
         university = None
@@ -188,12 +192,11 @@ def import_scholarships(
         if university_name:
             university = University.objects.filter(name__iexact=university_name).first()
             if university is None:
-                report.errors.append(
-                    _(
-                        "строка {number}: вуза «{university}» нет в справочнике — "
-                        "заведите его или оставьте колонку пустой"
-                    ).format(number=number, university=university_name)
-                )
+                preview["reason"] = _(
+                    "строка {number}: вуза «{university}» нет в справочнике — "
+                    "заведите его или оставьте колонку пустой"
+                ).format(number=number, university=university_name)
+                report.errors.append(preview["reason"])
                 continue
 
         organizer = (values.get("organizer") or "").strip() if values.get("organizer") else ""
@@ -212,6 +215,7 @@ def import_scholarships(
                 **clean,
             )
             report.created += 1
+            preview["status"] = "created"
             state = _("заведётся")
         else:
             changed = [key for key, value in clean.items() if getattr(existing, key) != value]
@@ -222,13 +226,15 @@ def import_scholarships(
                 existing.data_source = CatalogSource.IMPORT
                 existing.save()
                 report.updated += 1
+                preview["status"] = "updated"
                 fields = ", ".join(str(TARGET_FIELDS.get(key, key)) for key in changed)
                 state = _("обновится: {fields}").format(fields=fields)
             else:
                 report.unchanged += 1
+                preview["status"] = "skipped"
                 state = _("уже есть")
 
-        report.rows.append({"row": number, "name": name, "state": state})
+        preview["state"] = state
 
     if dry_run:
         transaction.set_rollback(True)

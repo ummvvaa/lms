@@ -4,8 +4,7 @@
  * Отмена работает тем же способом, что откат предложений: обратный набор
  * изменений через журнал. Поле, которое после загрузки правили руками,
  * откат не трогает и говорит об этом поимённо. Загрузки мастера и файлы
- * полей — в одной таблице, вид загрузки колонкой; после десяти строк —
- * «Показать ещё».
+ * полей — в одной таблице, вид загрузки колонкой, страницы по 50 строк.
  */
 import { useState } from 'react'
 import {
@@ -20,12 +19,14 @@ import {
 } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import ConfirmDialog from './ConfirmDialog'
+import { ImportPagination } from './ImportRowsPreview'
+import { importPage } from './importRows'
 import DataTable, { type Column } from './DataTable'
 import EditDrawer from './EditDrawer'
 import ExportButton from './ExportPreview'
 import Field from './Field'
 import { Row, Rows } from './patterns'
-import { Chip, DataCard, ErrorNote, Loading, type Tone } from './ui'
+import { Chip, DataCard, EmptyNote, ErrorNote, Loading, type Tone } from './ui'
 import { Button } from './ui/button'
 import { t, tk, tn } from '../i18n'
 import { formatDateTime } from '../lib/format'
@@ -55,6 +56,8 @@ const DOMAIN_ROW = 'домен'
 type HistoryRow = {
   key: string
   kind: 'batch' | 'wizard'
+  type: string
+  typeTitle: string
   file: string
   who: string
   when: string
@@ -75,10 +78,20 @@ function CleanupPanel({ onDone }: { onDone: (detail: string) => void }) {
   const cleanup = useCleanupHistory()
   return (
     <div className="acad__form">
-      <Field kind="select" name="days" label={t('Старше скольких дней')} value={String(days)} onChange={(value) => setDays(Number(value))} options={[30, 90, 180, 365].map((value) => ({ value: String(value), title: String(value) }))} />
+      <Field
+        kind="select"
+        name="days"
+        label={t('Старше скольких дней')}
+        value={String(days)}
+        onChange={(value) => setDays(Number(value))}
+        options={[30, 90, 180, 365].map((value) => ({ value: String(value), title: String(value) }))}
+      />
       {preview.data && <p className="t-note">{preview.data.detail}</p>}
       <div className="acad__actions">
-        <Button disabled={(preview.data?.entries ?? 0) === 0 || cleanup.isPending} onClick={() => cleanup.mutate(days, { onSuccess: (result) => onDone(result.detail) })}>
+        <Button
+          disabled={(preview.data?.entries ?? 0) === 0 || cleanup.isPending}
+          onClick={() => cleanup.mutate(days, { onSuccess: (result) => onDone(result.detail) })}
+        >
           {t('Очистить')}
         </Button>
       </div>
@@ -98,11 +111,21 @@ function WizardReport({ report }: { report: AdmissionImportReport }) {
           <Row key={row.text} icon="layers" title={row.text} />
         ))}
       </Rows>
-      <DataCard title={t('Замечания')} count={notes.length || undefined} empty={notes.length === 0 && t('всё загрузилось без замечаний')}>
+      <DataCard
+        title={t('Замечания')}
+        count={notes.length || undefined}
+        empty={notes.length === 0 && t('всё загрузилось без замечаний')}
+      >
         <DataTable
           columns={[
             { key: 'sheet', title: t('Лист'), width: '20%', cell: (row: Note) => row.sheet },
-            { key: 'row', title: t('Строка'), width: '14%', align: 'right', cell: (row: Note) => <span className="num">{row.row}</span> },
+            {
+              key: 'row',
+              title: t('Строка'),
+              width: '14%',
+              align: 'right',
+              cell: (row: Note) => <span className="num">{row.row}</span>,
+            },
             { key: 'student', title: t('Ученик'), width: '26%', cell: (row: Note) => row.student },
             { key: 'text', title: t('Что случилось'), width: '40%', cell: (row: Note) => row.text },
           ]}
@@ -112,57 +135,63 @@ function WizardReport({ report }: { report: AdmissionImportReport }) {
         />
       </DataCard>
       <div className="acad__actions">
-        <ExportButton path={`/admission-imports/${report.id}/export/`} fallback="otchet-importa.xlsx" title={tk('Отчёт импорта')} label={tk('Скачать отчёт')} />
+        <ExportButton
+          path={`/admission-imports/${report.id}/export/`}
+          fallback="otchet-importa.xlsx"
+          title={tk('Отчёт импорта')}
+          label={tk('Скачать отчёт')}
+        />
       </div>
     </div>
   )
 }
-
-const VISIBLE = 10
 
 export default function ImportHistory() {
   const { me } = useAuth()
   const isAdmin = me?.role === 'admin'
   const [since, setSince] = useState('')
   const [until, setUntil] = useState('')
+  const [kind, setKind] = useState('')
+  const [kindTitle, setKindTitle] = useState('')
+  const [requestedPage, setPage] = useState(1)
   const [report, setReport] = useState<RevertReport | null>(null)
-  const [panel, setPanel] = useState<{ mode: 'cleanup' } | { mode: 'report'; report: AdmissionImportReport } | null>(null)
+  const [panel, setPanel] = useState<
+    { mode: 'cleanup' } | { mode: 'report'; report: AdmissionImportReport } | null
+  >(null)
   const [ask, setAsk] = useState<ImportBatchRow | null>(null)
   const [flash, setFlash] = useState<string | null>(null)
   const revert = useRevertImport()
-  // у куратора есть только загрузки мастера: CSV-загрузки полей — хозяйство
-  // администратора, и их список ему закрыт
+  // Права на историю загрузок проверяет сервер.
   const list = useImportBatches({ since, until }, me?.role !== 'curator')
-  const wizard = useAdmissionImports()
+  const wizard = useAdmissionImports({ since, until })
 
-  const wizardRows: HistoryRow[] = (wizard.data?.rows ?? [])
-    .filter((row) => {
-      const day = row.created_at.slice(0, 10)
-      return (!since || day >= since) && (!until || day <= until)
-    })
-    .map((row) => ({
-      key: `wizard-${row.id}`,
-      kind: 'wizard',
-      file: row.file_name || t('файл без имени'),
-      who: row.uploaded_by || t('автор не сохранён'),
-      when: row.created_at,
-      domains: row.domains,
-      onBehalf: false,
-      summary:
-        t('учеников {students} · попыток {attempts} · документов {documents} · паролей {credentials}', {
-          students: row.students_updated,
-          attempts: row.attempts_created,
-          documents: row.documents_created,
-          credentials: row.credentials_saved,
-        }) + (row.rows_skipped > 0 ? t(' · пропущено строк {skipped}', { skipped: row.rows_skipped }) : ''),
-      note: t('листов {sheets}', { sheets: row.sheets }),
-      status: 'applied',
-      statusTitle: t('мастер импорта'),
-      wizard: row,
-    }))
+  const wizardRows: HistoryRow[] = (wizard.data?.rows ?? []).map((row) => ({
+    key: `wizard-${row.id}`,
+    kind: 'wizard',
+    type: row.kind,
+    typeTitle: row.kind_title,
+    file: row.file_name || t('файл без имени'),
+    who: row.uploaded_by || t('автор не сохранён'),
+    when: row.created_at,
+    domains: row.domains,
+    onBehalf: false,
+    summary:
+      t('учеников {students} · попыток {attempts} · документов {documents} · паролей {credentials}', {
+        students: row.students_updated,
+        attempts: row.attempts_created,
+        documents: row.documents_created,
+        credentials: row.credentials_saved,
+      }) + (row.rows_skipped > 0 ? t(' · пропущено строк {skipped}', { skipped: row.rows_skipped }) : ''),
+    note: t('листов {sheets}', { sheets: row.sheets }),
+    status: 'applied',
+    statusTitle: t('Применён'),
+    wizard: row,
+  }))
   const batchRows: HistoryRow[] = (list.data ?? []).map((row) => ({
     key: `batch-${row.id}`,
     kind: 'batch',
+    type: row.kind,
+    typeTitle: row.kind_title,
     file: row.file_name || row.kind_title,
     // пусто — загрузка старше фазы 29: тогда автора не записывали
     who: row.actor_name || t('автор не сохранён'),
@@ -181,65 +210,81 @@ export default function ImportHistory() {
     statusTitle: row.status_title,
     batch: row,
   }))
-  const rows = [...wizardRows, ...batchRows].sort((a, b) => b.when.localeCompare(a.when))
+  const allRows = [...wizardRows, ...batchRows].sort((a, b) => b.when.localeCompare(a.when))
+  const kindOptions = new Map(allRows.map((row) => [row.type, row.typeTitle]))
+  if (kind && !kindOptions.has(kind)) kindOptions.set(kind, kindTitle)
+  const kinds = [...kindOptions.entries()]
+  const rows = allRows.filter((row) => !kind || row.type === kind)
+  const page = importPage(rows, requestedPage)
 
   const columns: Column<HistoryRow>[] = [
     {
       key: 'file',
       title: t('Файл'),
-      width: '30%',
+      width: '26%',
       cell: (row) => (
         <>
           <b>{row.file}</b>
           <span className="t-note">
             {' '}
             · {row.who}
-            {row.onBehalf && t(' · администратор за домен «{domain}»', { domain: row.domains[0] ? t(DOMAIN_TITLES[row.domains[0]] ?? row.domains[0]) : '' })}
+            {row.onBehalf &&
+              t(' · администратор за домен «{domain}»', {
+                domain: row.domains[0] ? t(DOMAIN_TITLES[row.domains[0]] ?? row.domains[0]) : '',
+              })}
           </span>
         </>
       ),
-      sortBy: (row) => row.file,
     },
-    { key: 'when', title: t('Когда'), width: '12%', cell: (row) => <span className="num">{when(row.when)}</span>, sortBy: (row) => row.when },
     {
-      key: 'domains',
-      title: t('Домен'),
+      key: 'when',
+      title: t('Когда'),
+      width: '14%',
+      cell: (row) => <span className="num">{when(row.when)}</span>,
+    },
+    {
+      key: 'type',
+      title: t('Вид загрузки'),
       width: '16%',
-      cell: (row) => (row.domains.length === 0 ? <span className="t-note">{t('нет')}</span> : row.domains.map((code) => <Chip key={code} size="sm">{t(DOMAIN_TITLES[code] ?? code)}</Chip>)),
+      cell: (row) => row.typeTitle,
     },
     {
       key: 'summary',
       title: t('Что сделано'),
       width: '22%',
       cell: (row) => (
-        <>
+        <span>
           {row.summary}
           {row.note && <span className="t-note"> · {row.note}</span>}
-        </>
+        </span>
       ),
     },
     {
       key: 'status',
       title: t('Состояние'),
-      width: '10%',
+      width: '12%',
       cell: (row) => (
         <Chip tone={row.kind === 'wizard' ? 'accent' : (STATUS_TONE[row.status] ?? 'neutral')} size="sm">
           {row.statusTitle}
         </Chip>
       ),
-      sortBy: (row) => row.status,
     },
     {
       key: 'acts',
       title: '',
+      actions: true,
       width: '10%',
       align: 'right',
       cell: (row) =>
         row.wizard ? (
-          <Button variant="secondary" size="sm" onClick={() => setPanel({ mode: 'report', report: row.wizard! })}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setPanel({ mode: 'report', report: row.wizard! })}
+          >
             {t('Отчёт')}
           </Button>
-        ) : row.batch && row.batch.status === 'applied' ? (
+        ) : row.batch && row.batch.can_revert && row.batch.status === 'applied' ? (
           <Button variant="ghost" size="sm" onClick={() => setAsk(row.batch!)}>
             {t('Отменить')}
           </Button>
@@ -251,41 +296,102 @@ export default function ImportHistory() {
     <DataCard
       title={t('История загрузок')}
       count={rows.length || undefined}
-      empty={!list.isLoading && rows.length === 0 && (isAdmin ? t('загрузок пока не было — каждый применённый файл попадёт сюда, и его можно будет отменить целиком') : t('по вашему домену загрузок ещё не было'))}
       right={
-        <span className="acad__inline">
-          <Field kind="date" name="since" label={t('с')} value={since} onChange={setSince} />
-          <Field kind="date" name="until" label={t('по')} value={until} onChange={setUntil} />
-          {isAdmin && (
-            <Button variant="outline" size="sm" onClick={() => setPanel({ mode: 'cleanup' })}>
-              {t('Очистить историю…')}
-            </Button>
-          )}
-        </span>
+        isAdmin && (
+          <Button variant="outline" size="sm" onClick={() => setPanel({ mode: 'cleanup' })}>
+            {t('Очистить историю…')}
+          </Button>
+        )
       }
     >
+      <div className="import-history__filters">
+        <Field
+          kind="date"
+          name="since"
+          label={t('с')}
+          value={since}
+          onChange={(value) => {
+            setSince(value)
+            setPage(1)
+          }}
+        />
+        <Field
+          kind="date"
+          name="until"
+          label={t('по')}
+          value={until}
+          onChange={(value) => {
+            setUntil(value)
+            setPage(1)
+          }}
+        />
+        <Field
+          kind="select"
+          name="import-kind"
+          label={t('Вид загрузки')}
+          value={kind}
+          onChange={(value) => {
+            setKind(value)
+            setKindTitle(kindOptions.get(value) ?? '')
+            setPage(1)
+          }}
+          options={[
+            { value: '', title: t('Все виды') },
+            ...kinds.map(([value, title]) => ({ value, title })),
+          ]}
+        />
+      </div>
       {flash && (
-        <Chip tone="good" size="sm">
+        <Chip tone="good" className="badge--sentence">
           {flash}
         </Chip>
       )}
       {report && (
         <Rows>
-          <Row icon="check" tone="good" title={report.detail} note={report.skipped.length > 0 ? report.skipped.map((item) => `${item.field_title}: ${item.reason}`).join('; ') : undefined} />
+          <Row
+            icon="check"
+            tone="good"
+            title={report.detail}
+            note={
+              report.skipped.length > 0
+                ? report.skipped.map((item) => `${item.field_title}: ${item.reason}`).join('; ')
+                : undefined
+            }
+          />
         </Rows>
       )}
-      {list.isLoading && <Loading kind="table" />}
+      {(list.isLoading || wizard.isLoading) && <Loading kind="table" />}
       {list.isError && <ErrorNote error={list.error} />}
-      <DataTable columns={columns} rows={rows} rowKey={(row) => row.key} limit={VISIBLE} />
+      {wizard.isError && <ErrorNote error={wizard.error} />}
+      {rows.length > 0 && (
+        <>
+          <DataTable fit columns={columns} rows={page.rows} rowKey={(row) => row.key} />
+          <ImportPagination page={page.page} pages={page.pages} total={rows.length} onChange={setPage} />
+        </>
+      )}
+      {!list.isLoading && !wizard.isLoading && !list.isError && !wizard.isError && rows.length === 0 && (
+        <EmptyNote what={tk('Нет загрузок по выбранным условиям')} />
+      )}
 
       <ConfirmDialog
         open={ask !== null}
         title={ask ? t('Отменить загрузку «{file}»?', { file: ask.file_name || ask.kind_title }) : ''}
-        what={ask ? tn(ask.changes, 'Прежние значения вернутся у {n} поля.|Прежние значения вернутся у {n} полей.|Прежние значения вернутся у {n} полей.') : ''}
+        what={
+          ask
+            ? tn(
+                ask.changes,
+                'Прежние значения вернутся у {n} поля.|Прежние значения вернутся у {n} полей.|Прежние значения вернутся у {n} полей.',
+              )
+            : ''
+        }
         consequences={[
           t('Поля, которые правили руками уже после загрузки, останутся как есть — о каждом скажем отдельно'),
           t('Возврат тоже попадёт в журнал изменений: по строке на каждое поле'),
-          ask && ask.rows_created > 0 ? t('Записи, созданные этой загрузкой ({created}), отмена не удаляет', { created: ask.rows_created }) : t('Загрузка ничего не создавала — только меняла значения'),
+          ask && ask.rows_created > 0
+            ? t('Записи, созданные этой загрузкой ({created}), отмена не удаляет', {
+                created: ask.rows_created,
+              })
+            : t('Загрузка ничего не создавала — только меняла значения'),
         ]}
         confirmLabel={t('Отменить импорт')}
         busy={revert.isPending}
@@ -302,7 +408,12 @@ export default function ImportHistory() {
         }
       />
 
-      <EditDrawer open={panel !== null} onClose={() => setPanel(null)} title={panel?.mode === 'cleanup' ? t('Очистка истории загрузок') : t('Отчёт о загрузке')} sub={panel?.mode === 'report' ? panel.report.file_name : undefined}>
+      <EditDrawer
+        open={panel !== null}
+        onClose={() => setPanel(null)}
+        title={panel?.mode === 'cleanup' ? t('Очистка истории загрузок') : t('Отчёт о загрузке')}
+        sub={panel?.mode === 'report' ? panel.report.file_name : undefined}
+      >
         {panel?.mode === 'cleanup' && (
           <CleanupPanel
             onDone={(detail) => {

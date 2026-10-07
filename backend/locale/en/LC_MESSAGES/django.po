@@ -16280,3 +16280,9 @@ msgstr "Accounts created: {created}. {result}"
 
 msgid "Завершено"
 msgstr "Finished"
+
+msgid "Загрузка банка заданий не отменяется из истории"
+msgstr "The question bank import cannot be undone from history"
+
+msgid "Мастер импорта"
+msgstr "Import wizard"

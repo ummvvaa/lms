@@ -25,17 +25,22 @@ import ScholarshipsImport from '../components/ScholarshipsImport'
 import ImportWizard from '../components/ImportWizard'
 import ImportHistory from '../components/ImportHistory'
 import ManualEntryNote from '../components/ManualEntryNote'
-import { ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { Button } from '../components/ui/button'
+import { Row, Rows } from '../components/patterns'
 import { t, tk } from '../i18n'
 
 /** Загрузки домена, которые заводят строки, а не правят поля: контакты, выступления,
  *  требования вузов и стипендии (фаза 44), банк заданий. Поля профилей грузит мастер. */
-function listsOf(code: string): { key: string; tab: string; body: ReactNode }[] {
+function listsOf(code: string): { key: string; tab: string; note: string; body: ReactNode }[] {
   if (code === 'behavior') {
     return [
       {
         key: 'contacts',
         tab: tk('Контакты родителей'),
+        note: tk(
+          'XLSX или CSV: почта ученика и ФИО родителя обязательны; телефон, родство и способ связи дополняют контакт.',
+        ),
         body: (
           <RowsImport
             title={t('Файл со списком контактов')}
@@ -48,16 +53,20 @@ function listsOf(code: string): { key: string; tab: string; body: ReactNode }[] 
             applyLabel={t('Завести контакты')}
             invalidate={[['contacts']]}
             columns={[
-              { key: 'full_name', title: t('ФИО'), cell: (row: ImportedRow) => String(row.full_name || '—') },
+              {
+                key: 'full_name',
+                title: t('ФИО'),
+                cell: (row: ImportedRow) => String(row.full_name || t('нет')),
+              },
               {
                 key: 'student',
                 title: t('Ученик'),
-                cell: (row: ImportedRow) => String(row.student_name || row.student_email || '—'),
+                cell: (row: ImportedRow) => String(row.student_name || row.student_email || t('нет')),
               },
               {
                 key: 'contact',
                 title: t('Связь'),
-                cell: (row: ImportedRow) => String(row.phone || row.email || '—'),
+                cell: (row: ImportedRow) => String(row.phone || row.email || t('нет')),
               },
             ]}
           />
@@ -70,6 +79,9 @@ function listsOf(code: string): { key: string; tab: string; body: ReactNode }[] 
       {
         key: 'competitions',
         tab: tk('Соревнования'),
+        note: tk(
+          'XLSX или CSV: почта ученика и название соревнования обязательны; дата, результат и сертификат дополняют выступление.',
+        ),
         body: (
           <RowsImport
             title={t('Файл со списком выступлений')}
@@ -82,13 +94,21 @@ function listsOf(code: string): { key: string; tab: string; body: ReactNode }[] 
             applyLabel={t('Завести выступления')}
             invalidate={[['competitions'], ['dashboard']]}
             columns={[
-              { key: 'name', title: t('Соревнование'), cell: (row: ImportedRow) => String(row.name || '—') },
+              {
+                key: 'name',
+                title: t('Соревнование'),
+                cell: (row: ImportedRow) => String(row.name || t('нет')),
+              },
               {
                 key: 'student',
                 title: t('Участник'),
-                cell: (row: ImportedRow) => String(row.student_name || row.student_email || '—'),
+                cell: (row: ImportedRow) => String(row.student_name || row.student_email || t('нет')),
               },
-              { key: 'result', title: t('Результат'), cell: (row: ImportedRow) => String(row.result || '—') },
+              {
+                key: 'result',
+                title: t('Результат'),
+                cell: (row: ImportedRow) => String(row.result || t('нет')),
+              },
             ]}
           />
         ),
@@ -97,15 +117,39 @@ function listsOf(code: string): { key: string; tab: string; body: ReactNode }[] 
   }
   if (code === 'admission') {
     return [
-      { key: 'requirements', tab: tk('Требования вузов'), body: <RequirementsImport /> },
-      { key: 'scholarships', tab: tk('Стипендии'), body: <ScholarshipsImport /> },
+      {
+        key: 'requirements',
+        tab: tk('Требования вузов'),
+        note: tk(
+          'XLSX или CSV: сопоставьте колонки. Вуз и программа обязательны; их сочетание определяет запись.',
+        ),
+        body: <RequirementsImport />,
+      },
+      {
+        key: 'scholarships',
+        tab: tk('Стипендии'),
+        note: tk(
+          'XLSX или CSV: сопоставьте колонки. Название обязательно; запись определяется названием и организатором.',
+        ),
+        body: <ScholarshipsImport />,
+      },
     ]
   }
-  if (code === 'exam') return [{ key: 'questions', tab: tk('Банк заданий'), body: <QuestionsImport /> }]
+  if (code === 'exam')
+    return [
+      {
+        key: 'questions',
+        tab: tk('Банк заданий'),
+        note: tk(
+          'CSV: экзамен, секция, тема, текст и верный ответ обязательны; каждая строка создаёт задание.',
+        ),
+        body: <QuestionsImport />,
+      },
+    ]
   return []
 }
 
-/** Загрузки списков и справочников одним рядом вкладок — в порядке доменов. */
+/** Загрузки списков и справочников — в порядке доменов. */
 const allLists = () => ['behavior', 'sport', 'admission', 'exam'].flatMap((code) => listsOf(code))
 
 /** Администратор: мастер импорта и загрузки списков. */
@@ -116,14 +160,12 @@ function AdminImport() {
   // вузов, стипендии, банк заданий — у каждого свой разбор
   const [mode, setMode] = useState<'wizard' | 'lists'>('wizard')
   const lists = allLists()
-  const [what, setWhat] = useState('contacts')
+  const [what, setWhat] = useState('')
   const list = lists.find((row) => row.key === what)
 
   return (
-    <div>
-      <ScreenHead
-        title={t('Импорт')}
-      />
+    <div className="import-screen">
+      <ScreenHead title={t('Импорт')} />
       <ScreenTabs
         value={mode}
         onChange={(value) => setMode(value as 'wizard' | 'lists')}
@@ -135,8 +177,38 @@ function AdminImport() {
 
       {mode === 'wizard' && <ImportWizard />}
 
-      {mode === 'lists' && <ScreenTabs value={what} onChange={setWhat} items={lists.map((row) => ({ value: row.key, label: t(row.tab) }))} />}
-      {mode === 'lists' && list && <div key={list.key}>{list.body}</div>}
+      {mode === 'lists' && !list && (
+        <DataCard
+          title={t('Списки и справочники')}
+          note={t('Выберите, что загрузить. Формат и обязательные колонки указаны у каждого вида.')}
+        >
+          <Rows>
+            {lists.map((row) => (
+              <Row
+                key={row.key}
+                icon="doc"
+                title={t(row.tab)}
+                note={t(row.note)}
+                right={
+                  <Button variant="outline" size="sm" onClick={() => setWhat(row.key)}>
+                    {t('Выбрать')}
+                  </Button>
+                }
+              />
+            ))}
+          </Rows>
+        </DataCard>
+      )}
+      {mode === 'lists' && list && (
+        <div key={list.key} className="import-flow">
+          <div>
+            <Button variant="ghost" size="sm" onClick={() => setWhat('')}>
+              {t('К списку загрузок')}
+            </Button>
+          </div>
+          {list.body}
+        </div>
+      )}
 
       <ImportHistory />
     </div>
@@ -152,7 +224,7 @@ function UploadsForDirector({ mine, curator = false }: { mine?: Domain; curator?
   // владелец домена — тот же мастер, что у администратора (фаза 72):
   // чужие колонки он видит помеченными «домен не ваш, будет пропущен»
   return (
-    <div>
+    <div className="import-screen">
       <ScreenHead
         title={t('Импорт')}
         subtitle={
@@ -161,7 +233,9 @@ function UploadsForDirector({ mine, curator = false }: { mine?: Domain; curator?
                 'Файл → что заполняем → проверка → готово. Пишутся только ваши группы: лист чужой группы — ошибка листа.',
               )
             : mine
-              ? t('Файл → что заполняем → проверка → готово. Пишется только домен «{domain}».', { domain: mine.title })
+              ? t('Файл → что заполняем → проверка → готово. Пишется только домен «{domain}».', {
+                  domain: mine.title,
+                })
               : t('Файл → что заполняем → проверка строк → готово.')
         }
       />

@@ -125,6 +125,7 @@ HEADER = ["Почта ученика", "Соревнование", "Вид сп�
 @pytest.mark.django_db
 def test_competitions_import_matches_students_and_skips_duplicates(student):
     """Ученик находится по почте, повторная загрузка не плодит дублей."""
+    from core.models import ImportBatch
     from students.competitions_import import apply_rows, build_preview
 
     SportType.objects.create(name="Футбол")
@@ -135,7 +136,8 @@ def test_competitions_import_matches_students_and_skips_duplicates(student):
     assert preview.rows[0].level == "city"
     assert preview.rows[0].sport_type_name == "Футбол"
 
-    apply_rows(rows=[row.as_dict() for row in preview.ready])
+    result = apply_rows(rows=[row.as_dict() for row in preview.ready])
+    assert ImportBatch.objects.get(pk=result["batch"]).kind == ImportBatch.Kind.COMPETITIONS
     assert Competition.objects.filter(student=student).count() == 1
 
     again = build_preview(header=HEADER, rows=rows)

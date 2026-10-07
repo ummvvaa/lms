@@ -331,6 +331,7 @@ HEADER = ["Почта ученика", "ФИО родителя", "Кем при
 @pytest.mark.django_db
 def test_contacts_import_matches_students_and_skips_duplicates(student):
     """Ученик находится по почте, повторная загрузка не плодит дублей."""
+    from core.models import ImportBatch
     from students.contacts_import import apply_rows, build_preview
 
     rows = [[student.email, "Ахметова Гульнара", "мама", "+7 701 111 22 33", "whatsapp", "да"]]
@@ -340,7 +341,8 @@ def test_contacts_import_matches_students_and_skips_duplicates(student):
     assert preview.rows[0].preferred_channel == ContactChannel.WHATSAPP
     assert preview.rows[0].is_primary is True
 
-    apply_rows(rows=[row.as_dict() for row in preview.ready])
+    result = apply_rows(rows=[row.as_dict() for row in preview.ready])
+    assert ImportBatch.objects.get(pk=result["batch"]).kind == ImportBatch.Kind.CONTACTS
     assert ParentContact.objects.filter(student=student).count() == 1
 
     again = build_preview(header=HEADER, rows=rows)

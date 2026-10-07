@@ -10,10 +10,11 @@ import { useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { Chip, DataCard, ErrorNote } from './ui'
-import { t, tn } from '../i18n'
+import { t } from '../i18n'
 import { Button } from './ui/button'
-import DataTable from './DataTable'
-import { Input } from './ui/input'
+import ImportPreview from './ImportRowsPreview'
+import ImportFile from './ImportFile'
+import WizardSteps from './WizardSteps'
 
 export interface ImportedRow extends Record<string, unknown> {
   number: number
@@ -82,6 +83,7 @@ export default function RowsImport({
   async function apply() {
     if (!preview) return
     setBusy(true)
+    setError(null)
     try {
       const result = await api<{ detail: string }>(applyPath, {
         method: 'POST',
@@ -101,101 +103,91 @@ export default function RowsImport({
     }
   }
 
-  const broken = preview?.rows.filter((row) => row.status === 'error') ?? []
-
+  const step = applied ? 3 : preview ? 2 : 1
   return (
-    <>
-      <DataCard title={title} note={note} hint={hint}>
-        <label className="filepick">
-          <Input
-            type="file"
-            accept=".csv,.xlsx,.xlsm"
-            onChange={(event) => {
-              const selected = event.target.files?.[0]
-              if (selected) void upload(selected)
-            }}
-          />
-          <Button size="sm" nativeButton={false} render={<span />}>
-            {t('Выбрать файл')}
-          </Button>
-          <span className="muted filepick__name">{file ? file.name : t('Файл не выбран')}</span>
-        </label>
-        {busy && <p className="muted">{t('Обрабатываю…')}</p>}
+    <div className="import-flow">
+      <WizardSteps stackedOnPhone steps={[t('Файл'), t('Проверка строк'), t('Готово')]} current={step} />
+      <DataCard
+        title={applied ? t('Готово') : preview ? t('Проверка строк') : title}
+        note={file?.name || note}
+        right={<Chip size="sm">{t('Шаг {step} из {total}', { step, total: 3 })}</Chip>}
+      >
         {error && <ErrorNote error={new Error(error)} />}
+        {busy && <p className="muted">{t('Обрабатываю…')}</p>}
+        {!preview && !applied && (
+          <>
+            <p className="import-flow__hint">{hint}</p>
+            <ImportFile file={file} disabled={busy} onSelect={(selected) => void upload(selected)} />
+          </>
+        )}
+        {preview && (
+          <>
+            <p className="import-flow__hint">{preview.detail}</p>
+            <ImportPreview
+              rows={preview.rows.map((row) => ({
+                key: row.number,
+                number: row.number,
+                name: String(
+                  row.student_name ||
+                    row.full_name ||
+                    row.name ||
+                    row.student_email ||
+                    t('Строка {number}', { number: row.number }),
+                ),
+                search: Object.values(row)
+                  .filter((value) => typeof value === 'string')
+                  .join(' '),
+                status: row.status === 'new' ? 'created' : row.status === 'exists' ? 'skipped' : 'error',
+                detail: (
+                  <div className="import-preview__values">
+                    {columns.map((column) => (
+                      <span key={column.key}>
+                        <span className="t-note">{column.title}: </span>
+                        {column.cell(row)}
+                      </span>
+                    ))}
+                  </div>
+                ),
+                reason: row.reason,
+              }))}
+            />
+            <div className="import-flow__actions">
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  setPreview(null)
+                  setError(null)
+                }}
+              >
+                {t('Назад')}
+              </Button>
+              <Button disabled={busy || preview.will_create === 0} onClick={() => void apply()}>
+                {applyLabel}
+              </Button>
+            </div>
+          </>
+        )}
         {applied && (
-          <Chip tone="good">
-            {applied}
-          </Chip>
+          <>
+            <Chip tone="good" className="badge--sentence">
+              {applied}
+            </Chip>
+            <div className="import-flow__actions">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setApplied(null)
+                  setFile(null)
+                  setError(null)
+                }}
+              >
+                {t('Загрузить ещё файл')}
+              </Button>
+            </div>
+          </>
         )}
       </DataCard>
-
-      {preview && (
-        <DataCard title={t('Что будет загружено')} note={preview.detail}>
-          <div className="toolbar">
-            <Chip tone="good" className="num">
-              {t('Заведётся: {n}', { n: preview.will_create })}
-            </Chip>
-            {preview.already_exist > 0 && (
-              <Chip tone="neutral" className="num">
-                {t('Уже есть: {n}', { n: preview.already_exist })}
-              </Chip>
-            )}
-            {preview.with_errors > 0 && (
-              <Chip tone="warn" className="num">
-                {t('С ошибками: {n}', { n: preview.with_errors })}
-              </Chip>
-            )}
-            <span className="toolbar__spacer" />
-            <Button size="sm" disabled={busy || preview.will_create === 0} onClick={() => void apply()}>
-              {applyLabel}
-            </Button>
-          </div>
-
-          {preview.missing_columns.length > 0 && (
-            <Chip tone="warn">
-              {preview.detail}
-            </Chip>
-          )}
-
-          {broken.length > 0 && (
-            <div className="imp__problems">
-              <span className="datacard__title">{t('Что поправить в файле')}</span>
-              <ul className="imp__problemlist">
-                {broken.slice(0, 20).map((row) => (
-                  <li key={row.number}>
-                    <b>{t('Строка {number}', { number: row.number })}</b>: {row.reason}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <DataTable
-            columns={[
-              { key: 'n', title: t('Строка'), width: '8%', align: 'right', cell: (row: ImportedRow) => <span className="num">{row.number}</span> },
-              ...columns.map((column) => ({ key: column.key, title: column.title, width: `${Math.max(10, Math.floor(76 / Math.max(1, columns.length)))}%`, cell: (row: ImportedRow) => column.cell(row) })),
-              {
-                key: 'state',
-                title: t('Что будет'),
-                width: '16%',
-                align: 'right',
-                cell: (row: ImportedRow) => (
-                  <Chip tone={row.status === 'new' ? 'good' : row.status === 'exists' ? 'neutral' : 'warn'} size="sm">
-                    {row.status === 'new' ? t('заведётся') : row.status === 'exists' ? t('уже есть') : t('ошибка')}
-                  </Chip>
-                ),
-              },
-            ]}
-            rows={preview.rows.slice(0, 20)}
-            rowKey={(row) => row.number}
-          />
-          {preview.total > 20 && (
-            <p className="muted rows__empty">
-              {tn(preview.total, 'Показаны первые 20 из {n} строки — применятся все подходящие.|Показаны первые 20 из {n} строк — применятся все подходящие.|Показаны первые 20 из {n} строк — применятся все подходящие.')}
-            </p>
-          )}
-        </DataCard>
-      )}
-    </>
+    </div>
   )
 }

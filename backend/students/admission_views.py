@@ -393,7 +393,9 @@ def admission_imports(request):
     """История загрузок таблицы: она одноразовая, но след остаётся."""
     if not _may_import(request.user):
         return _refuse_import()
-    rows = _visible_imports(request.user)[:20]
+    from core.imports import filter_by_period
+
+    rows = filter_by_period(_visible_imports(request.user), request.query_params)
     return Response({"rows": [admission_import.record_payload(row) for row in rows]})
 
 

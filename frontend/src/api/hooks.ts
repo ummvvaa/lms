@@ -2745,6 +2745,7 @@ export function useCleanupHistory() {
 
 export interface ImportBatchRow {
   id: number
+  can_revert: boolean
   file_name: string
   kind: string
   kind_title: string
@@ -2770,7 +2771,7 @@ export interface ImportBatchRow {
 }
 
 export const useImportBatches = (
-  filters: { actor?: string; since?: string; until?: string },
+  filters: { actor?: string; since?: string; until?: string; kind?: string },
   enabled = true,
 ) => {
   const params = new URLSearchParams()
@@ -5365,6 +5366,8 @@ export function useDropRemark(studentId: number | null) {
 /** Отчёт мастера импорта таблицы поступления (фаза 65). */
 export interface AdmissionImportReport {
   id: number
+  kind: 'wizard'
+  kind_title: string
   created_at: string
   file_name: string
   uploaded_by: string
@@ -5479,11 +5482,15 @@ const admissionForm = (draft: AdmissionDraft): FormData => {
 }
 
 /** История загрузок мастера: отчёт каждой открывается (фаза 72). */
-export const useAdmissionImports = () =>
-  useQuery({
-    queryKey: ['admission-imports'],
-    queryFn: () => get<{ rows: AdmissionImportReport[] }>('/admission-imports/'),
+export const useAdmissionImports = (filters: { since?: string; until?: string } = {}) => {
+  const params = new URLSearchParams()
+  Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value) })
+  const qs = params.toString()
+  return useQuery({
+    queryKey: ['admission-imports', qs],
+    queryFn: () => get<{ rows: AdmissionImportReport[] }>(`/admission-imports/${qs ? `?${qs}` : ''}`),
   })
+}
 
 /** Шаг «Проверка»: разбор книги на сервере, в базу ничего не пишется. */
 export function useAdmissionPreview() {
@@ -5503,6 +5510,7 @@ export function useAdmissionApply() {
       queryClient.invalidateQueries({ queryKey: ['curator-card'] })
       queryClient.invalidateQueries({ queryKey: ['students'] })
       queryClient.invalidateQueries({ queryKey: ['admission-imports'] })
+      queryClient.invalidateQueries({ queryKey: ['imports'] })
     },
   })
 }

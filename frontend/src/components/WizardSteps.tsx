@@ -20,17 +20,19 @@ export default function WizardSteps({
   steps,
   current,
   className,
+  stackedOnPhone = false,
 }: {
   /** названия шагов по порядку, уже переведённые */
   steps: string[]
   /** номер текущего шага, с единицы */
   current: number
   className?: string
+  stackedOnPhone?: boolean
 }) {
   const phone = usePhone()
-  const root = `steps wizard__steps${phone ? ' steps--phone' : ''}${className ? ` ${className}` : ''}`
+  const root = `steps wizard__steps${phone && !stackedOnPhone ? ' steps--phone' : ''}${phone && stackedOnPhone ? ' steps--stacked' : ''}${className ? ` ${className}` : ''}`
 
-  if (phone) {
+  if (phone && !stackedOnPhone) {
     return (
       <nav className={root} aria-label={t('Шаги мастера')}>
         <span className="steps__count t-note num">

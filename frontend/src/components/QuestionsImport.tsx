@@ -12,10 +12,22 @@ import { api } from '../api/client'
 import { Chip, DataCard, ErrorNote } from './ui'
 import { t } from '../i18n'
 import { Button } from './ui/button'
-import { Input } from './ui/input'
+import ImportFile from './ImportFile'
+import ImportPreview from './ImportRowsPreview'
+import WizardSteps from './WizardSteps'
+import type { ImportStatus } from './importRows'
 
 interface Result {
   created: number
+  rows: {
+    row: number
+    exam_type: string
+    section: string
+    topic: string
+    text: string
+    status: ImportStatus
+    reason: string
+  }[]
   skipped: { row: number; reason: string }[]
 }
 
@@ -59,6 +71,7 @@ export default function QuestionsImport() {
       setApplied(t('Заведено заданий: {n}', { n: result.created }))
       void queryClient.invalidateQueries({ queryKey: ['questions'] })
       void queryClient.invalidateQueries({ queryKey: ['bank'] })
+      void queryClient.invalidateQueries({ queryKey: ['imports'] })
     } catch (e) {
       setError(e instanceof Error ? e.message : t('Не удалось применить'))
     } finally {
@@ -66,68 +79,83 @@ export default function QuestionsImport() {
     }
   }
 
+  const step = applied ? 3 : preview ? 2 : 1
   return (
-    <>
+    <div className="import-flow">
+      <WizardSteps stackedOnPhone steps={[t('Файл'), t('Проверка строк'), t('Готово')]} current={step} />
       <DataCard
-        title={t('Файл с заданиями')}
-        note={t('CSV, одна строка — одно задание')}
-        hint={t(
-          'Колонки: exam_type, section, topic, difficulty, text, A, B, C, D, correct, explanation, source. Обязательны exam_type, section, topic, text и correct; вариантов ответа минимум два.',
-        )}
+        title={applied ? t('Готово') : preview ? t('Проверка строк') : t('Файл с заданиями')}
+        note={file?.name || t('CSV, одна строка — одно задание')}
+        right={<Chip size="sm">{t('Шаг {step} из {total}', { step, total: 3 })}</Chip>}
       >
-        <label className="filepick">
-          <Input
-            type="file"
-            accept=".csv,.txt"
-            onChange={(event) => {
-              const selected = event.target.files?.[0]
-              if (selected) void open(selected)
-            }}
-          />
-          <Button size="sm" nativeButton={false} render={<span />}>
-            {t('Выбрать файл')}
-          </Button>
-          <span className="muted filepick__name">{file ? file.name : t('Файл не выбран')}</span>
-        </label>
-        {busy && <p className="muted">{t('Обрабатываю…')}</p>}
         {error && <ErrorNote error={new Error(error)} />}
+        {busy && <p className="muted">{t('Обрабатываю…')}</p>}
+        {!preview && !applied && (
+          <>
+            <p className="import-flow__hint">
+              {t(
+                'Колонки: exam_type, section, topic, difficulty, text, A, B, C, D, correct, explanation, source. Обязательны exam_type, section, topic, text и correct; вариантов ответа минимум два.',
+              )}
+            </p>
+            <ImportFile
+              file={file}
+              accept=".csv,.txt"
+              disabled={busy}
+              onSelect={(selected) => void open(selected)}
+            />
+          </>
+        )}
+        {preview && (
+          <>
+            <p className="import-flow__hint">{t('Пробный прогон: в базу пока ничего не записано')}</p>
+            <ImportPreview
+              rows={preview.rows.map((row) => ({
+                key: row.row,
+                number: row.row,
+                name: row.text || row.topic || t('Строка {n}', { n: row.row }),
+                search: [row.text, row.exam_type, row.section, row.topic].join(' '),
+                status: row.status,
+                detail: [row.exam_type, row.section, row.topic].filter(Boolean).join(' · '),
+                reason: row.reason,
+              }))}
+            />
+            <div className="import-flow__actions">
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  setPreview(null)
+                  setError(null)
+                }}
+              >
+                {t('Назад')}
+              </Button>
+              <Button disabled={busy || preview.created === 0} onClick={() => void apply()}>
+                {t('Завести задания')}
+              </Button>
+            </div>
+          </>
+        )}
         {applied && (
-          <Chip tone="good">
-            {applied}
-          </Chip>
+          <>
+            <Chip tone="good" className="badge--sentence">
+              {applied}
+            </Chip>
+            <div className="import-flow__actions">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setApplied(null)
+                  setFile(null)
+                  setError(null)
+                }}
+              >
+                {t('Загрузить ещё файл')}
+              </Button>
+            </div>
+          </>
         )}
       </DataCard>
-
-      {preview && (
-        <DataCard title={t('Что будет загружено')} note={t('Пробный прогон: в базу пока ничего не записано')}>
-          <div className="toolbar">
-            <Chip tone="good" className="num">
-              {t('Заведётся: {n}', { n: preview.created })}
-            </Chip>
-            {preview.skipped.length > 0 && (
-              <Chip tone="warn" className="num">
-                {t('Пропущено: {n}', { n: preview.skipped.length })}
-              </Chip>
-            )}
-            <span className="toolbar__spacer" />
-            <Button size="sm" disabled={busy || preview.created === 0} onClick={() => void apply()}>
-              {t('Завести задания')}
-            </Button>
-          </div>
-          {preview.skipped.length > 0 && (
-            <div className="imp__problems">
-              <span className="datacard__title">{t('Что поправить в файле')}</span>
-              <ul className="imp__problemlist">
-                {preview.skipped.slice(0, 20).map((row) => (
-                  <li key={row.row}>
-                    <b>{t('Строка {n}', { n: row.row })}</b>: {row.reason}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </DataCard>
-      )}
-    </>
+    </div>
   )
 }

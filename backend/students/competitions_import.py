@@ -255,7 +255,7 @@ def apply_rows(*, rows: list[dict[str, Any]], actor=None, file_name: str = "") -
     batch = ImportBatch.objects.create(
         actor=actor,
         file_name=file_name,
-        kind=ImportBatch.Kind.STUDENTS,
+        kind=ImportBatch.Kind.COMPETITIONS,
         domain_code="sport",
         rows_total=len(rows),
     )

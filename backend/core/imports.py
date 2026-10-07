@@ -11,11 +11,24 @@ from django.apps import apps
 from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext as _
+from rest_framework import serializers
 
 from core.audit import ValueRejected, apply_changes, coerce, to_text
 from core.domains import Source
 from core.labels import field_title
 from core.models import AuditLog, ImportBatch
+
+
+def filter_by_period(rows, params):
+    """Общий календарный период двух списков истории загрузок."""
+    for name, lookup in (("since", "created_at__date__gte"), ("until", "created_at__date__lte")):
+        if params.get(name):
+            try:
+                day = serializers.DateField().run_validation(params[name])
+            except serializers.ValidationError as error:
+                raise serializers.ValidationError({name: error.detail}) from error
+            rows = rows.filter(**{lookup: day})
+    return rows
 
 
 def _instance_for(entry: AuditLog):

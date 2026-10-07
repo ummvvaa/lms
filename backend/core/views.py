@@ -6,10 +6,11 @@
 from __future__ import annotations
 
 from django.apps import apps
+from django.db.models import Count
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from drf_spectacular.utils import extend_schema
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -38,7 +39,7 @@ from core.domains import (
     deleters_of,
     domain_of_role,
 )
-from core.imports import revert_batch
+from core.imports import filter_by_period, revert_batch
 from core.labels import field_title, model_title, value_title
 from core.models import ArchiveEntry, AuditLog, ImportBatch
 from core.onboarding import build as build_checklist
@@ -333,7 +334,7 @@ def import_batches(request):
     if request.user.role == ROLE_STUDENT:
         return Response({"detail": _("История загрузок — для сотрудников")}, status=status.HTTP_403_FORBIDDEN)
 
-    rows = ImportBatch.objects.select_related("actor", "reverted_by")
+    rows = ImportBatch.objects.select_related("actor", "reverted_by").annotate(change_count=Count("audit_entries"))
     own = domain_of_role(request.user.role)
     if request.user.role != ROLE_ADMIN:
         if own is None:
@@ -341,13 +342,11 @@ def import_batches(request):
         rows = rows.filter(domain_code=own.code)
     author = request.query_params.get("actor")
     if author:
-        rows = rows.filter(actor_id=author)
-    since = request.query_params.get("since")
-    if since:
-        rows = rows.filter(created_at__date__gte=since)
-    until = request.query_params.get("until")
-    if until:
-        rows = rows.filter(created_at__date__lte=until)
+        rows = rows.filter(actor_id=serializers.IntegerField(min_value=1).run_validation(author))
+    kind = request.query_params.get("kind")
+    if kind:
+        rows = rows.filter(kind=serializers.ChoiceField(choices=ImportBatch.Kind.choices).run_validation(kind))
+    rows = filter_by_period(rows, request.query_params)
 
     return Response(
         [
@@ -364,6 +363,7 @@ def import_batches(request):
                 "rows_failed": row.rows_failed,
                 "status": row.status,
                 "status_title": row.get_status_display(),
+                "can_revert": row.can_revert,
                 "actor": row.actor_id,
                 # пусто — значит загрузка старше фазы 29, когда автора
                 # ещё не записывали; удалённый автор читается по следу
@@ -378,11 +378,11 @@ def import_batches(request):
                 ),
                 "created_at": row.created_at,
                 "reverted_at": row.reverted_at,
-                "changes": row.audit_entries.count(),
+                "changes": row.change_count,
                 # заметка загрузки хранится русским исходником — читающему на его языке
                 "note": _(row.note) if row.note else "",
             }
-            for row in rows[:200]
+            for row in rows
         ]
     )
 
@@ -468,6 +468,11 @@ def import_batch_revert(request, pk: int):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+    if not batch.can_revert:
+        return Response(
+            {"detail": _("Загрузка банка заданий не отменяется из истории")},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     return Response(revert_batch(batch, actor=request.user))
 
 

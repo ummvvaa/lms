@@ -20,7 +20,9 @@ from dataclasses import dataclass, field
 
 from django.db import transaction
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_noop
 
+from core.models import ImportBatch
 from prep.models import (
     Difficulty,
     PassageKind,
@@ -42,9 +44,17 @@ class ImportResult:
     created: int = 0
     passages: int = 0
     skipped: list[dict] = field(default_factory=list)
+    rows: list[dict] = field(default_factory=list)
+    batch: int | None = None
 
     def as_dict(self) -> dict:
-        return {"created": self.created, "passages": self.passages, "skipped": self.skipped}
+        return {
+            "created": self.created,
+            "passages": self.passages,
+            "skipped": self.skipped,
+            "rows": self.rows,
+            "batch": self.batch,
+        }
 
 
 def read_rows(text: str) -> list[dict]:
@@ -59,7 +69,14 @@ def _clip(text: str, n: int) -> str:
 
 
 @transaction.atomic
-def import_questions(content: str, *, media: dict[str, tuple[bytes, str]] | None = None, dry_run: bool = False):
+def import_questions(
+    content: str,
+    *,
+    media: dict[str, tuple[bytes, str]] | None = None,
+    dry_run: bool = False,
+    actor=None,
+    file_name: str = "",
+):
     """Загрузить задания. Строка с ошибкой не роняет весь файл.
 
     `content` — текст файла с заданиями; `media` — приложенные аудио
@@ -72,6 +89,14 @@ def import_questions(content: str, *, media: dict[str, tuple[bytes, str]] | None
 
     for number, row in enumerate(read_rows(content), start=2):
         clean = {(k or "").strip().lower(): (v or "").strip() for k, v in row.items()}
+        result.rows.append(
+            {
+                "row": number,
+                **{key: clean.get(key, "") for key in ("exam_type", "section", "topic", "text")},
+                "status": "created",
+                "reason": "",
+            }
+        )
         missing = [name for name in REQUIRED if not clean.get(name)]
         if missing:
             result.skipped.append(
@@ -179,8 +204,23 @@ def import_questions(content: str, *, media: dict[str, tuple[bytes, str]] | None
             )
         result.created += 1
 
+    failures = {row["row"]: row["reason"] for row in result.skipped}
+    for row in result.rows:
+        if row["row"] in failures:
+            row.update(status="error", reason=failures[row["row"]])
     if dry_run:
         transaction.set_rollback(True)
+    else:
+        result.batch = ImportBatch.objects.create(
+            actor=actor,
+            file_name=file_name,
+            kind=ImportBatch.Kind.QUESTIONS,
+            domain_code="exam",
+            rows_total=len(result.rows),
+            rows_created=result.created,
+            rows_failed=len(result.skipped),
+            note=gettext_noop("Загрузка банка заданий не отменяется из истории"),
+        ).pk
     return result
 
 
