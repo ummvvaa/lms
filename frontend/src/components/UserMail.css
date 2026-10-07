@@ -1,0 +1,44 @@
+.usermail,
+.usermail__result,
+.usermail__history,
+.usermail__letter {
+  display: grid;
+  gap: calc(var(--space) * 2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.usermail__result > p,
+.usermail__history > p,
+.usermail__error {
+  margin: 0;
+}
+
+.usermail__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+}
+
+.usermail__letters {
+  display: grid;
+  gap: calc(var(--space) * 3);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.usermail__letter + .usermail__letter {
+  border-top: 1px solid var(--line);
+  padding-top: calc(var(--space) * 3);
+}
+
+.usermail__reasons {
+  margin: 0;
+  padding-left: calc(var(--space) * 4);
+}
+
+.usermail__error {
+  color: var(--bad);
+}

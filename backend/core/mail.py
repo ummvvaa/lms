@@ -18,6 +18,8 @@ Microsoft отключает, и настройка перестанет раб�
 from __future__ import annotations
 
 import logging
+import re
+from dataclasses import dataclass
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives, get_connection
@@ -104,32 +106,60 @@ def wrap(body_html: str) -> str:
     )
 
 
+@dataclass(frozen=True)
+class SendResult:
+    """Ответ транспорта без тела письма и секретов."""
+
+    sent: bool
+    error: str = ""
+    uncertain: bool = False
+
+
+def safe_error(error, *, secrets=()) -> str:
+    """Убрать секреты и ссылки даже из ответа SMTP, процитировавшего письмо."""
+    value = str(error)
+    for secret in (*secrets, getattr(settings, "EMAIL_HOST_PASSWORD", "")):
+        if secret:
+            value = value.replace(str(secret), _("[скрыто]"))
+    value = re.sub(r"https?://\S+", _("[ссылка скрыта]"), value)
+    value = re.sub(r"[A-Za-z0-9_-]{32,}", _("[скрыто]"), value)
+    return " ".join(value.split())[:500]
+
+
 def send(*, to: str, subject: str, text: str, html: str = "") -> bool:
+    """Совместимый короткий ответ для существующих отправителей."""
+    return send_result(to=to, subject=subject, text=text, html=html).sent
+
+
+def send_result(*, to: str, subject: str, text: str, html: str = "", secrets=()) -> SendResult:
     """Отправить одно письмо. Возвращает, ушло ли оно.
 
     Ошибка отправки не роняет запрос: человек не должен видеть трассировку
     из-за недоступного почтового сервера. Но и молчать нельзя — пишем
     в журнал с адресом и темой, чтобы потом было что искать.
     """
-    school = settings.SCHOOL_NAME
-    message = EmailMultiAlternatives(
-        subject=f"{school} — {subject}",
-        body=text,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[to],
-    )
-    if html:
-        message.attach_alternative(wrap(html), "text/html")
-
-    if not is_configured():
-        log.warning("Отправка писем не настроена — письмо «%s» для %s ушло только в журнал", subject, to)
-
     try:
+        school = settings.SCHOOL_NAME
+        message = EmailMultiAlternatives(
+            subject=f"{school} — {subject}",
+            body=text,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[to],
+        )
+        if html:
+            message.attach_alternative(wrap(html), "text/html")
+        if not is_configured():
+            log.warning("Отправка писем не настроена — письмо «%s» для %s ушло только в журнал", subject, to)
         sent = message.send(fail_silently=False)
-    except OSError as error:
-        log.error("Письмо «%s» для %s не ушло: %s", subject, to, error)
-        return False
-    return bool(sent)
+    except Exception as error:
+        detail = safe_error(error, secrets=secrets)
+        log.error("Письмо «%s» для %s не ушло: %s", subject, to, detail)
+        # Ответ SMTP с кодом — отказ; обрыв соединения мог случиться уже
+        # после приёма письма. Такой случай до конца суток занимает бюджет.
+        return SendResult(False, detail, uncertain=not hasattr(error, "smtp_code"))
+    if not is_configured():
+        return SendResult(False, _("Отправка писем не настроена"))
+    return SendResult(bool(sent), "" if sent else _("Почтовый сервер не принял письмо"))
 
 
 def send_test(to: str) -> dict:

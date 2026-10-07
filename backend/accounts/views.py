@@ -14,6 +14,7 @@ import logging
 from datetime import timedelta
 
 from django.contrib.auth import authenticate, login, logout
+from django.db import IntegrityError, transaction
 from django.db.models import Q, QuerySet
 from django.middleware.csrf import get_token
 from django.utils import timezone
@@ -406,7 +407,7 @@ def users(request):
             role=data.get("role", Role.STUDENT),
             sees_whole_school=data.get("sees_whole_school", False),
         )
-        token, sent_to = magic_link.issue_for(user, purpose=LinkPurpose.INVITE)
+        token, sent_to = magic_link.issue_for(user, purpose=LinkPurpose.INVITE, actor=request.user)
         # ссылку отдаём сразу: пока почта не настроена, письмо уходит
         # в журнал, и без ссылки на экране завести человека нечем
         payload = UserSerializer(user).data
@@ -508,6 +509,8 @@ def _filter_users(params) -> QuerySet[User]:
         from core.parallels import in_parallel
 
         queryset = in_parallel(queryset.filter(role=Role.STUDENT, student__isnull=False), parallel, prefix="student__")
+    if str(params.get("never_logged_in", "")).lower() in ("true", "1"):
+        queryset = queryset.filter(last_login__isnull=True)
     return queryset
 
 
@@ -666,7 +669,7 @@ def user_invite_link(request, pk: int):
             {"detail": _("Учётная запись отключена — сначала включите её")}, status=status.HTTP_400_BAD_REQUEST
         )
 
-    token, sent_to = magic_link.issue_for(user, purpose=LinkPurpose.INVITE)
+    token, sent_to = magic_link.issue_for(user, purpose=LinkPurpose.INVITE, actor=request.user)
     log.info("Ссылка-приглашение для %s выпущена администратором %s", user.handle, request.user.handle)
     return Response(_invite_payload(user, token, sent_to))
 
@@ -701,7 +704,7 @@ def student_password_link(request, pk: int):
     if not user.is_active:
         return Response({"detail": _("Доступ ученика отключён")}, status=status.HTTP_400_BAD_REQUEST)
 
-    token, sent_to = magic_link.issue_for(user, purpose=LinkPurpose.RESET)
+    token, sent_to = magic_link.issue_for(user, purpose=LinkPurpose.RESET, actor=request.user)
     expires = timezone.now() + timedelta(minutes=magic_link.ttl_minutes(LinkPurpose.RESET))
     moment = until(expires)
     record_event(  # i18n-skip: значение записи журнала хранится в базе как данные
@@ -724,7 +727,7 @@ def student_password_link(request, pk: int):
                 + (
                     _(". Копия ушла письмом на {email}").format(email=sent_to)
                     if sent_to
-                    else _(". Письма не было: почты у ученика нет")
+                    else _(". Письмо не отправлено — передайте ссылку лично")
                 )
             ),
         }
@@ -749,7 +752,7 @@ def user_temp_password(request, pk: int):
         )
 
     password = temporary.issue(user)
-    sent = temporary.send_letter(user, password)
+    sent = temporary.send_letter(user, password, actor=request.user)
     log.info("Временный пароль для %s выпустил %s", user.handle, request.user.handle)
     return Response(
         {
@@ -785,6 +788,12 @@ def users_bulk(request):
     action = payload.validated_data["action"]
     people = list(User.objects.filter(pk__in=payload.validated_data["users"]))
 
+    if action == "invite":
+        from accounts import mailing
+
+        result = mailing.bulk_invite(people, actor=request.user, force=payload.validated_data["force"])
+        return Response({**_mailing_result(result), "done": result["sent"], "issued": []})
+
     done, skipped, issued = 0, [], []
     for user in people:
         if user.pk == request.user.pk and action == "deactivate":
@@ -794,11 +803,9 @@ def users_bulk(request):
             skipped.append({"email": user.handle, "reason": _("учётная запись отключена")})
             continue
 
-        if action == "invite":
-            magic_link.issue_for(user, purpose=LinkPurpose.INVITE)
-        elif action == "temp_password":
+        if action == "temp_password":
             password = temporary.issue(user)
-            temporary.send_letter(user, password)
+            temporary.send_letter(user, password, actor=request.user)
             issued.append(
                 {"full_name": user.full_name, "email": user.email, "login": user.handle, "password": password}
             )
@@ -812,7 +819,6 @@ def users_bulk(request):
         done += 1
 
     titles = {
-        "invite": _("Приглашения отправлены: {done}"),
         "temp_password": _("Новые временные пароли выпущены: {done}"),
         "deactivate": _("Доступ отключён: {done}"),
     }
@@ -827,6 +833,50 @@ def users_bulk(request):
             + (_(", пропущено: {count}").format(count=len(skipped)) if skipped else ""),
         }
     )
+
+
+def _mailing_result(result: dict) -> dict:
+    """Одинаковый итог для обоих способов массового приглашения."""
+    detail = _("Отправлено {sent}, в очереди {queued}, пропущено {skipped}").format(
+        sent=result["sent"], queued=result["queued"], skipped=len(result["skipped"])
+    )
+    if result["failed"]:
+        detail += _(", ошибок отправки {failed}").format(failed=result["failed"])
+    return {**result, "detail": detail}
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAdmin])
+def mail_queue(request):
+    """Ожидающие письма и ближайший срок начала отправки."""
+    from accounts import mailing
+
+    return Response(mailing.queue_summary(), headers={"Cache-Control": "private, no-store"})
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAdmin])
+def mail_queue_cancel(request):
+    """Отмена ещё не начатой отправки, история писем сохраняется."""
+    from accounts import mailing
+
+    result = mailing.cancel_queue(actor=request.user)
+    return Response({**result, "detail": _("Отменено писем: {count}").format(count=result["cancelled"])})
+
+
+@extend_schema(responses={200: list})
+@api_view(["GET"])
+@permission_classes([IsAdmin])
+def user_mail_history(request, pk: int):
+    """Последние письма пользователю: без ссылок, токенов и паролей."""
+    from accounts import mailing
+
+    user = User.objects.filter(pk=pk).first()
+    if user is None:
+        return Response({"detail": _("Пользователь не найден")}, status=status.HTTP_404_NOT_FOUND)
+    return Response({"rows": mailing.history(user)}, headers={"Cache-Control": "private, no-store"})
 
 
 @extend_schema(request=None, responses={200: dict})
@@ -918,17 +968,28 @@ def invite(request):
     serializer.is_valid(raise_exception=True)
     role = serializer.validated_data.get("role", Role.STUDENT)
 
-    created, invited, skipped = 0, 0, []
-    for email in serializer.validated_data["emails"]:
-        email = email.strip().lower()
+    from accounts import mailing
+
+    created, people = 0, []
+    emails = dict.fromkeys(email.strip().lower() for email in serializer.validated_data["emails"])
+    for email in emails:
         user = User.objects.filter(email__iexact=email).first()
         if user is None:
-            user = create_user(email=email, role=role)
-            created += 1
-        elif not user.is_active:
-            skipped.append({"email": email, "reason": _("учётная запись отключена")})
-            continue
-        magic_link.issue_for(user, purpose=LinkPurpose.INVITE)
-        invited += 1
-
-    return Response({"created": created, "invited": invited, "skipped": skipped})
+            try:
+                with transaction.atomic():
+                    user = create_user(email=email, role=role)
+                created += 1
+            except IntegrityError:
+                # Два одновременных приглашения одного адреса используют
+                # одну учётную запись и общую защиту от повторной отправки.
+                user = User.objects.filter(email__iexact=email).first()
+                if user is None:
+                    raise
+        people.append(user)
+    result = mailing.bulk_invite(people, actor=request.user, force=serializer.validated_data["force"])
+    payload = _mailing_result(result)
+    if created:
+        payload["detail"] = _("Заведено учётных записей: {created}. {result}").format(
+            created=created, result=payload["detail"]
+        )
+    return Response({**payload, "created": created, "invited": result["sent"]})

@@ -1,5 +1,6 @@
 /** Запросы к API через TanStack Query. */
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
 import { api, get, patch, post } from './client'
 import type { DomainMeta, Me, Paginated, Role } from './types'
 
@@ -1669,11 +1670,14 @@ export interface ManagedUser {
   /** одноразовая запись прогона — помечается в списке */
   is_probe: boolean
   date_joined: string
+  last_login: string | null
+  /** Последнее успешно отправленное письмо; старая ссылка не доказывает отправку. */
+  last_mail_sent_at: string | null
   password_changed_at: string | null
   /** до какого момента живёт выданный временный пароль (фаза 69) */
   temp_password_expires_at: string | null
   /** состояние пароля одним словом: его же считают чипы и массовая выдача */
-  password_state: 'no_password' | 'waiting' | 'expired' | 'ready'
+  password_state: 'no_password' | 'invite_issued' | 'waiting' | 'expired' | 'ready'
   password_state_title: string
   /** код группы ученика — по нему фильтруют список в день раздачи */
   group: string
@@ -1698,6 +1702,59 @@ export interface UserFilters {
   /** «true» — без отключённых записей; переключатель экрана. Раздача паролей
       это поле не читает: отключённым пароли не выдают никогда */
   is_active?: string
+  never_logged_in?: string
+}
+
+export interface UserMail {
+  id: number
+  status: string
+  status_title: string
+  purpose: string
+  purpose_title: string
+  address: string
+  created_at: string
+  sent_at: string | null
+  error: string
+  uncertain?: boolean
+  actor: number | null
+  actor_name: string
+}
+
+export const useUserMailHistory = (id: number) => useQuery({
+  queryKey: ['users', 'mail-history', id],
+  queryFn: () => get<{ rows: UserMail[] }>(`/users/${id}/mail-history/`),
+  refetchInterval: 30_000,
+})
+
+export function useUserMailQueue() {
+  const queryClient = useQueryClient()
+  const previousPending = useRef<number | undefined>(undefined)
+  const query = useQuery({
+    queryKey: ['users', 'mail-queue'],
+    queryFn: () => get<{ pending: number; next_send_at: string | null }>('/users/mail-queue/'),
+    refetchInterval: 30_000,
+  })
+  const pending = query.data?.pending
+  useEffect(() => {
+    if (pending === undefined) return
+    if (previousPending.current !== undefined && previousPending.current !== pending) {
+      // Фоновая отправка меняет даты и историю; саму очередь не сбрасываем,
+      // иначе её ответ запустил бы новый запрос к ней же.
+      void queryClient.invalidateQueries({
+        predicate: (cached) => cached.queryKey[0] === 'users' && cached.queryKey[1] !== 'mail-queue',
+      })
+    }
+    previousPending.current = pending
+  }, [pending, queryClient])
+  return query
+}
+
+export function useCancelUserMailQueue() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => post<{ cancelled: number; detail: string }>('/users/mail-queue/cancel/'),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['users'] }),
+  })
 }
 
 export const useUsers = (filters: UserFilters = {}) => {
@@ -1766,23 +1823,35 @@ export interface IssuedPassword {
   detail: string
 }
 
-export const useTempPassword = () =>
-  useMutation({
+export function useTempPassword() {
+  const queryClient = useQueryClient()
+  return useMutation({
     mutationFn: (id: number) => post<IssuedPassword>(`/users/${id}/temp-password/`),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['users'] }),
   })
+}
 
 export type BulkUserAction = 'invite' | 'temp_password' | 'deactivate'
+
+export interface MailResult {
+  sent: number
+  queued: number
+  failed: number
+  skipped: { email: string; reason: string }[]
+  failures?: { email: string; reason: string }[]
+  detail: string
+}
+
+export interface BulkUserResult extends MailResult {
+  done: number
+  issued: { full_name: string; email: string; password: string }[]
+}
 
 export function useBulkUsers() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { users: number[]; action: BulkUserAction }) =>
-      post<{
-        done: number
-        skipped: { email: string; reason: string }[]
-        issued: { full_name: string; email: string; password: string }[]
-        detail: string
-      }>('/users/bulk/', body),
+    mutationFn: (body: { users: number[]; action: BulkUserAction; force?: boolean }) =>
+      post<BulkUserResult>('/users/bulk/', body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['users'] })
     },
@@ -1843,10 +1912,13 @@ export function useEnrollmentApply() {
 }
 
 /** Выпустить свежую ссылку-приглашение и показать её (фаза 28). */
-export const useInviteLink = () =>
-  useMutation({
+export function useInviteLink() {
+  const queryClient = useQueryClient()
+  return useMutation({
     mutationFn: (id: number) => post<InviteLink>(`/users/${id}/invite-link/`),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['users'] }),
   })
+}
 
 /** Смена почты меняет вход: экран говорит об этом прямо (фаза 67). */
 export interface LoginChanged {
@@ -1870,16 +1942,15 @@ export function useUpdateUser() {
   })
 }
 
-export interface InviteResult {
+export interface InviteResult extends MailResult {
   created: number
   invited: number
-  skipped: { email: string; reason: string }[]
 }
 
 export function useInviteUsers() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { emails: string[]; role?: Role }) => post<InviteResult>('/users/invite/', body),
+    mutationFn: (body: { emails: string[]; role?: Role; force?: boolean }) => post<InviteResult>('/users/invite/', body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['users'] })
     },

@@ -390,6 +390,12 @@ SYNC_EXTRA_HOSTS = env_list("SYNC_EXTRA_HOSTS", "")
 # (`core.school_rules`, разделы «Напоминания» и «Дедлайны и окна»), не здесь
 
 CELERY_BEAT_SCHEDULE = {
+    "send-invite-queue": {
+        "task": "accounts.drain_invite_queue",
+        # Срок в базе: следующая отправка с 09:00 по Алматы. Повторный
+        # обход догоняет очередь после перезапуска, не выпуская ссылку заранее.
+        "schedule": crontab(minute="*/5"),
+    },
     "sync-deadlines": {
         "task": "universities.sync_deadlines",
         # раз в сутки ночью: чаще незачем, дедлайны меняются редко

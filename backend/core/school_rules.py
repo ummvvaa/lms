@@ -52,6 +52,7 @@ MATCH = "match"
 READINESS = "readiness"
 PORTFOLIO = "portfolio"
 XP = "xp"
+ACCESS = "access"
 AI = "ai"
 
 SECTIONS: tuple[Section, ...] = (
@@ -109,6 +110,11 @@ SECTIONS: tuple[Section, ...] = (
         XP,
         gettext_lazy("XP и уровни"),
         gettext_lazy("Сколько XP ученик получает за действие и сколько XP в одном уровне"),
+    ),
+    Section(
+        ACCESS,
+        gettext_lazy("Вход и доступ"),
+        gettext_lazy("Дневной предел писем и защита от повторных приглашений"),
     ),
     Section(
         AI,
@@ -202,6 +208,7 @@ DAYS = gettext_lazy("день|дня|дней")
 POINTS = gettext_lazy("балл|балла|баллов")
 MB = gettext_lazy("МБ")
 PIECES = gettext_lazy("шт.")
+MAILS = gettext_lazy("письмо|письма|писем")
 
 
 @dataclass(frozen=True)
@@ -362,6 +369,9 @@ XP_ONBOARDING_DONE = "xp_onboarding_done"
 XP_HOMEWORK_ON_TIME = "xp_homework_on_time"
 XP_MATERIAL_APPROVED = "xp_material_approved"
 XP_LEVEL_STEP = "xp_level_step"
+#: Письма для входа: дневной предел и пауза перед повторным приглашением
+MAIL_DAILY_LIMIT = "mail_daily_limit"
+INVITE_REPEAT_DAYS = "invite_repeat_days"
 
 #: одна подсказка на все начисления: что значит ноль и чего здесь нет
 XP_HINT = gettext_lazy(
@@ -1472,6 +1482,33 @@ RULES: tuple[Rule, ...] = (
         10,
         10000,
         section=XP,
+    ),
+    # --- Вход и доступ ---
+    Rule(
+        MAIL_DAILY_LIMIT,
+        gettext_lazy("Писем в день"),
+        gettext_lazy(
+            "Предел массовых приглашений за сутки UTC с учётом других писем доступа. "
+            "Остаток уйдёт в следующие дни с 09:00 по Алматы. 0 — без предела"
+        ),
+        MAILS,
+        90,
+        0,
+        10000,
+        section=ACCESS,
+    ),
+    Rule(
+        INVITE_REPEAT_DAYS,
+        gettext_lazy("Повторное приглашение не раньше"),
+        gettext_lazy(
+            "Сколько дней пропускать повторную отправку, если высланная ссылка ещё действует. "
+            "0 — без защиты от повторной отправки"
+        ),
+        DAYS,
+        3,
+        0,
+        365,
+        section=ACCESS,
     ),
     # --- ИИ ---
     Rule(

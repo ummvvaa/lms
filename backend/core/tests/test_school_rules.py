@@ -37,6 +37,12 @@ def test_defaults_are_listed_with_bounds(admin):
     assert rules["no_grades_days"]["value"] == 14
     assert (rules["attendance_below"]["minimum"], rules["attendance_below"]["maximum"]) == (0, 100)
     assert (rules["no_grades_days"]["minimum"], rules["no_grades_days"]["maximum"]) == (1, 90)
+    for code, default, maximum in [("mail_daily_limit", 90, 10000), ("invite_repeat_days", 3, 365)]:
+        rule = rules[code]
+        assert rule["value"] == rule["default"] == default
+        assert (rule["minimum"], rule["maximum"]) == (0, maximum)
+        assert rule["section"] == "access"
+        assert rule["kind"] == "int"
     assert all(row["is_default"] for row in body["rules"])
     assert body["history"] == []
 
@@ -73,6 +79,12 @@ def test_only_the_admin_reads_and_changes_rules(role, make_user):
         ("no_grades_days", 91),
         ("quarter_grade_below", 6),
         ("fo_only_below", ""),
+        ("mail_daily_limit", -1),
+        ("mail_daily_limit", 10001),
+        ("mail_daily_limit", 90.5),
+        ("invite_repeat_days", -1),
+        ("invite_repeat_days", 366),
+        ("invite_repeat_days", 3.5),
     ],
 )
 def test_values_outside_the_bounds_are_refused(admin, code, value):
@@ -114,6 +126,28 @@ def test_new_value_works_at_once_without_restart(admin, make_user):
     assert saltanat.get("/api/acad/risks/").json()["threshold"] == 85
     client_of(admin).patch("/api/school-rules/attendance_below/", {"value": 60}, format="json")
     assert saltanat.get("/api/acad/risks/").json()["threshold"] == 60
+
+
+@pytest.mark.parametrize(
+    ("code", "default"),
+    [(school_rules.MAIL_DAILY_LIMIT, 90), (school_rules.INVITE_REPEAT_DAYS, 3)],
+)
+def test_mail_rules_accept_zero_and_audit_change_and_reset(admin, code, default):
+    """Ноль отключает ограничение; изменение и возврат к умолчанию остаются в журнале."""
+    api = client_of(admin)
+    assert school_rules.value(code) == default
+
+    response = api.patch(f"/api/school-rules/{code}/", {"value": 0}, format="json")
+    assert response.status_code == 200
+    assert school_rules.value(code) == 0
+
+    response = api.post(f"/api/school-rules/{code}/reset/")
+    assert response.status_code == 200
+    assert school_rules.value(code) == default
+    entries = list(AuditLog.objects.filter(model_label=school_rules.AUDIT_LABEL).order_by("id"))
+    assert [(entry.old_value, entry.new_value) for entry in entries] == [(str(default), "0"), ("0", str(default))]
+    assert all(entry.actor_id == admin.pk and entry.domain_code == "settings" for entry in entries)
+    assert not SchoolRule.objects.filter(code=code).exists()
 
 
 def test_attendance_threshold_is_not_a_constant_anymore():

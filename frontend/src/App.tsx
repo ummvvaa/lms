@@ -49,6 +49,7 @@ import './components/exam-goals.css'
 import './components/handout.css'
 import './components/import-wizard.css'
 import './components/material-card.css'
+import './components/UserMail.css'
 import './components/ui.css'
 import { t } from './i18n'
 

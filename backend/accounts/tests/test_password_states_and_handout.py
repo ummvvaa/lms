@@ -2,7 +2,7 @@
 
 На бою двести шесть учётных записей, и три вещи здесь стоят дорого.
 
-**Фильтр врёт.** Чип «Пароль не задан» показывает не тех — и человек
+**Фильтр врёт.** Чип состояния доступа показывает не тех — и человек
 раздаёт пароли не тем. Поэтому состояние считает один модуль, а чип,
 счётчик и массовая выдача обязаны получать от него один ответ.
 
@@ -63,6 +63,10 @@ def make_student_user(make_user, email: str, group=None, **extra) -> User:
 @pytest.fixture
 def people(make_user, group, db) -> dict[str, User]:
     """По человеку на каждое состояние — на них и проверяем чипы."""
+    untouched = make_student_user(make_user, "untouched.handout@example.kz", group)
+    untouched.set_unusable_password()
+    untouched.save(update_fields=["password"])
+
     # пароля нет, приглашение живо
     fresh = make_student_user(make_user, "fresh.handout@example.kz", group)
     fresh.set_unusable_password()
@@ -103,7 +107,7 @@ def people(make_user, group, db) -> dict[str, User]:
     ready.must_change_password = False
     ready.save(update_fields=["password", "must_change_password"])
 
-    return {"fresh": fresh, "waiting": waiting, "stale": stale, "burnt": burnt, "ready": ready}
+    return {"untouched": untouched, "fresh": fresh, "waiting": waiting, "stale": stale, "burnt": burnt, "ready": ready}
 
 
 # --- Состояния и фильтры ---------------------------------------------------------
@@ -114,7 +118,8 @@ def test_every_person_lands_in_exactly_one_state(people):
     """Состояния не пересекаются: иначе счётчики не сойдутся с таблицей."""
     seen = {name: states.state_of(user) for name, user in people.items()}
     assert seen == {
-        "fresh": states.NO_PASSWORD,
+        "untouched": states.NO_PASSWORD,
+        "fresh": states.INVITE_ISSUED,
         "waiting": states.WAITING,
         "stale": states.EXPIRED,
         "burnt": states.EXPIRED,
@@ -126,7 +131,8 @@ def test_every_person_lands_in_exactly_one_state(people):
 @pytest.mark.parametrize(
     "code, expected",
     [
-        (states.NO_PASSWORD, {"fresh"}),
+        (states.NO_PASSWORD, {"untouched"}),
+        (states.INVITE_ISSUED, {"fresh"}),
         (states.WAITING, {"waiting"}),
         (states.EXPIRED, {"stale", "burnt"}),
         (states.READY, {"ready"}),
@@ -209,11 +215,82 @@ def test_a_fresh_invite_takes_the_person_out_of_expired(as_admin, people):
         expires_at=timezone.now() + dt.timedelta(hours=10),
     )
 
-    assert states.state_of(burnt) == states.NO_PASSWORD
-    fresh = as_admin.get(f"/api/users/?state={states.NO_PASSWORD}").json()
+    assert states.state_of(burnt) == states.INVITE_ISSUED
+    fresh = as_admin.get(f"/api/users/?state={states.INVITE_ISSUED}").json()
     assert burnt.email in {row["email"] for row in fresh["results"]}
     expired = as_admin.get(f"/api/users/?state={states.EXPIRED}").json()
     assert burnt.email not in {row["email"] for row in expired["results"]}
+
+
+@pytest.mark.django_db
+def test_live_link_without_mail_has_no_invented_sending_date(as_admin, people):
+    person = people["fresh"]
+    body = as_admin.get(f"/api/users/?state={states.INVITE_ISSUED}&role=student").json()
+    row = next(row for row in body["results"] if row["id"] == person.pk)
+    assert row["password_state_title"] == "Ссылка выдана"
+    assert row["last_mail_sent_at"] is None
+    assert as_admin.get(f"/api/users/{person.pk}/mail-history/").json()["rows"] == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("live_link", [False, True])
+def test_empty_password_hash_has_the_same_state_in_row_and_chip(as_admin, people, live_link):
+    person = people["fresh" if live_link else "untouched"]
+    person.password = ""
+    person.save(update_fields=["password"])
+    expected = states.INVITE_ISSUED if live_link else states.NO_PASSWORD
+    assert states.state_of(person) == expected
+    result = as_admin.get(f"/api/users/?search={person.email}&state={expected}").json()
+    assert result["counts"][expected] == 1
+    assert result["results"][0]["password_state"] == expected
+    assert result["results"][0]["has_password"] is False
+
+
+@pytest.mark.django_db
+def test_never_logged_in_filter_matches_counts_export_and_handout(as_admin, people):
+    person = people["fresh"]
+    person.last_login = timezone.now()
+    person.save(update_fields=["last_login"])
+    filters = "role=student&group=CHICAGO&never_logged_in=true"
+    body = as_admin.get(f"/api/users/?{filters}").json()
+    assert person.pk not in {row["id"] for row in body["results"]}
+    assert all(row["last_login"] is None for row in body["results"])
+    assert body["counts"][states.INVITE_ISSUED] == 0
+    assert sum(body["counts"][code] for code in states.ORDER) == len(body["results"])
+    exported = as_admin.get(f"/api/users/export/?{filters}&preview=1").json()["sheets"][0]
+    assert {row[1] for row in exported["rows"]} == {row["email"] for row in body["results"]}
+    plan = as_admin.post(
+        "/api/users/handout/",
+        {"role": "student", "group": "CHICAGO", "never_logged_in": True, "state": states.INVITE_ISSUED},
+        format="json",
+    ).json()
+    assert plan["total"] == 0
+
+
+@pytest.mark.django_db
+def test_link_and_empty_states_stay_disjoint_with_manual_links_and_existing_passwords(as_admin, people):
+    manual = people["untouched"]
+    MagicLinkToken.objects.create(
+        email="",
+        user=manual,
+        token_hash="manual",
+        purpose=LinkPurpose.INVITE,
+        expires_at=timezone.now() + dt.timedelta(hours=10),
+    )
+    for name in ("waiting", "ready"):
+        MagicLinkToken.objects.create(
+            email="",
+            user=people[name],
+            token_hash=f"link-{name}",
+            purpose=LinkPurpose.INVITE,
+            expires_at=timezone.now() + dt.timedelta(hours=10),
+        )
+    assert states.state_of(manual) == states.INVITE_ISSUED
+    assert states.state_of(people["waiting"]) == states.WAITING
+    assert states.state_of(people["ready"]) == states.READY
+    body = as_admin.get("/api/users/?role=student").json()
+    assert body["counts"][states.NO_PASSWORD] == 0
+    assert body["counts"][states.INVITE_ISSUED] == 2
 
 
 @pytest.mark.django_db

@@ -319,6 +319,76 @@ class MagicLinkToken(models.Model):
         return self.used_at is None and self.expires_at > timezone.now()
 
 
+class MailDayBudget(models.Model):
+    """Строка суток UTC: общая блокировка резервирования почтового бюджета."""
+
+    day = models.DateField(gettext_lazy("Сутки UTC"), primary_key=True)
+
+    class Meta:
+        verbose_name = gettext_lazy("Дневной бюджет писем")
+
+    def __str__(self) -> str:
+        return self.day.isoformat()
+
+
+class InviteMail(models.Model):
+    """Журнал писем доступа и очередь приглашений; без содержимого письма."""
+
+    class Status(models.TextChoices):
+        QUEUED = "queued", gettext_lazy("В очереди")
+        SENDING = "sending", gettext_lazy("Отправляется")
+        SENT = "sent", gettext_lazy("Отправлено")
+        FAILED = "failed", gettext_lazy("Не отправлено")
+        CANCELLED = "cancelled", gettext_lazy("Отменено")
+
+    class Purpose(models.TextChoices):
+        INVITE = "invite", gettext_lazy("Приглашение")
+        RESET = "reset", gettext_lazy("Сброс пароля")
+        LOGIN = "login", gettext_lazy("Вход по ссылке")
+        CONFIRM = "confirm", gettext_lazy("Подтверждение почты")
+        TEMP_PASSWORD = "temp_password", gettext_lazy("Временный пароль")
+
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="invite_mails")
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="sent_access_mails")
+    actor_name = models.CharField(gettext_lazy("Кто выдал"), max_length=254, blank=True)
+    address = models.EmailField(gettext_lazy("Адрес письма"))
+    purpose = models.CharField(gettext_lazy("Назначение"), max_length=20, choices=Purpose.choices)
+    status = models.CharField(gettext_lazy("Состояние"), max_length=12, choices=Status.choices)
+    created_at = models.DateTimeField(gettext_lazy("Создано"), default=timezone.now)
+    scheduled_at = models.DateTimeField(gettext_lazy("Не раньше"), null=True, blank=True)
+    started_at = models.DateTimeField(gettext_lazy("Начало отправки"), null=True, blank=True)
+    finished_at = models.DateTimeField(gettext_lazy("Завершено"), null=True, blank=True)
+    sent_at = models.DateTimeField(gettext_lazy("Отправлено"), null=True, blank=True)
+    error = models.TextField(gettext_lazy("Причина"), blank=True)
+    bulk = models.BooleanField(gettext_lazy("Массовое приглашение"), default=False)
+    force = models.BooleanField(gettext_lazy("Повторная отправка разрешена"), default=False)
+    uncertain = models.BooleanField(gettext_lazy("Результат отправки неизвестен"), default=False)
+    token = models.ForeignKey(MagicLinkToken, on_delete=models.SET_NULL, null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="cancelled_access_mails"
+    )
+    cancelled_by_name = models.CharField(gettext_lazy("Кто отменил"), max_length=254, blank=True)
+
+    class Meta:
+        verbose_name = gettext_lazy("Письмо с доступом")
+        verbose_name_plural = gettext_lazy("Письма с доступом")
+        ordering = ("-created_at", "-pk")
+        indexes = [
+            models.Index(fields=["status", "scheduled_at"], name="access_mail_queue"),
+            models.Index(fields=["user", "status", "sent_at"], name="access_mail_history"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=models.Q(bulk=True, status__in=["queued", "sending"]),
+                name="one_pending_invite_per_user",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.address}: {self.get_status_display()}"
+
+
 class LoginAttempt(models.Model):
     """Журнал попыток входа.
 

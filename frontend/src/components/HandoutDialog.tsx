@@ -54,7 +54,7 @@ export default function HandoutDialog({
       { onSuccess: setPlan, onError: (error) => toast.error(error.message) },
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [includeReady, picked.join(','), filters.state, filters.role, filters.group, filters.parallel, filters.search])
+  }, [includeReady, picked.join(','), filters.state, filters.role, filters.group, filters.parallel, filters.search, filters.never_logged_in])
 
   const run = () =>
     handout.mutate(

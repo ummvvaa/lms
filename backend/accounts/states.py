@@ -6,9 +6,10 @@
 ссылка-приглашение, — и раскладывать эту логику по экрану и по запросу
 нельзя: чипы, счётчики и массовая выдача обязаны понимать её одинаково.
 
-Четыре состояния, и они не пересекаются:
+Пять состояний, и они не пересекаются:
 
-* **не задан** — пароля нет и ссылка ещё жива (или её не выпускали);
+* **не выдавали** — пароля нет, живых или просроченных приглашений тоже;
+* **ссылка выдана** — пароля нет, есть живая ссылка; письмо могло не отправляться;
 * **ждёт смены** — выдан временный пароль, человек им ещё не вошёл;
 * **срок истёк** — войти нечем: временный пароль просрочен либо
   приглашение сгорело неиспользованным. Таким нужен новый пароль;
@@ -20,27 +21,29 @@
 
 from __future__ import annotations
 
-from django.db.models import Exists, OuterRef, Q, QuerySet
+from django.db.models import Count, Exists, OuterRef, Q, QuerySet, Subquery
 from django.utils import timezone
 from django.utils.translation import gettext_lazy
 
-from accounts.models import LinkPurpose, MagicLinkToken, User
+from accounts.models import InviteMail, LinkPurpose, MagicLinkToken, User
 
 NO_PASSWORD = "no_password"
+INVITE_ISSUED = "invite_issued"
 WAITING = "waiting"
 EXPIRED = "expired"
 READY = "ready"
 
 #: Подписи чипов — те же слова, что человек читает в строке таблицы
 TITLES: dict[str, object] = {
-    NO_PASSWORD: gettext_lazy("Пароль не задан"),
+    NO_PASSWORD: gettext_lazy("Не выдавали"),
+    INVITE_ISSUED: gettext_lazy("Ссылка выдана"),
     WAITING: gettext_lazy("Ждёт смены пароля"),
     EXPIRED: gettext_lazy("Срок истёк"),
     READY: gettext_lazy("Пароль задан"),
 }
 
 #: Порядок чипов на экране: от «ничего нет» к «всё хорошо»
-ORDER: tuple[str, ...] = (NO_PASSWORD, WAITING, EXPIRED, READY)
+ORDER: tuple[str, ...] = (NO_PASSWORD, INVITE_ISSUED, WAITING, EXPIRED, READY)
 
 #: Кому массовая выдача сбросит уже работающий пароль. Держится здесь,
 #: рядом с состояниями: модалка и сервер должны считать одинаково
@@ -50,6 +53,11 @@ RESETS_A_WORKING_PASSWORD: tuple[str, ...] = (READY,)
 def _has_usable_password() -> Q:
     """Пароль задан. В базе непригодный хеш начинается с «!» (так делает Django)."""
     return ~Q(password__startswith="!") & ~Q(password="")
+
+
+def password_is_set(user: User) -> bool:
+    """Пустой хеш тоже означает отсутствие пароля, как в условии выборки."""
+    return bool(user.password) and user.has_usable_password()
 
 
 def _live_invite() -> Exists:
@@ -78,7 +86,14 @@ def _dead_invite() -> Exists:
 
 def annotate(queryset: QuerySet[User]) -> QuerySet[User]:
     """Добавить признаки, по которым считается состояние. Один запрос на всех."""
-    return queryset.annotate(has_live_invite=_live_invite(), has_dead_invite=_dead_invite())
+    latest_mail = InviteMail.objects.filter(user=OuterRef("pk"), status=InviteMail.Status.SENT).order_by(
+        "-sent_at", "-pk"
+    )
+    return queryset.annotate(
+        has_live_invite=_live_invite(),
+        has_dead_invite=_dead_invite(),
+        last_mail_sent_at=Subquery(latest_mail.values("sent_at")[:1]),
+    )
 
 
 def condition(code: str) -> Q:
@@ -89,12 +104,13 @@ def condition(code: str) -> Q:
 
     # сгоревшее приглашение перестаёт что-либо значить, как только
     # выслали новое: у человека на руках живая ссылка, и место ему
-    # среди «пароль не задан», а не среди тех, кому войти нечем
+    # среди «ссылка выдана», а не среди тех, кому войти нечем
     burnt = Q(has_dead_invite=True) & ~Q(has_live_invite=True)
 
     if code == NO_PASSWORD:
-        # пароля нет, и войти ещё будет чем: ссылка жива или её не выпускали
-        return ~has_password & ~burnt
+        return ~has_password & Q(has_live_invite=False, has_dead_invite=False)
+    if code == INVITE_ISSUED:
+        return ~has_password & Q(has_live_invite=True)
     if code == WAITING:
         return has_password & Q(must_change_password=True) & ~expired_temp
     if code == EXPIRED:
@@ -121,7 +137,7 @@ def apply(queryset: QuerySet[User], code: str) -> QuerySet[User]:
 def counts(queryset: QuerySet[User]) -> dict[str, int]:
     """Сколько записей в каждом состоянии. Считается по той же выборке, что и список."""
     rows = annotate(queryset)
-    return {code: rows.filter(condition(code)).count() for code in ORDER}
+    return rows.aggregate(**{code: Count("pk", filter=condition(code)) for code in ORDER})
 
 
 def state_of(user: User) -> str:
@@ -131,7 +147,7 @@ def state_of(user: User) -> str:
     по чему он её отфильтровал.
     """
     now = timezone.now()
-    if not user.has_usable_password():
+    if not password_is_set(user):
         # в списке признаки посчитаны одним запросом на всех (`annotate`);
         # поодиночке — например, письмом или карточкой — спрашиваем базу
         dead = getattr(user, "has_dead_invite", None)
@@ -149,7 +165,9 @@ def state_of(user: User) -> str:
                 used_at__isnull=True,
                 expires_at__gte=now,
             ).exists()
-        return EXPIRED if dead and not live else NO_PASSWORD
+        if live:
+            return INVITE_ISSUED
+        return EXPIRED if dead else NO_PASSWORD
     if user.must_change_password:
         if user.temp_password_expires_at is not None and user.temp_password_expires_at < now:
             return EXPIRED

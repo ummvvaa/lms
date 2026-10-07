@@ -77,7 +77,7 @@ def link_for(purpose: str, token: str) -> str:
     return f"{settings.FRONTEND_BASE_URL}{path}?token={token}"
 
 
-def issue(email: str, *, purpose: str = LinkPurpose.LOGIN) -> str | None:
+def issue(email: str, *, purpose: str = LinkPurpose.LOGIN, actor=None) -> str | None:
     """Выпустить ссылку по адресу, если он известен системе, и отправить письмо.
 
     Адрес известен, если это почта учётной записи или подтверждённая
@@ -93,10 +93,10 @@ def issue(email: str, *, purpose: str = LinkPurpose.LOGIN) -> str | None:
     user = find_user(email)
     if user is None:
         return None
-    return _issue(user, purpose, address=email)
+    return _issue(user, purpose, address=email, actor=actor)[0]
 
 
-def issue_for(user: User, *, purpose: str, send: bool = True) -> tuple[str, str]:
+def issue_for(user: User, *, purpose: str, send: bool = True, actor=None, mail_entry=None) -> tuple[str, str]:
     """Выпустить ссылку учётной записи — её показывают на экране.
 
     Так выдаёт ссылку куратор или администратор: у 8–10 почты нет,
@@ -107,14 +107,14 @@ def issue_for(user: User, *, purpose: str, send: bool = True) -> tuple[str, str]
     from accounts.logins import address_of
 
     address = address_of(user) if send else ""
-    return _issue(user, purpose, address=address), address
+    return _issue(user, purpose, address=address, actor=actor, mail_entry=mail_entry)
 
 
-def _issue(user: User, purpose: str, *, address: str) -> str:
+def _issue(user: User, purpose: str, *, address: str, actor=None, mail_entry=None) -> tuple[str, str]:
     minutes = _ttl_minutes(purpose)
     token = secrets.token_urlsafe(32)
     expires_at = timezone.now() + timedelta(minutes=minutes)
-    MagicLinkToken.objects.create(
+    record = MagicLinkToken.objects.create(
         email=address,
         user=user,
         token_hash=_hash(token),
@@ -128,12 +128,25 @@ def _issue(user: User, purpose: str, *, address: str) -> str:
         from django.core.cache import cache
 
         cache.set(f"dev-link:{_hash(token)}", token, minutes * 60)
-    if address:
-        _send(address, purpose, token, expires_at, lang=language_of(user))
-    return token
+    sent = bool(address) and _send(
+        address,
+        purpose,
+        token,
+        expires_at,
+        lang=language_of(user),
+        user=user,
+        actor=actor,
+        entry=mail_entry,
+        record=record,
+    )
+    return token, address if sent else ""
 
 
-def _send(address: str, purpose: str, token: str, expires_at, *, lang: str) -> None:
+def _send(
+    address: str, purpose: str, token: str, expires_at, *, lang: str, user, actor=None, entry=None, record=None
+) -> bool:
+    from accounts import mailing
+
     about, lead, _path = LETTERS.get(purpose, LETTERS[LinkPurpose.LOGIN])
     # ссылка нужна и отдельно от письма: пока почта не настроена,
     # администратор раздаёт её руками, иначе завести человека нечем
@@ -150,29 +163,28 @@ def _send(address: str, purpose: str, token: str, expires_at, *, lang: str) -> N
     # HTML-версия с логотипом и названием школы собирается общей обёрткой
     # (`core.mail.wrap`), текстовая остаётся основной на случай почтового
     # клиента без картинок
-    mail.send(
-        to=address,
-        subject=about,
-        text=text,
-        html=f'<p>{lead}</p><p><a href="{link}">{link}</a></p>',
+    return mailing.deliver(
+        user=user,
+        address=address,
+        purpose=purpose,
+        actor=actor,
+        entry=entry,
+        token=record,
+        secrets=(token,),
+        sender=lambda: mail.send_result(
+            to=address,
+            subject=about,
+            text=text,
+            html=f'<p>{lead}</p><p><a href="{link}">{link}</a></p>',
+            secrets=(token,),
+        ),
     )
 
 
-def issue_confirmation(user: User, email: str) -> str:
+def issue_confirmation(user: User, email: str, *, actor=None) -> str:
     """Письмо на личную почту: подтвердите, что адрес ваш."""
     email = email.strip().lower()
-    minutes = _ttl_minutes(LinkPurpose.CONFIRM)
-    token = secrets.token_urlsafe(32)
-    expires_at = timezone.now() + timedelta(minutes=minutes)
-    MagicLinkToken.objects.create(
-        email=email, user=user, token_hash=_hash(token), purpose=LinkPurpose.CONFIRM, expires_at=expires_at
-    )
-    if settings.DEBUG:
-        from django.core.cache import cache
-
-        cache.set(f"dev-link:{_hash(token)}", token, minutes * 60)
-    _send(email, LinkPurpose.CONFIRM, token, expires_at, lang=language_of(user))
-    return token
+    return _issue(user, LinkPurpose.CONFIRM, address=email, actor=actor or user)[0]
 
 
 def confirm(token: str) -> Identity | None:

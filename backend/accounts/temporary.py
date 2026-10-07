@@ -148,20 +148,29 @@ def render_ttl(lang: str, until) -> str:
     return render(lang, "Войти по нему нужно до {until}.", until=phrasing.until(until))
 
 
-def send_letter(user: User, password: str) -> bool:
+def send_letter(user: User, password: str, *, actor=None) -> bool:
     """Отправить письмо с доступом. Возвращает, ушло ли оно.
 
     Письмо — только тому, у кого есть почта школы или подтверждённая
     личная; у 8–10 без почты пароль передают из рук в руки.
     """
     from accounts.logins import address_of
+    from accounts.mailing import deliver
+    from accounts.models import InviteMail
     from core import mail
 
     address = address_of(user)
     if not address:
         return False
     subject, text, html = letter(user, password)
-    return mail.send(to=address, subject=subject, text=text, html=html)
+    return deliver(
+        user=user,
+        address=address,
+        purpose=InviteMail.Purpose.TEMP_PASSWORD,
+        actor=actor,
+        secrets=(password,),
+        sender=lambda: mail.send_result(to=address, subject=subject, text=text, html=html, secrets=(password,)),
+    )
 
 
 # --- Выгрузка списка ------------------------------------------------------

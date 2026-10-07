@@ -183,6 +183,7 @@ class UserSerializer(serializers.ModelSerializer):
     #: счётчики и массовая выдача — считает его один модуль `accounts.states`
     password_state = serializers.SerializerMethodField()
     password_state_title = serializers.SerializerMethodField()
+    last_mail_sent_at = serializers.SerializerMethodField()
     #: группа ученика: по ней фильтруют список в день раздачи паролей
     group = serializers.SerializerMethodField()
 
@@ -201,10 +202,12 @@ class UserSerializer(serializers.ModelSerializer):
             "must_change_password",
             "has_password",
             "date_joined",
+            "last_login",
             "password_changed_at",
             "temp_password_expires_at",
             "password_state",
             "password_state_title",
+            "last_mail_sent_at",
             "group",
         )
         read_only_fields = fields
@@ -213,7 +216,9 @@ class UserSerializer(serializers.ModelSerializer):
         return ROLE_TITLES.get(obj.role, obj.role)
 
     def get_has_password(self, obj: User) -> bool:
-        return obj.has_usable_password()
+        from accounts import states
+
+        return states.password_is_set(obj)
 
     def get_password_state(self, obj: User) -> str:
         from accounts import states
@@ -224,6 +229,20 @@ class UserSerializer(serializers.ModelSerializer):
         from accounts import states
 
         return states.TITLES.get(states.state_of(obj), "")
+
+    def get_last_mail_sent_at(self, obj: User):
+        from accounts.models import InviteMail
+
+        if hasattr(obj, "last_mail_sent_at"):
+            sent_at = obj.last_mail_sent_at
+        else:
+            sent_at = (
+                InviteMail.objects.filter(user=obj, status=InviteMail.Status.SENT)
+                .order_by("-sent_at", "-pk")
+                .values_list("sent_at", flat=True)
+                .first()
+            )
+        return serializers.DateTimeField().to_representation(sent_at) if sent_at else None
 
     def get_group(self, obj: User) -> str:
         student = getattr(obj, "student", None)
@@ -261,6 +280,7 @@ class InviteSerializer(serializers.Serializer):
 
     emails = serializers.ListField(child=serializers.EmailField(), allow_empty=False, max_length=500)
     role = serializers.ChoiceField(choices=Role.choices, required=False)
+    force = serializers.BooleanField(required=False, default=False)
 
 
 class BulkUsersSerializer(serializers.Serializer):
@@ -268,6 +288,7 @@ class BulkUsersSerializer(serializers.Serializer):
 
     users = serializers.ListField(child=serializers.IntegerField(), allow_empty=False, max_length=500)
     action = serializers.ChoiceField(choices=("invite", "temp_password", "deactivate"))
+    force = serializers.BooleanField(required=False, default=False)
 
 
 class HandoutSerializer(serializers.Serializer):
@@ -284,6 +305,7 @@ class HandoutSerializer(serializers.Serializer):
     group = serializers.CharField(required=False, allow_blank=True)
     parallel = serializers.CharField(required=False, allow_blank=True)
     state = serializers.CharField(required=False, allow_blank=True)
+    never_logged_in = serializers.BooleanField(required=False, default=False)
     #: «включить и тех, кто уже сменил пароль» — по умолчанию снята
     include_ready = serializers.BooleanField(required=False, default=False)
     confirm = serializers.CharField(required=False, allow_blank=True, allow_null=True)

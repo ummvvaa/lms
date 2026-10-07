@@ -16154,3 +16154,129 @@ msgstr "Profile field values can be reverted as a whole: Upload history → Canc
 #: homework/storage.py
 msgid "Хранилище не ответило — попробуйте ещё раз через минуту"
 msgstr "The storage did not respond — try again in a minute"
+
+msgid ", ошибок отправки {failed}"
+msgstr ", sending errors {failed}"
+
+msgid ". Письмо не отправлено — передайте ссылку лично"
+msgstr ". Email was not sent — share the link in person"
+
+msgid "[скрыто]"
+msgstr "[hidden]"
+
+msgid "[ссылка скрыта]"
+msgstr "[link hidden]"
+
+msgid "Адрес письма"
+msgstr "Recipient address"
+
+msgid "В очереди"
+msgstr "Queued"
+
+msgid "Вход и доступ"
+msgstr "Sign-in and access"
+
+msgid "Дневной бюджет писем"
+msgstr "Daily email allowance"
+
+msgid "Дневной предел писем и защита от повторных приглашений"
+msgstr "Daily email limit and protection against repeat invitations"
+
+msgid "Кто выдал"
+msgstr "Issued by"
+
+msgid "Массовое приглашение"
+msgstr "Bulk invitation"
+
+msgid "Начало отправки"
+msgstr "Sending started"
+
+msgid "Не выдавали"
+msgstr "Not issued"
+
+msgid "Не отправлено"
+msgstr "Not sent"
+
+msgid "Не раньше"
+msgstr "Not before"
+
+msgid "Нет почты"
+msgstr "No email address"
+
+msgid "Отменено"
+msgstr "Cancelled"
+
+msgid "Отменено писем: {count}"
+msgstr "Emails cancelled: {count}"
+
+msgid "Отправка писем не настроена"
+msgstr "Email sending is not configured"
+
+msgid "Отправлено {sent}, в очереди {queued}, пропущено {skipped}"
+msgstr "Sent {sent}, queued {queued}, skipped {skipped}"
+
+msgid "Отправляется"
+msgstr "Sending"
+
+msgid "Писем в день"
+msgstr "Emails per day"
+
+msgid "Письма с доступом"
+msgstr "Access emails"
+
+msgid "Письмо с доступом"
+msgstr "Access email"
+
+msgid "Письмо уже уходило {moment}"
+msgstr "Email was already sent {moment}"
+
+msgid "Повторная отправка разрешена"
+msgstr "Repeat sending allowed"
+
+msgid "Повторное приглашение не раньше"
+msgstr "Minimum interval between invitations"
+
+msgid "Подтверждение почты"
+msgstr "Email confirmation"
+
+msgid "Почтовый сервер не принял письмо"
+msgstr "The mail server did not accept the email"
+
+msgid "Предел массовых приглашений за сутки UTC с учётом других писем доступа. Остаток уйдёт в следующие дни с 09:00 по Алматы. 0 — без предела"
+msgstr "Bulk invitation limit per UTC day, including other access emails. Remaining invitations will be sent on following days from 09:00 Almaty time. 0 means no limit"
+
+msgid "Приглашение"
+msgstr "Invitation"
+
+msgid "Приглашение уже в очереди или отправляется"
+msgstr "The invitation is already queued or being sent"
+
+msgid "Результат отправки неизвестен"
+msgstr "Sending outcome unknown"
+
+msgid "Результат отправки неизвестен: проверьте журнал почтового сервиса перед повтором"
+msgstr "Sending outcome unknown: check the mail service log before retrying"
+
+msgid "Сколько дней пропускать повторную отправку, если высланная ссылка ещё действует. 0 — без защиты от повторной отправки"
+msgstr "Days to skip repeat invitations while the sent link is still valid. 0 disables repeat protection"
+
+msgid "Ссылка выдана"
+msgstr "Link issued"
+
+msgid "Сутки UTC"
+msgstr "UTC day"
+
+msgid "Учётная запись удалена"
+msgstr "Account deleted"
+
+msgid "письмо|письма|писем"
+msgstr "email|emails"
+
+msgid "Результат неизвестен"
+msgstr "Outcome unknown"
+
+msgid "Заведено учётных записей: {created}. {result}"
+msgstr "Accounts created: {created}. {result}"
+
+msgid "Завершено"
+msgstr "Finished"

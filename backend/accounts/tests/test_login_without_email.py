@@ -108,7 +108,7 @@ def test_curator_issues_a_reset_link_on_screen_without_mail(junior, make_user):
     assert response.status_code == 200, response.content
     body = response.json()
     assert body["sent_to"] == ""
-    assert "Письма не было" in body["detail"]
+    assert "Письмо не отправлено" in body["detail"]
     assert body["login"] == "aigerim.serikova"
     assert django_mail.outbox == []
     token = body["link"].split("token=")[1]

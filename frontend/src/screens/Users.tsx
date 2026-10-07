@@ -17,16 +17,19 @@ import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import {
   useBulkUsers,
+  useCancelUserMailQueue,
   useCreateUser,
   useInviteLink,
   useInviteUsers,
   useTempPassword,
   useUpdateUser,
   useUsers,
+  useUserMailQueue,
   type BulkUserAction,
   type InviteLink,
   type IssuedPassword,
   type ManagedUser,
+  type MailResult,
 } from '../api/hooks'
 import CredentialsBox, { type Credential } from '../components/CredentialsBox'
 import DataTable, { type Column } from '../components/DataTable'
@@ -43,6 +46,7 @@ import PhoneFold from '../components/PhoneFold'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
 import { SelectField } from '../components/SelectField'
 import StudyGroups, { Curators } from '../components/StudyGroups'
+import { InviteUserDialog, LastUserMail, MailForceOption, MailResultNotice, UserMailHistory } from '../components/UserMail'
 import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Checkbox } from '../components/ui/checkbox'
@@ -50,6 +54,7 @@ import { Input } from '../components/ui/input'
 import type { Role } from '../api/types'
 import { t, tk } from '../i18n'
 import { PARALLELS } from '../lib/parallels'
+import { formatDate, formatTime } from '../lib/format'
 import { usePhone } from '../phone'
 import EditUserDialog from './EditUserDialog'
 import './academics/academics.css'
@@ -57,6 +62,7 @@ import './academics/academics.css'
 /** Тон чипа состояния: тревожное — то, из-за чего человек не войдёт. */
 const STATE_TONE: Record<string, Tone> = {
   no_password: 'warn',
+  invite_issued: 'info',
   waiting: 'neutral',
   expired: 'bad',
   ready: 'good',
@@ -175,12 +181,13 @@ function RolePick({ user }: { user: ManagedUser }) {
 /** Одно основное действие на виду, остальное — в меню строки. */
 function UserActions({ user }: { user: ManagedUser }) {
   const update = useUpdateUser()
-  const invite = useInviteUsers()
   const link = useInviteLink()
   const temp = useTempPassword()
   const [shown, setShown] = useState<InviteLink | null>(null)
   const [issued, setIssued] = useState<IssuedPassword | null>(null)
   const [editing, setEditing] = useState(false)
+  const [mailing, setMailing] = useState(false)
+  const [history, setHistory] = useState(false)
   const fail = (error: Error) => toast.error(error.message)
   return (
     <span className="acad__inline">
@@ -189,12 +196,13 @@ function UserActions({ user }: { user: ManagedUser }) {
       </Button>
       <RowMenu>
         <RowMenuItem onClick={() => setEditing(true)}>{t('Изменить')}</RowMenuItem>
+        <RowMenuItem onClick={() => setHistory(true)}>{t('Письма')}</RowMenuItem>
         <RowMenuItem onClick={() => link.mutate(user.id, { onSuccess: setShown, onError: fail })} disabled={!user.is_active}>
           {t('Показать ссылку')}
         </RowMenuItem>
         {/* письмо — только тем, у кого есть почта; у 8–10 ссылку показывают на экране */}
         {user.email && (
-          <RowMenuItem onClick={() => invite.mutate({ emails: [user.email ?? ''] }, { onSuccess: () => toast.success(t('Ссылка отправлена')), onError: fail })} disabled={!user.is_active}>
+          <RowMenuItem onClick={() => setMailing(true)} disabled={!user.is_active}>
             {t('Выслать письмо заново')}
           </RowMenuItem>
         )}
@@ -222,6 +230,10 @@ function UserActions({ user }: { user: ManagedUser }) {
       {issued && <PasswordBox issued={issued} onClose={() => setIssued(null)} />}
       {shown && <InviteLinkBox invite={shown} onClose={() => setShown(null)} />}
       {editing && <EditUserDialog user={user} onClose={() => setEditing(false)} />}
+      {mailing && <InviteUserDialog user={user} onClose={() => setMailing(false)} />}
+      {history && <Modal title={t('Письма: {name}', { name: user.full_name || user.email || user.login })} onClose={() => setHistory(false)}>
+        <div className="usermail"><LastUserMail user={user} /><UserMailHistory id={user.id} /></div>
+      </Modal>}
     </span>
   )
 }
@@ -236,6 +248,7 @@ export default function Users() {
   const roleFilter = params.get('role') ?? ''
   const groupFilter = params.get('group') ?? ''
   const parallelFilter = params.get('parallel') ?? ''
+  const neverLoggedIn = params.get('never_logged_in') === 'true'
   // учебные группы — своей вкладкой, не колонкой справа (решение владельца, 27.09.2026)
   const tab: 'accounts' | 'groups' = params.get('tab') === 'groups' ? 'groups' : 'accounts'
   const setFilter = (name: string, value: string) => {
@@ -244,6 +257,7 @@ export default function Users() {
     else next.delete(name)
     setParams(next, { replace: true })
     setPicked([])
+    setForceInvite(false)
   }
   // удалённые и отключённые по умолчанию не показываются: они висели
   // серыми строками и мешали работать с живыми
@@ -259,6 +273,8 @@ export default function Users() {
   const [error, setError] = useState<string | null>(null)
   const [showHandout, setShowHandout] = useState(false)
   const [fresh, setFresh] = useState<InviteLink | null>(null)
+  const [forceInvite, setForceInvite] = useState(false)
+  const [mailResult, setMailResult] = useState<MailResult | null>(null)
 
   // переключатель уезжает на сервер вместе с остальными фильтрами:
   // счётчик сегмента обязан сходиться с числом строк под ним, а он
@@ -270,11 +286,14 @@ export default function Users() {
     group: groupFilter,
     parallel: parallelFilter,
     is_active: showInactive ? '' : 'true',
+    never_logged_in: neverLoggedIn ? 'true' : '',
   }
   const users = useUsers(filters)
   const create = useCreateUser()
   const invite = useInviteUsers()
   const bulkAction = useBulkUsers()
+  const mailQueue = useUserMailQueue()
+  const cancelQueue = useCancelUserMailQueue()
 
   const emails = bulk
     .split(/[\s,;]+/)
@@ -290,10 +309,13 @@ export default function Users() {
 
   const runBulk = (action: BulkUserAction) =>
     bulkAction.mutate(
-      { users: picked, action },
+      { users: picked, action, ...(action === 'invite' ? { force: forceInvite } : {}) },
       {
         onSuccess: (result) => {
-          toast.success(result.detail)
+          if (action === 'invite') {
+            setMailResult(result)
+            setForceInvite(false)
+          } else toast.success(result.detail)
           if (result.issued.length) setIssued(result.issued)
           setPicked([])
         },
@@ -316,7 +338,10 @@ export default function Users() {
         <Checkbox
           checked={picked.includes(user.id)}
           aria-label={t('Отметить строку: {name}', { name: user.full_name || user.email })}
-          onCheckedChange={(on) => setPicked((current) => (on ? [...current, user.id] : current.filter((id) => id !== user.id)))}
+          onCheckedChange={(on) => {
+            setPicked((current) => (on ? [...current, user.id] : current.filter((id) => id !== user.id)))
+            setForceInvite(false)
+          }}
         />
       ),
     },
@@ -362,16 +387,22 @@ export default function Users() {
       title: t('Пароль'),
       width: '176px',
       cell: (user) => (
-        <Chip tone={STATE_TONE[user.password_state] ?? 'neutral'} size="sm" className="users__state">
-          {user.password_state_title}
-        </Chip>
+        <span className="usermail">
+          <Chip tone={STATE_TONE[user.password_state] ?? 'neutral'} size="sm" className="users__state">
+            {user.password_state_title}
+          </Chip>
+          <LastUserMail user={user} />
+        </span>
       ),
       sortBy: (user) => user.password_state,
     },
     { key: 'acts', title: '', width: '184px', actions: true, cell: (user) => <UserActions user={user} /> },
   ]
 
-  const closePanel = () => setPanel(null)
+  const closePanel = () => {
+    setPanel(null)
+    setForceInvite(false)
+  }
 
   return (
     <div>
@@ -387,7 +418,7 @@ export default function Users() {
             <RowMenu>
               <RowMenuItem onClick={() => setPanel('enroll')}>{t('Завести учеников списком')}</RowMenuItem>
               <RowMenuItem onClick={() => setShowHandout(true)}>{t('Выдать пароли')}</RowMenuItem>
-              <RowMenuItem onClick={() => setPanel('invite')}>{t('Массовое приглашение')}</RowMenuItem>
+              <RowMenuItem onClick={() => { setForceInvite(false); invite.reset(); setPanel('invite') }}>{t('Массовое приглашение')}</RowMenuItem>
               <RowMenuItem onClick={() => setExporting(true)}>{t('Выгрузить')}</RowMenuItem>
             </RowMenu>
           </>
@@ -416,13 +447,14 @@ export default function Users() {
 
       {tab === 'accounts' && (
         <div className="acad__stack">
-          <PhoneFold active={Boolean(search || roleFilter || groupFilter || parallelFilter)}>
+          <PhoneFold active={Boolean(search || roleFilter || groupFilter || parallelFilter || neverLoggedIn)}>
             <div className="acad__toolbar">
               <Field name="search" label={t('Поиск')} value={search} placeholder={t('Поиск по имени или почте')} onChange={(value) => setFilter('search', value)} />
               <Field kind="select" name="role" label={t('Роль')} value={roleFilter} onChange={(value) => setFilter('role', value)} options={[{ value: '', title: t('Все роли') }, ...ROLES.map((r) => ({ value: r.value, title: t(r.title) }))]} />
               <Field kind="select" name="group" label={t('Группа')} value={groupFilter} onChange={(value) => setFilter('group', value)} options={[{ value: '', title: t('Все группы') }, ...(page?.groups ?? []).map((code) => ({ value: code, title: code }))]} />
               <Field kind="select" name="parallel" label={t('Параллель')} value={parallelFilter} onChange={(value) => setFilter('parallel', value)} options={PARALLEL_FILTER.map((item) => ({ value: item.value, title: item.value ? item.title : t(item.title) }))} />
               <Field kind="checkbox" name="inactive" label={t('Показать неактивных ({n})', { n: inactive })} checked={showInactive} onChange={setShowInactive} />
+              <Field kind="checkbox" name="never_logged_in" label={t('Не входили ни разу')} checked={neverLoggedIn} onChange={(value) => setFilter('never_logged_in', value ? 'true' : '')} />
             </div>
           </PhoneFold>
 
@@ -443,8 +475,30 @@ export default function Users() {
             </Chip>
           )}
 
+          {mailQueue.error && <ErrorNote error={mailQueue.error} />}
+          {(mailQueue.data?.pending ?? 0) > 0 && (
+            <DataCard title={t('Очередь писем')}>
+              <div className="usermail">
+                <p>{mailQueue.data?.next_send_at
+                  ? t('В очереди: {n}. Начнут отправляться {date} с {time} (Алматы).', {
+                    n: mailQueue.data.pending, date: formatDate(mailQueue.data.next_send_at), time: formatTime(mailQueue.data.next_send_at),
+                  })
+                  : t('Ожидают отправки: {n}', { n: mailQueue.data?.pending ?? 0 })}</p>
+                {cancelQueue.error && <ErrorNote error={cancelQueue.error} />}
+                <div className="acad__actions"><Button variant="outline" size="sm" disabled={cancelQueue.isPending} onClick={() => cancelQueue.mutate(undefined, { onSuccess: (result) => toast.success(result.detail) })}>
+                  {t('Отменить очередь')}
+                </Button></div>
+              </div>
+            </DataCard>
+          )}
+
+          {mailResult && <DataCard title={t('Результат рассылки')} right={<Button variant="ghost" size="sm" onClick={() => setMailResult(null)}>{t('Закрыть')}</Button>}>
+            <MailResultNotice result={mailResult} />
+          </DataCard>}
+
           {picked.length > 0 && (
             <DataCard title={t('Отмечено: {n}', { n: picked.length })}>
+              <MailForceOption checked={forceInvite} onChange={setForceInvite} />
               <div className="acad__actions">
                 <Button variant="outline" size="sm" disabled={bulkAction.isPending} onClick={() => runBulk('invite')}>
                   {t('Выслать письма')}
@@ -455,7 +509,7 @@ export default function Users() {
                 <Button variant="outline" size="sm" className="users__danger" disabled={bulkAction.isPending} onClick={() => runBulk('deactivate')}>
                   {t('Отключить доступ')}
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setPicked([])}>
+                <Button variant="ghost" size="sm" onClick={() => { setPicked([]); setForceInvite(false) }}>
                   {t('Снять отметки')}
                 </Button>
               </div>
@@ -468,7 +522,7 @@ export default function Users() {
             empty={rows.length === 0 && t('никого не нашлось — снимите фильтры или заведите пользователя')}
             right={
               rows.length > 0 ? (
-                <Button variant="link" size="sm" onClick={() => setPicked(picked.length === rows.length ? [] : rows.map((row) => row.id))}>
+                <Button variant="link" size="sm" onClick={() => { setPicked(picked.length === rows.length ? [] : rows.map((row) => row.id)); setForceInvite(false) }}>
                   {picked.length === rows.length ? t('Снять все') : t('Отметить все')}
                 </Button>
               ) : undefined
@@ -522,19 +576,19 @@ export default function Users() {
         <div className="acad__form">
           <Field kind="textarea" name="emails" label={t('Почты через запятую или с новой строки')} rows={8} value={bulk} placeholder={'asel@school.kz\ndamir@school.kz'} onChange={setBulk} />
           <Field kind="select" name="invite_role" label={t('Роль')} value={role} onChange={(value) => setRole(value as Role)} options={ROLES.map((r) => ({ value: r.value, title: t(r.title) }))} />
+          <MailForceOption checked={forceInvite} onChange={setForceInvite} />
+          {invite.error && <ErrorNote error={invite.error} />}
           <div className="acad__actions">
             <Button
               disabled={emails.length === 0 || invite.isPending}
               onClick={() =>
                 invite.mutate(
-                  { emails, role },
+                  { emails, role, force: forceInvite },
                   {
                     onSuccess: (result) => {
-                      toast.success(
-                        result.skipped.length
-                          ? t('Заведено новых: {created}, ссылок отправлено: {invited}, пропущено: {skipped}', { created: result.created, invited: result.invited, skipped: result.skipped.length })
-                          : t('Заведено новых: {created}, ссылок отправлено: {invited}', { created: result.created, invited: result.invited }),
-                      )
+                      setMailResult(result)
+                      setFilter('tab', '')
+                      setForceInvite(false)
                       setBulk('')
                       closePanel()
                     },

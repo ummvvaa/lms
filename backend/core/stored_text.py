@@ -47,6 +47,7 @@ LINK_FROM_TABLE = gettext_noop("{document}: ссылка из таблицы п�
 LINK_FROM_BLOCK = gettext_noop("{document}: ссылка из блока «Поступление»")
 #: название плана в архиве (`roadmap.Plan.__str__`)
 PLAN_TITLE = gettext_noop("План: {student} → {program}")
+MAIL_ALREADY_SENT = gettext_noop("Письмо уже уходило {moment}")
 
 #: Названия и формулировки, которые школа получает по умолчанию (посев, миграции):
 #: хранятся в базе как данные, но пока школа их не переименовала, читающему
@@ -93,6 +94,7 @@ TEMPLATES = (
     LINK_FROM_TABLE,
     LINK_FROM_BLOCK,
     PLAN_TITLE,
+    MAIL_ALREADY_SENT,
 )
 
 

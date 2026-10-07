@@ -13,15 +13,17 @@
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useInviteUsers, useUpdateUser, type ManagedUser } from '../api/hooks'
+import { useUpdateUser, type ManagedUser } from '../api/hooks'
+import { InviteUserDialog, LastUserMail, UserMailHistory } from '../components/UserMail'
 import Modal from '../components/Modal'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { t } from '../i18n'
+import { formatDateTime } from '../lib/format'
 
 export default function EditUserDialog({ user, onClose }: { user: ManagedUser; onClose: () => void }) {
   const update = useUpdateUser()
-  const invite = useInviteUsers()
+  const [mailing, setMailing] = useState(false)
   const [fullName, setFullName] = useState(user.full_name)
   const [email, setEmail] = useState(user.email ?? '')
   const [moved, setMoved] = useState<string | null>(null)
@@ -44,9 +46,14 @@ export default function EditUserDialog({ user, onClose }: { user: ManagedUser; o
       },
     )
 
+  if (mailing) return <InviteUserDialog user={{ ...user, email: email.trim() }} onClose={onClose} />
+
   return (
     <Modal title={t('Изменить учётную запись')} onClose={onClose}>
       <div className="euser">
+        <span className="t-note">{user.password_state_title}</span>
+        <LastUserMail user={user} />
+        <span className="t-note">{user.last_login ? t('Последний вход: {date}', { date: formatDateTime(user.last_login) }) : t('Не входил ни разу')}</span>
         <label className="euser__field">
           <span className="eyebrow">{t('Имя и фамилия')}</span>
           <Input
@@ -76,19 +83,7 @@ export default function EditUserDialog({ user, onClose }: { user: ManagedUser; o
               <span className="cfilters__spacer" />
               <Button
                 size="sm"
-                disabled={invite.isPending}
-                onClick={() =>
-                  invite.mutate(
-                    { emails: [email.trim()] },
-                    {
-                      onSuccess: () => {
-                        toast.success(t('Ссылка отправлена'))
-                        onClose()
-                      },
-                      onError: (error) => toast.error(error.message),
-                    },
-                  )
-                }
+                onClick={() => setMailing(true)}
               >
                 {t('Выслать письмо заново')}
               </Button>
@@ -108,6 +103,7 @@ export default function EditUserDialog({ user, onClose }: { user: ManagedUser; o
             </Button>
           </div>
         )}
+        <UserMailHistory id={user.id} />
       </div>
     </Modal>
   )
