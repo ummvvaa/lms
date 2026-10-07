@@ -56,3 +56,22 @@
   /* длинное название переносится, а не режется многоточием */
   overflow-wrap: anywhere;
 }
+
+/* у ученика два поля — желаемый балл и дата экзамена, подпись над каждым */
+.goals__row--student {
+  grid-template-columns: minmax(calc(var(--space) * 22), calc(var(--space) * 32)) calc(var(--space) * 30) minmax(calc(var(--space) * 36), 1fr) auto;
+  align-items: end;
+}
+
+.goals__field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 1);
+  min-width: 0;
+}
+
+@media (max-width: 759px) {
+  .goals__row--student {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}

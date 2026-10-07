@@ -1,42 +1,30 @@
 /**
  * Главная ученика в новом языке.
  *
- * Сверху четыре показателя с целью под числом, слева работа на сегодня:
- * уроки по звонкам, задачи с галочкой, вузы с разбором. Справа то, на что
- * ученик оглядывается: ближайшие даты, шаг пути, стипендии, незакрытые места.
+ * На главной — то, что нужно сегодня (решение владельца, 07.10.2026): слева
+ * уроки по звонкам, ДЗ к сдаче, задачи с галочкой, готовность к подаче;
+ * справа ближайшие даты и незакрытые места. Баллы, документы, вузы, эссе
+ * и подготовка — в своих разделах: каждая карточка в одном месте.
  * Цветных полотен и карусели нет: пояснение — строкой, кнопка — в строке.
  *
  * Внутренних ярлыков здесь нет — их не отдаёт даже API (инвариант №7).
  */
-import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
+import { toast } from 'sonner'
 import { useMyLessons } from '../../api/academics'
-import {
-  useCalendar,
-  useCenterExams,
-  useGameState,
-  useHomeCues,
-  useJourney,
-  useMyEssays,
-  useMyProfile,
-  useMyUniversities,
-  usePortfolio,
-  useSavedScholarships,
-  useScholarshipOverview,
-  useTaskStatus,
-} from '../../api/hooks'
+import { useMyHomework } from '../../api/homework'
+import { useCalendar, useGameState, useHomeCues, useMyProfile, useMyTasks, useTaskStatus } from '../../api/hooks'
 import { shortDate } from '../../components/CalendarCard'
-import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
-import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
+import { Row, Rows, ShowAll } from '../../components/patterns'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Checkbox } from '../../components/ui/checkbox'
 import Progress from '../../components/Progress'
 import { t, tk, tn } from '../../i18n'
 import { todayAlmaty } from '../../lib/dates'
 import { MarkChip } from '../academics/shared'
-import { ESSAY_TITLE, ESSAY_TONE } from '../essayStatus'
 import { CabinetBoard } from './cabinet'
-import { formatDate } from '../../lib/format'
+import { formatDate, formatDateTime } from '../../lib/format'
 import './student.css'
 
 
@@ -71,7 +59,7 @@ function LessonsToday() {
           <Row
             key={lesson.id}
             lead={<b className="num stu__slot">{lesson.slot}</b>}
-            title={`${lesson.subject.title}${lesson.kind !== 'fo' ? ` · ${lesson.kind_label}` : ''}`}
+            title={`${lesson.subject.title}${lesson.kind !== 'fo' && lesson.subject.in_lms ? ` · ${lesson.kind_label}` : ''}`}
             note={[lesson.bell, lesson.room, lesson.actual_teacher?.short ?? ''].filter(Boolean).join(' · ')}
             right={
               !lesson.is_live ? (
@@ -94,67 +82,98 @@ function LessonsToday() {
   )
 }
 
-/** Задачи на сегодня с галочкой: выполненная уходит из списка после подтверждения. */
-function TasksToday() {
+/** ДЗ, которые нужно сдать в LMS: ближайший срок сверху, открываются экраном сдачи. */
+function HomeworkDue() {
   const navigate = useNavigate()
-  const { data } = useGameState()
-  const move = useTaskStatus()
-  const [earned, setEarned] = useState<number | null>(null)
-  useEffect(() => {
-    if (earned === null) return
-    const timer = window.setTimeout(() => setEarned(null), 4000)
-    return () => window.clearTimeout(timer)
-  }, [earned])
+  const { data } = useMyHomework()
   if (!data) return null
-  const rows = data.today
-  const done = rows.filter((task) => task.status === 'done').length
+  const rows = data.items.filter((item) => item.state === 'todo').sort((a, b) => (a.due_at ?? '9999').localeCompare(b.due_at ?? '9999'))
   return (
     <DataCard
-      title={t('Задачи на сегодня')}
-      note={[rows.length ? t('{done} из {total} сделано', { done, total: rows.length }) : '', data.streak_phrase].filter(Boolean).join(' · ') || undefined}
-      empty={rows.length === 0 && t('на сегодня задач нет')}
-      emptyAction={
-        <Button variant="secondary" size="sm" onClick={() => navigate('/roadmap')}>
-          {t('Роадмап')}
-        </Button>
-      }
+      title={t('ДЗ к сдаче')}
+      count={rows.length || undefined}
+      empty={rows.length === 0 && t('сдавать сейчас нечего')}
       right={
-        <span className="stu__cardright">
-          {earned !== null && (
-            <Chip tone="good" size="sm">
-              +{earned} XP
-            </Chip>
-          )}
-          <Button variant="link" size="sm" onClick={() => navigate('/roadmap')}>
-            {t('Все')}
-          </Button>
-        </span>
+        <Button variant="link" size="sm" onClick={() => navigate('/homework')}>
+          {t('Все')}
+        </Button>
       }
     >
       <Rows>
-        {rows.map((task) => (
-          <Row
-            key={task.id}
-            lead={
-              <Checkbox
-                aria-label={task.title}
-                checked={task.status === 'done'}
-                disabled={move.isPending || task.status === 'done'}
-                onCheckedChange={() => move.mutate({ id: task.id, status: 'done' }, { onSuccess: () => setEarned(task.xp) })}
+        <ShowAll>
+          {rows.map((item) => (
+            <Row
+              key={item.id}
+              icon="homework"
+              title={item.lesson.subject}
+              note={item.due_at ? t('до {when}', { when: formatDateTime(item.due_at) }) : t('без срока')}
+              right={
+                item.past_due ? (
+                  <Chip tone="bad" size="sm">
+                    {t('срок прошёл')}
+                  </Chip>
+                ) : undefined
+              }
+              to={`/homework/${item.id}`}
+            />
+          ))}
+        </ShowAll>
+      </Rows>
+    </DataCard>
+  )
+}
+
+/**
+ * Задачи — полный список вместо раздела «Роадмап» (решение владельца, 07.10.2026):
+ * открытые задачи по сроку, ближайшие сверху, длинный список сворачивается.
+ * Галочка закрывает задачу; XP за действие начисляет сервер.
+ */
+function TasksBlock() {
+  const tasks = useMyTasks()
+  const game = useGameState()
+  const move = useTaskStatus()
+  const today = todayAlmaty()
+  if (!tasks.data) return null
+  const open = tasks.data
+    .filter((task) => task.status !== 'done')
+    .sort((a, b) => (a.due_date_effective ?? '9999').localeCompare(b.due_date_effective ?? '9999'))
+  return (
+    <DataCard
+      title={t('Задачи')}
+      count={open.length || undefined}
+      note={game.data?.streak_phrase || undefined}
+      empty={open.length === 0 && t('открытых задач нет: их ставят куратор и школа, дедлайны вузов добавляются сами')}
+    >
+      <Rows>
+        <ShowAll>
+          {open.map((task) => {
+            const due = task.due_date_effective
+            return (
+              <Row
+                key={task.id}
+                lead={
+                  <Checkbox
+                    aria-label={task.title}
+                    checked={false}
+                    disabled={move.isPending}
+                    onCheckedChange={() =>
+                      move.mutate({ id: task.id, status: 'done' }, { onSuccess: () => toast.success(t('Задача выполнена')), onError: (error) => toast.error(error.message) })
+                    }
+                  />
+                }
+                title={task.title}
+                note={[task.university_name ?? '', due ? (due === today ? t('сегодня') : t('до {date}', { date: formatDate(due) })) : t('без срока')].filter(Boolean).join(' · ')}
+                right={
+                  due !== null && due < today ? (
+                    <Chip tone="bad" size="sm">
+                      {t('просрочена')}
+                    </Chip>
+                  ) : undefined
+                }
               />
-            }
-            title={task.title}
-            note={[task.university_name ?? '', task.days_left === null ? '' : task.days_left < 0 ? t('срок прошёл') : task.days_left === 0 ? t('сегодня') : t('до {date}', { date: task.due_date ? formatDate(task.due_date) : '' })].filter(Boolean).join(' · ')}
-            right={
-              task.days_left !== null && task.due_soon && task.status !== 'done' ? (
-                <Chip tone={task.days_left < 0 ? 'bad' : 'warn'} size="sm">
-                  {task.days_left < 0 ? t('просрочена') : task.days_left === 0 ? t('сегодня') : tn(task.days_left, '{n} день|{n} дня|{n} дней')}
-                </Chip>
-              ) : undefined
-            }
-            muted={task.status === 'done'}
-          />
-        ))}
+            )
+          })}
+        </ShowAll>
       </Rows>
     </DataCard>
   )
@@ -191,110 +210,20 @@ function ReadinessBlock() {
   )
 }
 
-/** Подготовка: решённые задания, уровень и серия дней — по начислениям, без второго журнала. */
-function PrepBlock() {
-  const navigate = useNavigate()
-  const game = useGameState()
-  const exams = useCenterExams()
-  const state = game.data
-  const exam = exams.data?.exams?.[0]
-  if (!state) return null
-  const level = state.level_step ? Math.round((state.level_progress / state.level_step) * 100) : 0
-  return (
-    <DataCard
-      title={exam ? t('Подготовка · {exam}', { exam: exam.title }) : t('Центр подготовки')}
-      note={exam && exam.bank_total > 0 ? t('Решено заданий: {solved} из {total}', { solved: exam.solved, total: exam.bank_total }) : t('Задания появятся, когда школа загрузит банк')}
-      right={
-        <Button variant="link" size="sm" onClick={() => navigate('/prep')}>
-          {t('Продолжить')}
-        </Button>
-      }
-    >
-      <Rows>
-        <Row
-          icon="pencil"
-          title={t('Уровень {level}', { level: state.level })}
-          note={`${state.level_progress} / ${state.level_step} XP`}
-          right={<span className="prep__rowbar"><Progress percent={level} label={false} /></span>}
-        />
-        <Row icon="flame" tone="accent" title={tn(state.streak_days, '{n} день подряд|{n} дня подряд|{n} дней подряд')} note={state.streak_phrase} />
-      </Rows>
-    </DataCard>
-  )
-}
-
-/** Эссе: последние три с состоянием, новое — с экрана эссе. */
-function EssaysBlock() {
-  const navigate = useNavigate()
-  const essays = useMyEssays()
-  const rows = (essays.data?.results ?? []).slice(0, 3)
-  return (
-    <DataCard
-      title={t('Мои эссе')}
-      count={essays.data?.count || undefined}
-      empty={rows.length === 0 && t('эссе ещё не заведено')}
-      emptyAction={
-        <Button variant="secondary" size="sm" onClick={() => navigate('/essays')}>
-          {t('Новое эссе')}
-        </Button>
-      }
-      right={
-        <Button variant="link" size="sm" onClick={() => navigate('/essays')}>
-          {t('Все')}
-        </Button>
-      }
-    >
-      <Rows>
-        {rows.map((essay) => {
-          const last = essay.versions?.[0]
-          return (
-            <Row
-              key={essay.id}
-              icon="doc"
-              title={essay.title}
-              note={last ? `${formatDate(last.created_at)} · ${tn(essay.effective_word_limit, '{count} / {n} слово|{count} / {n} слова|{count} / {n} слов', { count: last.word_count })}` : (essay.doc_type_name ?? t('черновик без версий'))}
-              right={
-                <Chip tone={ESSAY_TONE[essay.status]} size="sm">
-                  {t(ESSAY_TITLE[essay.status])}
-                </Chip>
-              }
-              onOpen={() => navigate('/essays')}
-              openLabel={t('Открыть эссе')}
-            />
-          )
-        })}
-      </Rows>
-    </DataCard>
-  )
-}
-
 export default function StudentHome() {
   const navigate = useNavigate()
   const profile = useMyProfile()
-  const portfolio = usePortfolio()
   const calendar = useCalendar()
-  const journey = useJourney()
   const cues = useHomeCues()
-  const universities = useMyUniversities()
-  const scholarships = useScholarshipOverview()
-  const saved = useSavedScholarships()
 
-  if (profile.isLoading || portfolio.isLoading) return <Loading kind="cards" />
+  if (profile.isLoading) return <Loading kind="cards" />
   if (profile.error) return <ErrorNote error={profile.error} />
   if (!profile.data) return null
 
-  const exam = (profile.data.exam ?? {}) as Record<string, string | number | null>
-  const documents = portfolio.data?.documents ?? []
-  const documentsDone = documents.filter((doc) => doc.done).length
   const nearest = calendar.data?.nearest ?? null
   const today = calendar.data?.today ?? todayAlmaty()
   const upcoming = (calendar.data?.events ?? []).filter((event) => event.date >= today).slice(0, 6)
-  const steps = journey.data?.steps ?? []
-  const current = steps.find((step) => !step.done && !step.locked) ?? null
-  const stepNumber = current ? steps.indexOf(current) + 1 : steps.length
-  const unis = (universities.data ?? []).slice(0, 4)
   const cueRows = cues.data?.cues ?? []
-  const score = (value: string | number | null | undefined) => (value === null || value === undefined || value === '' ? null : value)
 
   return (
     <div>
@@ -313,64 +242,12 @@ export default function StudentHome() {
         }
       />
 
-      <StatRow>
-        <Kpi label="IELTS" value={score(exam.ielts_current)} none={t('нет')} note={score(exam.ielts_target) ? t('цель {score}', { score: exam.ielts_target }) : t('цель не поставлена')} to="/my-data" />
-        <Kpi label="SAT" value={score(exam.sat_current)} none={t('нет')} note={score(exam.sat_target) ? t('цель {score}', { score: exam.sat_target }) : t('цель не поставлена')} to="/my-data" />
-        <Kpi label={t('Портфолио')} value={portfolio.data ? `${portfolio.data.percent}%` : null} note={t('заполнено')} to="/my-data" />
-        <Kpi label={t('Документы')} value={documents.length ? t('{done} из {total}', { done: documentsDone, total: documents.length }) : null} none={t('нет')} tone={documents.length && documentsDone < documents.length ? 'warn' : 'good'} to="/my-data?tab=documents" />
-      </StatRow>
-
       <CabinetBoard
         cards={[
           { key: 'lessons', column: 'main', rows: 6, node: <LessonsToday /> },
-          { key: 'tasks', column: 'main', rows: 5, node: <TasksToday /> },
+          { key: 'homework', column: 'main', rows: 4, node: <HomeworkDue /> },
+          { key: 'tasks', column: 'main', rows: 5, node: <TasksBlock /> },
           { key: 'readiness', column: 'main', rows: 5, node: <ReadinessBlock /> },
-          {
-            key: 'unis',
-            column: 'main',
-            rows: unis.length,
-            folded: unis.length === 0,
-            node: (
-              <DataCard
-                title={t('Мои вузы')}
-                count={universities.data?.length || undefined}
-                empty={unis.length === 0 && t('добавьте вуз — план соберётся сам')}
-                emptyAction={
-                  <Button variant="secondary" size="sm" onClick={() => navigate('/catalog')}>
-                    {t('Открыть каталог')}
-                  </Button>
-                }
-                right={
-                  <Button variant="link" size="sm" onClick={() => navigate('/universities')}>
-                    {t('Все')}
-                  </Button>
-                }
-              >
-                <Rows>
-                  {unis.map((row) => {
-                    const gap = row.breakdown.find((position) => !position.is_met && !position.is_unknown && position.gap_phrase)
-                    return (
-                      <Row
-                        key={row.program}
-                        icon="cap"
-                        tone={row.is_open ? 'good' : 'neutral'}
-                        title={row.university_name}
-                        note={row.program_name}
-                        right={
-                          row.has_requirements ? (
-                            <Chip tone={row.is_open ? 'good' : 'neutral'} size="sm">
-                              {row.is_open ? t('проходите') : gap ? t('не хватает {gap}', { gap: gap.gap_phrase }) : `${row.percent}%`}
-                            </Chip>
-                          ) : undefined
-                        }
-                        to="/universities"
-                      />
-                    )
-                  })}
-                </Rows>
-              </DataCard>
-            ),
-          },
           {
             key: 'nearest',
             column: 'aside',
@@ -404,38 +281,6 @@ export default function StudentHome() {
             ),
           },
           {
-            key: 'journey',
-            column: 'aside',
-            rows: 1,
-            folded: steps.length === 0,
-            node: (
-              <DataCard
-                title={t('Мой путь')}
-                note={current ? t('Шаг {step} из {total}', { step: stepNumber, total: steps.length }) : t('все шаги пройдены')}
-                empty={steps.length === 0 && t('шаги появятся после первого входа')}
-              >
-                {current ? (
-                  <Rows>
-                    <Row
-                      lead={<b className="num stu__slot">{stepNumber}</b>}
-                      title={t(current.title)}
-                      note={t(current.hint)}
-                      acts={
-                        <Button variant="secondary" size="sm" onClick={() => navigate(current.path)}>
-                          {t('Продолжить')}
-                        </Button>
-                      }
-                    />
-                  </Rows>
-                ) : (
-                  <Rows>
-                    <Row icon="check" tone="good" title={t('Путь пройден')} note={t('дальше работаете по плану')} to="/journey" />
-                  </Rows>
-                )}
-              </DataCard>
-            ),
-          },
-          {
             key: 'cues',
             column: 'aside',
             rows: cueRows.length,
@@ -457,29 +302,6 @@ export default function StudentHome() {
                       }
                     />
                   ))}
-                </Rows>
-              </DataCard>
-            ),
-          },
-          { key: 'prep', column: 'aside', rows: 2, node: <PrepBlock /> },
-          { key: 'essays', column: 'aside', rows: 3, node: <EssaysBlock /> },
-          {
-            key: 'scholarships',
-            column: 'aside',
-            rows: 1,
-            folded: !scholarships.data || scholarships.data.total === 0,
-            node: (
-              <DataCard title={t('Стипендии')} empty={(!scholarships.data || scholarships.data.total === 0) && t('в справочнике пока нет стипендий')}>
-                <Rows>
-                  <Row
-                    icon="card"
-                    title={tn(
-                      scholarships.data?.total ?? 0,
-                      '{n} стипендия в каталоге|{n} стипендии в каталоге|{n} стипендий в каталоге',
-                    )}
-                    note={saved.data?.count ? t('сохранено {n}', { n: saved.data.count }) : t('сохранённых пока нет')}
-                    to="/scholarships"
-                  />
                 </Rows>
               </DataCard>
             ),

@@ -20,7 +20,6 @@ import {
   useExamGoals,
   useMyProfile,
   useMyProposals,
-  useMyUniversities,
   usePortfolio,
   usePropose,
   useRevealCredential,
@@ -31,7 +30,7 @@ import {
   type ProposeRow,
 } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
-import MyDocuments, { UploadForm } from './MyDocuments'
+import MyDocuments from './MyDocuments'
 import BadgesBlock from '../components/BadgesBlock'
 import { useDomainMeta } from '../api/hooks'
 import {
@@ -41,9 +40,8 @@ import {
 } from '../api/types'
 import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Row, Rows } from '../components/patterns'
-import { AddRowForm, ByCurator, ProfileCard, ProposeForm, RowsList } from '../components/PortfolioForms'
+import { AddRowForm, ProfileCard, ProposeForm, RowsList } from '../components/PortfolioForms'
 import { modelOf, pendingByField, pendingNewRows } from './portfolioData'
-import Icon from '../layout/icons'
 import './portfolio.css'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -53,10 +51,11 @@ import { formatDate } from '../lib/format'
 type Tab = 'overview' | 'achievements' | 'documents' | 'sport' | 'olympiads' | 'cv'
 
 /**
- * Цели по экзаменам (фаза 39): таблица «экзамен · цель · даты · сохранить».
- *
- * Строка на экзамен из справочника. Сохранение уходит предложением
- * академическому директору; от дат растут календарь и напоминания.
+ * Цели по экзаменам: строка на экзамен — желаемый балл и дата экзамена,
+ * обе с подписью (решение владельца, 07.10.2026: дата регистрации ученику
+ * не нужна, её при необходимости ведут Кымбат и куратор). Сохранение уходит
+ * предложением академическому директору; от даты растут календарь,
+ * напоминания и задача о регистрации.
  */
 function GoalsCard({ meta, proposals }: { meta: DomainMeta | undefined; proposals: MyProposal[] }) {
   const goals = useExamGoals()
@@ -134,39 +133,29 @@ function GoalsCard({ meta, proposals }: { meta: DomainMeta | undefined; proposal
         const valueOf = (field: string, current: string | null) =>
           rowDraft[field] ?? waiting?.[field] ?? current ?? ''
         return (
-          <div key={exam.value} className="goals__row" data-exam={exam.value}>
+          <div key={exam.value} className="goals__row goals__row--student" data-exam={exam.value}>
             <span className="goals__exam">
               {exam.title}
               {waiting && <Chip tone="neutral">{t('на проверке у директора')}</Chip>}
             </span>
-            <Input
-              className="num goals__score"
-              placeholder={t('Цель')}
-              aria-label={`${t('Целевой балл')}: ${exam.title}`}
-              value={valueOf('target_score', existing?.target_score ?? null)}
-              onChange={(e) =>
-                setDraft((prev) => ({ ...prev, [exam.value]: { ...rowDraft, target_score: e.target.value } }))
-              }
-            />
-            <Input
-              type="date"
-              aria-label={`${t('Дата экзамена')}: ${exam.title}`}
-              value={valueOf('exam_date', existing?.exam_date ?? null)}
-              onChange={(e) =>
-                setDraft((prev) => ({ ...prev, [exam.value]: { ...rowDraft, exam_date: e.target.value } }))
-              }
-            />
-            <Input
-              type="date"
-              aria-label={`${t('Дата регистрации')}: ${exam.title}`}
-              value={valueOf('registration_date', existing?.registration_date ?? null)}
-              onChange={(e) =>
-                setDraft((prev) => ({
-                  ...prev,
-                  [exam.value]: { ...rowDraft, registration_date: e.target.value },
-                }))
-              }
-            />
+            <label className="goals__field">
+              <span className="t-note">{t('Желаемый балл')}</span>
+              <Input
+                className="num goals__score"
+                aria-label={`${t('Желаемый балл')}: ${exam.title}`}
+                value={valueOf('target_score', existing?.target_score ?? null)}
+                onChange={(e) => setDraft((prev) => ({ ...prev, [exam.value]: { ...rowDraft, target_score: e.target.value } }))}
+              />
+            </label>
+            <label className="goals__field">
+              <span className="t-note">{t('Дата экзамена')}</span>
+              <Input
+                type="date"
+                aria-label={`${t('Дата экзамена')}: ${exam.title}`}
+                value={valueOf('exam_date', existing?.exam_date ?? null)}
+                onChange={(e) => setDraft((prev) => ({ ...prev, [exam.value]: { ...rowDraft, exam_date: e.target.value } }))}
+              />
+            </label>
             <Button className="goals__save" disabled={propose.isPending} onClick={() => save(exam.value)}>
               {t('Сохранить')}
             </Button>
@@ -190,96 +179,6 @@ function sectionsOf(row: Attempt): string {
     .map((name) => (row[name] === null ? '' : `${name[0].toUpperCase()} ${row[name]}`))
     .filter(Boolean)
     .join(' · ')
-}
-
-type ChecklistRow = {
-  code: string
-  title: string
-  done: boolean
-  state: 'none' | 'pending' | 'confirmed' | 'rejected' | 'expiring'
-  state_title: string
-  reject_reason: string
-  /** документ задан ссылкой на файл вне системы (фаза 65) */
-  is_link?: boolean
-  external_url?: string
-  document?: number | null
-  /** документ загрузил куратор за ученика */
-  entered_by_curator?: boolean
-}
-
-/** Подпись статуса проверки для ученика (фаза 62): имени проверившего здесь нет. */
-function DocumentState({ row }: { row: ChecklistRow }) {
-  // документ-ссылка (фаза 65): файла у нас нет, есть адрес — по нему
-  // ученик и проверит, что школа записала именно его документ
-  const link = row.is_link ? (
-    <a
-      className="portfolio__link"
-      href={`/api/documents/${row.document}/file/`}
-      target="_blank"
-      rel="noreferrer"
-    >
-      {t('ссылка')}
-    </a>
-  ) : null
-  if (row.state === 'confirmed' || row.state === 'expiring')
-    return (
-      <>
-        {link}
-        {row.entered_by_curator && <ByCurator />}
-        <Chip tone="good">{t('Подтверждён')}</Chip>
-      </>
-    )
-  if (row.state === 'pending')
-    return (
-      <>
-        {link}
-        <Chip tone="warn">{t('Ждёт проверки')}</Chip>
-      </>
-    )
-  if (row.state === 'rejected') return <Chip tone="bad">{t('Отклонён')}</Chip>
-  return link
-}
-
-function DocumentsCard({ checklist }: { checklist: ChecklistRow[] }) {
-  const done = checklist.filter((row) => row.done).length
-  // «Загрузить» открывает то же окно, что вкладка документов: тип уже
-  // выбран строкой. Системного поля выбора файла в строке нет — оно
-  // сжимало название до столбика букв (замечание владельца, 27.09.2026)
-  const [uploading, setUploading] = useState<{ code: string; title: string } | null>(null)
-
-  return (
-    <DataCard
-      title={t('Готовность документов')}
-      right={<Chip tone="good" className="num">{t('{done} из {total}', { done, total: checklist.length })}</Chip>}
-    >
-      <Rows>
-        {checklist.map((row) => (
-          <Row
-            key={row.code}
-            lead={
-              <span
-                className={`portfolio__check${row.done ? ' portfolio__check--on' : ''}`}
-                aria-hidden="true"
-              >
-                {row.done ? <Icon name="check" size={11} /> : null}
-              </span>
-            }
-            title={t(row.title)}
-            note={row.state === 'rejected' ? `${t('Причина:')} ${row.reject_reason}` : undefined}
-            right={row.done ? <DocumentState row={row} /> : <Chip tone={row.state === 'rejected' ? 'bad' : 'neutral'}>{t(row.state_title || 'Не загружен')}</Chip>}
-            acts={
-              !row.done ? (
-                <Button size="sm" variant={row.state === 'rejected' ? 'outline' : 'default'} onClick={() => setUploading({ code: row.code, title: t(row.title) })}>
-                  {row.state === 'rejected' ? t('Загрузить заново') : t('Загрузить')}
-                </Button>
-              ) : undefined
-            }
-          />
-        ))}
-      </Rows>
-      {uploading && <UploadForm docType={uploading.code} title={uploading.title} onClose={() => setUploading(null)} />}
-    </DataCard>
-  )
 }
 
 /** Вкладка «Документы»: одна карточка по типам — `MyDocuments`. */
@@ -381,7 +280,6 @@ export default function MyData() {
   const profile = useMyProfile()
   const portfolio = usePortfolio()
   const attempts = useAttempts()
-  const universities = useMyUniversities()
   const rows = useStudentRows(me?.student_id ?? null)
   const contacts = useContacts({ student: me?.student_id ?? null })
   const proposals = useMyProposals()
@@ -546,35 +444,6 @@ export default function MyData() {
 
             <GoalsCard meta={meta.data} proposals={myProposals} />
 
-            <DocumentsCard checklist={state?.documents ?? []} />
-
-            <DataCard
-              title={t('Достижения')}
-              count={achievementRows.length + pendingAchievements.length}
-              right={
-                <Button variant="outline" size="sm" onClick={() => setTab('achievements')}>
-                  {t('Смотреть всё')}
-                </Button>
-              }
-            >
-              {achievementRows.length + pendingAchievements.length === 0 && (
-                <EmptyNote what={t('пока пусто — первое достижение вносится вами')} />
-              )}
-              <Rows>
-                {achievementRows.slice(0, 4).map((row) => (
-                  <Row
-                    key={row.id}
-                    icon="star"
-                    tone="warn"
-                    title={row.title}
-                    note={[row.subject_name, row.date && formatDate(row.date)]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  />
-                ))}
-              </Rows>
-            </DataCard>
-
             <DataCard
               title={t('Сданные экзамены и Mock Test')}
               count={attemptRows.length}
@@ -687,28 +556,6 @@ export default function MyData() {
 
             {me?.student_id && <MyCredentialsCard studentId={me.student_id} />}
 
-            <DataCard
-              title={t('Вузы в вашем списке')}
-              count={universities.data?.length ?? 0}
-            >
-              {(universities.data?.length ?? 0) === 0 && (
-                <EmptyNote what={t('список пуст — выберите программы в каталоге')} />
-              )}
-              <Rows>
-                {(universities.data ?? []).slice(0, 10).map((row) => (
-                  <Row
-                    key={row.program}
-                    title={row.university_name}
-                    note={row.program_name}
-                    right={
-                      <span className="num portfolio__percent">
-                        {t('{percent}% соответствия', { percent: row.percent })}
-                      </span>
-                    }
-                  />
-                ))}
-              </Rows>
-            </DataCard>
           </div>
         </div>
       )}

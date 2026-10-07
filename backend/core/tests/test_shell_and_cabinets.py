@@ -103,17 +103,20 @@ def test_home_folds_what_is_empty_instead_of_showing_a_carousel():
     assert "CuesCarousel" not in home and "hero" not in home.lower().replace("herochip", "")
 
 
-def test_home_kept_tasks_and_readiness():
-    """Задания на сегодня, разбивка готовности, подготовка и эссе остаются на главной.
+def test_home_holds_what_is_needed_today():
+    """На главной — то, что нужно сегодня; каждая карточка в одном месте (решение владельца, 07.10.2026).
 
-    Переделка вида уже уносила эти блоки в фазе 48. Образец задаёт
-    характер, а не право удалять построенное, — поэтому страж.
+    Уроки, ДЗ к сдаче, задачи с галочкой, готовность с подписанными пустыми
+    доменами, ближайшее и незакрытые места. Баллы, документы, вузы, эссе
+    и подготовка — в своих разделах, на главной их нет.
     """
     home = read("screens", "dashboards", "StudentHome.tsx")
-    assert "<TasksToday />" in home and "useTaskStatus" in home
-    assert "streak_phrase" in home, "поддерживающая формулировка стрика пропала"
-    assert "ReadinessBlock" in home and "readiness.skipped" in home
-    assert "PrepBlock" in home and "EssaysBlock" in home
+    for block in ("<LessonsToday />", "<HomeworkDue />", "<TasksBlock />", "<ReadinessBlock />"):
+        assert block in home, block
+    assert "useTaskStatus" in home and "streak_phrase" in home
+    assert "readiness.skipped" in home
+    for gone in ("PrepBlock", "EssaysBlock", "useMyUniversities", "useJourney", "useScholarshipOverview", "<StatRow>"):
+        assert gone not in home, gone
 
 
 # --- Экраны ученика --------------------------------------------------------
@@ -127,8 +130,8 @@ def test_portfolio_is_two_columns_with_forms_in_place():
     assert "label={t('Внести баллы')}" in screen
     # подсказки «откроется форма прямо здесь» больше нет: пояснений на экранах нет (27.09.2026)
     assert "Откроется форма прямо здесь" not in screen
-    # чек-лист документов грузит файл прямо из строки
-    assert "function DocumentsCard" in screen and "UploadForm" in screen
+    # документы — своей вкладкой, на «Обзоре» их второго списка нет (07.10.2026)
+    assert "function DocumentsCard" not in screen and "<DocumentsTab />" in screen
 
 
 def test_portfolio_pairs_have_a_quiet_label_and_a_plain_value():

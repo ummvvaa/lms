@@ -60,15 +60,16 @@ def test_student_home_kept_tasks_and_readiness():
     данных на доске главной.
     """
     home = (FRONTEND / "screens" / "dashboards" / "StudentHome.tsx").read_text(encoding="utf-8")
-    assert "function TasksToday" in home, "с главной ученика пропали задания на сегодня"
+    # с 07.10.2026 задачи — полным списком (раздела «Роадмап» у ученика нет)
+    assert "function TasksBlock" in home, "с главной ученика пропали задачи"
     assert "function ReadinessBlock" in home, "с главной ученика пропала разбивка готовности"
 
-    ready = home.split("function ReadinessBlock")[1].split("function PrepBlock")[0]
+    ready = home.split("function ReadinessBlock")[1].split("export default function StudentHome")[0]
     assert "readiness.skipped" in ready, "домены без данных снова прячутся вместо подписи"
 
-    today = home.split("function TasksToday")[1].split("function ReadinessBlock")[0]
-    assert "useTaskStatus" in today, "задачу с главной больше не отметить"
-    assert "streak_phrase" in today, "поддерживающая формулировка стрика пропала"
+    tasks = home.split("function TasksBlock")[1].split("function ReadinessBlock")[0]
+    assert "useTaskStatus" in tasks, "задачу с главной больше не отметить"
+    assert "streak_phrase" in tasks, "поддерживающая формулировка стрика пропала"
 
 
 def test_our_own_503_is_not_mistaken_for_a_broken_connection():
