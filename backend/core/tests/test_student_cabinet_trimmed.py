@@ -22,7 +22,9 @@ def test_hidden_list_is_the_one_on_the_screen():
     from pathlib import Path
 
     assert HIDDEN_PATHS == HIDDEN
-    nav = (Path(__file__).resolve().parents[3] / "frontend" / "src" / "layout" / "nav.ts").read_text()
+    # в контейнере репозиторий примонтирован в /repo; снаружи — корень по пути файла
+    root = Path("/repo") if Path("/repo/frontend").is_dir() else Path(__file__).resolve().parents[3]
+    nav = (root / "frontend" / "src" / "layout" / "nav.ts").read_text()
     line = nav.split("export const STUDENT_HIDDEN = [")[1].split("]")[0]
     # «Мои вузы» на фронте — переход на вкладку каталога, а не «на главную»
     assert {item.strip().strip("'") for item in line.split(",")} == HIDDEN - {"/universities"}
