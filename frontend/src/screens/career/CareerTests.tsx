@@ -11,7 +11,6 @@ import {
   useCareerGroups,
   useCareerResults,
   useCareerTest,
-  useCareerTestDelete,
   useCareerTestPatch,
   useCareerTests,
   type CareerAnalysis,
@@ -19,12 +18,7 @@ import {
   type CareerTestRow,
   type CellStatus,
 } from '../../api/career'
-import { downloadFile } from '../../api/client'
-import ConfirmDialog from '../../components/ConfirmDialog'
 import DataTable, { type Column } from '../../components/DataTable'
-import Field from '../../components/Field'
-import Modal from '../../components/Modal'
-import RowMenu, { RowMenuItem, RowMenuSeparator } from '../../components/RowMenu'
 import { SelectField } from '../../components/SelectField'
 import { Row, Rows } from '../../components/patterns'
 import { Bar, Chip, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs, type Tone } from '../../components/ui'
@@ -37,6 +31,7 @@ import AnalysisDrawer from './AnalysisDrawer'
 import AssignDrawer from './AssignDrawer'
 import AttemptDrawer from './AttemptDrawer'
 import StartAnalysisDialog from './StartAnalysisDialog'
+import TestDrawer from './TestDrawer'
 import UploadDrawer from './UploadDrawer'
 
 type Tab = 'tests' | 'results' | 'analyses'
@@ -51,40 +46,21 @@ const CELL: Record<CellStatus, { tone: Tone; label: string }> = {
 
 // --- Тесты ------------------------------------------------------------------------
 
-function ThresholdDialog({ test, onClose }: { test: CareerTestRow; onClose: () => void }) {
-  const [value, setValue] = useState(String(test.analysis_min_score))
-  const patch = useCareerTestPatch()
-  return (
-    <Modal title={t('Порог для разбора')} note={t('Шкалы с баллом ниже порога в разбор модели не уходят')} onClose={onClose}>
-      <Field kind="number" name="threshold" label={t('Наименьший балл, который учитывается')} value={value} onChange={setValue} hint={t('Для «Карты интересов» 1: минусы и «затрудняюсь» не считаются')} />
-      <div className="toolbar mb-0">
-        <Button disabled={patch.isPending || !Number.isInteger(Number(value))} onClick={() => patch.mutate({ id: test.id, analysis_min_score: Number(value) }, { onSuccess: onClose, onError: (error) => toast.error(error.message) })}>
-          {t('Сохранить')}
-        </Button>
-        <Button variant="outline" onClick={onClose}>
-          {t('Отмена')}
-        </Button>
-      </div>
-    </Modal>
-  )
-}
-
 function TestsTab({ manage }: { manage: boolean }) {
   const phone = usePhone()
   const list = useCareerTests()
   const patch = useCareerTestPatch()
-  const remove = useCareerTestDelete()
   const [uploading, setUploading] = useState(false)
   const [assigning, setAssigning] = useState<number | null>(null)
-  const [threshold, setThreshold] = useState<CareerTestRow | null>(null)
-  const [deleting, setDeleting] = useState<CareerTestRow | null>(null)
+  // панель теста по клику на строку: состояние, порог, кому открыт, шкалы, утверждения
+  const [opened, setOpened] = useState<number | null>(null)
   const detail = useCareerTest(assigning)
   if (list.isLoading) return <Loading kind="table" />
   if (list.error) return <ErrorNote error={list.error} />
   const rows = list.data?.tests ?? []
 
   const toggle = (row: CareerTestRow, on: boolean) => patch.mutate({ id: row.id, is_active: on }, { onError: (error) => toast.error(error.message) })
-  const download = (row: CareerTestRow) => void downloadFile(`/career/tests/${row.id}/file/`, row.file_name || `career-test-${row.id}.xlsx`).catch((error: Error) => toast.error(error.message))
+  const current = rows.find((row) => row.id === opened) ?? null
   const whoNote = (row: CareerTestRow) => [formatDate(row.created_at), row.created_by?.short ?? ''].filter(Boolean).join(' · ')
   const doneNote = (row: CareerTestRow) => t('{done} из {total}', { done: row.done, total: row.assigned })
 
@@ -138,7 +114,7 @@ function TestsTab({ manage }: { manage: boolean }) {
     {
       key: 'acts',
       title: '',
-      width: '160px',
+      width: '200px',
       actions: true,
       cell: (row) => (
         <>
@@ -147,16 +123,9 @@ function TestsTab({ manage }: { manage: boolean }) {
               {t('Кому')}
             </Button>
           )}
-          <RowMenu>
-            <RowMenuItem onClick={() => download(row)}>{t('Скачать файл')}</RowMenuItem>
-            {manage && <RowMenuItem onClick={() => setThreshold(row)} keepOpen>{t('Порог для разбора…')}</RowMenuItem>}
-            {manage && <RowMenuSeparator />}
-            {manage && (
-              <RowMenuItem risk keepOpen onClick={() => setDeleting(row)}>
-                {row.done || row.in_progress ? t('В архив') : t('Удалить')}
-              </RowMenuItem>
-            )}
-          </RowMenu>
+          <Button variant="outline" size="sm" onClick={() => setOpened(row.id)}>
+            {t('Открыть')}
+          </Button>
         </>
       ),
     },
@@ -181,6 +150,8 @@ function TestsTab({ manage }: { manage: boolean }) {
                 tone={row.is_active ? 'good' : 'neutral'}
                 title={row.title}
                 note={[row.is_active ? t('включён') : t('выключен'), row.assigned ? t('сдали {done} из {total}', { done: row.done, total: row.assigned }) : t('никому не открыт')].join(' · ')}
+                onOpen={() => setOpened(row.id)}
+                openLabel={t('Открыть')}
                 acts={
                   manage ? (
                     <Button variant="secondary" size="sm" onClick={() => setAssigning(row.id)}>
@@ -194,7 +165,7 @@ function TestsTab({ manage }: { manage: boolean }) {
         </DataCard>
       ) : (
         <div className="card">
-          <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} fit />
+          <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} fit onRowClick={(row) => setOpened(row.id)} />
         </div>
       )}
       {manage && (
@@ -206,16 +177,7 @@ function TestsTab({ manage }: { manage: boolean }) {
       )}
       {uploading && <UploadDrawer onClose={() => setUploading(false)} />}
       {assigning !== null && detail.data && <AssignDrawer test={detail.data} onClose={() => setAssigning(null)} />}
-      {threshold && <ThresholdDialog test={threshold} onClose={() => setThreshold(null)} />}
-      <ConfirmDialog
-        open={deleting !== null}
-        title={deleting ? (deleting.done || deleting.in_progress ? t('Убрать тест «{title}» в архив?', { title: deleting.title }) : t('Удалить тест «{title}»?', { title: deleting.title })) : ''}
-        what={deleting && (deleting.done || deleting.in_progress) ? t('попытки и разборы учеников останутся, тест исчезнет из списков') : t('тест никто не проходил — он удалится вместе с файлом')}
-        confirmLabel={deleting && (deleting.done || deleting.in_progress) ? t('В архив') : t('Удалить')}
-        busy={remove.isPending}
-        onCancel={() => setDeleting(null)}
-        onConfirm={() => deleting && remove.mutate(deleting.id, { onSuccess: () => setDeleting(null), onError: (error) => toast.error(error.message) })}
-      />
+      {current && <TestDrawer row={current} manage={manage} onClose={() => setOpened(null)} />}
     </>
   )
 }
