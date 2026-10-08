@@ -187,3 +187,10 @@
 .cbars__row .badge {
   justify-self: start;
 }
+
+/* окно теста: кнопки внизу, отделены линией */
+.ctest__foot {
+  margin: calc(var(--space) * 3) 0 0;
+  padding-top: calc(var(--space) * 3);
+  border-top: 1px solid var(--line);
+}

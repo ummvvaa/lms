@@ -1,6 +1,7 @@
 /**
- * Панель теста профориентации: название, состояние, порог для разбора, кому
- * открыт, файл, шкалы, утверждения с ключом и интерпретация. Текст утверждений
+ * Окно теста профориентации по центру, широкое (решение владельца: тексты
+ * утверждений должны читаться целиком): название, состояние, порог для
+ * разбора, кому открыт, файл, шкалы, утверждения с ключом и интерпретация. Текст утверждений
  * и шкал здесь не правится — тест перезагружается файлом, иначе ключ разошёлся
  * бы с файлом (решение владельца, 08.10.2026). Удаление: без попыток — насовсем,
  * с попытками — в архив.
@@ -10,7 +11,7 @@ import { toast } from 'sonner'
 import { useCareerTest, useCareerTestDelete, useCareerTestPatch, type CareerTestRow } from '../../api/career'
 import { downloadFile } from '../../api/client'
 import ConfirmDialog from '../../components/ConfirmDialog'
-import EditDrawer from '../../components/EditDrawer'
+import Modal from '../../components/Modal'
 import Field from '../../components/Field'
 import { Row, Rows, ShowAll } from '../../components/patterns'
 import { Chip, ErrorNote, Loading } from '../../components/ui'
@@ -44,30 +45,26 @@ export default function TestDrawer({ row, manage, onClose }: { row: CareerTestRo
 
   const groupsNote = (test?.groups ?? []).map((g) => (g.whole ? t('{group} — вся группа', { group: g.code }) : t('{group} — {n}', { group: g.code, n: tn(g.students.length, '{n} ученик|{n} ученика|{n} учеников') })))
 
+  const foot = (
+    <div className="toolbar ctest__foot">
+      {manage && (
+        <Button disabled={!dirty || !thresholdOk || patch.isPending} onClick={save}>
+          {patch.isPending ? t('Сохраняется…') : t('Сохранить')}
+        </Button>
+      )}
+      {manage && (
+        <Button variant="outline" onClick={() => setDeleting(true)}>
+          {used ? t('В архив') : t('Удалить')}
+        </Button>
+      )}
+      <Button variant="outline" onClick={onClose}>
+        {t('Закрыть')}
+      </Button>
+    </div>
+  )
+
   return (
-    <EditDrawer
-      open
-      onClose={onClose}
-      title={row.title}
-      sub={[formatDate(row.created_at), row.created_by?.short ?? '', row.file_name].filter(Boolean).join(' · ')}
-      footer={
-        <>
-          {manage && (
-            <Button disabled={!dirty || !thresholdOk || patch.isPending} onClick={save}>
-              {patch.isPending ? t('Сохраняется…') : t('Сохранить')}
-            </Button>
-          )}
-          {manage && (
-            <Button variant="outline" onClick={() => setDeleting(true)}>
-              {used ? t('В архив') : t('Удалить')}
-            </Button>
-          )}
-          <Button variant="outline" onClick={onClose}>
-            {t('Закрыть')}
-          </Button>
-        </>
-      }
-    >
+    <Modal wide title={row.title} note={[formatDate(row.created_at), row.created_by?.short ?? '', row.file_name].filter(Boolean).join(' · ')} onClose={onClose}>
       {query.isLoading && <Loading />}
       {query.error && <ErrorNote error={query.error} />}
       <div className="toolbar mb-0">
@@ -152,6 +149,7 @@ export default function TestDrawer({ row, manage, onClose }: { row: CareerTestRo
           )}
         </>
       )}
+      {foot}
       <ConfirmDialog
         open={deleting}
         title={used ? t('Убрать тест «{title}» в архив?', { title: row.title }) : t('Удалить тест «{title}»?', { title: row.title })}
@@ -169,6 +167,6 @@ export default function TestDrawer({ row, manage, onClose }: { row: CareerTestRo
           })
         }
       />
-    </EditDrawer>
+    </Modal>
   )
 }
