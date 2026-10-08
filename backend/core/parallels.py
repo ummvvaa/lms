@@ -240,12 +240,14 @@ SECTIONS: tuple[Section, ...] = (
             "scholarships-attention",
         ),
     ),
+    # профтест — тесты профориентации учителя: кому открыт тест, решает он
+    # назначением, параллель раздел не закрывает (решение владельца, 08.10.2026)
     Section(
         "career",
         gettext_lazy("Профтест"),
-        ADMISSION_ONLY,
+        ALL,
         paths=("/career",),
-        routes=("career-state", "career-run", "career-agree"),
+        routes=("career-my", "career-my-start", "career-my-attempt", "career-my-answers", "career-my-finish"),
     ),
     Section(
         "essays",

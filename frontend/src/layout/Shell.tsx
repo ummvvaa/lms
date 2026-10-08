@@ -72,6 +72,7 @@ export default function Shell() {
     curator: materials.data?.is_curator ?? false,
     sections: me.sections,
     teaches: me.teaches,
+    careerTests: me.career_tests,
   })
 
   const unreadLinks = (notifications.data?.rows ?? [])

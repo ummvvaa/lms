@@ -1,0 +1,133 @@
+/* Профтест: прохождение теста и полоски баллов по шкалам. */
+
+/* утверждение: номер, текст и варианты ответа одной строкой на ноутбуке */
+.ctake__item {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 3);
+  padding: calc(var(--space) * 2) 0;
+  border-top: 1px solid var(--line);
+}
+
+.ctake__item:first-of-type {
+  border-top: 0;
+}
+
+.ctake__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--space) * 2);
+}
+
+.ctake__num {
+  flex: 0 0 auto;
+  min-width: calc(var(--space) * 8);
+  color: var(--ink-3);
+}
+
+.ctake__answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 1);
+  flex: 0 0 auto;
+}
+
+/* варианты-утверждения (а / б) — столбиком, каждый во всю ширину */
+.ctake__answers--choices {
+  flex: 1 1 100%;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.ctake__answers--choices .btn,
+.ctake__answers--choices button {
+  justify-content: flex-start;
+  white-space: normal;
+  height: auto;
+  min-height: var(--control-h);
+  text-align: left;
+}
+
+.ctake__item--done .ctake__num {
+  color: var(--good);
+}
+
+.ctake__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 2);
+  padding-top: calc(var(--space) * 3);
+  border-top: 1px solid var(--line);
+}
+
+/* полоска балла в таблице: от наименьшего возможного к наибольшему */
+.cbars__bar {
+  display: block;
+  min-width: calc(var(--space) * 20);
+}
+
+.cbars__title {
+  font-weight: 600;
+}
+
+/* выбор тестов для разбора — галочки столбиком */
+.cstart__list {
+  display: grid;
+  gap: calc(var(--space) * 1);
+}
+
+/* направление разбора в панели: подпись и поле */
+.canal__dir {
+  display: grid;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 3) 0;
+  border-top: 1px solid var(--line);
+}
+
+.canal__dir:first-of-type {
+  border-top: 0;
+}
+
+@media (max-width: 760px) {
+  .ctake__item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ctake__answers {
+    justify-content: flex-start;
+  }
+}
+
+/* компактный список баллов: телефон и узкая панель */
+.cbars {
+  display: grid;
+  gap: calc(var(--space) * 2);
+}
+
+.cbars__row {
+  display: grid;
+  gap: calc(var(--space) * 1);
+  padding-top: calc(var(--space) * 2);
+  border-top: 1px solid var(--line);
+}
+
+.cbars__row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.cbars__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: calc(var(--space) * 2);
+}
+
+.cbars__row .badge {
+  justify-self: start;
+}

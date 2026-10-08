@@ -40,6 +40,9 @@ class MeSerializer(serializers.ModelSerializer):
     #: ведёт ли сотрудник уроки при любой роли: директору с уроками меню
     #: добавляет «Мои уроки» (`academics.teachers.teaches`)
     teaches = serializers.SerializerMethodField()
+    #: ведёт тесты профориентации при любой роли (`career.rights.manages`):
+    #: меню добавляет «Профтест» с тестами, результатами и разборами
+    career_tests = serializers.SerializerMethodField()
     #: языки в выборе (`core.i18n.INTERFACE_LANGUAGES`): один язык — выбора нет
     languages = serializers.SerializerMethodField()
 
@@ -59,6 +62,7 @@ class MeSerializer(serializers.ModelSerializer):
             "sections",
             "has_admission",
             "teaches",
+            "career_tests",
             "identities",
             "must_change_password",
             "sees_whole_school",
@@ -88,6 +92,13 @@ class MeSerializer(serializers.ModelSerializer):
         from academics.teachers import teaches
 
         return teaches(obj)
+
+    def get_career_tests(self, obj: User) -> bool:
+        if obj.role == Role.STUDENT:
+            return False
+        from career.rights import manages
+
+        return manages(obj)
 
     def get_domain(self, obj: User) -> str | None:
         return obj.domain_code

@@ -238,12 +238,6 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         UPDATE: Entry("/resources", "useResourceActions"),
         DELETE: Entry("/resources", "useResourceActions"),
     },
-    # --- Профтест (фаза 45): анкету ведёт директор школы ---
-    "engagement.CareerQuestion": {
-        CREATE: Entry("/career-questions", "useCareerQuestions", ("director_admission",)),
-        UPDATE: Entry("/career-questions", "useCareerQuestions", ("director_admission",)),
-        DELETE: Entry("/career-questions", "useCareerQuestions", ("director_admission",)),
-    },
     # --- Достижения: условие бейджа — строка справочника; с 28.09.2026 у администратора ---
     "engagement.Badge": {
         CREATE: Entry("/badges", "useBadgeDirectory", ("admin",)),

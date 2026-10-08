@@ -1,0 +1,10 @@
+"""Профтест: тесты профориентации файлом, прохождение, баллы по шкалам, разбор моделью."""
+
+from django.apps import AppConfig
+from django.utils.translation import gettext_lazy
+
+
+class CareerConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "career"
+    verbose_name = gettext_lazy("Профтест")

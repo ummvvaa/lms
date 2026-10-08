@@ -39,7 +39,7 @@ import './screens/school-settings.css'
 import './screens/portfolio.css'
 import './screens/scholarships.css'
 import './screens/resources.css'
-import './screens/career.css'
+import './screens/career/career.css'
 import './screens/homework/myWork.css'
 import './screens/card.css'
 

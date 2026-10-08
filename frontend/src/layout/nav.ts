@@ -149,7 +149,7 @@ export const NAV: Record<Role, NavItem[]> = {
     // --- поступление: куда и на какие деньги ---
     // «Мои вузы» — вкладка каталога (решение владельца, 07.10.2026)
     { path: '/catalog', label: tk('Каталог вузов'), icon: 'search', group: 'admission', short: tk('Вузы') },
-    // профтест: анкета и разбор направлений (фаза 45)
+    // профтест: тесты учителя профориентации и свои баллы — у всех параллелей
     { path: '/career', label: tk('Профтест'), icon: 'compass', group: 'admission' },
 
     // --- работа: то, что делается руками ---
@@ -184,8 +184,6 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/essay-content', label: tk('Конструктор эссе'), icon: 'doc', group: 'data' },
     // справочник стипендий: ведёт он же, ученик видит его у себя (фаза 44)
     { path: '/scholarship-directory', label: tk('Стипендии'), icon: 'card', group: 'data' },
-    // анкета профтеста — про выбор направления, её ведёт Асем
-    { path: '/career-questions', label: tk('Вопросы профтеста'), icon: 'compass', group: 'data' },
   ],
   director_exam: [
     ...DIRECTOR_COMMON,
@@ -292,7 +290,7 @@ export const TABS: Record<Role, string[]> = {
  */
 export function teacherMayOpen(pathname: string): boolean {
   return (
-    ['/dashboard', '/schedule', '/journals', '/profile', '/homework-review'].includes(pathname) ||
+    ['/dashboard', '/schedule', '/journals', '/profile', '/homework-review', '/career-tests'].includes(pathname) ||
     /^\/homework-review\/\d+$/.test(pathname) ||
     /^\/journals\/\d+$/.test(pathname) ||
     /^\/lessons\/\d+$/.test(pathname) ||
@@ -339,7 +337,7 @@ export function curatorMayOpen(pathname: string): boolean {
  * собственные разделы. «Проверка ДЗ» дополнительно требует своих уроков:
  * отдельный шлюз `homeworkReviewOpen` в App проверяет `teaches`.
  */
-export const CURATOR_SHARED = ['/attendance', '/schedule', '/grades', '/reports', '/homework-review']
+export const CURATOR_SHARED = ['/attendance', '/schedule', '/grades', '/reports', '/homework-review', '/career-tests']
 
 /**
  * Экраны, которых нет ни у кого, кроме куратора (фаза 61).
@@ -366,6 +364,13 @@ export function tabsFor(role: Role, items: NavItem[]): NavItem[] {
 /** Директор, который ведёт уроки (математика у директора талантов): своя неделя
  *  и отметка своих уроков. Кабинета учителя целиком у него нет. */
 const MY_LESSONS: NavItem = { path: '/schedule', label: tk('Мои уроки'), icon: 'schedule', group: 'work' }
+/** Экран «Профтест» сотрудника: тому, кто ведёт тесты, Асем и куратору (результаты своих групп). */
+export function careerTestsOpen(me: { role: Role; career_tests: boolean }): boolean {
+  return me.career_tests || ['admin', 'director_admission', 'curator'].includes(me.role)
+}
+/** Профтест у того, кто ведёт профориентацию при любой роли, и у администратора
+ *  (`/auth/me/` → `career_tests`): тесты файлом, результаты, разборы. */
+const CAREER_TESTS: NavItem = { path: '/career-tests', label: tk('Профтест'), icon: 'compass', group: 'work' }
 
 export interface NavExtras {
   /** раздел материалов — ученику его открывает олимпиадная группа */
@@ -376,6 +381,8 @@ export interface NavExtras {
   sections?: string[] | null
   /** ведёт уроки при роли без своего расписания (`/auth/me/` → `teaches`) */
   teaches?: boolean
+  /** ведёт тесты профориентации (`/auth/me/` → `career_tests`) */
+  careerTests?: boolean
 }
 
 /**
@@ -427,6 +434,11 @@ export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = 
   // ведёт уроки — проверяет и ДЗ своих уроков
   if (homeworkReviewOpen(role, extras.teaches) && !items.some((i) => i.path === '/homework-review')) {
     items = [...items, HOMEWORK_REVIEW]
+  }
+  // ведёт профориентацию или администратор — тесты, результаты и разборы профтеста;
+  // Асем и куратор — результаты и разборы (своих групп) без кнопок записи
+  if (role !== 'student' && careerTestsOpen({ role, career_tests: Boolean(extras.careerTests) }) && !items.some((i) => i.path === '/career-tests')) {
+    items = [...items, { ...CAREER_TESTS, group: role === 'curator' ? 'more' : role === 'teacher' || role === 'admin' ? 'work' : 'data' }]
   }
   // у ученика — только разделы его параллели: блока «Поступление» у 8–10
   // нет вовсе, не под замком
@@ -502,7 +514,6 @@ export const STAFF_ONLY = [
   '/exam-kinds',
   '/essay-content',
   '/scholarship-directory',
-  '/career-questions',
   '/badges',
   '/home-cues',
   '/call-rules',
@@ -536,6 +547,5 @@ export const DOMAIN_ONLY: Record<string, Role> = {
   '/competitions': 'director_sport',
   '/essay-content': 'director_admission',
   '/scholarship-directory': 'director_admission',
-  '/career-questions': 'director_admission',
   '/call-rules': 'director_behavior',
 }

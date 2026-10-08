@@ -930,52 +930,21 @@ def main() -> int:
     code, overview = student.call("GET", "/api/resources/overview/")
     check(code == 200 and isinstance(overview, dict) and "categories" in overview, f"счётчики раздела → {code}")
 
-    code, questions = student.call("GET", "/api/career-questions/")
-    rows_ = questions.get("results", []) if isinstance(questions, dict) else []
-    check(code == 200 and len(rows_) >= 6, f"вопросы профтеста посеяны → {code}, штук {len(rows_)}")
-    # анкету ведёт директор по поступлению (переехала от директора школы):
-    # чужой директор и прежний владелец читают, но не пишут
-    for role in ("director_exam", "director_behavior"):
-        code, _ = sessions[role].call("GET", "/api/career-questions/")
-        check(code == 200, f"{role} читает анкету профтеста → {code}")
-        code, _ = sessions[role].call("POST", "/api/career-questions/", {"code": "x", "text": "X"})
-        check(code == 403, f"{role} правит анкету → {code}, ожидали 403")
-    asem45 = sessions["director_admission"]
-    # строка прошлого прогона, если уборка не дошла: код вопроса уникален
-    code, stale45 = asem45.call("GET", "/api/career-questions/?page_size=200")
-    for row in stale45.get("results", []) if isinstance(stale45, dict) else []:
-        if row.get("code") == "probe_career_question":
-            asem45.call("DELETE", f"/api/career-questions/{row['id']}/")
-    # выключенным: в анкету ученика вопрос прогона попасть не должен
-    code, made45 = asem45.call(
-        "POST",
-        "/api/career-questions/",
-        {"code": "probe_career_question", "text": "Вопрос прогона", "is_active": False},
-    )
-    check(code == 201, f"директор по поступлению заводит вопрос профтеста → {code}")
-    question_id = made45.get("id") if isinstance(made45, dict) else None
-    if question_id:
-        code, _ = asem45.call("PATCH", f"/api/career-questions/{question_id}/", {"hint": "подсказка прогона"})
-        check(code == 200, f"директор по поступлению правит вопрос → {code}")
-        code, _ = sessions["director_behavior"].call(
-            "PATCH", f"/api/career-questions/{question_id}/", {"hint": "чужая правка"}
-        )
-        check(code == 403, f"директор школы правит чужой вопрос → {code}, ожидали 403")
-        code, _ = sessions["director_behavior"].call("DELETE", f"/api/career-questions/{question_id}/")
-        check(code == 403, f"директор школы удаляет чужой вопрос → {code}, ожидали 403")
-        code, _ = asem45.call("DELETE", f"/api/career-questions/{question_id}/")
-        check(code == 204, f"директор по поступлению удаляет вопрос → {code}, ожидали 204")
-
-    code, career = student.call("GET", "/api/career/")
-    check(code == 200 and isinstance(career, dict), f"состояние профтеста у ученика → {code}")
-    if isinstance(career, dict) and not career.get("available"):
-        check(bool(career.get("detail")), "профтест без ключа объясняет, почему недоступен")
-        code, _ = student.call(
-            "POST", "/api/career/run/", {"answers": [{"question": r["code"], "value": "математика"} for r in rows_]}
-        )
-        check(code == 503, f"прохождение без ключа → {code}, ожидали 503")
-    code, _ = sessions["director_behavior"].call("GET", "/api/career/")
-    check(code == 403, f"профтест у директора → {code}, ожидали 403")
+    # профтест (08.10.2026): тесты учителя профориентации; анкеты Асем больше нет
+    code, _ = student.call("GET", "/api/career-questions/")
+    check(code == 404, f"адрес анкеты профтеста закрыт → {code}, ожидали 404")
+    code, mine = student.call("GET", "/api/career/my/")
+    check(code == 200 and isinstance(mine, dict) and "tests" in mine, f"профтест у ученика → {code}")
+    code, _ = sessions["director_behavior"].call("GET", "/api/career/my/")
+    check(code == 403, f"прохождение профтеста у директора → {code}, ожидали 403")
+    code, _ = sessions["director_exam"].call("GET", "/api/career/tests/")
+    check(code == 403, f"тесты профориентации у Кымбат → {code}, ожидали 403")
+    code, listing = sessions["admin"].call("GET", "/api/career/tests/")
+    check(code == 200 and isinstance(listing, dict) and listing.get("manage") is True, f"тесты профориентации у администратора → {code}")
+    code, _ = sessions["director_admission"].call("GET", "/api/career/groups/")
+    check(code == 200, f"группы профтеста у Асем → {code}")
+    code, _ = student.call("GET", "/api/career/tests/")
+    check(code == 403, f"тесты профориентации у ученика → {code}, ожидали 403")
 
     if resource:
         # уборка: памятка прогона

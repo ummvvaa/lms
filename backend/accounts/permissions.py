@@ -193,6 +193,19 @@ CURATOR_READ_ROUTES = frozenset(
         "homework-file-link",
         "homework-zip",
         "homework-local",
+        # профтест: результаты и разборы своих групп в карточке ученика; тесты
+        # и запуск разбора — только если куратор сам ведёт профориентацию
+        # (`career.rights.manages`), иначе вьюха отвечает отказом словами
+        "career-tests",
+        "career-test",
+        "career-test-file",
+        "career-test-template",
+        "career-groups",
+        "career-results",
+        "career-attempt",
+        "career-analyses",
+        "career-analysis",
+        "career-student",
     }
 )
 
@@ -288,6 +301,14 @@ CURATOR_WRITE_ROUTES = frozenset(
         "homework-file",
         "homework-check",
         "homework-local",
+        # профтест — тем, кто ведёт профориентацию при роли куратора
+        "career-tests",
+        "career-test-preview",
+        "career-test",
+        "career-test-assignments",
+        "career-attempt-retake",
+        "career-analyses",
+        "career-analysis",
     }
 )
 
@@ -404,9 +425,11 @@ ADMIN_CLOSED_ROUTES: dict[str, str] = {
     "onboarding-state": STUDENT_ENTERS,
     "onboarding-answer": STUDENT_ENTERS,
     "onboarding-skip": STUDENT_ENTERS,
-    "career-state": STUDENT_ENTERS,
-    "career-run": STUDENT_ENTERS,
-    "career-agree": STUDENT_ENTERS,
+    "career-my": STUDENT_CABINET,
+    "career-my-start": STUDENT_ENTERS,
+    "career-my-attempt": STUDENT_CABINET,
+    "career-my-answers": STUDENT_ENTERS,
+    "career-my-finish": STUDENT_ENTERS,
     "prep-practice-answer": STUDENT_ENTERS,
     "essay-assist-log": STUDENT_ENTERS,
     "essay-reading-day": STUDENT_ENTERS,
@@ -522,6 +545,18 @@ TEACHER_READ_ROUTES = frozenset(
         "homework-file-link",
         "homework-zip",
         "homework-local",
+        # профтест: тесты, результаты и разборы — учителю профориентации
+        # (`career.rights.manages`); остальным учителям вьюха отвечает отказом
+        "career-tests",
+        "career-test",
+        "career-test-file",
+        "career-test-template",
+        "career-groups",
+        "career-results",
+        "career-attempt",
+        "career-analyses",
+        "career-analysis",
+        "career-student",
     }
 )
 
@@ -550,6 +585,14 @@ TEACHER_WRITE_ROUTES = frozenset(
         "job-dismiss",
         "job-retry",
         "auth-preferences",
+        # профтест: загрузка и включение тестов, назначение, разбор — учителю профориентации
+        "career-tests",
+        "career-test-preview",
+        "career-test",
+        "career-test-assignments",
+        "career-attempt-retake",
+        "career-analyses",
+        "career-analysis",
     }
 )
 

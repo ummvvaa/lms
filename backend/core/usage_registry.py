@@ -110,7 +110,8 @@ SCREENS = (
     Screen("/resources", gettext_noop("Ресурсы"), (*DIRECTORS, ROLE_STUDENT)),
     Screen("/resources/:id", gettext_noop("Ресурс"), (*DIRECTORS, ROLE_STUDENT)),
     Screen("/career", gettext_noop("Профтест"), (ROLE_STUDENT,)),
-    Screen("/career-questions", gettext_noop("Вопросы профтеста"), DIRECTORS),
+    Screen("/career/:id", gettext_noop("Прохождение теста профориентации"), (ROLE_STUDENT,)),
+    Screen("/career-tests", gettext_noop("Профтест: тесты и разборы"), STAFF),
     Screen("/home-cues", gettext_noop("Сюжеты главной"), (ROLE_ADMIN,)),
     Screen("/call-rules", gettext_noop("Правила обзвона"), DIRECTORS),
     Screen("/achievements", gettext_noop("Достижения"), (ROLE_STUDENT,)),
@@ -175,6 +176,9 @@ ACTIONS = (
     Action("assistant.requirements.verify", gettext_noop("Проверка требований вузов"), "/assistant"),
     Action("assistant.activity.parse", gettext_noop("Разбор активности помощником"), "/assistant"),
     Action("assistant.image.parse", gettext_noop("Разбор изображения помощником"), "/assistant"),
+    Action("career.test.upload", gettext_noop("Загрузка теста профориентации"), "/career-tests"),
+    Action("career.analysis.start", gettext_noop("Запуск разбора профтеста"), "/career-tests"),
+    Action("career.attempt.finish", gettext_noop("Сдача теста профориентации"), "/career/:id"),
     Action("export.download", gettext_noop("Скачивание выгрузки")),
 )
 ACTIONS_BY_KEY = {action.key: action for action in ACTIONS}

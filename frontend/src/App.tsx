@@ -22,6 +22,7 @@ import {
   curatorMayOpen,
   DOMAIN_ONLY,
   homeworkReviewOpen,
+  careerTestsOpen,
   IMPORT_ROLES,
   usageOpen,
   SCHEDULE_EDIT_ONLY,
@@ -103,8 +104,9 @@ const EssayContent = lazy(() => import('./screens/EssayContent'))
 const Scholarships = lazy(() => import('./screens/Scholarships'))
 const ScholarshipDirectory = lazy(() => import('./screens/ScholarshipDirectory'))
 const Resources = lazy(() => import('./screens/Resources'))
-const Career = lazy(() => import('./screens/Career'))
-const CareerQuestions = lazy(() => import('./screens/CareerQuestions'))
+const Career = lazy(() => import('./screens/career/Career'))
+const CareerTake = lazy(() => import('./screens/career/CareerTake'))
+const CareerTests = lazy(() => import('./screens/career/CareerTests'))
 const HomeCues = lazy(() => import('./screens/HomeCues'))
 const CallRules = lazy(() => import('./screens/CallRules'))
 const Achievements = lazy(() => import('./screens/Achievements'))
@@ -219,6 +221,9 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
     ((location.pathname === '/homework-review' || location.pathname.startsWith('/homework-review/')) && !homeworkReviewOpen(me.role, me.teaches)) ||
     // отчёты родителям — куратор, Кымбат и администратор
     (location.pathname === '/reports' && !REPORT_ROLES.includes(me.role)) ||
+    // прохождение теста — экран ученика; тесты и разборы — тем, кому их открыл сервер
+    (!isStudent && location.pathname.startsWith('/career/')) ||
+    (location.pathname === '/career-tests' && !careerTestsOpen(me)) ||
     // и наоборот: экраны кабинета куратора не открываются никому другому (фаза 61)
     (CURATOR_ONLY.includes(location.pathname) && me.role !== 'curator')
   if (forbidden) return <Navigate to="/dashboard" replace />
@@ -387,7 +392,9 @@ function Routing() {
         <Route path="/resources" element={<Resources />} />
         <Route path="/resources/:id" element={<Resources />} />
         <Route path="/career" element={<Career />} />
-        <Route path="/career-questions" element={<CareerQuestions />} />
+        <Route path="/career/:id" element={<CareerTake />} />
+        {/* профтест у учителя профориентации и читателей результатов */}
+        <Route path="/career-tests" element={<CareerTests />} />
         {/* справочники фазы 49: сюжеты главной ученика и правила обзвона */}
         <Route path="/home-cues" element={<HomeCues />} />
         <Route path="/call-rules" element={<CallRules />} />

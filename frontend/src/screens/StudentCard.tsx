@@ -23,6 +23,7 @@ import PasswordLinkButton from '../components/PasswordLinkButton'
 import AdmissionBlock from '../components/AdmissionBlock'
 import MockAttempts from './MockAttempts'
 import GradesTab from './academics/GradesTab'
+import StudentCareerBlock from './career/StudentCareerBlock'
 import DataTable from '../components/DataTable'
 import { Chip, DataCard, ErrorNote, Hint, Loading, Ring, ScreenTabs } from '../components/ui'
 import { Input } from '../components/ui/input'
@@ -80,7 +81,7 @@ function DirectorStudentCard() {
   const history = useStudentHistory(Number.isFinite(studentId) ? studentId : null)
   const batch = useBatchSave()
 
-  const [tab, setTab] = useState<'domains' | 'history' | 'grades'>('domains')
+  const [tab, setTab] = useState<'domains' | 'history' | 'grades' | 'career'>('domains')
   // отчёт родителям на одного ученика — у четырёх ролей (27.09.2026)
   const [reporting, setReporting] = useState(false)
   // вкладка «Успеваемость» — у Кымбат и администратора: журналы и посещаемость по урокам
@@ -93,6 +94,8 @@ function DirectorStudentCard() {
   const mine = domains.find((d) => d.is_mine)
   // пробники читают руководители; учителю карточка открыта без них
   const seesMocks = me?.role === 'admin' || (me?.role ?? '').startsWith('director_')
+  // профтест читают учитель профориентации, администратор, Асем и куратор своей группы (08.10.2026)
+  const seesCareer = Boolean(me?.career_tests) || ['admin', 'director_admission', 'curator'].includes(me?.role ?? '')
 
   if (student.isLoading || meta.isLoading) return <Loading />
   if (student.error) return <ErrorNote error={student.error} />
@@ -182,6 +185,7 @@ function DirectorStudentCard() {
         items={[
           { value: 'domains', label: t('Пять доменов') },
           ...(seesGrades ? [{ value: 'grades' as const, label: t('Успеваемость') }] : []),
+          ...(seesCareer ? [{ value: 'career' as const, label: t('Профтест') }] : []),
           { value: 'history', label: t('История изменений') },
         ]}
       />
@@ -324,6 +328,8 @@ function DirectorStudentCard() {
       )}
 
       {tab === 'grades' && seesGrades && <GradesTab studentId={card.id} />}
+
+      {tab === 'career' && seesCareer && <StudentCareerBlock studentId={card.id} manage={Boolean(me?.career_tests)} />}
 
       {tab === 'history' && (
         <DataCard title={t('История изменений')} count={history.data?.length || undefined} empty={history.data?.length === 0 && t('изменений пока не было')}>

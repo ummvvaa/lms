@@ -316,9 +316,31 @@ function SubjectsCard({ rows }: { rows: SubjectRow[] }) {
     { key: 'weekly', title: t('Уроков в неделю'), width: '16%', align: 'right', sortBy: (row) => row.weekly, cell: (row) => <span className="num">{row.weekly}</span> },
     { key: 'teachers', title: t('Учителей'), width: '12%', align: 'right', sortBy: (row) => row.teachers, cell: (row) => <span className="num">{row.teachers}</span> },
     {
+      key: 'is_career',
+      title: t('Профтест'),
+      hint: t('Учителю этого предмета открыты тесты профориентации'),
+      width: '18%',
+      sortBy: (row) => (row.is_career ? 0 : 1),
+      cell: (row) =>
+        row.in_lms ? (
+          <SelectField
+            className="subjects__lms"
+            aria-label={t('{subject}: предмет профориентации или нет', { subject: row.title })}
+            value={row.is_career ? 'yes' : 'no'}
+            disabled={toggle.isPending}
+            onChange={(event) => toggle.mutate({ id: row.id, is_career: event.target.value === 'yes' }, { onError: (e) => toast.error(e.message) })}
+          >
+            <option value="yes">{t('ведёт тесты')}</option>
+            <option value="no">{t('нет')}</option>
+          </SelectField>
+        ) : (
+          <span className="t-note">{t('нет')}</span>
+        ),
+    },
+    {
       key: 'in_lms',
       title: t('В LMS'),
-      width: '26%',
+      width: '22%',
       sortBy: (row) => (row.in_lms ? 0 : 1),
       cell: (row) => (
         <SelectField

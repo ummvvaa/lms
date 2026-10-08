@@ -6,8 +6,6 @@ from rest_framework.routers import DefaultRouter
 from engagement import views
 
 router = DefaultRouter()
-# анкета профтеста — справочник директора школы (фаза 45)
-router.register("career-questions", views.CareerQuestionViewSet, basename="career-question")
 # бейджи — справочник условий, а не код (фаза 46)
 router.register("badges", views.BadgeViewSet, basename="badge")
 # сюжеты главной и правила обзвона — справочники директора школы (фаза 49)
@@ -26,10 +24,6 @@ urlpatterns = [
     path("home/cues/", views.home_cues, name="home-cues"),
     # --- фаза 47: замки вместо пустоты ---
     path("journey/locks/", views.locks_state, name="journey-locks"),
-    # --- фаза 45: профтест ---
-    path("career/", views.career_state, name="career-state"),
-    path("career/run/", views.career_run, name="career-run"),
-    path("career/directions/<int:pk>/agree/", views.career_agree, name="career-agree"),
     # --- фаза 46: достижения ---
     path("achievements/", views.badges_state, name="achievements"),
     *router.urls,

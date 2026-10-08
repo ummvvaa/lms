@@ -180,6 +180,8 @@ def test_menu_follows_the_registry(make_user):
         "/materials",
         "/olympiads",
         "/sport",
+        # профтест — тесты учителя профориентации, открыт всем параллелям (08.10.2026)
+        "/career",
     ]
     graduate = student_paths(eleven)
     assert "/catalog" in graduate and "/my-data" in graduate

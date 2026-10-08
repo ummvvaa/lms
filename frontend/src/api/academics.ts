@@ -25,6 +25,8 @@ export interface AcadSubject {
   scheme_title: string
   /** ведётся в LMS; нет — «только расписание»: урок в неделе без журнала, оценок и ДЗ */
   in_lms: boolean
+  /** предмет профориентации: его учителю открыт раздел «Профтест» */
+  is_career: boolean
   sor_max: number
   soch_max: number
 }
@@ -935,7 +937,10 @@ export const useYear = () => useQuery({ queryKey: ['acad', 'year'], queryFn: () 
 export const useSaveYear = () => useAcadMutation((input: Record<string, unknown>) => patch<YearScreen>('/acad/year/', input), { saved: true })
 
 export const useSubjectInLms = () =>
-  useAcadMutation((input: { id: number; in_lms: boolean }) => patch<{ rows: SubjectRow[] }>(`/acad/subjects/${input.id}/`, { in_lms: input.in_lms }), { saved: true })
+  useAcadMutation((input: { id: number; in_lms?: boolean; is_career?: boolean }) => {
+    const { id, ...body } = input
+    return patch<{ rows: SubjectRow[] }>(`/acad/subjects/${id}/`, body)
+  }, { saved: true })
 
 export const useCloseQuarter = () =>
   useAcadMutation((input: { id: number; closed: boolean }) => post<{ quarter: { id: number; closed: boolean } }>(`/acad/year/quarters/${input.id}/close/`, input))

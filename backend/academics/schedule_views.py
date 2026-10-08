@@ -1360,9 +1360,14 @@ def subject_in_lms(request, pk: int):
     subject = Subject.objects.filter(pk=pk).first()
     if subject is None:
         return _not_found()
-    if "in_lms" not in request.data:
+    changes = {}
+    if "in_lms" in request.data:
+        changes["in_lms"] = bool(request.data.get("in_lms"))
+    if "is_career" in request.data:
+        changes["is_career"] = bool(request.data.get("is_career"))
+    if not changes:
         return _bad(_("Не передано, ведётся ли предмет в LMS"))
-    apply_changes(subject, {"in_lms": bool(request.data.get("in_lms"))}, actor=request.user)
+    apply_changes(subject, changes, actor=request.user)
     return Response({"rows": subject_rows()})
 
 

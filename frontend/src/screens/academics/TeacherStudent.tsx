@@ -6,6 +6,8 @@
 import { useParams } from 'react-router'
 import { useAcadMeta, useTeacherStudent } from '../../api/academics'
 import EnglishLevel from './EnglishLevel'
+import StudentCareerBlock from '../career/StudentCareerBlock'
+import { useAuth } from '../../auth/AuthContext'
 import { Row, Rows, StatRow } from '../../components/patterns'
 import { DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
@@ -15,6 +17,7 @@ import { dateShort, dateWords, MarkChip } from './shared'
 export default function TeacherStudent() {
   const { id } = useParams()
   const studentId = Number(id)
+  const { me } = useAuth()
   const meta = useAcadMeta()
   const { data, isLoading, error } = useTeacherStudent(Number.isFinite(studentId) ? studentId : null)
   if (isLoading) return <Loading kind="cards" />
@@ -56,6 +59,8 @@ export default function TeacherStudent() {
           ))}
         </div>
         <div className="acad__stack">
+          {/* учителю профориентации — тесты и разборы ученика (08.10.2026) */}
+          {me?.career_tests && <StudentCareerBlock studentId={data.student.id} manage />}
           {data.english && <EnglishLevel student={data.student.id} info={data.english} />}
           <DataCard title={t('Куратор группы')}>
             <Rows>

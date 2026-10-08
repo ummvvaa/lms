@@ -37,6 +37,7 @@ import { t, tk } from '../../i18n'
 import { daysFromToday } from '../../lib/dates'
 import { usePhone } from '../../phone'
 import GradesTab from '../academics/GradesTab'
+import StudentCareerBlock from '../career/StudentCareerBlock'
 import ContactsBlock from './ContactsBlock'
 import { CallDialog, EscalateStudentDialog } from './Dialogs'
 import { DocumentEntry, ExamsEntry, PortfolioEntry, UniversitiesEntry } from './DirectEntry'
@@ -49,7 +50,7 @@ import './curator.css'
 /** Корзины, о которых уже говорят плитки «Пробники» и «Документы». */
 const TILE_BUCKETS = ['nomock', 'docs']
 
-type Tab = 'overview' | 'exams' | 'mocks' | 'grades' | 'documents' | 'unis' | 'portfolio' | 'tasks' | 'notes'
+type Tab = 'overview' | 'exams' | 'mocks' | 'grades' | 'career' | 'documents' | 'unis' | 'portfolio' | 'tasks' | 'notes'
 
 /** Вкладки поступления — у 8–10 их нет вовсе. */
 const ADMISSION_TABS: Tab[] = ['exams', 'documents', 'unis', 'tasks']
@@ -61,6 +62,8 @@ const TABS: { value: Tab; label: string }[] = [
   { value: 'exams', label: tk('Экзамены') },
   { value: 'mocks', label: tk('Mock Test') },
   { value: 'grades', label: tk('Успеваемость') },
+  // профтест: сданные тесты с баллами и разборы — куратору своих групп (08.10.2026)
+  { value: 'career', label: tk('Профтест') },
   { value: 'documents', label: tk('Документы') },
   { value: 'unis', label: tk('Вузы') },
   { value: 'portfolio', label: tk('Портфолио') },
@@ -732,6 +735,7 @@ export default function CuratorCard() {
       )}
 
       {tab === 'grades' && <GradesTab studentId={data.id} />}
+      {tab === 'career' && <StudentCareerBlock studentId={data.id} />}
 
       {tab === 'documents' && !junior && <DocumentsTab card={data} />}
       {tab === 'notes' && <NotesTab card={data} />}

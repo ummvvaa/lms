@@ -38,6 +38,10 @@ def _key(text: str) -> str:
     return re.sub(r"\s+", " ", text or "").strip().casefold()
 
 
+#: по этому слову в названии предмет считается профориентацией
+CAREER_KEY = "профориентац"
+
+
 @dataclass
 class SubjectRow:
     subject: Subject
@@ -152,6 +156,9 @@ def apply(result: Plan, *, actor=None) -> dict:
         changes = {"in_lms": True}
         if row.subject.pk in rescheme:
             changes["scheme"] = Scheme.FO
+        # профориентация: её учителю открыт раздел «Профтест» (`career.rights`)
+        if CAREER_KEY in _key(row.subject.title):
+            changes["is_career"] = True
         if apply_changes(row.subject, changes, actor=actor):
             counts["kept"] += 1
         counts["rescheme"] += int(row.subject.pk in rescheme)

@@ -255,5 +255,5 @@ OPERATION_TITLES = {
     "import_reading": gettext_lazy("Разбор загружаемого файла"),
     "import_mapping": gettext_lazy("Сопоставление колонок файла"),
     "scholarship_pick": gettext_lazy("Подбор стипендий под профиль"),
-    "career_test": gettext_lazy("Разбор анкеты профтеста"),
+    "career_test": gettext_lazy("Разбор профтеста"),
 }

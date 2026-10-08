@@ -16592,3 +16592,443 @@ msgstr "Missing whether the subject is kept in the LMS"
 
 msgid "Посмотреть задачи"
 msgstr "See tasks"
+
+#: career
+msgid "{where}: «От» больше «До»"
+msgstr "{where}: “From” is greater than “To”"
+
+#: career
+msgid "{where}: «От» и «До» — целые числа"
+msgstr "{where}: “From” and “To” must be whole numbers"
+
+#: career
+msgid "{where}: баллы варианта {n} — целое число"
+msgstr "{where}: points of option {n} must be a whole number"
+
+#: career
+msgid "{where}: знак — «+» или «−»"
+msgstr "{where}: the sign is “+” or “−”"
+
+#: career
+msgid "{where}: код шкалы «{code}» повторяется"
+msgstr "{where}: scale code “{code}” is repeated"
+
+#: career
+msgid "{where}: нет подписи диапазона"
+msgstr "{where}: the range has no label"
+
+#: career
+msgid "{where}: номер {number} повторяется"
+msgstr "{where}: number {number} is repeated"
+
+#: career
+msgid "{where}: номер вопроса — целое число от 1"
+msgstr "{where}: the question number is a whole number from 1"
+
+#: career
+msgid "{where}: ответ «{label}» повторяется"
+msgstr "{where}: answer “{label}” is repeated"
+
+#: career
+msgid "{where}: у варианта {n} нужны и текст, и шкала"
+msgstr "{where}: option {n} needs both text and a scale"
+
+#: career
+msgid "{where}: у вопроса {number} нет текста"
+msgstr "{where}: question {number} has no text"
+
+#: career
+msgid "{where}: у вопроса {number} нет шкалы"
+msgstr "{where}: question {number} has no scale"
+
+#: career
+msgid "{where}: у ответа «{label}» нет баллов"
+msgstr "{where}: answer “{label}” has no points"
+
+#: career
+msgid "{where}: у шкалы «{code}» нет названия"
+msgstr "{where}: scale “{code}” has no title"
+
+#: career
+msgid "Балл по шкале"
+msgstr "Scale score"
+
+#: career
+msgid "Баллы"
+msgstr "Points"
+
+#: career
+msgid "Баллы по шкалам"
+msgstr "Scale scores"
+
+#: career
+msgid "В истории с"
+msgstr "In history since"
+
+#: career
+msgid "В файле есть ошибки — исправьте и загрузите снова"
+msgstr "The file has errors — fix them and upload again"
+
+#: career
+msgid "Вариант вопроса"
+msgstr "Question option"
+
+#: career
+msgid "Вариант не из этого вопроса"
+msgstr "The option does not belong to this question"
+
+#: career
+msgid "Варианты вопроса"
+msgstr "Question options"
+
+#: career
+msgid "Включён"
+msgstr "Enabled"
+
+#: career
+msgid "Вопрос {number}: шкалы «{scale}» нет на листе «{sheet}»"
+msgstr "Question {number}: scale “{scale}” is not on the “{sheet}” sheet"
+
+#: career
+msgid "Вопрос теста"
+msgstr "Test question"
+
+#: career
+msgid "Вопроса {number} в тесте нет"
+msgstr "There is no question {number} in the test"
+
+#: career
+msgid "Вопросы теста"
+msgstr "Test questions"
+
+#: career
+msgid "Выберите хотя бы один тест"
+msgstr "Choose at least one test"
+
+#: career
+msgid "Группа не из ваших составов"
+msgstr "The group is not among your classes"
+
+#: career
+msgid "Группа не найдена"
+msgstr "Group not found"
+
+#: career
+msgid "Диапазон интерпретации"
+msgstr "Interpretation range"
+
+#: career
+msgid "Диапазонов интерпретации нет: у баллов не будет подписей"
+msgstr "No interpretation ranges: scores will have no labels"
+
+#: career
+msgid "Диапазоны интерпретации"
+msgstr "Interpretation ranges"
+
+#: career
+msgid "До"
+msgstr "To"
+
+#: career
+msgid "Загрузка теста профориентации"
+msgstr "Career test upload"
+
+#: career
+msgid "Запуск разбора профтеста"
+msgstr "Career analysis start"
+
+#: career
+msgid "Знак"
+msgstr "Sign"
+
+#: career
+msgid "Инструкция"
+msgstr "Instructions"
+
+#: career
+msgid "Интерпретация"
+msgstr "Interpretation"
+
+#: career
+msgid "Интерпретация: шкалы «{scale}» нет на листе «{sheet}»"
+msgstr "Interpretation: scale “{scale}” is not on the “{sheet}” sheet"
+
+#: career
+msgid "Кто правил"
+msgstr "Edited by"
+
+#: career
+msgid "Кто разрешил пройти заново"
+msgstr "Retake allowed by"
+
+#: career
+msgid "Лист «{sheet}» пуст"
+msgstr "Sheet “{sheet}” is empty"
+
+#: career
+msgid "Лист «{sheet}»: «Порог для разбора» — целое число"
+msgstr "Sheet “{sheet}”: “Analysis threshold” must be a whole number"
+
+#: career
+msgid "Лист «{sheet}»: вариантов ответа не больше {n}"
+msgstr "Sheet “{sheet}”: no more than {n} answer options"
+
+#: career
+msgid "Лист «{sheet}»: вопросов не больше {n}"
+msgstr "Sheet “{sheet}”: no more than {n} questions"
+
+#: career
+msgid "Лист «{sheet}»: нет колонки «{column}»"
+msgstr "Sheet “{sheet}”: column “{column}” is missing"
+
+#: career
+msgid "Лист «{sheet}»: нет строки «Название»"
+msgstr "Sheet “{sheet}”: the “Title” row is missing"
+
+#: career
+msgid "Лист «{sheet}»: ни одного вопроса"
+msgstr "Sheet “{sheet}”: no questions"
+
+#: career
+msgid "Лист «{sheet}»: ни одной шкалы"
+msgstr "Sheet “{sheet}”: no scales"
+
+#: career
+msgid "Лист «{sheet}»: нужны колонки «Код» и «Название»"
+msgstr "Sheet “{sheet}”: columns “Code” and “Title” are required"
+
+#: career
+msgid "Лист «{sheet}»: нужны колонки «Подпись» и «Баллы»"
+msgstr "Sheet “{sheet}”: columns “Label” and “Points” are required"
+
+#: career
+msgid "Лист «{sheet}»: нужны хотя бы два варианта ответа — у вопросов нет своих"
+msgstr "Sheet “{sheet}”: at least two answer options are needed — the questions have none of their own"
+
+#: career
+msgid "Лист «{sheet}»: шкал не больше {n}"
+msgstr "Sheet “{sheet}”: no more than {n} scales"
+
+#: career
+msgid "Модель вернула пустой разбор — попробуйте пересчитать"
+msgstr "The model returned an empty analysis — try recalculating"
+
+#: career
+msgid "Набор попыток"
+msgstr "Attempt set"
+
+#: career
+msgid "Название направления не может быть пустым"
+msgstr "The direction title cannot be empty"
+
+#: career
+msgid "Название не может быть пустым"
+msgstr "The title cannot be empty"
+
+#: career
+msgid "Назначен"
+msgstr "Assigned"
+
+#: career
+msgid "Назначение теста"
+msgstr "Test assignment"
+
+#: career
+msgid "Назначения теста"
+msgstr "Test assignments"
+
+#: career
+msgid "Направление разбора"
+msgstr "Analysis direction"
+
+#: career
+msgid "Направления разбора"
+msgstr "Analysis directions"
+
+#: career
+msgid "Нет листов: {sheets}"
+msgstr "Missing sheets: {sheets}"
+
+#: career
+msgid "Номера вопросов идут не подряд: ученик увидит их по порядку номеров"
+msgstr "Question numbers are not consecutive: the student will see them in number order"
+
+#: career
+msgid "Нужен список групп"
+msgstr "A list of groups is required"
+
+#: career
+msgid "Нужен список ответов"
+msgstr "A list of answers is required"
+
+#: career
+msgid "Остались вопросы без ответа: {n}"
+msgstr "Unanswered questions remain: {n}"
+
+#: career
+msgid "От"
+msgstr "From"
+
+#: career
+msgid "Ответ на вопрос"
+msgstr "Question answer"
+
+#: career
+msgid "Ответы на вопросы"
+msgstr "Question answers"
+
+#: career
+msgid "Отвечен"
+msgstr "Answered"
+
+#: career
+msgid "Показан ученику"
+msgstr "Shown to the student"
+
+#: career
+msgid "Показать ученику можно только готовый разбор"
+msgstr "Only a finished analysis can be shown to the student"
+
+#: career
+msgid "Попытка #{number} · {student}"
+msgstr "Attempt #{number} · {student}"
+
+#: career
+msgid "Попытка теста"
+msgstr "Test attempt"
+
+#: career
+msgid "Попытки теста"
+msgstr "Test attempts"
+
+#: career
+msgid "Порог для разбора"
+msgstr "Analysis threshold"
+
+#: career
+msgid "Порог для разбора — целое число"
+msgstr "The analysis threshold must be a whole number"
+
+#: career
+msgid "Правил учитель"
+msgstr "Edited by the teacher"
+
+#: career
+msgid "Предмет профориентации"
+msgstr "Career guidance subject"
+
+#: career
+msgid "Приложите файл xlsx"
+msgstr "Attach an xlsx file"
+
+#: career
+msgid "Профессии"
+msgstr "Professions"
+
+#: career
+msgid "Профтест: тесты и разборы"
+msgstr "Career test: tests and analyses"
+
+#: career
+msgid "Прохождение теста профориентации"
+msgstr "Taking a career test"
+
+#: career
+msgid "Разбор #{number} · {student}"
+msgstr "Analysis #{number} · {student}"
+
+#: career
+msgid "Разбор пришёл без направлений — попробуйте пересчитать"
+msgstr "The analysis came without directions — try recalculating"
+
+#: career
+msgid "Разбор профтеста"
+msgstr "Career test analysis"
+
+#: career
+msgid "Разбор профтеста: {n}"
+msgstr "Career test analysis: {n}"
+
+#: career
+msgid "Разборы профтеста"
+msgstr "Career test analyses"
+
+#: career
+msgid "Результаты профтеста читают учитель профориентации, куратор своих групп, директор по поступлению и администратор"
+msgstr "Career test results are read by the career guidance teacher, the curator of their own groups, the admissions director and the administrator"
+
+#: career
+msgid "Сдан"
+msgstr "Completed"
+
+#: career
+msgid "Сдача теста профориентации"
+msgstr "Career test completion"
+
+#: career
+msgid "Список учеников — числа"
+msgstr "The list of students must be numbers"
+
+#: career
+msgid "Тест выключен учителем"
+msgstr "The test was disabled by the teacher"
+
+#: career
+msgid "Тест профориентации"
+msgstr "Career test"
+
+#: career
+msgid "Тест уже сдан"
+msgstr "The test is already completed"
+
+#: career
+msgid "Тесты профориентации"
+msgstr "Career tests"
+
+#: career
+msgid "Тесты профориентации ведёт учитель профориентации и администратор"
+msgstr "Career tests are managed by the career guidance teacher and the administrator"
+
+#: career
+msgid "У вопроса {number} свои варианты — выберите один из них"
+msgstr "Question {number} has its own options — choose one of them"
+
+#: career
+msgid "Файл больше 5 МБ"
+msgstr "The file is larger than 5 MB"
+
+#: career
+msgid "Файл не читается как книга xlsx"
+msgstr "The file cannot be read as an xlsx workbook"
+
+#: career
+msgid "Шкала «{title}» не встречается ни в одном вопросе"
+msgstr "Scale “{title}” does not appear in any question"
+
+#: career
+msgid "Шкала теста"
+msgstr "Test scale"
+
+#: career
+msgid "Шкалы теста"
+msgstr "Test scales"
+
+#: career
+msgid "Эта попытка уже в истории"
+msgstr "This attempt is already in history"
+
+#: career
+msgid "Язык разбора"
+msgstr "Analysis language"
+
+#: career
+msgid "лист «{sheet}», строка {row}"
+msgstr "sheet “{sheet}”, row {row}"
+
+#: career
+msgid "ни одна шкала не выше порога — разбирать нечего"
+msgstr "no scale is above the threshold — nothing to analyse"
+
+#: career
+msgid "сданы не все выбранные тесты"
+msgstr "not all chosen tests are completed"

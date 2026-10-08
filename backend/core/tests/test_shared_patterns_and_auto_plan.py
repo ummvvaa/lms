@@ -252,25 +252,3 @@ def test_hidden_exams_disappear_everywhere_but_keep_their_rows(api_client, stude
     ]
     assert fields, "поля экзамена в реестре не нашлось"
     assert {choice["title"] for choice in fields[0]["choices"]} == {"SAT", "IELTS"}
-
-
-# --- Профтест кнопками (часть 3.9) -----------------------------------------
-
-
-@pytest.mark.django_db
-def test_career_questions_are_answered_by_options(api_client, student_user):
-    """У каждого вопроса анкеты есть готовые варианты и вид «несколько».
-
-    Шесть пустых текстовых полей ученик не заполняет: он закрывает экран,
-    не начав.
-    """
-    from engagement.models import CareerQuestion
-
-    questions = list(CareerQuestion.objects.filter(is_active=True))
-    assert questions, "анкета пуста"
-    assert all(question.options_list for question in questions), "есть вопрос без вариантов ответа"
-    assert all(question.kind == "multi" for question in questions), "вопрос не принимает несколько вариантов"
-
-    api_client.force_authenticate(student_user)
-    payload = api_client.get("/api/career/").data
-    assert all(row["options_list"] for row in payload["questions"])

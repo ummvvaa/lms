@@ -60,6 +60,8 @@ export interface Me {
   has_admission: boolean | null
   /** ведёт уроки при любой роли: директору с уроками — «Мои уроки» */
   teaches: boolean
+  /** ведёт тесты профориентации при любой роли (`career.rights.manages`): меню добавляет «Профтест» */
+  career_tests: boolean
   last_login: string | null
   /** предпочтения интерфейса: живут на сервере, переживают смену устройства */
   sidebar_collapsed: boolean

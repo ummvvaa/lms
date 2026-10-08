@@ -688,27 +688,6 @@ DOMAINS: dict[str, Domain] = {
                     ),
                 ),
             ),
-            # вопросы профтеста — справочник домена: анкету ведёт директор
-            # по поступлению (до разбора кабинетов вела Салтанат). Профтест —
-            # про выбор направления, а это разговор Асем с учеником
-            ModelSpec(
-                label="engagement.CareerQuestion",
-                fields=(
-                    FieldSpec("code", gettext_noop("Код вопроса"), short_ru=gettext_noop("Код")),
-                    FieldSpec("text", gettext_noop("Текст вопроса анкеты"), short_ru=gettext_noop("Вопрос")),
-                    FieldSpec("hint", gettext_noop("Подсказка к вопросу"), short_ru=gettext_noop("Подсказка")),
-                    FieldSpec("kind", gettext_noop("Вид ответа"), short_ru=gettext_noop("Ответ")),
-                    FieldSpec("options", gettext_noop("Варианты ответа"), short_ru=gettext_noop("Варианты")),
-                    FieldSpec(
-                        "order",
-                        gettext_noop("Порядок в анкете"),
-                        short_ru=gettext_noop("Порядок"),
-                        minimum=0,
-                        maximum=999,
-                    ),
-                    FieldSpec("is_active", gettext_noop("Показывать в анкете"), short_ru=gettext_noop("В анкете")),
-                ),
-            ),
         ),
     ),
     "exam": Domain(

@@ -53,6 +53,9 @@ class Subject(models.Model):
     #: предметы — «только расписание»: урок стоит в неделе, но журнала у него нет —
     #: основной журнал школа ведёт в Kundelik (решение владельца, 07.10.2026)
     in_lms = models.BooleanField(gettext_lazy("Ведётся в LMS"), default=True)
+    #: предмет профориентации: кто ведёт его журнал, тот ведёт тесты профтеста
+    #: (`career.rights`); ставится командой `keep_subjects` и в «Учебном году»
+    is_career = models.BooleanField(gettext_lazy("Предмет профориентации"), default=False)
     #: посев для разработки — вычищается `purge_fictional`
     is_fictional = models.BooleanField(gettext_lazy("Вымышленный"), default=False)
 

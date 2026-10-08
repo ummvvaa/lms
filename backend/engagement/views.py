@@ -14,13 +14,10 @@ from core.deletion import refuse
 from core.domains import ROLE_STUDENT, can_delete, owns_model
 from core.permissions import DomainFieldPermission, DomainOwnerPermission
 from engagement import onboarding, scoring, today
-from engagement.models import Badge, CallRule, CareerDirection, CareerQuestion, CareerRun, HomeCue
+from engagement.models import Badge, CallRule, HomeCue
 from engagement.serializers import (
     BadgeSerializer,
     CallRuleSerializer,
-    CareerQuestionSerializer,
-    CareerRunRequestSerializer,
-    CareerRunSerializer,
     HomeCueSerializer,
     OnboardingAnswerSerializer,
     OnboardingReviewSerializer,
@@ -136,116 +133,6 @@ def game_state(request):
     payload["today"] = today.for_student(student)
     payload["awards"] = scoring.awards_table()
     return Response(payload)
-
-
-# --- Профтест (фаза 45) ----------------------------------------------------
-
-
-class CareerQuestionViewSet(viewsets.ModelViewSet):
-    """Анкета профтеста. Ведёт директор по поступлению, читают все.
-
-    Вопросы — справочник домена «Поступление», а не константы
-    в коде: школа меняет формулировки без выката.
-    """
-
-    queryset = CareerQuestion.objects.all()
-    serializer_class = CareerQuestionSerializer
-    permission_classes = [DomainFieldPermission]
-    domain_model_label = "engagement.CareerQuestion"
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        return qs.filter(is_active=True) if self.request.user.role == ROLE_STUDENT else qs
-
-    def create(self, request, *args, **kwargs):
-        if not owns_model(request.user.role, self.domain_model_label):
-            return refuse(request.user.role, self.domain_model_label)
-        return super().create(request, *args, **kwargs)
-
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if not can_delete(request.user.role, self.domain_model_label):
-            return refuse(request.user.role, self.domain_model_label)
-        if instance.answers.exists():
-            return Response(
-                {
-                    "detail": _(
-                        "На вопрос уже отвечали: {count}. "
-                        "Снимите галочку «Показывать в анкете» — ответы должны остаться читаемыми"
-                    ).format(count=instance.answers.count())
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return super().destroy(request, *args, **kwargs)
-
-
-@extend_schema(responses={200: dict})
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def career_state(request):
-    """Состояние профтеста: доступен ли, анкета и прошлые проходы."""
-    from engagement import career
-
-    student = _own_student(request)
-    if student is None:
-        return Response({"detail": _("Профтест проходит ученик")}, status=status.HTTP_403_FORBIDDEN)
-
-    state = career.availability()
-    runs = CareerRun.objects.filter(student=student).prefetch_related("directions__programs", "answers__question")
-    return Response(
-        {
-            "available": state.available,
-            "detail": state.detail,
-            "questions": CareerQuestionSerializer(career.questions(), many=True).data,
-            "runs": CareerRunSerializer(runs, many=True).data,
-        }
-    )
-
-
-@extend_schema(request=CareerRunRequestSerializer, responses={201: dict})
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def career_run(request):
-    """Пройти анкету и получить разбор.
-
-    Без ключа модели раздел отвечает «недоступно» и говорит почему:
-    разбор правилами дал бы бессмысленный результат.
-    """
-    from engagement import career
-
-    student = _own_student(request)
-    if student is None:
-        return Response({"detail": _("Профтест проходит ученик")}, status=status.HTTP_403_FORBIDDEN)
-
-    serializer = CareerRunRequestSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    answers = {row["question"]: row.get("value", "") for row in serializer.validated_data["answers"]}
-    try:
-        run = career.run_for(student, answers=answers, actor=request.user, role=request.user.role)
-    except career.CareerUnavailable as error:
-        return Response({"detail": str(error), "available": False}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-    return Response(CareerRunSerializer(run).data, status=status.HTTP_201_CREATED)
-
-
-@extend_schema(responses={200: dict})
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def career_agree(request, pk: int):
-    """«Согласен с направлением» — оно уходит предложением директору."""
-    from engagement import career
-
-    student = _own_student(request)
-    if student is None:
-        return Response({"detail": _("Профтест проходит ученик")}, status=status.HTTP_403_FORBIDDEN)
-
-    direction = CareerDirection.objects.filter(pk=pk, run__student=student).first()
-    if direction is None:
-        return Response({"detail": _("Такого направления нет")}, status=status.HTTP_404_NOT_FOUND)
-    if direction.agreed_at is not None:
-        return Response({"detail": _("Это направление уже отправлено директору"), "ok": False})
-
-    outcome = career.agree(direction, user=request.user, student=student)
-    return Response(outcome, status=status.HTTP_200_OK if outcome["ok"] else status.HTTP_400_BAD_REQUEST)
 
 
 # --- Достижения-бейджи (фаза 46) -------------------------------------------
