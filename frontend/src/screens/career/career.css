@@ -50,8 +50,64 @@
   text-align: left;
 }
 
-.ctake__item--done .ctake__num {
+.ctake__item--done .ctake__num,
+.ctake__num--done {
   color: var(--good);
+}
+
+.ctake__nav {
+  display: flex;
+  gap: calc(var(--space) * 2);
+}
+
+/* ноутбук: две карточки одной ширины над утверждениями */
+.ctake__lead {
+  margin-bottom: var(--gap-block);
+}
+
+.cpage {
+  overflow: hidden;
+}
+
+/* телефон: лента в фокусе — текущее утверждение крупно, соседи мельче и бледнее */
+.ctake__notice {
+  margin-bottom: calc(var(--space) * 2);
+}
+
+.ctake__legend {
+  margin: 0 0 calc(var(--space) * 2);
+}
+
+.cstack {
+  display: grid;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 3) 0;
+}
+
+.cstack__item {
+  display: grid;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 3);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.cstack__item--current {
+  box-shadow: var(--shadow-raised);
+}
+
+.cstack__item--past {
+  cursor: pointer;
+}
+
+.cstack__item--past .ctake__answers,
+.cstack__item--next {
+  pointer-events: none;
+}
+
+.cstack__item--current .ctake__text {
+  font-size: var(--type-card);
+  line-height: var(--leading-body);
 }
 
 .ctake__foot {
