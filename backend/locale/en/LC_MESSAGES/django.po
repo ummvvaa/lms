@@ -17036,3 +17036,11 @@ msgstr "not all chosen tests are completed"
 #: academics
 msgid "Вход учителям закрывает администратор"
 msgstr "Teacher access is closed by the administrator"
+
+#: career
+msgid "Общий вывод для ученика"
+msgstr "Summary for the student"
+
+#: career
+msgid "Почему подходит — для ученика"
+msgstr "Why it fits — for the student"

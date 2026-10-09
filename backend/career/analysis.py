@@ -251,3 +251,105 @@ def run(analysis: CareerAnalysis) -> CareerAnalysis:
     analysis.finished_at = timezone.now()
     analysis.save(update_fields=["summary", "status", "error", "finished_at"])
     return analysis
+
+
+# --- версия для ученика -----------------------------------------------------------------
+
+# fmt: off
+STUDENT_SYSTEM = (  # i18n-skip: промпт ИИ — язык ответа модели настраивается отдельно
+    """Ты переписываешь разбор результатов тестов профориентации так, чтобы его читал сам ученик.
+
+Правила, нарушать нельзя:
+- обращайся к ученику на «ты»; пиши о его интересах и сильных сторонах: «у тебя выраженный
+  интерес к…», «тебе может подойти…»;
+- не упоминай учителя, обсуждение, родителей, «стоит рассмотреть с учеником» и любые
+  слова, обращённые к кому-то, кроме ученика;
+- сохрани смысл, направления, профессии, предметы и экзамены: ничего не добавляй
+  и не убирай, только перепиши;
+- не обещай поступление и не употребляй слова «шанс», «вероятность», «прогноз»;
+- не оценивай ученика как человека, не ставь диагнозов;
+- пиши тепло и по делу, без общих фраз."""
+)
+# fmt: on
+
+STUDENT_SCHEMA = {  # i18n-skip: схема ответа для модели ИИ
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string", "description": "общий вывод для ученика, на «ты»"},
+        "directions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "order": {"type": "integer", "description": "номер направления из переданного разбора"},
+                    "why": {"type": "string", "description": "почему подходит — для ученика, на «ты»"},
+                },
+                "required": ["order", "why"],
+            },
+        },
+    },
+    "required": ["summary", "directions"],
+}
+
+
+def _student_prompt(analysis: CareerAnalysis) -> str:
+    # i18n-skip: промпт ИИ — текст запроса модели, не интерфейс
+    lines = ["Разбор для учителя:", f"Общий вывод: {analysis.summary}"]  # i18n-skip: промпт ИИ
+    for direction in analysis.directions.all():
+        lines.append("")
+        lines.append(f"Направление {direction.order}: {direction.title}")  # i18n-skip: промпт ИИ
+        lines.append(f"Почему подходит: {direction.reasoning}")  # i18n-skip: промпт ИИ
+        if direction.professions:
+            lines.append(f"Профессии: {direction.professions}")  # i18n-skip: промпт ИИ
+    lines.append("")
+    lines.append("Перепиши общий вывод и объяснение каждого направления для ученика.")  # i18n-skip: промпт ИИ
+    return "\n".join(lines)
+
+
+class StudentVersionUnavailable(RuntimeError):
+    """Версию для ученика написать не удалось — причина словами."""
+
+
+def write_student_version(analysis: CareerAnalysis, *, actor) -> CareerAnalysis:
+    """Переписать готовый разбор для ученика — один вызов, результат хранится рядом.
+
+    Вызывается при первом «Показать ученику»; повторный показ версию не переписывает,
+    «Пересчитать» заводит новый разбор, и версия пишется заново.
+    """
+    from core.i18n import active_language, render
+    from suggestions.llm import LLMUnavailable, complete
+
+    if analysis.status != AnalysisStatus.DONE:
+        raise StudentVersionUnavailable(_("Показать ученику можно только готовый разбор"))
+    try:
+        answer = complete(
+            language=active_language(),
+            system=STUDENT_SYSTEM,
+            user=_student_prompt(analysis),
+            purpose="career_test",
+            actor=actor,
+            role=getattr(actor, "role", ""),
+            schema=STUDENT_SCHEMA,
+            max_tokens=MAX_TOKENS,
+        )
+    except LLMUnavailable as error:
+        raise StudentVersionUnavailable(str(error) or render(analysis.language, "Модель сейчас недоступна")) from error
+    parsed = answer.parsed if isinstance(answer.parsed, dict) else {}
+    summary = str(parsed.get("summary") or "").strip()
+    rows = parsed.get("directions")
+    if not summary or not isinstance(rows, list):
+        raise StudentVersionUnavailable(
+            render(analysis.language, "Модель вернула пустой разбор — попробуйте пересчитать")
+        )
+    by_order = {d.order: d for d in analysis.directions.all()}
+    for item in rows:
+        if not isinstance(item, dict):
+            continue
+        direction = by_order.get(item.get("order"))
+        if direction is None:
+            continue
+        direction.reasoning_student = str(item.get("why") or "").strip()
+        direction.save(update_fields=["reasoning_student"])
+    analysis.summary_student = summary
+    analysis.save(update_fields=["summary_student"])
+    return analysis

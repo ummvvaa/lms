@@ -118,7 +118,7 @@ def analysis_dict(analysis: CareerAnalysis, *, for_student: bool = False) -> dic
         "id": analysis.pk,
         "status": analysis.status,
         "status_title": analysis.get_status_display(),
-        "summary": analysis.summary,
+        "summary": analysis.summary_student if for_student else analysis.summary,
         "error": analysis.error,
         "created_at": analysis.created_at,
         "finished_at": analysis.finished_at,
@@ -134,7 +134,7 @@ def analysis_dict(analysis: CareerAnalysis, *, for_student: bool = False) -> dic
                 "id": d.pk,
                 "order": d.order,
                 "title": d.title,
-                "reasoning": d.reasoning,
+                "reasoning": d.reasoning_student if for_student else d.reasoning,
                 "professions": d.professions,
                 "subjects": d.subjects,
                 "exams": d.exams,
@@ -147,7 +147,12 @@ def analysis_dict(analysis: CareerAnalysis, *, for_student: bool = False) -> dic
         ],
     }
     if not for_student:
+        # версия для ученика — рядом с версией учителя, он правит обе;
         # имена сотрудников ученику не показываются: кто запустил и кто правил — только своим
+        out["summary_student"] = analysis.summary_student
+        out["has_student_version"] = bool(analysis.summary_student)
+        for row, d in zip(out["directions"], analysis.directions.all(), strict=False):
+            row["reasoning_student"] = d.reasoning_student
         out["student"] = student_brief(analysis.student)
         out["created_by"] = person(analysis.created_by)
         out["edited_by"] = person(analysis.edited_by)

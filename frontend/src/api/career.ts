@@ -94,6 +94,8 @@ export interface CareerDirection {
   subjects: string
   exams: string
   programs: { id: number; name: string; university: string; level_title: string }[]
+  /** объяснение для ученика, на «ты» — только сотрудникам; ученику приходит в `reasoning` */
+  reasoning_student?: string
 }
 
 export interface CareerAnalysis {
@@ -109,6 +111,9 @@ export interface CareerAnalysis {
   edited_at: string | null
   tests: { id: number; title: string; attempt: number; finished_at: string | null }[]
   directions: CareerDirection[]
+  /** версия для ученика (пишется моделью при первом показе) — только сотрудникам */
+  summary_student?: string
+  has_student_version?: boolean
   /** только сотрудникам: ученику имена не приходят */
   student?: { id: number; full_name: string; short: string; group: string }
   created_by?: { id: number; full_name: string; short: string } | null
@@ -231,7 +236,7 @@ export const useCareerStartAnalyses = () =>
   useCareerMutation((input: { group: number; tests: number[]; students?: number[] | null; force?: boolean }) => post<StartAnalysesResult>('/career/analyses/', input))
 
 export const useCareerAnalysisPatch = () =>
-  useCareerMutation((input: { id: number; summary?: string; visible_to_student?: boolean; directions?: Partial<CareerDirection>[] }) => {
+  useCareerMutation((input: { id: number; summary?: string; summary_student?: string; visible_to_student?: boolean; directions?: Partial<CareerDirection>[] }) => {
     const { id, ...body } = input
     return patch<CareerAnalysis>(`/career/analyses/${id}/`, body)
   }, true)

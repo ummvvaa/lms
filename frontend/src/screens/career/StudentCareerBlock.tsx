@@ -10,7 +10,7 @@ import { Chip, DataCard, ErrorNote, Loading } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tn } from '../../i18n'
 import { formatDate, formatDateTime } from '../../lib/format'
-import AnalysisDrawer from './AnalysisDrawer'
+import AnalysisCard from './AnalysisCard'
 import ScoreBars from './ScoreBars'
 
 export default function StudentCareerBlock({ studentId, manage = false }: { studentId: number; manage?: boolean }) {
@@ -68,7 +68,7 @@ export default function StudentCareerBlock({ studentId, manage = false }: { stud
           ))}
         </Rows>
       </DataCard>
-      {current && <AnalysisDrawer analysis={current} manage={manage} onClose={() => setAnalysis(null)} />}
+      {current && <AnalysisCard analysis={current} manage={manage} onClose={() => setAnalysis(null)} />}
     </div>
   )
 }

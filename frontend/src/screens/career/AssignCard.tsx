@@ -5,7 +5,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useCareerAssign, useCareerGroups, type CareerGroup, type CareerTestDetail } from '../../api/career'
-import EditDrawer from '../../components/EditDrawer'
+import Modal from '../../components/Modal'
 import Field from '../../components/Field'
 import { Row, Rows, ShowAll } from '../../components/patterns'
 import { Chip, EmptyNote, ErrorNote, Loading } from '../../components/ui'
@@ -23,7 +23,7 @@ function initial(test: CareerTestDetail, groups: CareerGroup[]): Record<number, 
   return out
 }
 
-export default function AssignDrawer({ test, onClose }: { test: CareerTestDetail; onClose: () => void }) {
+export default function AssignCard({ test, onClose }: { test: CareerTestDetail; onClose: () => void }) {
   const groups = useCareerGroups()
   const assign = useCareerAssign()
   const [state, setState] = useState<Record<number, Choice> | null>(null)
@@ -45,22 +45,7 @@ export default function AssignDrawer({ test, onClose }: { test: CareerTestDetail
     )
 
   return (
-    <EditDrawer
-      open
-      onClose={onClose}
-      title={t('Кому открыт тест')}
-      sub={test.title}
-      footer={
-        <>
-          <Button disabled={assign.isPending} onClick={save}>
-            {assign.isPending ? t('Сохраняется…') : t('Сохранить')}
-          </Button>
-          <Button variant="outline" onClick={onClose}>
-            {t('Отмена')}
-          </Button>
-        </>
-      }
-    >
+    <Modal title={t('Кому открыт тест')} note={test.title} onClose={onClose}>
       {rows.length === 0 ? (
         <EmptyNote what={tk('у вас нет журнала профориентации — назначать некому')} />
       ) : (
@@ -118,6 +103,14 @@ export default function AssignDrawer({ test, onClose }: { test: CareerTestDetail
           })}
         </Rows>
       )}
-    </EditDrawer>
+      <div className="toolbar ctest__foot">
+        <Button disabled={assign.isPending} onClick={save}>
+          {assign.isPending ? t('Сохраняется…') : t('Сохранить')}
+        </Button>
+        <Button variant="outline" onClick={onClose}>
+          {t('Отмена')}
+        </Button>
+      </div>
+    </Modal>
   )
 }

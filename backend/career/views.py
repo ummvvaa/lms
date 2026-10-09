@@ -573,10 +573,19 @@ def analysis_detail(request, pk: int):
     if "visible_to_student" in body:
         if row.status != AnalysisStatus.DONE and bool(body["visible_to_student"]):
             return _bad(_("Показать ученику можно только готовый разбор"))
+        # первый показ — версия для ученика пишется моделью; без неё показывать нечего (Г1)
+        if bool(body["visible_to_student"]) and not row.summary_student:
+            try:
+                analyses.write_student_version(row, actor=request.user)
+            except analyses.StudentVersionUnavailable as error:
+                return Response({"detail": str(error)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         row.visible_to_student = bool(body["visible_to_student"])
         row.save(update_fields=["visible_to_student"])
     if "summary" in body:
         row.summary = str(body["summary"] or "").strip()
+        edited = True
+    if "summary_student" in body:
+        row.summary_student = str(body["summary_student"] or "").strip()
         edited = True
     for item in body.get("directions") or []:
         did = _int((item or {}).get("id"))
@@ -586,6 +595,7 @@ def analysis_detail(request, pk: int):
         for field_name, limit in (
             ("title", 150),
             ("reasoning", 0),
+            ("reasoning_student", 0),
             ("professions", 300),
             ("subjects", 300),
             ("exams", 300),
@@ -600,7 +610,7 @@ def analysis_detail(request, pk: int):
     if edited:
         row.edited_at = timezone.now()
         row.edited_by = request.user
-        row.save(update_fields=["summary", "edited_at", "edited_by"])
+        row.save(update_fields=["summary", "summary_student", "edited_at", "edited_by"])
     return Response(payloads.analysis_dict(row))
 
 

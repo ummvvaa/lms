@@ -7,7 +7,7 @@ import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useCareerPreview, useCareerUpload, type CareerFileReport } from '../../api/career'
 import { downloadFile } from '../../api/client'
-import EditDrawer from '../../components/EditDrawer'
+import Modal from '../../components/Modal'
 import { Row, Rows, ShowAll } from '../../components/patterns'
 import { Chip, ErrorNote, Loading } from '../../components/ui'
 import { Button } from '../../components/ui/button'
@@ -58,7 +58,7 @@ function Report({ data }: { data: CareerFileReport }) {
   )
 }
 
-export default function UploadDrawer({ onClose }: { onClose: () => void }) {
+export default function UploadCard({ onClose }: { onClose: () => void }) {
   const fileInput = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [data, setData] = useState<CareerFileReport | null>(null)
@@ -66,34 +66,7 @@ export default function UploadDrawer({ onClose }: { onClose: () => void }) {
   const upload = useCareerUpload()
 
   return (
-    <EditDrawer
-      open
-      onClose={onClose}
-      title={t('Загрузить тест')}
-      sub={t('Книга xlsx: «Тест», «Ответы», «Шкалы», «Вопросы», «Интерпретация». Сначала проверка, база не меняется.')}
-      footer={
-        <>
-          <Button
-            disabled={!data?.ok || upload.isPending || !file}
-            onClick={() =>
-              file &&
-              upload.mutate(file, {
-                onSuccess: (test) => {
-                  toast.success(t('Тест «{title}» загружен — включите его и назначьте группам', { title: test.title }))
-                  onClose()
-                },
-                onError: (error) => toast.error(error.message),
-              })
-            }
-          >
-            {upload.isPending ? t('Загружается…') : t('Загрузить')}
-          </Button>
-          <Button variant="outline" onClick={onClose}>
-            {t('Отмена')}
-          </Button>
-        </>
-      }
-    >
+    <Modal wide title={t('Загрузить тест')} note={t('Книга xlsx: «Тест», «Ответы», «Шкалы», «Вопросы», «Интерпретация». Сначала проверка, база не меняется.')} onClose={onClose}>
       <div className="acad__import">
         <Input
           ref={fileInput}
@@ -122,6 +95,26 @@ export default function UploadDrawer({ onClose }: { onClose: () => void }) {
         {preview.isError && <ErrorNote error={preview.error} />}
         {data && <Report data={data} />}
       </div>
-    </EditDrawer>
+      <div className="toolbar ctest__foot">
+        <Button
+          disabled={!data?.ok || upload.isPending || !file}
+          onClick={() =>
+            file &&
+            upload.mutate(file, {
+              onSuccess: (test) => {
+                toast.success(t('Тест «{title}» загружен — включите его и назначьте группам', { title: test.title }))
+                onClose()
+              },
+              onError: (error) => toast.error(error.message),
+            })
+          }
+        >
+          {upload.isPending ? t('Загружается…') : t('Загрузить')}
+        </Button>
+        <Button variant="outline" onClick={onClose}>
+          {t('Отмена')}
+        </Button>
+      </div>
+    </Modal>
   )
 }

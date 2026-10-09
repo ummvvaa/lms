@@ -280,10 +280,30 @@ def test_failed_analysis_keeps_the_reason(passed, karta, teacher, boston, fake):
     )
 
 
+STUDENT_PARSED = {
+    "summary": "У тебя выраженный интерес к биологии и праву.",
+    "directions": [
+        {"order": 1, "why": "Тебе интересна биология — 12 баллов."},
+        {"order": 2, "why": "Право — 6, тебе близко."},
+    ],
+}
+
+
+class TwoStepProvider(FakeProvider):
+    """Первый вызов — разбор для учителя, второй — версия для ученика."""
+
+    def complete(self, **kwargs):
+        from suggestions.providers import Completion, Usage
+
+        self.calls.append(kwargs)
+        parsed = STUDENT_PARSED if len(self.calls) > 1 else PARSED
+        return Completion(content="", parsed=parsed, model="fake-1", external_id="msg", usage=Usage(100, 50), raw={})
+
+
 def test_student_sees_analysis_only_when_shown_and_teacher_edits_text(
     passed, karta, teacher, boston, pupils, fake, curator
 ):
-    fake(FakeProvider(PARSED))
+    provider = fake(TwoStepProvider(PARSED))
     staff = login(teacher)
     staff.post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
     row = CareerAnalysis.objects.get()
@@ -301,17 +321,41 @@ def test_student_sees_analysis_only_when_shown_and_teacher_edits_text(
     )
     assert edited.status_code == 200, edited.content
     body = edited.json()
-    assert (
-        body["summary"] == "Правка учителя"
-        and body["edited_at"]
-        and body["edited_by"]["full_name"] == "Жанар Профориентатор"
-    )
+    assert body["summary"] == "Правка учителя" and body["edited_at"]
+    assert body["edited_by"]["full_name"] == "Жанар Профориентатор"
+    # первый показ — второй вызов модели: версия для ученика на «ты», учитель видит обе
+    assert len(provider.calls) == 2 and "Разбор для учителя" in provider.calls[1]["user"]
+    assert body["summary_student"] == STUDENT_PARSED["summary"] and body["has_student_version"] is True
+    assert body["directions"][0]["reasoning_student"] == "Тебе интересна биология — 12 баллов."
     shown = student.get("/api/career/my/").json()["analyses"]
-    assert len(shown) == 1 and shown[0]["directions"][0]["reasoning"] == "по-другому"
-    assert "created_by" not in shown[0] and "edited_by" not in shown[0], "имена сотрудников ученику не уходят"
+    assert len(shown) == 1
+    assert shown[0]["summary"] == STUDENT_PARSED["summary"], "ученику — его версия"
+    assert shown[0]["directions"][0]["reasoning"] == "Тебе интересна биология — 12 баллов."
+    assert "created_by" not in shown[0] and "edited_by" not in shown[0] and "summary_student" not in shown[0]
+    # повторный показ версию не переписывает; учитель правит версию ученика
+    staff.patch(f"/api/career/analyses/{row.pk}/", {"visible_to_student": False}, format="json")
+    staff.patch(
+        f"/api/career/analyses/{row.pk}/",
+        {"visible_to_student": True, "summary_student": "Своими словами"},
+        format="json",
+    )
+    assert len(provider.calls) == 2
+    assert student.get("/api/career/my/").json()["analyses"][0]["summary"] == "Своими словами"
     # куратор читает разбор своей группы, но не правит
     assert login(curator).get(f"/api/career/analyses/{row.pk}/").status_code == 200
     assert login(curator).patch(f"/api/career/analyses/{row.pk}/", {"summary": "x"}, format="json").status_code == 403
+
+
+def test_show_to_student_fails_without_the_model(passed, karta, teacher, boston, fake):
+    fake(FakeProvider(PARSED))
+    staff = login(teacher)
+    staff.post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
+    row = CareerAnalysis.objects.get()
+    fake(FakeProvider(None, fail=True))
+    refused = staff.patch(f"/api/career/analyses/{row.pk}/", {"visible_to_student": True}, format="json")
+    assert refused.status_code == 503 and "503" in refused.json()["detail"]
+    row.refresh_from_db()
+    assert not row.visible_to_student and row.summary_student == ""
 
 
 def test_analysis_requires_all_chosen_tests(passed, karta, teacher, boston, example_bytes, pupils, fake):

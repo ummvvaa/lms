@@ -27,12 +27,12 @@ import { t, tk, tn } from '../../i18n'
 import { formatDate, formatDateTime } from '../../lib/format'
 import { usePhone } from '../../phone'
 import { GroupPick } from '../academics/shared'
-import AnalysisDrawer from './AnalysisDrawer'
-import AssignDrawer from './AssignDrawer'
-import AttemptDrawer from './AttemptDrawer'
+import AnalysisCard from './AnalysisCard'
+import AssignCard from './AssignCard'
 import StartAnalysisDialog from './StartAnalysisDialog'
 import TestDrawer from './TestDrawer'
-import UploadDrawer from './UploadDrawer'
+import StudentResultsCard from './StudentResultsCard'
+import UploadCard from './UploadCard'
 
 type Tab = 'tests' | 'results' | 'analyses'
 const TABS: Tab[] = ['tests', 'results', 'analyses']
@@ -175,8 +175,8 @@ function TestsTab({ manage }: { manage: boolean }) {
           </Button>
         </div>
       )}
-      {uploading && <UploadDrawer onClose={() => setUploading(false)} />}
-      {assigning !== null && detail.data && <AssignDrawer test={detail.data} onClose={() => setAssigning(null)} />}
+      {uploading && <UploadCard onClose={() => setUploading(false)} />}
+      {assigning !== null && detail.data && <AssignCard test={detail.data} onClose={() => setAssigning(null)} />}
       {current && <TestDrawer row={current} manage={manage} onClose={() => setOpened(null)} />}
     </>
   )
@@ -187,7 +187,8 @@ function TestsTab({ manage }: { manage: boolean }) {
 function ResultsTab({ group, manage }: { group: number | null; manage: boolean }) {
   const phone = usePhone()
   const results = useCareerResults(group)
-  const [opened, setOpened] = useState<number | null>(null)
+  // окно результатов ученика: по клику на строку или на дату сдачи
+  const [opened, setOpened] = useState<{ student: number; attempt: number | null } | null>(null)
   if (group === null) return <DataCard title={t('Результаты')} empty={t('выберите группу')} />
   if (results.isLoading) return <Loading kind="table" />
   if (results.error) return <ErrorNote error={results.error} />
@@ -208,7 +209,7 @@ function ResultsTab({ group, manage }: { group: number | null; manage: boolean }
           const meta = CELL[status]
           if (status === 'done' && cell.attempt)
             return (
-              <Button variant="link" size="sm" onClick={() => setOpened(cell.attempt)}>
+              <Button variant="link" size="sm" onClick={() => setOpened({ student: row.id, attempt: cell.attempt })}>
                 {cell.finished_at ? formatDate(cell.finished_at) : t(meta.label)}
               </Button>
             )
@@ -242,13 +243,15 @@ function ResultsTab({ group, manage }: { group: number | null; manage: boolean }
                 avatar={row.full_name}
                 title={row.full_name}
                 note={cellWords(row)}
+                onOpen={() => setOpened({ student: row.id, attempt: null })}
+                openLabel={t('Открыть')}
                 acts={
                   data.tests.some((test) => row.cells[String(test.id)]?.status === 'done') ? (
                     <>
                       {data.tests
                         .filter((test) => row.cells[String(test.id)]?.status === 'done' && row.cells[String(test.id)]?.attempt)
                         .map((test) => (
-                          <Button key={test.id} variant="outline" size="sm" onClick={() => setOpened(row.cells[String(test.id)].attempt)}>
+                          <Button key={test.id} variant="outline" size="sm" onClick={() => setOpened({ student: row.id, attempt: row.cells[String(test.id)].attempt })}>
                             {row.cells[String(test.id)].finished_at ? formatDate(row.cells[String(test.id)].finished_at ?? '') : t('Баллы')}
                           </Button>
                         ))}
@@ -259,10 +262,10 @@ function ResultsTab({ group, manage }: { group: number | null; manage: boolean }
             ))}
           </Rows>
         ) : (
-          <DataTable columns={columns} rows={data.students} rowKey={(row) => row.id} fit />
+          <DataTable columns={columns} rows={data.students} rowKey={(row) => row.id} fit onRowClick={(row) => setOpened({ student: row.id, attempt: null })} />
         )}
       </DataCard>
-      {opened !== null && <AttemptDrawer attempt={opened} manage={manage} onClose={() => setOpened(null)} />}
+      {opened !== null && <StudentResultsCard student={opened.student} attempt={opened.attempt} manage={manage} onClose={() => setOpened(null)} />}
     </>
   )
 }
@@ -336,7 +339,7 @@ function AnalysesTab({ group, manage }: { group: number | null; manage: boolean 
         </div>
       )}
       {starting && <StartAnalysisDialog group={group} tests={data.tests} onClose={() => setStarting(false)} />}
-      {current && <AnalysisDrawer analysis={current} manage={manage} onClose={() => setOpened(null)} />}
+      {current && <AnalysisCard analysis={current} manage={manage} onClose={() => setOpened(null)} />}
     </>
   )
 }

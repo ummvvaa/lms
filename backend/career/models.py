@@ -300,6 +300,9 @@ class CareerAnalysis(models.Model):
     )
     language = models.CharField(gettext_lazy("Язык разбора"), max_length=2, default="ru")
     summary = models.TextField(gettext_lazy("Общий вывод"), blank=True)
+    #: та же мысль для ученика — на «ты», про его интересы, без слов про обсуждение
+    #: с учителем; пишется отдельным вызовом при первом «Показать ученику» (Г1)
+    summary_student = models.TextField(gettext_lazy("Общий вывод для ученика"), blank=True)
     error = models.CharField(gettext_lazy("Что пошло не так"), max_length=300, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -339,6 +342,8 @@ class CareerAnalysisDirection(models.Model):
     order = models.PositiveSmallIntegerField(gettext_lazy("Порядок"), default=1)
     title = models.CharField(gettext_lazy("Направление"), max_length=150)
     reasoning = models.TextField(gettext_lazy("Почему подходит"), blank=True)
+    #: объяснение для ученика, на «ты»
+    reasoning_student = models.TextField(gettext_lazy("Почему подходит — для ученика"), blank=True)
     professions = models.CharField(gettext_lazy("Профессии"), max_length=300, blank=True)
     subjects = models.CharField(gettext_lazy("Какие предметы нужны"), max_length=300, blank=True)
     exams = models.CharField(gettext_lazy("Какие экзамены нужны"), max_length=300, blank=True)

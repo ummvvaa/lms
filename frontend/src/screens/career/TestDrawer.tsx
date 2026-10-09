@@ -19,7 +19,7 @@ import { Button } from '../../components/ui/button'
 import { Switch } from '../../components/ui/switch'
 import { t, tn } from '../../i18n'
 import { formatDate } from '../../lib/format'
-import AssignDrawer from './AssignDrawer'
+import AssignCard from './AssignCard'
 
 export default function TestDrawer({ row, manage, onClose }: { row: CareerTestRow; manage: boolean; onClose: () => void }) {
   const query = useCareerTest(row.id)
@@ -41,7 +41,7 @@ export default function TestDrawer({ row, manage, onClose }: { row: CareerTestRo
     )
   const download = () => void downloadFile(`/career/tests/${row.id}/file/`, row.file_name || `career-test-${row.id}.xlsx`).catch((error: Error) => toast.error(error.message))
 
-  if (assigning && test) return <AssignDrawer test={test} onClose={() => setAssigning(false)} />
+  if (assigning && test) return <AssignCard test={test} onClose={() => setAssigning(false)} />
 
   const groupsNote = (test?.groups ?? []).map((g) => (g.whole ? t('{group} — вся группа', { group: g.code }) : t('{group} — {n}', { group: g.code, n: tn(g.students.length, '{n} ученик|{n} ученика|{n} учеников') })))
 

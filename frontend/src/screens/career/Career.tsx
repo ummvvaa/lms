@@ -7,9 +7,9 @@ import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useMyCareer, useMyStart, type CareerAnalysis, type MyCareer } from '../../api/career'
 import { Row, Rows } from '../../components/patterns'
-import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t, tk, tn } from '../../i18n'
+import { t, tn } from '../../i18n'
 import { formatDate } from '../../lib/format'
 
 type MyTest = MyCareer['tests'][number]
@@ -96,20 +96,6 @@ export default function Career() {
           {analyses.map((analysis) => (
             <AnalysisCard key={analysis.id} analysis={analysis} />
           ))}
-        </div>
-        <div className="acad__stack">
-          <DataCard title={t('Как это устроено')}>
-            <Rows>
-              <Row lead={<b className="num stu__slot">1</b>} title={t('Отвечайте на каждое утверждение — правильных ответов нет')} />
-              <Row lead={<b className="num stu__slot">2</b>} title={t('Ответы сохраняются сами, тест можно закончить позже')} />
-              <Row lead={<b className="num stu__slot">3</b>} title={t('После сдачи вы увидите баллы по сферам интересов')} />
-            </Rows>
-          </DataCard>
-          {analyses.length === 0 && tests.length > 0 && (
-            <DataCard title={t('Разбор от учителя')}>
-              <EmptyNote what={tk('учитель покажет разбор после обсуждения результатов')} />
-            </DataCard>
-          )}
         </div>
       </div>
     </div>
