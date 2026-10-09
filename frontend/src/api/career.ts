@@ -144,6 +144,8 @@ export interface CareerResults {
 
 export interface CareerAnalyses {
   manage: boolean
+  /** показываются ли разборы ученику (флаг сервера); нет — переключателя и версии на «ты» на экране нет */
+  student_sees: boolean
   group: { id: number; code: string; parallel: number } | null
   tests: { id: number; title: string; done: number }[]
   analyses: CareerAnalysis[]

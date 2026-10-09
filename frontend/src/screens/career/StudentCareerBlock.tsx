@@ -58,8 +58,8 @@ export default function StudentCareerBlock({ studentId, manage = false }: { stud
               title={row.tests.map((test) => test.title).join(', ')}
               note={[formatDateTime(row.created_at), tn(row.directions.length, '{n} направление|{n} направления|{n} направлений')].join(' · ')}
               right={
-                <Chip size="sm" tone={row.status === 'done' ? (row.visible_to_student ? 'good' : 'neutral') : row.status === 'failed' ? 'bad' : 'warn'}>
-                  {row.status === 'done' ? (row.visible_to_student ? t('показан ученику') : t('готов')) : row.status_title}
+                <Chip size="sm" tone={row.status === 'done' ? 'good' : row.status === 'failed' ? 'bad' : 'warn'}>
+                  {row.status === 'done' ? t('готов') : row.status_title}
                 </Chip>
               }
               onOpen={() => setAnalysis(row.id)}

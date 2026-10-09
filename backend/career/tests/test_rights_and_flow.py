@@ -327,7 +327,17 @@ def test_student_sees_analysis_only_when_shown_and_teacher_edits_text(
     assert len(provider.calls) == 2 and "Разбор для учителя" in provider.calls[1]["user"]
     assert body["summary_student"] == STUDENT_PARSED["summary"] and body["has_student_version"] is True
     assert body["directions"][0]["reasoning_student"] == "Тебе интересна биология — 12 баллов."
-    shown = student.get("/api/career/my/").json()["analyses"]
+    # ученику разборы скрыты (решение владельца, 09.10.2026): только баллы; версия на «ты»
+    # остаётся у учителя и включится флагом `STUDENT_SEES_ANALYSIS`
+    assert student.get("/api/career/my/").json()["analyses"] == []
+    from career import views
+
+    monkeypatch_flag = views.STUDENT_SEES_ANALYSIS
+    views.STUDENT_SEES_ANALYSIS = True
+    try:
+        shown = student.get("/api/career/my/").json()["analyses"]
+    finally:
+        views.STUDENT_SEES_ANALYSIS = monkeypatch_flag
     assert len(shown) == 1
     assert shown[0]["summary"] == STUDENT_PARSED["summary"], "ученику — его версия"
     assert shown[0]["directions"][0]["reasoning"] == "Тебе интересна биология — 12 баллов."
@@ -340,7 +350,8 @@ def test_student_sees_analysis_only_when_shown_and_teacher_edits_text(
         format="json",
     )
     assert len(provider.calls) == 2
-    assert student.get("/api/career/my/").json()["analyses"][0]["summary"] == "Своими словами"
+    row.refresh_from_db()
+    assert row.summary_student == "Своими словами"
     # куратор читает разбор своей группы, но не правит
     assert login(curator).get(f"/api/career/analyses/{row.pk}/").status_code == 200
     assert login(curator).patch(f"/api/career/analyses/{row.pk}/", {"summary": "x"}, format="json").status_code == 403

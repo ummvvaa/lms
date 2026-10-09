@@ -40,6 +40,10 @@ from core.i18n import language_of
 from students.models import Student, StudyGroup
 
 MAX_UPLOAD = 5 * 1024 * 1024
+#: Ученику показываются только его баллы; разборы ему не отдаются (решение владельца,
+#: 09.10.2026: «скроем, удалять не надо»). Механика показа и версия на «ты» остаются
+#: в коде и базе — включается этим флагом.
+STUDENT_SEES_ANALYSIS = False
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
@@ -483,6 +487,7 @@ def analyses_view(request):
     return Response(
         {
             "manage": rights.manages(request.user),
+            "student_sees": STUDENT_SEES_ANALYSIS,
             "group": {"id": group.pk, "code": group.code, "parallel": group.parallel},
             "tests": [{"id": r["test_id"], "title": r["test__title"], "done": r["n"]} for r in done],
             "analyses": [payloads.analysis_dict(a) for a in rows],
@@ -648,7 +653,11 @@ def my(request):
                 "finished_at": attempt.finished_at if attempt else None,
             }
         )
-    shown = CareerAnalysis.objects.filter(student=student, visible_to_student=True, status=AnalysisStatus.DONE)
+    shown = (
+        CareerAnalysis.objects.filter(student=student, visible_to_student=True, status=AnalysisStatus.DONE)
+        if STUDENT_SEES_ANALYSIS
+        else CareerAnalysis.objects.none()
+    )
     return Response({"tests": out, "analyses": [payloads.analysis_dict(a, for_student=True) for a in shown]})
 
 

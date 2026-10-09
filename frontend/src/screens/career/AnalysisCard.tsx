@@ -19,7 +19,7 @@ import { formatDateTime } from '../../lib/format'
 type Version = 'teacher' | 'student'
 type Draft = { summary: string; summary_student: string; directions: Record<number, Partial<CareerDirection>> }
 
-export default function AnalysisCard({ analysis, manage, onClose }: { analysis: CareerAnalysis; manage: boolean; onClose: () => void }) {
+export default function AnalysisCard({ analysis, manage, studentSees = false, onClose }: { analysis: CareerAnalysis; manage: boolean; /** ученику разборы показываются (флаг сервера); нет — переключатель и вкладка «Для ученика» скрыты */ studentSees?: boolean; onClose: () => void }) {
   const patch = useCareerAnalysisPatch()
   const [version, setVersion] = useState<Version>('teacher')
   const [draft, setDraft] = useState<Draft>({ summary: analysis.summary, summary_student: analysis.summary_student ?? '', directions: {} })
@@ -67,16 +67,16 @@ export default function AnalysisCard({ analysis, manage, onClose }: { analysis: 
         <span className="t-note">{formatDateTime(analysis.created_at)}</span>
         {analysis.created_by && <span className="t-note">{t('запустил {name}', { name: analysis.created_by.short })}</span>}
         {analysis.edited_at && analysis.edited_by && <Chip size="sm" tone="info">{t('правил {name}', { name: analysis.edited_by.short })}</Chip>}
-        {analysis.visible_to_student && <Chip size="sm" tone="good">{t('показан ученику')}</Chip>}
+        {studentSees && analysis.visible_to_student && <Chip size="sm" tone="good">{t('показан ученику')}</Chip>}
       </div>
       {analysis.error && <p className="acad__note">{analysis.error}</p>}
-      {manage && analysis.status === 'done' && (
+      {manage && studentSees && analysis.status === 'done' && (
         <label className="field__check">
           <Switch checked={analysis.visible_to_student} disabled={patch.isPending} onCheckedChange={(on) => show(Boolean(on))} />
           <span className="field__checklabel">{patch.isPending && !analysis.visible_to_student ? t('Модель пишет версию для ученика…') : t('Показать ученику')}</span>
         </label>
       )}
-      {analysis.status === 'done' && (
+      {analysis.status === 'done' && studentSees && (
         <ScreenTabs
           value={version}
           onChange={setVersion}

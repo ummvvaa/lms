@@ -294,13 +294,13 @@ function AnalysesTab({ group, manage }: { group: number | null; manage: boolean 
     { key: 'tests', title: t('Тесты'), width: '24%', cell: (row) => row.tests.map((test) => test.title).join(', ') },
     { key: 'when', title: t('Когда'), width: '16%', align: 'right', sortBy: (row) => row.created_at, cell: (row) => <span className="num">{formatDateTime(row.created_at)}</span> },
     { key: 'state', title: t('Состояние'), width: '12%', cell: stateChip, sortBy: (row) => row.status },
-    {
+    ...(data.student_sees ? [{
       key: 'shown',
       title: t('Ученику'),
       width: '12%',
       sortBy: (row) => (row.visible_to_student ? 0 : 1),
-      cell: (row) => (row.visible_to_student ? <Chip size="sm" tone="good">{t('показан')}</Chip> : <span className="t-note">{t('нет')}</span>),
-    },
+      cell: (row: CareerAnalysis) => (row.visible_to_student ? <Chip size="sm" tone="good">{t('показан')}</Chip> : <span className="t-note">{t('нет')}</span>),
+    } as Column<CareerAnalysis>] : []),
     {
       key: 'open',
       title: '',
@@ -339,7 +339,7 @@ function AnalysesTab({ group, manage }: { group: number | null; manage: boolean 
         </div>
       )}
       {starting && <StartAnalysisDialog group={group} tests={data.tests} onClose={() => setStarting(false)} />}
-      {current && <AnalysisCard analysis={current} manage={manage} onClose={() => setOpened(null)} />}
+      {current && <AnalysisCard analysis={current} manage={manage} studentSees={data.student_sees} onClose={() => setOpened(null)} />}
     </>
   )
 }
