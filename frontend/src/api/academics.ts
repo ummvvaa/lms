@@ -494,8 +494,23 @@ export interface TeacherRow extends AcadTeacher {
   courses?: (AcadCourse & { hours: number; students: number })[]
 }
 
+/** Учитель только расписания: журналы предметов Kundelik, в LMS не входит (09.10.2026). */
+export interface ScheduleOnlyTeacher {
+  id: number
+  full_name: string
+  email: string | null
+  is_active: boolean
+  subject_titles: string
+  cohorts: string[]
+  hours: number
+}
+
 export interface TeachersScreen {
   rows: TeacherRow[]
+  /** учителя предметов, которые ведутся не в LMS: отдельной вкладкой, без действий */
+  schedule_only: ScheduleOnlyTeacher[]
+  /** закрыть им вход может администратор */
+  may_close: boolean
   kpis: { teachers: number; with_lessons: number; journals: number; unmarked_teachers: number; substitutions: number }
   subjects: AcadSubject[]
   may_create: boolean
@@ -846,6 +861,9 @@ export const useUpdateTeacher = () =>
 export const useRemindTeacher = () => useAcadMutation((id: number) => post<{ reminded: number }>(`/acad/teachers/${id}/remind/`, {}))
 
 export const useRemindAllTeachers = () => useAcadMutation(() => post<{ teachers: number }>('/acad/teachers/remind-all/', {}))
+
+/** Закрыть вход всем учителям «только расписание»: учётки выключаются, уроки остаются. */
+export const useCloseScheduleOnly = () => useAcadMutation(() => post<{ closed: number }>('/acad/teachers/close-schedule-only/', {}))
 
 /** Раздел отчёта родителям у журнала: GE/EEP, SAT Verbal, SAT Math или нет. */
 export const useCourseReportRole = () =>

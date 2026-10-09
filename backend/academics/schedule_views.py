@@ -712,11 +712,16 @@ def teachers_list(request):
     if refusal:
         return refusal
     calendar = school_calendar.load()
-    rows = [_teacher_row(user, calendar) for user in teachers.teachers()]
+    # в списке — только те, кто ведёт предметы LMS или ждёт расписания; учителя
+    # предметов Kundelik — отдельной вкладкой, без действий (решение владельца, 09.10.2026)
+    rows = [_teacher_row(user, calendar) for user in teachers.lms_teachers()]
+    schedule_only = [teachers.schedule_only_row(user) for user in teachers.schedule_only_teachers()]
     start = week_start(today())
     return Response(
         {
             "rows": rows,
+            "schedule_only": schedule_only,
+            "may_close": request.user.role == ROLE_ADMIN,
             "kpis": {
                 "teachers": len(rows),
                 "with_lessons": sum(1 for r in rows if r["hours"]),
@@ -730,6 +735,29 @@ def teachers_list(request):
             "may_create": request.user.role == ROLE_ADMIN,
         }
     )
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def teachers_close_schedule_only(request):
+    """Закрыть вход всем учителям «только расписание»: учётка выключается, уроки остаются.
+
+    Учётные записи — дело администратора; каждое выключение — в журнале.
+    """
+    from accounts.services import deactivate
+    from core.audit import apply_changes
+
+    if request.user.role != ROLE_ADMIN:
+        return _forbid(_("Вход учителям закрывает администратор"))
+    closed = 0
+    for user in teachers.schedule_only_teachers():
+        if not user.is_active:
+            continue
+        apply_changes(user, {"is_active": False}, actor=request.user)
+        deactivate(user)
+        closed += 1
+    return Response({"closed": closed})
 
 
 @extend_schema(responses={200: dict})

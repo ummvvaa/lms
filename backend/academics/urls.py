@@ -46,6 +46,7 @@ urlpatterns = [
     path("acad/cohorts/<int:pk>/", schedule_views.cohort, name="acad-cohort"),
     path("acad/teachers/", schedule_views.teachers_list, name="acad-teachers"),
     path("acad/teachers/remind-all/", schedule_views.teachers_remind_all, name="acad-teachers-remind-all"),
+    path("acad/teachers/close-schedule-only/", schedule_views.teachers_close_schedule_only, name="acad-teachers-close"),
     path("acad/teachers/<int:pk>/", schedule_views.teacher_detail, name="acad-teacher"),
     path("acad/teachers/<int:pk>/remind/", schedule_views.teacher_remind, name="acad-teacher-remind"),
     # успеваемость

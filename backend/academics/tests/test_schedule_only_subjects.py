@@ -215,3 +215,40 @@ def test_report_never_names_schedule_only_subjects(
     facts = collect(ParentReport.objects.get(pk=report.pk))
     assert {item.course.subject.code for item in facts.courses} <= {s.code for s in school_subjects.values()}
     assert all("Алгебра" not in comment for item in facts.courses for comment in item.comments)
+
+
+# --- «Учителя»: вкладки «Ведут в LMS» и «Только расписание» (09.10.2026) -----------
+
+
+def test_teachers_screen_splits_lms_and_schedule_only(
+    schedule_only, lesson, eng_lesson, teacher, other_teacher, make_user, as_kymbat
+):
+    """Учитель алгебры (только расписание) уходит во вторую вкладку, английского — остаётся;
+    новый учитель без журналов остаётся в первой — ему ещё поставят расписание."""
+    fresh = make_user(Role.TEACHER, "fresh.acad@example.kz", full_name="Новый Учитель")
+    data = as_kymbat.get("/api/acad/teachers/").json()
+    assert {row["id"] for row in data["rows"]} == {other_teacher.pk, fresh.pk}
+    only = {row["id"]: row for row in data["schedule_only"]}
+    assert set(only) == {teacher.pk}
+    assert only[teacher.pk]["is_active"] is True and only[teacher.pk]["hours"] == 0
+    assert "Алгебра" in only[teacher.pk]["subject_titles"]
+    assert data["kpis"]["teachers"] == 2 and data["may_close"] is False
+
+
+def test_closing_access_disables_schedule_only_teachers_only(
+    schedule_only, lesson, eng_lesson, teacher, other_teacher, as_kymbat, as_admin
+):
+    assert as_kymbat.post("/api/acad/teachers/close-schedule-only/").status_code == 403
+    answer = as_admin.post("/api/acad/teachers/close-schedule-only/")
+    assert answer.status_code == 200 and answer.json() == {"closed": 1}
+    teacher.refresh_from_db()
+    other_teacher.refresh_from_db()
+    assert not teacher.is_active and other_teacher.is_active
+    # урок остаётся с его фамилией, выключенный учитель по-прежнему во второй вкладке
+    lesson.refresh_from_db()
+    assert lesson.teacher_id == teacher.pk
+    data = as_admin.get("/api/acad/teachers/").json()
+    assert [row["is_active"] for row in data["schedule_only"]] == [False]
+    assert data["may_close"] is True
+    # повтор ничего не меняет
+    assert as_admin.post("/api/acad/teachers/close-schedule-only/").json() == {"closed": 0}

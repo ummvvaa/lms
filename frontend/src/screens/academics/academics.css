@@ -838,3 +838,20 @@ body [data-slot='button'][data-variant].acad__heatcell {
     max-width: 100%;
   }
 }
+
+/* панель учителя: журнал — название во всю ширину, действия строкой ниже */
+.tdrawer__course {
+  display: grid;
+  gap: calc(var(--space) * 1);
+}
+
+.tdrawer__course + .tdrawer__course {
+  margin-top: calc(var(--space) * 2);
+}
+
+.tdrawer__acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: calc(var(--space) * 2);
+}

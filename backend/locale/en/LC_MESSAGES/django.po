@@ -17032,3 +17032,7 @@ msgstr "no scale is above the threshold — nothing to analyse"
 #: career
 msgid "сданы не все выбранные тесты"
 msgstr "not all chosen tests are completed"
+
+#: academics
+msgid "Вход учителям закрывает администратор"
+msgstr "Teacher access is closed by the administrator"

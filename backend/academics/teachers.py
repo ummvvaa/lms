@@ -47,6 +47,61 @@ def teachers() -> list[User]:
     return list(teaching_users().order_by("full_name", "email"))
 
 
+def in_lms(user) -> bool:
+    """Место учителя в LMS: ведёт предмет «ведётся в LMS» или у него ещё нет журналов.
+
+    Новый учитель без расписания остаётся в списке — ему журнал ещё поставят;
+    учитель только предметов Kundelik — нет (решение владельца, 09.10.2026).
+    """
+    if teaches(user):
+        return True
+    return not Course.objects.filter(teacher=user, archived_at__isnull=True).exists()
+
+
+def lms_teachers() -> list[User]:
+    """Учителя раздела «Учителя»: ведут предметы LMS или ждут расписания."""
+    return [user for user in teachers() if in_lms(user)]
+
+
+def schedule_only_teachers() -> list[User]:
+    """Учителя только расписания: журналы есть, но ни одного предмета, который ведётся в LMS.
+
+    Берутся и выключенные учётные записи: в расписании они стоят как есть,
+    а в LMS им входить незачем. Сотрудники других ролей с уроками сюда
+    не попадают — у них свой кабинет.
+    """
+    rows = (
+        User.objects.filter(role=Role.TEACHER)
+        .filter(Exists(Course.objects.filter(teacher=OuterRef("pk"), archived_at__isnull=True)))
+        .order_by("full_name", "email")
+    )
+    return [user for user in rows if not teaches(user)]
+
+
+def schedule_only_row(user: User) -> dict:
+    """Строка вкладки «Только расписание»: предметы, уроки в неделю, составы."""
+    from academics.models import LessonSeries
+
+    courses = list(
+        Course.objects.filter(teacher=user, archived_at__isnull=True)
+        .select_related("subject", "cohort")
+        .order_by("subject__order", "cohort__name")
+    )
+    subjects = sorted({course.subject.name for course in courses})
+    cohorts = sorted({course.cohort.name for course in courses})
+    return {
+        "id": user.pk,
+        "full_name": user.full_name or user.handle,
+        "email": user.email,
+        "is_active": user.is_active,
+        "subject_titles": ", ".join(subjects),
+        "cohorts": cohorts,
+        "hours": LessonSeries.objects.filter(
+            course__teacher=user, ends__gte=today(), course__archived_at__isnull=True
+        ).count(),
+    }
+
+
 def profile_of(user: User) -> TeacherProfile:
     profile, _ = TeacherProfile.objects.get_or_create(user=user)
     return profile
