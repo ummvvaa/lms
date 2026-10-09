@@ -855,3 +855,11 @@ body [data-slot='button'][data-variant].acad__heatcell {
   align-items: flex-end;
   gap: calc(var(--space) * 2);
 }
+
+/* карточка учителя: выбранные предметы чипами */
+.tdrawer__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 1);
+  margin-bottom: calc(var(--space) * 2);
+}

@@ -38,7 +38,6 @@ import {
   Chip,
   counted,
   DataCard,
-  EmptyNote,
   ErrorNote,
   Kpi,
   Loading,
@@ -46,7 +45,7 @@ import {
   ScreenTabs,
 } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t, tk, tn } from '../../i18n'
+import { t, tn } from '../../i18n'
 import { usePhone } from '../../phone'
 import { todayAlmaty } from '../../lib/dates'
 import { dateShort, dateWords } from './shared'
@@ -226,6 +225,12 @@ function TeacherDrawer({
     }
   }, [detail.data])
   const data = detail.data
+  // предметы LMS первыми: учителю LMS их назначают чаще всего
+  const all = [...(meta.data?.subjects ?? [])].sort(
+    (a, b) => Number(b.in_lms) - Number(a.in_lms) || a.title.localeCompare(b.title),
+  )
+  const chosen = all.filter((s) => subjects.has(s.id))
+  const rest = all.filter((s) => !subjects.has(s.id))
   return (
     <>
       <EditDrawer
@@ -284,29 +289,41 @@ function TeacherDrawer({
               placeholder={t('например, 305')}
             />
             <span className="t-caps">{t('Предметы')}</span>
-            {(meta.data?.subjects ?? []).length === 0 && (
-              <EmptyNote
-                what={tk('предметов с галочкой «Показывать в списках» нет')}
-                who={tk('ведёт Кымбат в «Учебном годе»')}
-              />
-            )}
-            <div className="acad__checklist">
-              {(meta.data?.subjects ?? []).map((s) => (
-                <Field
+            {/* выбранные — чипами со снятием, добавление — списком: рамка с галочками
+                на двадцать предметов не читалась (решение владельца, 09.10.2026) */}
+            <div className="tdrawer__chips">
+              {chosen.length === 0 && <span className="t-note">{t('предметы не назначены')}</span>}
+              {chosen.map((s) => (
+                <Button
                   key={s.id}
-                  kind="checkbox"
-                  name={`subj${s.id}`}
-                  label={s.title}
-                  checked={subjects.has(s.id)}
-                  onChange={(on) => {
-                    const next = new Set(subjects)
-                    if (on) next.add(s.id)
-                    else next.delete(s.id)
-                    setSubjects(next)
-                  }}
-                />
+                  variant="secondary"
+                  size="sm"
+                  aria-label={t('Снять предмет {subject}', { subject: s.title })}
+                  onClick={() => setSubjects((prev) => new Set([...prev].filter((id) => id !== s.id)))}
+                >
+                  {s.title} ×
+                </Button>
               ))}
             </div>
+            <Field
+              kind="select"
+              name="add-subject"
+              label={t('Добавить предмет')}
+              value=""
+              placeholder={t('выберите предмет')}
+              onChange={(value) => value && setSubjects((prev) => new Set([...prev, Number(value)]))}
+              options={rest.map((s) => ({
+                value: String(s.id),
+                title: s.in_lms ? s.title : t('{subject} — только расписание', { subject: s.title }),
+              }))}
+              hint={
+                rest.length === 0
+                  ? all.length === 0
+                    ? t('предметов с галочкой «Показывать в списках» нет — их ведёт Кымбат в «Учебном годе»')
+                    : t('все предметы уже назначены')
+                  : undefined
+              }
+            />
             <DataCard
               title={t('Журналы')}
               count={data.courses?.length || undefined}
