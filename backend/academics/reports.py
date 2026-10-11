@@ -149,6 +149,13 @@ def build_lines(  # i18n-skip: язык отчёта (стандартный —
         for item in student_summary(student.pk, start, min(end, today()), scale, quarter=quarter):
             course, stats = item["course"], item["stats"]
             missed = stats.absent + stats.excused
+            if course.subject.is_career:
+                from career.passing import passed_at
+
+                day = passed_at(student.pk, min(end, today()))
+                value = f"тест сдан {day:%d.%m.%Y}" if day else "тест не сдан"
+                add(ReportSection.GRADES, course.subject.title, value, f"пропусков {missed}" if missed else "")
+                continue
             if course.subject.scheme == Scheme.FO:
                 value = f"ФО {_fmt(stats.fo_avg)}" if stats.fo_avg is not None else NO_GRADES
                 add(ReportSection.GRADES, course.subject.title, value, f"пропусков {missed}" if missed else "")

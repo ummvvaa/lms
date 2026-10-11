@@ -108,9 +108,11 @@ export default function GradesTab({ studentId }: { studentId: number }) {
                     icon="book"
                     tone="neutral"
                     title={item.course.subject.title}
-                    note={[s.fo_avg !== null ? t('ФО {value}', { value: s.fo_avg }) : '', s.sor_max ? t('СОР {got}/{max}', { got: s.sor_got, max: s.sor_max }) : '', s.soch_max ? t('СОЧ {got}/{max}', { got: s.soch_got, max: s.soch_max }) : '', tn(s.absent + s.excused, '{n} пропуск|{n} пропуска|{n} пропусков')].filter(Boolean).join(' · ')}
+                    note={[item.career ? '' : s.fo_avg !== null ? t('ФО {value}', { value: s.fo_avg }) : '', s.sor_max ? t('СОР {got}/{max}', { got: s.sor_got, max: s.sor_max }) : '', s.soch_max ? t('СОЧ {got}/{max}', { got: s.soch_got, max: s.soch_max }) : '', tn(s.absent + s.excused, '{n} пропуск|{n} пропуска|{n} пропусков')].filter(Boolean).join(' · ')}
                     right={
-                      item.course.subject.scheme === 'kz' ? (
+                      item.career ? (
+                        item.career.passed_at ? <Chip tone="good">{t('тест сдан {date}', { date: dateWords(item.career.passed_at) })}</Chip> : <Chip tone="neutral">{t('тест не сдан')}</Chip>
+                      ) : item.course.subject.scheme === 'kz' ? (
                         grade !== null ? (
                           <Chip tone={gradeTone(grade) as Tone}>{s.final !== null ? t('итог {grade}', { grade }) : t('выходит {grade}', { grade })}</Chip>
                         ) : (

@@ -114,7 +114,8 @@ def marks_lesson(user, lesson) -> bool:
 
 def grades_lesson(user, lesson) -> bool:
     """Ставит оценку тот же, кто отмечает; Кымбат правит оценки после окна."""
-    if not lesson.in_lms:
+    if not lesson.in_lms or lesson.course.subject.is_career:
+        # профориентация без оценок: «сдан / не сдан» по профтесту (решение владельца, 11.10.2026)
         return False
     role = getattr(user, "role", "")
     if role in (ROLE_ADMIN, EXAM_DIRECTOR):

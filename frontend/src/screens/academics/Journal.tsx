@@ -422,7 +422,13 @@ function AssessmentDialog({ journal, onClose }: { journal: JournalData; onClose:
 }
 
 /** Одна клетка сводки справа: пропуски, ФО, СОР, СОЧ, «сейчас». */
-function summaryCell(stats: JournalData['rows'][number]['stats'], which: string) {
+function summaryCell(stats: JournalData['rows'][number]['stats'], which: string, career?: JournalData['rows'][number]['career']) {
+  if (which === 's-test')
+    return (
+      <div className="jsum">
+        {career?.passed_at ? <Chip tone="good">{t('сдан {date}', { date: dateShort(career.passed_at) })}</Chip> : <Chip tone="neutral">{t('не сдан')}</Chip>}
+      </div>
+    )
   if (which === 's-abs') {
     const marks = [stats.absent ? t('{n}н', { n: stats.absent }) : '', stats.excused ? t('{n}у', { n: stats.excused }) : '', stats.late ? t('{n}оп', { n: stats.late }) : '']
       .filter(Boolean)
@@ -480,6 +486,8 @@ export default function Journal() {
     setParams(next, { replace: true })
   }
   const kz = data.scheme === 'kz'
+  // профориентация: оценок нет, справа — «сдан DD.MM / не сдан» по профтесту
+  const passOnly = Boolean(data.pass_only)
   const columns: MatrixColumn[] = data.columns.map((column) => ({
     key: column.lesson,
     title: dateShort(column.date),
@@ -487,7 +495,7 @@ export default function Journal() {
   }))
   const summaryColumns: MatrixColumn[] = [
     { key: 's-abs', title: t('Пропуски') },
-    { key: 's-fo', title: t('ФО') },
+    ...(passOnly ? [{ key: 's-test', title: t('Профтест') }] : [{ key: 's-fo', title: t('ФО') }]),
     ...(kz ? [{ key: 's-sor', title: t('СОР') }, { key: 's-soch', title: t('СОЧ') }, { key: 's-now', title: t('Сейчас') }] : []),
   ]
   const rows: MatrixRow[] = data.rows.map((row) => ({ key: row.id, title: row.full_name, sub: data.course.cohort.kind === 'stream' ? row.group : undefined }))
@@ -548,6 +556,10 @@ export default function Journal() {
       return
     }
     if (/^[0-9]$/.test(key)) {
+      if (passOnly) {
+        toast.error(t('У профориентации нет оценок: результат — «сдан» или «не сдан» по профтесту'))
+        return
+      }
       if (column.kind !== 'fo') {
         setSelected(cell)
         return
@@ -571,7 +583,7 @@ export default function Journal() {
         title={data.course.subject.title}
         crumb={{ label: t('Журналы'), to: data.is_owner ? '/journals' : '/schedule' }}
         pills={[{ label: data.course.cohort.name, on: true }, { label: data.course.cohort.kind_title }]}
-        subtitle={`${counted(data.rows.length, 'ученик|ученика|учеников')} · ${data.course.subject.scheme_title} · ${data.course.teacher?.full_name ?? ''}`}
+        subtitle={`${counted(data.rows.length, 'ученик|ученика|учеников')} · ${passOnly ? t('без оценок: сдан или не сдан по профтесту') : data.course.subject.scheme_title} · ${data.course.teacher?.full_name ?? ''}`}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => setDialog('export')}>
@@ -689,7 +701,7 @@ export default function Journal() {
               if (!line || !slot) return null
               if (slot.kind === 'lesson') return cellNode(line.cells[slot.index], data.columns[slot.index], mode)
               if (slot.kind === 'hw') return homeworkNode(line.homework?.[slot.index], mayReview ? `/homework-review/${hwColumns[slot.index].assignment}?student=${line.id}` : null)
-              return summaryCell(line.stats, slot.key)
+              return summaryCell(line.stats, slot.key, line.career)
             }}
           />
           <div className="jlegend">

@@ -44,6 +44,8 @@ DAYS_MISSED = "days_missed"
 LATE = "late"
 PCT = "pct"
 GRADE = "grade"
+#: профориентация — одна строка «сдан DD.MM.YYYY» или «не сдан», не ФО
+CAREER_TEST = "career_test"
 ENGLISH_LEVEL = "english_level"
 SPORT = "sport"
 IELTS_PARTS = ("listening", "reading", "writing", "speaking", "overall")
@@ -145,7 +147,7 @@ def fo_grades(student_id: int, start: dt.date, end: dt.date) -> list[SubjectGrad
     """
     from academics.results import student_courses
 
-    courses = student_courses(student_id, min(end, today()))
+    courses = [c for c in student_courses(student_id, min(end, today())) if not c.subject.is_career]
     by_subject: dict[int, SubjectGrades] = {}
     for course in courses:
         by_subject.setdefault(course.subject_id, SubjectGrades(subject=course.subject, values=[]))
@@ -182,6 +184,25 @@ def fo_grades(student_id: int, start: dt.date, end: dt.date) -> list[SubjectGrad
             item.homework.append(row.grade)
             item.weight = weight
     return list(by_subject.values())
+
+
+#: подпись строки снимка — на русском, как все подписи снимка; экран переводит её сам
+CAREER_TITLE = "Профориентационный тест"  # i18n-skip: подпись снимка хранится по-русски, экран переводит
+
+
+def career_line(student_id: int, end: dt.date) -> tuple[str, str] | None:
+    """«Профориентационный тест: сдан DD.MM.YYYY / не сдан» — только у ученика с уроками профориентации.
+
+    Значение идёт в файл отчёта на языке отчёта: снимок собирается под
+    `translation.override(язык отчёта)`, от собравшего оно не зависит.
+    """
+    from academics.results import student_courses
+    from career.passing import passed_at
+
+    if not any(c.subject.is_career for c in student_courses(student_id, min(end, today()))):
+        return None
+    day = passed_at(student_id, min(end, today()))
+    return (CAREER_TITLE, _("сдан {date}").format(date=f"{day:%d.%m.%Y}") if day else _("не сдан"))
 
 
 def latest_mock(student_id: int, exam_type: str, start: dt.date, end: dt.date):
@@ -253,6 +274,9 @@ def build_lines(  # i18n-skip: подписи снимка хранятся в �
         else:
             value = ", ".join(str(v) for v in row.values)
         add(ReportSection.GRADES, GRADE, subject_title(row.subject, language), value)
+    career = career_line(student.pk, end)
+    if career is not None:
+        add(ReportSection.GRADES, CAREER_TEST, career[0], career[1])
 
     if template == ReportTemplate.REVIEW:
         add(ReportSection.PROFILE, ENGLISH_LEVEL, "Уровень английского", english_level_on(student.pk, end))

@@ -17146,3 +17146,32 @@ msgstr "Daily cap on bulk invitations per Almaty day, counting other access emai
 #: accounts/models.py
 msgid "Сутки по Алматы"
 msgstr "Almaty day"
+
+#: academics/views.py
+msgid "У профориентации нет оценок: результат — «сдан» или «не сдан» по профтесту"
+msgstr "Career guidance has no grades: the result is “passed” or “not passed” by the career test"
+
+#: core/school_rules.py
+msgid "Профориентация: для «сдан» нужен разбор"
+msgstr "Career guidance: “passed” requires an analysis"
+
+#: core/school_rules.py
+msgid "«Да» — тест профориентации считается сданным, когда попытка сдана и готов разбор моделью; «нет» — достаточно сданной попытки"
+msgstr "“Yes” — the career test counts as passed when the attempt is submitted and the model analysis is ready; “no” — a submitted attempt is enough"
+
+#: core/school_rules.py
+msgid "Профориентация: минимальный балл для «сдан»"
+msgstr "Career guidance: minimum score for “passed”"
+
+#: core/school_rules.py
+msgid "Балл сильнейшей шкалы попытки не ниже этого числа; 0 — порога по баллам нет"
+msgstr "The attempt’s strongest scale scores at least this number; 0 — no score threshold"
+
+#: academics/school_reports.py
+#, python-brace-format
+msgid "сдан {date}"
+msgstr "passed on {date}"
+
+#: academics/school_reports.py
+msgid "не сдан"
+msgstr "not passed"

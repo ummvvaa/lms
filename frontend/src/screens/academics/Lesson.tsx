@@ -47,6 +47,7 @@ function RosterLine({
   stream,
   state,
   words,
+  passOnly,
 }: {
   row: RosterRow
   lessonId: number
@@ -58,6 +59,7 @@ function RosterLine({
   locked: boolean
   stream: boolean
   words: Record<string, string>
+  passOnly: boolean
 }) {
   const attendance = useSaveAttendance()
   // «опоздал» ставится со временем прихода: сначала поле «Пришёл в», потом запрос
@@ -125,7 +127,9 @@ function RosterLine({
         )}
       </div>
       <div className="roster__grade">
-        {mayGrade ? (
+        {passOnly ? (
+          <span className="roster__none">{t('сдан или не сдан — в журнале')}</span>
+        ) : mayGrade ? (
           <SelectField
             size="sm"
             aria-label={`${gradeLabel}: ${row.full_name}`}
@@ -147,7 +151,7 @@ function RosterLine({
         )}
       </div>
       <div className="roster__comment">
-        {mayGrade ? (
+        {passOnly ? null : mayGrade ? (
           <div className="roster__commentedit">
             <Textarea
               aria-label={`${t('Комментарий к оценке')}: ${row.full_name}`}
@@ -182,14 +186,15 @@ function RosterLine({
 }
 
 /** Шапка состава: те же колонки, что у строк. */
-function RosterHead({ kind, max, mayGrade }: { kind: 'fo' | 'sor' | 'soch'; max: number; mayGrade: boolean }) {
+function RosterHead({ kind, max, mayGrade, passOnly }: { kind: 'fo' | 'sor' | 'soch'; max: number; mayGrade: boolean; passOnly: boolean }) {
   return (
     <div className="roster__head" aria-hidden="true">
       <span className="t-caps">{t('Ученик')}</span>
       <span className="t-caps">{t('Посещаемость')}</span>
-      <span className="t-caps">{kind === 'fo' ? t('Оценка') : t('Баллы из {max}', { max })}</span>
+      {/* профориентация: оценок нет, результат «сдан / не сдан» — у ученика в «Оценках» и в журнале */}
+      <span className="t-caps">{passOnly ? t('Без оценок') : kind === 'fo' ? t('Оценка') : t('Баллы из {max}', { max })}</span>
       <span className="roster__headcomment">
-        <span className="t-caps">{t('Комментарий к оценке')}</span>
+        {!passOnly && <span className="t-caps">{t('Комментарий к оценке')}</span>}
         {mayGrade && <span className="t-note">{t(GRADE_COMMENT_HINT)}</span>}
       </span>
     </div>
@@ -219,6 +224,8 @@ export default function LessonScreen() {
   const locked = Boolean(data.locked) || future || !lesson.is_live
   const mayMark = Boolean(data.may_mark) && !locked
   const mayGrade = Boolean(data.may_grade) && !locked
+  // профориентация: оценок у урока нет — только посещаемость, результат у ученика в «Оценках»
+  const passOnly = Boolean(data.pass_only)
   const max = lesson.kind === 'fo' ? (data.scale?.fo_max ?? 10) : (lesson.max_score ?? 10)
   const graded = roster.filter((row) => row.grade !== null)
   const fail = (e: Error) => toast.error(e.message)
@@ -313,7 +320,7 @@ export default function LessonScreen() {
         <Kpi label={t('Состояние')} value={statusChip} />
         <Kpi label={t('Были')} value={lesson.marked ? t('{done} из {total}', { done: roster.length - (data.absent?.length ?? 0), total: roster.length }) : null} none={future ? t('урок впереди') : t('не отмечен')} note={data.absent?.length ? absentWords(data.absent) : lesson.marked ? t('все на месте') : t('отметьте тех, кого нет')} tone={data.absent?.length ? 'bad' : lesson.marked ? 'good' : undefined} />
         <Kpi label={t('Опоздали')} value={data.late?.length || null} none={t('нет')} note={data.late?.join(', ') ?? ''} tone={data.late?.length ? 'warn' : undefined} />
-        <Kpi label={t('Оценок')} value={graded.length || null} none={lesson.kind === 'fo' ? t('ФО ставится не всем') : t('нет')} note={graded.length ? t('средняя {value}', { value: (graded.reduce((s, r) => s + (r.grade ?? 0), 0) / graded.length).toFixed(1) }) : ''} />
+        <Kpi label={t('Оценок')} value={graded.length || null} none={passOnly ? t('без оценок: сдан или не сдан по профтесту') : lesson.kind === 'fo' ? t('ФО ставится не всем') : t('нет')} note={graded.length ? t('средняя {value}', { value: (graded.reduce((s, r) => s + (r.grade ?? 0), 0) / graded.length).toFixed(1) }) : ''} />
       </StatRow>
       {!lesson.is_live && (
         <Chip tone="warn">
@@ -329,9 +336,9 @@ export default function LessonScreen() {
               <DataCard title={t('Состав')} count={roster.length} empty={roster.length === 0 && t('в составе нет учеников')} note={future ? t('Урок ещё впереди: отметить можно со звонка. Тему и домашнее задание можно записать заранее.') : data.locked ? tn(data.scale?.edit_days ?? 7, 'Урок старше {n} дня: отметки и оценки только для чтения. Исправление — через Кымбат.|Урок старше {n} дней: отметки и оценки только для чтения. Исправление — через Кымбат.|Урок старше {n} дней: отметки и оценки только для чтения. Исправление — через Кымбат.') : undefined}>
                 {roster.length > 0 && (
                   <div className="roster">
-                    <RosterHead kind={lesson.kind} max={max} mayGrade={mayGrade} />
+                    <RosterHead kind={lesson.kind} max={max} mayGrade={mayGrade} passOnly={passOnly} />
                     {roster.map((row) => (
-                      <RosterLine key={row.id} row={row} lessonId={lesson.id} kind={lesson.kind} max={max} mayMark={mayMark} mayGrade={mayGrade} locked={locked} stream={lesson.cohort.kind === 'stream'} state={lesson.state} words={words} />
+                      <RosterLine key={row.id} row={row} lessonId={lesson.id} kind={lesson.kind} max={max} mayMark={mayMark} mayGrade={mayGrade} locked={locked} stream={lesson.cohort.kind === 'stream'} state={lesson.state} words={words} passOnly={passOnly} />
                     ))}
                   </div>
                 )}

@@ -251,6 +251,8 @@ export interface ScheduleWeek extends AcadWeek {
 }
 
 export interface LessonDetail {
+  /** профориентация: оценок у урока нет */
+  pass_only?: boolean
   lesson: AcadLesson
   course: AcadCourse
   repeat: string
@@ -267,6 +269,11 @@ export interface LessonDetail {
   conflicts?: AcadConflict[]
   scale?: { fo_max: number; edit_days: number }
   mine?: { mark: AcadMark; grade: number | null; comment: string; homework: string } & LateInfo
+}
+
+/** Профориентация: дата сдачи профтеста или пусто — «не сдан» */
+export interface CareerPass {
+  passed_at: string | null
 }
 
 export interface CourseStats {
@@ -335,11 +342,13 @@ export interface Journal {
   periods: { code: string; title: string }[]
   quarter: { id: number; number: number; title: string; ends: string; closed: boolean } | null
   scheme: 'kz' | 'fo'
+  /** профориентация: оценок нет, у ученика — «сдан DD.MM / не сдан» по профтесту (11.10.2026) */
+  pass_only?: boolean
   columns: JournalColumn[]
   /** колонка «ДЗ» рядом с уроком — только у уроков с ДЗ со сдачей в LMS */
   homework_columns?: { lesson: number; assignment: number; due_at: string | null }[]
   /** `homework` — клетки «ДЗ» строки в порядке `homework_columns` */
-  rows: (AcadStudent & { cells: JournalCell[]; homework?: JournalHomeworkCell[]; stats: CourseStats })[]
+  rows: (AcadStudent & { cells: JournalCell[]; homework?: JournalHomeworkCell[]; stats: CourseStats; career?: CareerPass })[]
   kpis: {
     held: number
     planned: number
@@ -441,7 +450,7 @@ export interface StudentGrades {
   student: AcadStudent
   period: { code: string; title: string; from: string; to: string }
   periods: { code: string; title: string }[]
-  subjects: { course: AcadCourse; stats: CourseStats }[]
+  subjects: { course: AcadCourse; stats: CourseStats; career?: CareerPass }[]
   attendance: { total: number; absent: number; excused: number; late: number; late_minutes?: number; late_unknown?: number; pct: number | null }
   days: {
     date: string

@@ -280,6 +280,13 @@ def journal_payload(course: Course, user, period: str) -> dict:
         for lesson in context.lessons
         if lesson.pk in assignments
     ]
+    # профориентация: оценок нет, вместо них — «сдан DD.MM / не сдан» по профтесту
+    pass_only = course.subject.is_career
+    passed = {}
+    if pass_only:
+        from career.passing import pass_map
+
+        passed = pass_map(list(context.student_ids), min(end, today()))
     rows = []
     for sid in context.student_ids:
         student = students.get(sid)
@@ -307,6 +314,7 @@ def journal_payload(course: Course, user, period: str) -> dict:
                 "cells": cells,
                 "homework": homework_cells,
                 "stats": context.stats(sid).as_dict(),
+                **({"career": {"passed_at": passed.get(sid)}} if pass_only else {}),
             }
         )
     past = [
@@ -343,6 +351,7 @@ def journal_payload(course: Course, user, period: str) -> dict:
             else None
         ),
         "scheme": course.subject.scheme,
+        "pass_only": pass_only,
         "columns": columns,
         "homework_columns": homework_columns,
         "rows": rows,

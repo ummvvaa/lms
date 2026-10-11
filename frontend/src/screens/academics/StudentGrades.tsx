@@ -50,9 +50,11 @@ export default function StudentGrades() {
                     title={item.course.subject.title}
                     note={
                       <span className="stug__nums">
-                        <span>
-                          {t('ФО')} <b>{s.fo_avg ?? t('нет')}</b>
-                        </span>
+                        {!item.career && (
+                          <span>
+                            {t('ФО')} <b>{s.fo_avg ?? t('нет')}</b>
+                          </span>
+                        )}
                         {s.sor_max ? (
                           <span>
                             {t('СОР')} <b>{s.sor_got}</b>/{s.sor_max}
@@ -71,7 +73,9 @@ export default function StudentGrades() {
                       </span>
                     }
                     right={
-                      item.course.subject.scheme === 'kz' ? (
+                      item.career ? (
+                        item.career.passed_at ? <Chip tone="good">{t('тест сдан {date}', { date: dateWords(item.career.passed_at) })}</Chip> : <Chip>{t('тест не сдан')}</Chip>
+                      ) : item.course.subject.scheme === 'kz' ? (
                         grade !== null ? (
                           <Chip tone={s.final !== null ? 'accent' : 'neutral'}>{s.final !== null ? t('итог {grade}', { grade }) : s.quarter_pct !== null ? t('выходит {grade} · {pct} %', { grade, pct: s.quarter_pct }) : t('выходит {grade}', { grade })}</Chip>
                         ) : (

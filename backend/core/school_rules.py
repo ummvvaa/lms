@@ -239,6 +239,9 @@ ATTENDANCE_BELOW = "attendance_below"
 QUARTER_GRADE_BELOW = "quarter_grade_below"
 #: Средний ФО ниже этой доли от максимума — отстаёт по предмету «Только ФО»
 FO_ONLY_BELOW = "fo_only_below"
+#: профориентация без оценок: «сдан / не сдан» по попытке профтеста (решение владельца, 11.10.2026)
+CAREER_PASS_NEEDS_ANALYSIS = "career_pass_needs_analysis"
+CAREER_PASS_MIN_SCORE = "career_pass_min_score"
 #: За сколько дней искать учеников без оценок
 NO_GRADES_DAYS = "no_grades_days"
 #: Урок по уважительной причине снижает процент (0 минут, урок в знаменателе)
@@ -520,6 +523,30 @@ RULES: tuple[Rule, ...] = (
         60,
         0,
         100,
+        section=GRADES,
+    ),
+    Rule(
+        CAREER_PASS_NEEDS_ANALYSIS,
+        gettext_lazy("Профориентация: для «сдан» нужен разбор"),
+        gettext_lazy(
+            "«Да» — тест профориентации считается сданным, когда попытка сдана и готов разбор моделью; "
+            "«нет» — достаточно сданной попытки"
+        ),
+        "",
+        1,
+        0,
+        1,
+        kind="bool",
+        section=GRADES,
+    ),
+    Rule(
+        CAREER_PASS_MIN_SCORE,
+        gettext_lazy("Профориентация: минимальный балл для «сдан»"),
+        gettext_lazy("Балл сильнейшей шкалы попытки не ниже этого числа; 0 — порога по баллам нет"),
+        POINTS,
+        0,
+        0,
+        1000,
         section=GRADES,
     ),
     Rule(

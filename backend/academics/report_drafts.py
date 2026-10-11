@@ -295,7 +295,8 @@ def collect(report: ParentReport) -> Facts:
 
     student = report.student
     start, end = report.period_start, report.period_end
-    courses = student_courses(student.pk, min(end, timezone.localdate()))
+    # профориентация без оценок (сдан / не сдан) модели не нужна: отзыв по ней не пишется
+    courses = [c for c in student_courses(student.pk, min(end, timezone.localdate())) if not c.subject.is_career]
     facts = {
         course.pk: CourseFacts(
             course=course,

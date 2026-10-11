@@ -485,7 +485,12 @@ def lesson_detail(request, pk: int):
     calendar = school_calendar.load()
     scale = scale_of(calendar.year)
     role = request.user.role
-    payload = {"lesson": lesson_dict(lesson, calendar), "course": course_dict(lesson.course)}
+    payload = {
+        "lesson": lesson_dict(lesson, calendar),
+        "course": course_dict(lesson.course),
+        # профориентация: оценок нет, у ученика — «сдан / не сдан» по профтесту
+        "pass_only": lesson.course.subject.is_career,
+    }
     series = lesson.series
     payload["repeat"] = (
         _("каждый {weekday}, до {date}").format(
@@ -600,6 +605,8 @@ def lesson_grade(request, pk: int):
         return _not_found()
     if not lesson.in_lms:
         return _schedule_only(lesson)
+    if lesson.course.subject.is_career:
+        return _forbid(_("У профориентации нет оценок: результат — «сдан» или «не сдан» по профтесту"))
     if not rights.grades_lesson(request.user, lesson):
         return _forbid(_("Оценку ставит учитель урока"))
     calendar = school_calendar.load()
@@ -950,9 +957,17 @@ def student_grades_payload(student: Student, period: str, *, for_student: bool) 
     summary = student_summary(student.pk, start, end_seen, scale, quarter=quarter)
     totals = student_attendance(student.pk, start, end_seen)
     rows = []
+    passed = None
     for item in summary:
         course, stats = item["course"], item["stats"]
-        rows.append({"course": course_dict(course), "stats": stats.as_dict()})
+        row = {"course": course_dict(course), "stats": stats.as_dict()}
+        if course.subject.is_career:
+            if passed is None:
+                from career.passing import passed_at
+
+                passed = passed_at(student.pk, end_seen)
+            row["career"] = {"passed_at": passed}
+        rows.append(row)
     days = [
         {
             "date": day,
