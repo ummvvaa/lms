@@ -79,17 +79,13 @@
   margin-top: calc(var(--space) * 4);
 }
 
-.login__link {
-  border: 0;
-  background: none;
-  padding: 0;
-  font: inherit;
-  color: var(--accent-ink);
-  cursor: pointer;
+/* кнопки реестра варианта `link`; класс экрана поверх — через `[data-variant]` (D80) */
+.login__link[data-variant] {
   min-height: calc(var(--space) * 11);
+  font-size: var(--type-body);
 }
 
-.login__link--small {
+.login__link--small[data-variant] {
   font-size: var(--type-note);
   color: var(--ink-2);
 }
@@ -115,17 +111,14 @@
   color: var(--ink-3);
 }
 
-.login__lang {
-  border: 0;
-  background: none;
+.login__lang[data-variant] {
   padding: calc(var(--space) * 2) 0;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
   min-height: calc(var(--space) * 11);
+  font-size: var(--type-note);
+  color: var(--ink-2);
 }
 
-.login__lang--on {
+.login__lang--on[data-variant] {
   color: var(--accent);
   font-weight: 600;
 }

@@ -77,15 +77,16 @@ export default function Login() {
         {LANGS.map((lang, index) => (
           <span key={lang} className="login__langitem">
             {index > 0 && <span className="login__langdot" aria-hidden="true">·</span>}
-            <button
-              type="button"
+            <Button
+              variant="link"
+              size="sm"
               className={`login__lang${lang === current ? ' login__lang--on' : ''}`}
               aria-pressed={lang === current}
               lang={lang}
               onClick={() => rememberLanguage(lang)}
             >
               {LANG_SHORT[lang]}
-            </button>
+            </Button>
           </span>
         ))}
       </div>
@@ -123,17 +124,17 @@ export default function Login() {
         <div className="login__links">
           {mode === 'password' ? (
             <>
-              <button type="button" className="login__link" onClick={() => switchMode('reset')}>
+              <Button variant="link" size="sm" className="login__link" onClick={() => switchMode('reset')}>
                 {t('Забыли пароль?')}
-              </button>
-              <button type="button" className="login__link login__link--small" onClick={() => switchMode('link')}>
+              </Button>
+              <Button variant="link" size="sm" className="login__link login__link--small" onClick={() => switchMode('link')}>
                 {t('Я выпускник, у меня нет пароля')}
-              </button>
+              </Button>
             </>
           ) : (
-            <button type="button" className="login__link" onClick={() => switchMode('password')}>
+            <Button variant="link" size="sm" className="login__link" onClick={() => switchMode('password')}>
               {t('Назад ко входу')}
-            </button>
+            </Button>
           )}
         </div>
       </div>
