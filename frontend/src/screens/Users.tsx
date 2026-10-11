@@ -51,6 +51,7 @@ import { Input } from '../components/ui/input'
 import type { Role } from '../api/types'
 import { t, tk } from '../i18n'
 import { PARALLELS } from '../lib/parallels'
+import { usePhone } from '../phone'
 import { formatDate, formatTime } from '../lib/format'
 import PersonDialog, { ROLES, type PersonCreated } from './PersonDialog'
 import './academics/academics.css'
@@ -139,6 +140,14 @@ function PasswordBox({ issued, onClose }: { issued: IssuedPassword; onClose: () 
       </div>
     </Modal>
   )
+}
+
+/** Роль — подписью под именем; меняется в окне «Изменить» с подсказкой, что останется.
+ *  На телефоне её нет: строка там — имя и пароль, иначе одна строка занимала пол-экрана. */
+function RoleNote({ user }: { user: ManagedUser }) {
+  const phone = usePhone()
+  if (phone) return null
+  return <span className="t-note">{user.role_title}</span>
 }
 
 /** Одно основное действие на виду, остальное — в меню строки. */
@@ -345,7 +354,7 @@ export default function Users() {
               </Chip>
             )}
           </span>
-          <span className="t-note">{user.role_title}</span>
+          <RoleNote user={user} />
         </span>
       ),
       sortBy: (user) => (user.full_name || user.email || user.login || '').toLowerCase(),
