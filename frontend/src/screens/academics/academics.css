@@ -863,3 +863,12 @@ body [data-slot='button'][data-variant].acad__heatcell {
   gap: calc(var(--space) * 1);
   margin-bottom: calc(var(--space) * 2);
 }
+
+/* строка режима SAT над таблицей предметов */
+.subjects__sat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  margin: 0 0 calc(var(--space) * 3);
+}

@@ -54,6 +54,7 @@ from academics.models import (
     Lesson,
     LessonSeries,
     LessonStatus,
+    ReportRole,
     Scheme,
     StreamPart,
     Subject,
@@ -583,7 +584,16 @@ class _Writer:
                 )
                 continue
             scheme = SCHEMES.get(row.grading, Scheme.KZ)
+            if not self._sat_mode(title, _where(SUBJECTS, row.row)):
+                continue
             found = known.get(_key(title))
+            if found is None and self.report_role_for(title):
+                # «SAT Math» и «SAT Verbal» в книге при одном предмете — это SAT
+                from academics import sat_subjects
+
+                found = sat_subjects._find(sat_subjects.MERGED_NAMES)
+                if found is not None:
+                    known[_key(title)] = found
             if found is None:
                 from academics.keep_subjects import is_kept_title
 
@@ -635,6 +645,34 @@ class _Writer:
         if found is None:
             self.error(_("{where}: предмета «{subject}» нет ни в файле, ни в LMS").format(where=where, subject=title))
         return found
+
+    def _sat_mode(self, title: str, where: str) -> bool:
+        """SAT в книге — по режиму школы: при двух предметах «SAT» в книге — ошибка.
+
+        «Укажите SAT Math или SAT Verbal» (решение владельца, 11.10.2026); при одном
+        предмете строки «SAT Math» и «SAT Verbal» в книге ведут на SAT, журнал получает
+        раздел отчёта по названию.
+        """
+        from academics import sat_subjects
+
+        key = _key(title)
+        if key in sat_subjects.MERGED_NAMES and sat_subjects.two_subjects():
+            self.error(_("{where}: SAT ведётся двумя предметами — укажите SAT Math или SAT Verbal").format(where=where))
+            return False
+        return True
+
+    def report_role_for(self, title: str) -> str:
+        """Раздел отчёта у журнала SAT из названия в книге при одном предмете."""
+        from academics import sat_subjects
+
+        key = _key(title)
+        if sat_subjects.two_subjects():
+            return ""
+        if key in sat_subjects.MATH_NAMES:
+            return ReportRole.SAT_MATH
+        if key in sat_subjects.VERBAL_NAMES:
+            return ReportRole.SAT_VERBAL
+        return ""
 
     # --- Сотрудники ---
 
@@ -1191,6 +1229,7 @@ class _Writer:
         return {
             "cohort": cohort,
             "subject": subject,
+            "report_role": self.report_role_for(row.subject),
             "teacher": teacher,
             "weekday": row.weekday,
             "slot": row.slot,
@@ -1206,7 +1245,12 @@ class _Writer:
         """Журнал и еженедельный урок: найти по ключу или завести."""
         course = Course.objects.filter(subject=unit["subject"], teacher=unit["teacher"], cohort=unit["cohort"]).first()
         if course is None:
-            course = Course.objects.create(subject=unit["subject"], teacher=unit["teacher"], cohort=unit["cohort"])
+            course = Course.objects.create(
+                subject=unit["subject"],
+                teacher=unit["teacher"],
+                cohort=unit["cohort"],
+                report_role=unit.get("report_role") or ReportRole.NONE,
+            )
         series = (
             LessonSeries.objects.filter(course=course, weekday=unit["weekday"], slot=unit["slot"], ends__gte=self.day)
             .order_by("-starts")

@@ -17,7 +17,7 @@ from rest_framework.response import Response
 
 from academics import calendar as school_calendar
 from academics import cohorts as composing
-from academics import rights, schedule, teachers
+from academics import rights, sat_subjects, schedule, teachers
 from academics.cache import cached
 from academics.calendar import lesson_groups, period_choices, scale_of, today, week_start
 from academics.cohorts import group_ids_of, member_ids
@@ -1350,6 +1350,8 @@ def year_payload() -> dict:
         },
         "subjects": [subject_dict(s) for s in Subject.objects.all()],
         "subject_rows": subject_rows(),
+        # SAT: один предмет или два — по правилу школы; расходится ли с ним база (`sat_subjects`)
+        "sat": sat_subjects.state(),
     }
 
 

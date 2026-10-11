@@ -296,7 +296,7 @@ function SubjectsKkDialog({ year, onClose }: { year: YearScreen; onClose: () => 
  * Основной журнал школа ведёт в Kundelik; у «только расписание» урок стоит
  * в неделе, а журнала, оценок и ДЗ нет. Таблица во всю ширину страницы.
  */
-function SubjectsCard({ rows }: { rows: SubjectRow[] }) {
+function SubjectsCard({ rows, sat }: { rows: SubjectRow[]; sat?: YearScreen['sat'] }) {
   const toggle = useSubjectInLms()
   const kept = rows.filter((row) => row.in_lms).length
   const columns: Column<SubjectRow>[] = [
@@ -358,6 +358,17 @@ function SubjectsCard({ rows }: { rows: SubjectRow[] }) {
   ]
   return (
     <DataCard title={t('Предметы')} count={rows.length || undefined} right={<span className="t-note">{t('ведутся в LMS: {kept} из {total}', { kept, total: rows.length })}</span>} empty={rows.length === 0 && t('предметов нет — их заводит импорт расписания')}>
+      {/* SAT: один предмет или два — правило школы; журналы разносит команда, не переключатель (11.10.2026) */}
+      {sat && (
+        <p className="t-note subjects__sat">
+          {sat.two ? t('SAT — два предмета: SAT Math и SAT Verbal') : t('SAT — один предмет, Math и Verbal — разделы отчёта у журналов')}
+          {sat.pending && (
+            <Chip tone="warn" size="sm">
+              {sat.two ? t('журналы ещё не разнесены — команда sat_subjects --split') : t('журналы ещё не сведены — команда sat_subjects --merge')}
+            </Chip>
+          )}
+        </p>
+      )}
       {rows.length > 0 && <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} fit />}
     </DataCard>
   )
@@ -553,7 +564,7 @@ export default function AcademicYear() {
           )}
         </div>
       </div>
-      <SubjectsCard rows={data.subject_rows ?? []} />
+      <SubjectsCard rows={data.subject_rows ?? []} sat={data.sat} />
       {dialog === 'quarters' && <QuartersDialog year={data} onClose={() => setDialog(null)} />}
       {dialog === 'scale' && <ScaleDialog year={data} onClose={() => setDialog(null)} />}
       {dialog === 'reports' && <ReportsDialog year={data} onClose={() => setDialog(null)} />}

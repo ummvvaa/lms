@@ -239,6 +239,8 @@ ATTENDANCE_BELOW = "attendance_below"
 QUARTER_GRADE_BELOW = "quarter_grade_below"
 #: Средний ФО ниже этой доли от максимума — отстаёт по предмету «Только ФО»
 FO_ONLY_BELOW = "fo_only_below"
+#: SAT — один предмет с разделами отчёта или два предмета, SAT Math и SAT Verbal (решение владельца, 11.10.2026)
+SAT_TWO_SUBJECTS = "sat_two_subjects"
 #: профориентация без оценок: «сдан / не сдан» по попытке профтеста (решение владельца, 11.10.2026)
 CAREER_PASS_NEEDS_ANALYSIS = "career_pass_needs_analysis"
 CAREER_PASS_MIN_SCORE = "career_pass_min_score"
@@ -523,6 +525,21 @@ RULES: tuple[Rule, ...] = (
         60,
         0,
         100,
+        section=GRADES,
+    ),
+    Rule(
+        SAT_TWO_SUBJECTS,
+        gettext_lazy("SAT: два предмета"),
+        gettext_lazy(
+            "«Нет» — SAT один предмет, Math и Verbal — разделы отчёта у журналов; «да» — два предмета, "
+            "SAT Math и SAT Verbal, со своими журналами и строками отчёта. Журналы разносит и сводит "
+            "команда sat_subjects, не переключатель"
+        ),
+        "",
+        0,
+        0,
+        1,
+        kind="bool",
         section=GRADES,
     ),
     Rule(

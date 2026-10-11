@@ -99,7 +99,8 @@ def is_kept_title(title: str) -> bool:
 
 def kept_subjects(extra_titles: list[str] | None = None) -> tuple[list[tuple[str, list[Subject]]], list[str]]:
     """Шесть предметов школы в базе: что нашлось и чего нет."""
-    subjects = list(Subject.objects.all())
+    # скрытый предмет не считается: после разнесения SAT остаётся в базе скрытым (`sat_subjects`)
+    subjects = list(Subject.objects.filter(is_active=True))
     found: list[tuple[str, list[Subject]]] = []
     missing: list[str] = []
     wanted = list(KEPT) + [(title, (_key(title),)) for title in extra_titles or []]

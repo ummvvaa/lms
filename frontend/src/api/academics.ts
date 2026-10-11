@@ -606,6 +606,8 @@ export interface YearScreen {
   subjects: AcadSubject[]
   /** предметы на экране года: ведётся ли в LMS, уроков в неделю, учителей */
   subject_rows: SubjectRow[]
+  /** SAT: два предмета по правилу школы; `pending` — журналы ещё не разнесены или не сведены командой */
+  sat?: { two: boolean; pending: boolean }
 }
 
 export interface AcadDashboard {

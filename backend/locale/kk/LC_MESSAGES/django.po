@@ -17094,3 +17094,16 @@ msgstr "{date} тапсырды"
 #: academics/school_reports.py
 msgid "не сдан"
 msgstr "тапсырмады"
+
+#: core/school_rules.py
+msgid "SAT: два предмета"
+msgstr "SAT: екі пән"
+
+#: core/school_rules.py
+msgid "«Нет» — SAT один предмет, Math и Verbal — разделы отчёта у журналов; «да» — два предмета, SAT Math и SAT Verbal, со своими журналами и строками отчёта. Журналы разносит и сводит команда sat_subjects, не переключатель"
+msgstr "«Жоқ» — SAT бір пән, Math пен Verbal — журналдардағы есеп бөлімдері; «иә» — өз журналдары мен есеп жолдары бар екі пән, SAT Math және SAT Verbal. Журналдарды ажыратып, біріктіретін — sat_subjects командасы, ауыстырғыш емес"
+
+#: academics/schedule_import.py
+#, python-brace-format
+msgid "{where}: SAT ведётся двумя предметами — укажите SAT Math или SAT Verbal"
+msgstr "{where}: SAT екі пәнмен жүргізіледі — SAT Math немесе SAT Verbal көрсетіңіз"
