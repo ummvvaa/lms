@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from django.db import transaction
@@ -24,22 +24,31 @@ def _actor_name(actor) -> str:
     return (actor.full_name or actor.handle) if actor is not None else ""
 
 
+def budget_day(now) -> datetime.date:
+    """Сутки бюджета — календарный день по Алматы (решение владельца, 11.10.2026).
+
+    До того сутки считались по UTC, как у почтового сервиса, и бюджет
+    сбрасывался в 05:00 по Алматы: день школы и день бюджета расходились.
+    """
+    return now.astimezone(ALMATY).date()
+
+
 def _lock_day():
     """Один замок для прямых писем, двух массовых входов и фоновых задач."""
     while True:
-        day = timezone.now().astimezone(UTC).date()
+        day = budget_day(timezone.now())
         MailDayBudget.objects.get_or_create(day=day)
         MailDayBudget.objects.select_for_update().get(day=day)
         now = timezone.now()
-        if now.astimezone(UTC).date() == day:
+        if budget_day(now) == day:
             return now
-        # Ожидание могло пересечь полночь UTC. До резерва берём замок
+        # Ожидание могло пересечь полночь по Алматы. До резерва берём замок
         # новых суток, иначе параллельный запрос считал бы другой бюджет.
 
 
 def _spent(now) -> int:
     """Неопределённая попытка занимает все сутки, которые могла затронуть."""
-    start = datetime.combine(now.astimezone(UTC).date(), time.min, tzinfo=UTC)
+    start = datetime.combine(budget_day(now), time.min, tzinfo=ALMATY)
     end = start + timedelta(days=1)
     return InviteMail.objects.filter(
         Q(status=InviteMail.Status.SENT, sent_at__gte=start, sent_at__lt=end)
@@ -53,10 +62,8 @@ def _limit() -> int:
 
 
 def _next_slot(now, limit: int):
-    """Следующий день с местом; время очереди всегда по Алматы."""
-    # До 05:00 Алматы сутки провайдера ещё не сменились: ближайшее
-    # свободное утро будет сегодня, после сброса в 00:00 UTC.
-    day = now.astimezone(UTC).date() + timedelta(days=1)
+    """Следующий день с местом; сутки и время очереди — по Алматы."""
+    day = budget_day(now) + timedelta(days=1)
     while True:
         moment = datetime.combine(day, time(9), tzinfo=ALMATY)
         count = InviteMail.objects.filter(

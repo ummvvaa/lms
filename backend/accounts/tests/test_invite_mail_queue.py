@@ -1,7 +1,7 @@
-"""Письма доступа: достоверный журнал, UTC-бюджет и устойчивая очередь."""
+"""Письма доступа: достоверный журнал, бюджет по суткам Алматы и устойчивая очередь."""
 
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from smtplib import SMTPDataError
 from threading import Event, local
 
@@ -181,29 +181,41 @@ def test_direct_mail_reservation_reduces_budget_before_smtp_finishes(people, set
     assert InviteMail.objects.filter(status=InviteMail.Status.SENT).count() == 1
 
 
-def test_utc_reset_does_not_follow_local_midnight(people, set_rules, moment):
+def test_budget_resets_at_almaty_midnight(people, set_rules, moment):
+    """Сутки бюджета — по Алматы (решение владельца, 11.10.2026): 23:59 и 00:01 — разные дни."""
     set_rules(mail_daily_limit=1)
-    moment[0] = datetime(2026, 10, 7, 18, 59, tzinfo=UTC)
+    moment[0] = datetime(2026, 10, 7, 18, 58, tzinfo=UTC)  # 23:58 по Алматы
     assert mailing.bulk_invite([people[0]], actor=None)["sent"] == 1
-    moment[0] += timedelta(minutes=2)
+    moment[0] += timedelta(minutes=1)  # 23:59 — ещё 7 октября по Алматы
     assert mailing.bulk_invite([people[1]], actor=None)["queued"] == 1
-    moment[0] = datetime(2026, 10, 8, tzinfo=UTC)
+    moment[0] += timedelta(minutes=1)  # 00:00 по Алматы, 8 октября
     assert mailing.bulk_invite([people[2]], actor=None)["sent"] == 1
+    assert set(MailDayBudget.objects.values_list("day", flat=True)) == {date(2026, 10, 7), date(2026, 10, 8)}
 
 
-def test_queue_created_after_local_midnight_uses_nearest_morning(people, set_rules, moment):
+def test_utc_midnight_no_longer_resets_the_budget(people, set_rules, moment):
+    """Прежняя граница 00:00 UTC (05:00 по Алматы) — середина суток бюджета."""
     set_rules(mail_daily_limit=1)
-    moment[0] = datetime(2026, 10, 7, 18, 59, tzinfo=UTC)
+    moment[0] = datetime(2026, 10, 7, 23, 59, tzinfo=UTC)  # 04:59 по Алматы, 8 октября
+    assert mailing.bulk_invite([people[0]], actor=None)["sent"] == 1
+    moment[0] = datetime(2026, 10, 8, 0, 1, tzinfo=UTC)  # 05:01 по Алматы, те же сутки
+    assert mailing.bulk_invite([people[1]], actor=None)["queued"] == 1
+
+
+def test_queue_created_after_midnight_uses_nearest_morning(people, set_rules, moment):
+    set_rules(mail_daily_limit=1)
+    moment[0] = datetime(2026, 10, 7, 20, tzinfo=UTC)  # 01:00 по Алматы, 8 октября
     mailing.bulk_invite([people[0]], actor=None)
-    moment[0] = datetime(2026, 10, 7, 23, tzinfo=UTC)
+    moment[0] = datetime(2026, 10, 7, 22, tzinfo=UTC)  # 03:00 по Алматы, 8 октября
     mailing.bulk_invite([people[1]], actor=None)
     entry = InviteMail.objects.get(status=InviteMail.Status.QUEUED)
-    assert entry.scheduled_at == datetime(2026, 10, 8, 4, tzinfo=UTC)
+    # ближайшее утро — 9 октября 09:00 по Алматы
+    assert entry.scheduled_at == datetime(2026, 10, 9, 4, tzinfo=UTC)
 
 
-def test_budget_relocks_new_utc_day_after_waiting_across_midnight(moment, monkeypatch):
-    old = datetime(2026, 10, 7, 23, 59, tzinfo=UTC)
-    new = datetime(2026, 10, 8, tzinfo=UTC)
+def test_budget_relocks_new_almaty_day_after_waiting_across_midnight(moment, monkeypatch):
+    old = datetime(2026, 10, 7, 18, 59, tzinfo=UTC)
+    new = datetime(2026, 10, 7, 19, tzinfo=UTC)
     moment[0] = old
     original_get = QuerySet.get
 
@@ -216,16 +228,16 @@ def test_budget_relocks_new_utc_day_after_waiting_across_midnight(moment, monkey
     monkeypatch.setattr(QuerySet, "get", get_after_wait)
     with transaction.atomic():
         assert mailing._lock_day() == new
-    assert set(MailDayBudget.objects.values_list("day", flat=True)) == {old.date(), new.date()}
+    assert set(MailDayBudget.objects.values_list("day", flat=True)) == {date(2026, 10, 7), date(2026, 10, 8)}
 
 
 @pytest.mark.parametrize("sent,uncertain", [(False, True), (True, False), (False, False)])
-def test_result_crossing_utc_midnight_accounts_for_possible_delivery_days(
+def test_result_crossing_almaty_midnight_accounts_for_possible_delivery_days(
     people, set_rules, moment, monkeypatch, sent, uncertain
 ):
     set_rules(mail_daily_limit=1)
-    started = datetime(2026, 10, 7, 23, 59, 59, tzinfo=UTC)
-    finished = datetime(2026, 10, 8, 0, 0, 2, tzinfo=UTC)
+    started = datetime(2026, 10, 7, 18, 59, 59, tzinfo=UTC)  # 23:59:59 по Алматы
+    finished = datetime(2026, 10, 7, 19, 0, 2, tzinfo=UTC)  # 00:00:02 по Алматы
     moment[0] = started
 
     def transport(**kwargs):
@@ -245,8 +257,8 @@ def test_result_crossing_utc_midnight_accounts_for_possible_delivery_days(
 
 
 def test_stale_sending_cleanup_keeps_new_day_reserved_until_uncertainty_ends(people, moment):
-    started = datetime(2026, 10, 7, 23, 59, tzinfo=UTC)
-    moment[0] = datetime(2026, 10, 8, 1, tzinfo=UTC)
+    started = datetime(2026, 10, 7, 18, 59, tzinfo=UTC)  # 23:59 по Алматы
+    moment[0] = datetime(2026, 10, 7, 20, tzinfo=UTC)  # 01:00 по Алматы, 8 октября
     entry = InviteMail.objects.create(
         user=people[0],
         address=people[0].email,

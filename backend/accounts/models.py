@@ -320,9 +320,9 @@ class MagicLinkToken(models.Model):
 
 
 class MailDayBudget(models.Model):
-    """Строка суток UTC: общая блокировка резервирования почтового бюджета."""
+    """Строка суток по Алматы: общая блокировка резервирования почтового бюджета."""
 
-    day = models.DateField(gettext_lazy("Сутки UTC"), primary_key=True)
+    day = models.DateField(gettext_lazy("Сутки по Алматы"), primary_key=True)
 
     class Meta:
         verbose_name = gettext_lazy("Дневной бюджет писем")

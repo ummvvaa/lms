@@ -16242,9 +16242,6 @@ msgstr "Email confirmation"
 msgid "Почтовый сервер не принял письмо"
 msgstr "The mail server did not accept the email"
 
-msgid "Предел массовых приглашений за сутки UTC с учётом других писем доступа. Остаток уйдёт в следующие дни с 09:00 по Алматы. 0 — без предела"
-msgstr "Bulk invitation limit per UTC day, including other access emails. Remaining invitations will be sent on following days from 09:00 Almaty time. 0 means no limit"
-
 msgid "Приглашение"
 msgstr "Invitation"
 
@@ -16262,9 +16259,6 @@ msgstr "Days to skip repeat invitations while the sent link is still valid. 0 di
 
 msgid "Ссылка выдана"
 msgstr "Link issued"
-
-msgid "Сутки UTC"
-msgstr "UTC day"
 
 msgid "Учётная запись удалена"
 msgstr "Account deleted"
@@ -17144,3 +17138,11 @@ msgstr "A student is not turned into a staff member or vice versa: create a sepa
 #: accounts/people.py
 msgid "Ученика в сотрудника не переводят: карточка, оценки и портфолио — это другая запись"
 msgstr "A student is not turned into a staff member: the card, grades and portfolio are a different record"
+
+#: core/school_rules.py
+msgid "Предел массовых приглашений за сутки по Алматы с учётом других писем доступа. Остаток уйдёт в следующие дни с 09:00 по Алматы. 0 — без предела"
+msgstr "Daily cap on bulk invitations per Almaty day, counting other access emails. The rest goes out on the following days from 09:00 Almaty time. 0 — no cap"
+
+#: accounts/models.py
+msgid "Сутки по Алматы"
+msgstr "Almaty day"
