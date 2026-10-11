@@ -1057,27 +1057,22 @@ body [data-slot='button'][data-variant].essay__opt--wrong {
   }
 }
 
-/* Правка учётной записи (фаза 67) */
-.euser {
+/* Окно человека на «Пользователях»: заведение и правка по роли */
+.pform {
   display: grid;
   gap: calc(var(--space) * 3);
 }
 
-.euser__field {
+.pform__state {
   display: grid;
   gap: calc(var(--space) * 1);
 }
 
-.euser__warn {
+.pform__note {
   margin: 0;
 }
 
-.euser__error {
-  color: var(--bad);
-  margin: 0;
-}
-
-.euser__done {
+.pform__done {
   margin: 0;
 }
 

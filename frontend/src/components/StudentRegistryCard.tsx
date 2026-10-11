@@ -1,17 +1,16 @@
 /**
- * Реестровая карточка ученика: кто это, класс, группа, почта, выпуск.
+ * Реестровая карточка ученика: кто это, группа, почта, телефон, выпуск.
  *
- * Ведёт её администратор. Доменных полей здесь нет и быть не может —
- * их правят директора у себя (инвариант №1). До фазы 30 карточку можно
- * было только завести: исправить опечатку в фамилии было нечем вовсе.
+ * Здесь только чтение: ФИО, группа и почта правятся на «Пользователях» —
+ * одно место о человеке (решение владельца, 11.10.2026), второе место для
+ * тех же полей разошлось бы с первым. Доменных полей здесь нет и быть
+ * не может — их правят директора у себя (инвариант №1).
  */
-import { useState } from 'react'
-import { useStudyGroups, useUpdateStudent, type StudentCard } from '../api/hooks'
-import { Chip, DataCard, Kpi } from './ui'
+import { useNavigate } from 'react-router'
+import type { StudentCard } from '../api/hooks'
+import { DataCard, Kpi } from './ui'
 import { StatRow } from './patterns'
-import { t, tk } from '../i18n'
-import { SelectField } from './SelectField'
-import { Input } from './ui/input'
+import { t } from '../i18n'
 import { Button } from './ui/button'
 
 export default function StudentRegistryCard({
@@ -24,127 +23,30 @@ export default function StudentRegistryCard({
   /** место карточки в раскладке экрана (фаза 77) */
   className?: string
 }) {
-  const groups = useStudyGroups()
-  const update = useUpdateStudent()
-  const [open, setOpen] = useState(false)
-  const [problem, setProblem] = useState<string | null>(null)
-  const [form, setForm] = useState({
-    last_name: card.last_name,
-    first_name: card.first_name,
-    middle_name: card.middle_name ?? '',
-    email: card.email ?? '',
-    group: card.group === null ? '' : String(card.group),
-    graduation_year: String(card.graduation_year),
-  })
-
+  const navigate = useNavigate()
+  const contacts = [card.email, card.phone].filter(Boolean).join(' · ')
+  const target = `/users?search=${encodeURIComponent(card.full_name)}${card.user ? `&edit=${card.user}` : ''}`
   return (
     <DataCard
       title={t('Кто это')}
       note={t('Реестровая карточка школы')}
       className={className}
       hint={t(
-        'Имя, группа, почта и год выпуска. Доменные данные — баллы, посещаемость, портфолио — ведут директора у себя, здесь их нет.',
+        'Имя, группа, почта и телефон правятся на «Пользователях». Доменные данные — баллы, посещаемость, портфолио — ведут директора у себя, здесь их нет.',
       )}
       right={
         canEdit ? (
-          <Button variant="outline" size="sm" onClick={() => setOpen(!open)}>
-            {open ? t('Закрыть') : t('Изменить')}
+          <Button variant="outline" size="sm" onClick={() => navigate(target)}>
+            {t('Изменить на «Пользователях»')}
           </Button>
         ) : undefined
       }
     >
-      {!open && (
-        <StatRow>
-          <Kpi value={card.group_code} label={t('Учебная группа')} />
-          <Kpi value={card.graduation_year} label={t('Год выпуска')} />
-        </StatRow>
-      )}
-      {!open && <p className="muted rows__empty">{card.email}</p>}
-
-      {open && (
-        <div className="rowform">
-          {(
-            [
-              ['last_name', tk('Фамилия')],
-              ['first_name', tk('Имя')],
-              ['middle_name', tk('Отчество')],
-              ['email', tk('Почта')],
-            ] as const
-          ).map(([name, label]) => (
-            <label key={name} className="rowform__field">
-              <span className="rowform__label">{t(label)}</span>
-              <Input
-                value={form[name]}
-                onChange={(event) => setForm({ ...form, [name]: event.target.value })}
-              />
-            </label>
-          ))}
-          <label className="rowform__field">
-            <span className="rowform__label">{t('Учебная группа')}</span>
-            <SelectField
-              value={form.group}
-              onChange={(event) => setForm({ ...form, group: event.target.value })}
-            >
-              <option value="">{t('— без группы —')}</option>
-              {(groups.data?.results ?? []).map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.code}
-                </option>
-              ))}
-            </SelectField>
-          </label>
-          <label className="rowform__field">
-            <span className="rowform__label">{t('Год выпуска')}</span>
-            <Input
-              className="num"
-              type="number"
-              value={form.graduation_year}
-              onChange={(event) => setForm({ ...form, graduation_year: event.target.value })}
-            />
-          </label>
-
-          {problem && (
-            <Chip tone="bad" className="rowform__problem">
-              {problem}
-            </Chip>
-          )}
-
-          <div className="rowform__actions">
-            <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
-              {t('Отмена')}
-            </Button>
-            <Button
-              size="sm"
-              disabled={update.isPending}
-              onClick={() => {
-                if (!form.last_name.trim() || !form.first_name.trim()) {
-                  setProblem(t('Фамилия и имя обязательны — без них ученика не найти в списке'))
-                  return
-                }
-                setProblem(null)
-                update.mutate(
-                  {
-                    id: card.id,
-                    last_name: form.last_name.trim(),
-                    first_name: form.first_name.trim(),
-                    middle_name: form.middle_name.trim(),
-                    email: form.email.trim().toLowerCase(),
-                    group: form.group ? Number(form.group) : null,
-                    graduation_year: Number(form.graduation_year),
-                  },
-                  {
-                    onSuccess: () => setOpen(false),
-                    onError: (error) =>
-                      setProblem(error instanceof Error ? error.message : t('Не удалось сохранить')),
-                  },
-                )
-              }}
-            >
-              {t('Сохранить')}
-            </Button>
-          </div>
-        </div>
-      )}
+      <StatRow>
+        <Kpi value={card.group_code} label={t('Учебная группа')} />
+        <Kpi value={card.graduation_year} label={t('Год выпуска')} />
+      </StatRow>
+      <p className="muted rows__empty">{contacts || t('почты и телефона нет')}</p>
     </DataCard>
   )
 }

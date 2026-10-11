@@ -9,7 +9,7 @@
  * не входят — карточки и действий у них нет, администратор закрывает им вход.
  */
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { useTrack } from '../../usage/context'
 import { toast } from 'sonner'
 import {
@@ -27,7 +27,6 @@ import {
   type TeacherRow,
 } from '../../api/academics'
 import ConfirmDialog from '../../components/ConfirmDialog'
-import { useCreateUser } from '../../api/hooks'
 import DataTable, { type Column } from '../../components/DataTable'
 import EditDrawer from '../../components/EditDrawer'
 import Field from '../../components/Field'
@@ -112,62 +111,6 @@ function ReassignDialog({
           disabled={!teacher || reassign.isPending}
         >
           {t('Сменить')}
-        </Button>
-        <Button variant="outline" onClick={onClose}>
-          {t('Отмена')}
-        </Button>
-      </div>
-    </Modal>
-  )
-}
-
-function NewTeacherDialog({ onClose }: { onClose: () => void }) {
-  const create = useCreateUser()
-  const [last, setLast] = useState('')
-  const [first, setFirst] = useState('')
-  const [email, setEmail] = useState('')
-  const [error, setError] = useState('')
-  return (
-    <Modal title={t('Завести учителя')} note={t('Учётная запись с ролью «Учитель»')} onClose={onClose}>
-      <Field.Row>
-        <Field kind="text" name="last" label={t('Фамилия')} value={last} onChange={setLast} autoFocus />
-        <Field kind="text" name="first" label={t('Имя')} value={first} onChange={setFirst} />
-      </Field.Row>
-      <Field
-        kind="text"
-        name="email"
-        label={t('Почта')}
-        value={email}
-        onChange={setEmail}
-        placeholder="imya_familiya@bhs.kz"
-        error={error || undefined}
-      />
-      <p className="acad__note">
-        {t(
-          'Учитель получит ссылку, чтобы задать пароль. Предметы и кабинет — в карточке учителя, уроки — в расписании.',
-        )}
-      </p>
-      <div className="acad__actions">
-        <Button
-          onClick={() => {
-            if (!last.trim() || !first.trim()) {
-              setError(t('Нужны фамилия и имя'))
-              return
-            }
-            create.mutate(
-              { email, full_name: `${last.trim()} ${first.trim()}`, role: 'teacher' },
-              {
-                onSuccess: () => {
-                  toast.success(t('Учитель заведён, ссылка на пароль ушла на почту'))
-                  onClose()
-                },
-                onError: (e) => setError(e.message),
-              },
-            )
-          }}
-          disabled={create.isPending}
-        >
-          {t('Завести')}
         </Button>
         <Button variant="outline" onClick={onClose}>
           {t('Отмена')}
@@ -507,6 +450,7 @@ function ScheduleOnlyTab({ rows, mayClose }: { rows: ScheduleOnlyTeacher[]; mayC
 export default function Teachers() {
   const trackFilter = useTrack('filter.change')
   const [params, setParams] = useSearchParams()
+  const navigate = useNavigate()
   const tab: Tab = params.get('tab') === 'schedule' ? 'schedule' : 'lms'
   const setTab = (next: Tab) => {
     const copy = new URLSearchParams(params)
@@ -518,7 +462,6 @@ export default function Teachers() {
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [opened, setOpened] = useState<number | null>(null)
-  const [creating, setCreating] = useState(false)
   if (isLoading) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
@@ -635,7 +578,8 @@ export default function Teachers() {
               </Button>
             )}
             {data.may_create && (
-              <Button size="sm" onClick={() => setCreating(true)}>
+              // заведение — на «Пользователях» с ролью «учитель»: одно место о человеке
+              <Button size="sm" onClick={() => navigate('/users?new=teacher')}>
                 {t('Завести учителя')}
               </Button>
             )}
@@ -745,7 +689,6 @@ export default function Teachers() {
         </>
       )}
       {opened !== null && <TeacherDrawer id={opened} teachers={data.rows} onClose={() => setOpened(null)} />}
-      {creating && <NewTeacherDialog onClose={() => setCreating(false)} />}
     </div>
   )
 }

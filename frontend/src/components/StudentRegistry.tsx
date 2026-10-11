@@ -10,7 +10,6 @@ import { useState } from 'react'
 import { useTrack } from '../usage/context'
 import { useNavigate } from 'react-router'
 import { useStudents } from '../api/hooks'
-import AddStudent from './AddStudent'
 import DataTable from './DataTable'
 import Empty from './Empty'
 import { counted, ErrorNote, Loading, ScreenHead } from './ui'
@@ -42,7 +41,10 @@ export default function StudentRegistry() {
         />
         <span className="toolbar__spacer" />
         <span className="muted">{counted(students.data?.count ?? 0, 'ученик|ученика|учеников')}</span>
-        <AddStudent onCreated={(id) => navigate(`/students/${id}`)} />
+        {/* заведение — на «Пользователях» с ролью «ученик»: одно место о человеке (решение владельца, 11.10.2026) */}
+        <Button size="sm" onClick={() => navigate('/users?new=student')}>
+          {t('Завести ученика')}
+        </Button>
       </div>
 
       {students.isLoading && <Loading kind="table" />}

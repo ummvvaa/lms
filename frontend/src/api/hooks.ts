@@ -38,6 +38,9 @@ export interface StudentCard extends StudentRow {
   last_name: string
   first_name: string
   middle_name: string
+  phone: string
+  /** учётная запись ученика — ФИО и группа правятся на «Пользователях» */
+  user: number | null
   is_active: boolean
   behavior: ProfileValues
   admission: ProfileValues
@@ -1683,6 +1686,58 @@ export interface ManagedUser {
   group: string
 }
 
+/** Всё о человеке для окна правки на «Пользователях»: общие поля и поля его роли. */
+export interface PersonDetail extends ManagedUser {
+  phone: string
+  personal_email: string
+  personal_email_confirmed: boolean
+  /** что останется и что скроется при смене роли — считает сервер */
+  role_change_note: string
+  /** домен директора — по роли, поля у человека нет */
+  domain_title: string
+  student: {
+    id: number
+    last_name: string
+    first_name: string
+    middle_name: string
+    email: string
+    group: number | null
+    group_code: string
+    parallel: number | null
+    graduation_year: number
+  } | null
+  teacher: { subjects: number[]; room: string; teaches: boolean; weekly_hours: number } | null
+  curator: { groups: { id: number; code: string; since: string }[] } | null
+}
+
+/** Что отправляется при заведении и правке человека; обязательное решает роль на сервере. */
+export interface PersonWrite {
+  role?: Role
+  full_name?: string
+  last_name?: string
+  first_name?: string
+  middle_name?: string
+  /** сотрудник: почта или логин одной строкой; пусто — логин выдастся сам */
+  handle?: string
+  /** школьная почта ученика */
+  email?: string
+  personal_email?: string
+  phone?: string
+  group?: number | null
+  subjects?: number[]
+  room?: string
+  groups?: number[]
+  sees_whole_school?: boolean
+  is_active?: boolean
+}
+
+export const usePerson = (id: number | null) =>
+  useQuery({
+    queryKey: ['users', 'person', id],
+    queryFn: () => get<PersonDetail>(`/users/${id}/`),
+    enabled: id !== null,
+  })
+
 /** Ответ списка пользователей: строки, счётчики чипов, чипы и группы (фаза 69). */
 export interface UsersPage {
   results: ManagedUser[]
@@ -1799,14 +1854,18 @@ export interface InviteLink {
   detail: string
 }
 
+/** Что обновлять после заведения или правки человека: ученик появляется в «Таблице»
+ *  и группе, учитель — в «Учителях», куратор — у групп. */
+const PEOPLE_KEYS = [['users'], ['students'], ['groups'], ['curators'], ['acad']]
+
 export function useCreateUser() {
   const queryClient = useQueryClient()
   return useMutation({
     meta: { saved: true },
-    mutationFn: (body: { email: string; full_name?: string; role?: Role }) =>
-      post<ManagedUser & { invite?: InviteLink }>('/users/', body),
+    mutationFn: (body: PersonWrite) =>
+      post<ManagedUser & { invite?: InviteLink; password?: IssuedPassword }>('/users/', body),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['users'] })
+      for (const key of PEOPLE_KEYS) void queryClient.invalidateQueries({ queryKey: key })
     },
   })
 }
@@ -1930,14 +1989,10 @@ export interface LoginChanged {
 export function useUpdateUser() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({
-      id,
-      ...body
-    }: { id: number } & Partial<
-      Pick<ManagedUser, 'role' | 'is_active' | 'sees_whole_school' | 'full_name' | 'email'>
-    >) => patch<ManagedUser & { login_changed?: LoginChanged }>(`/users/${id}/`, body),
+    mutationFn: ({ id, ...body }: { id: number } & PersonWrite) =>
+      patch<PersonDetail & { login_changed?: LoginChanged }>(`/users/${id}/`, body),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['users'] })
+      for (const key of PEOPLE_KEYS) void queryClient.invalidateQueries({ queryKey: key })
     },
   })
 }

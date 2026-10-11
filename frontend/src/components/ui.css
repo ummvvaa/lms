@@ -873,30 +873,6 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 /* Форма заведения ученика. */
-.addst {
-  display: grid;
-  gap: calc(var(--space) * 3);
-  margin-bottom: calc(var(--space) * 3);
-}
-
-.addst__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--field-narrow-w), 1fr));
-  gap: calc(var(--space) * 3);
-}
-
-.addst__field {
-  display: grid;
-  gap: calc(var(--space) * 1);
-  font-size: var(--type-note);
-  color: var(--ink-2);
-}
-
-.addst__actions {
-  display: flex;
-  gap: calc(var(--space) * 2);
-  justify-content: flex-end;
-}
 
 /* Учебные группы. */
 .groups {

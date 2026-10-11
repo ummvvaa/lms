@@ -12,13 +12,12 @@
  * Роль «Учитель» заводится и фильтруется здесь же, как остальные роли;
  * предметы и кабинет учителя — на экране «Учителя».
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import {
   useBulkUsers,
   useCancelUserMailQueue,
-  useCreateUser,
   useInviteLink,
   useInviteUsers,
   useTempPassword,
@@ -34,7 +33,6 @@ import {
 import CredentialsBox, { type Credential } from '../components/CredentialsBox'
 import DataTable, { type Column } from '../components/DataTable'
 import DeleteButton from '../components/DeleteButton'
-import EditDrawer from '../components/EditDrawer'
 import EnrollPanel from '../components/EnrollPanel'
 import { ExportPreview } from '../components/ExportPreview'
 import Field from '../components/Field'
@@ -44,7 +42,6 @@ import Modal from '../components/Modal'
 import { Segmented } from '../components/patterns'
 import PhoneFold from '../components/PhoneFold'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
-import { SelectField } from '../components/SelectField'
 import StudyGroups, { Curators } from '../components/StudyGroups'
 import { InviteUserDialog, LastUserMail, MailForceOption, MailResultNotice, UserMailHistory } from '../components/UserMail'
 import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs, type Tone } from '../components/ui'
@@ -55,8 +52,7 @@ import type { Role } from '../api/types'
 import { t, tk } from '../i18n'
 import { PARALLELS } from '../lib/parallels'
 import { formatDate, formatTime } from '../lib/format'
-import { usePhone } from '../phone'
-import EditUserDialog from './EditUserDialog'
+import PersonDialog, { ROLES, type PersonCreated } from './PersonDialog'
 import './academics/academics.css'
 
 /** Тон чипа состояния: тревожное — то, из-за чего человек не войдёт. */
@@ -71,18 +67,6 @@ const STATE_TONE: Record<string, Tone> = {
 /** Роли списка. `short` — короткая форма для строки на телефоне:
  *  «Директор по поступлению» в узкую ячейку не помещается, а обрезать
  *  подпись нельзя; полная форма остаётся в листе выбора. */
-const ROLES: { value: Role; title: string; short: string }[] = [
-  { value: 'student', title: tk('Ученик'), short: tk('Ученик') },
-  { value: 'director_behavior', title: tk('Директор школы — профиль и дисциплина'), short: tk('Профиль и дисциплина') },
-  { value: 'director_admission', title: tk('Директор по поступлению'), short: tk('Поступление') },
-  { value: 'director_exam', title: tk('Академический директор'), short: tk('Экзамены') },
-  { value: 'director_talent', title: tk('Директор талантов'), short: tk('Таланты') },
-  { value: 'director_sport', title: tk('Директор спорта'), short: tk('Спорт') },
-  { value: 'curator', title: tk('Куратор'), short: tk('Куратор') },
-  { value: 'teacher', title: tk('Учитель'), short: tk('Учитель') },
-  { value: 'admin', title: tk('Администратор'), short: tk('Администратор') },
-]
-
 /** Параллели в фильтре: только учеников — у сотрудника параллели нет. */
 const PARALLEL_FILTER = [{ value: '', title: tk('Все параллели') }, ...PARALLELS.map((value) => ({ value: String(value), title: String(value) }))]
 
@@ -157,27 +141,6 @@ function PasswordBox({ issued, onClose }: { issued: IssuedPassword; onClose: () 
   )
 }
 
-/** Роль — списком в клетке. На телефоне её нет: строка там — имя и пароль,
- *  а роли меняет администратор с ноутбука, где видна вся таблица. */
-function RolePick({ user }: { user: ManagedUser }) {
-  const phone = usePhone()
-  const update = useUpdateUser()
-  if (phone) return null
-  return (
-    <SelectField
-      aria-label={t('Роль: {name}', { name: user.full_name || user.email })}
-      value={user.role}
-      onChange={(e) => update.mutate({ id: user.id, role: e.target.value as Role }, { onError: (error) => toast.error(error.message) })}
-    >
-      {ROLES.map((role) => (
-        <option key={role.value} value={role.value} data-short={t(role.short)}>
-          {t(role.title)}
-        </option>
-      ))}
-    </SelectField>
-  )
-}
-
 /** Одно основное действие на виду, остальное — в меню строки. */
 function UserActions({ user }: { user: ManagedUser }) {
   const update = useUpdateUser()
@@ -229,7 +192,7 @@ function UserActions({ user }: { user: ManagedUser }) {
       </RowMenu>
       {issued && <PasswordBox issued={issued} onClose={() => setIssued(null)} />}
       {shown && <InviteLinkBox invite={shown} onClose={() => setShown(null)} />}
-      {editing && <EditUserDialog user={user} onClose={() => setEditing(false)} />}
+      {editing && <PersonDialog user={user} onClose={() => setEditing(false)} />}
       {mailing && <InviteUserDialog user={user} onClose={() => setMailing(false)} />}
       {history && <Modal title={t('Письма: {name}', { name: user.full_name || user.email || user.login })} onClose={() => setHistory(false)}>
         <div className="usermail"><LastUserMail user={user} /><UserMailHistory id={user.id} /></div>
@@ -266,9 +229,8 @@ export default function Users() {
   const [picked, setPicked] = useState<number[]>([])
   const [issued, setIssued] = useState<Credential[]>([])
   const [panel, setPanel] = useState<'create' | 'invite' | 'enroll' | null>(null)
-  const [email, setEmail] = useState('')
-  const [fullName, setFullName] = useState('')
   const [role, setRole] = useState<Role>('student')
+  const [issuedOne, setIssuedOne] = useState<IssuedPassword | null>(null)
   const [bulk, setBulk] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [showHandout, setShowHandout] = useState(false)
@@ -289,11 +251,28 @@ export default function Users() {
     never_logged_in: neverLoggedIn ? 'true' : '',
   }
   const users = useUsers(filters)
-  const create = useCreateUser()
   const invite = useInviteUsers()
   const bulkAction = useBulkUsers()
   const mailQueue = useUserMailQueue()
   const cancelQueue = useCancelUserMailQueue()
+
+  const wanted = params.get('new') ?? ''
+  const editId = Number(params.get('edit') ?? '') || null
+  useEffect(() => {
+    if (wanted && ROLES.some((row) => row.value === wanted)) {
+      setRole(wanted as Role)
+      setPanel('create')
+    }
+  }, [wanted])
+  const [editingId, setEditingId] = useState<number | null>(null)
+  useEffect(() => {
+    if (editId) setEditingId(editId)
+  }, [editId])
+  const dropParam = (name: string) => {
+    const next = new URLSearchParams(params)
+    next.delete(name)
+    setParams(next, { replace: true })
+  }
 
   const emails = bulk
     .split(/[\s,;]+/)
@@ -366,7 +345,7 @@ export default function Users() {
               </Chip>
             )}
           </span>
-          <RolePick user={user} />
+          <span className="t-note">{user.role_title}</span>
         </span>
       ),
       sortBy: (user) => (user.full_name || user.email || user.login || '').toLowerCase(),
@@ -402,7 +381,9 @@ export default function Users() {
   const closePanel = () => {
     setPanel(null)
     setForceInvite(false)
+    if (wanted) dropParam('new')
   }
+  const editingRow = editingId === null ? null : (rows.find((row) => row.id === editingId) ?? null)
 
   return (
     <div>
@@ -535,84 +516,75 @@ export default function Users() {
         </div>
       )}
 
-      <EditDrawer open={panel === 'create'} onClose={closePanel} title={t('Новая учётная запись')} sub={t('Пароль не задаётся здесь: человеку уйдёт ссылка, по которой он придумает свой.')}>
-        <form
-          className="acad__form"
-          onSubmit={(e) => {
-            e.preventDefault()
-            setError(null)
-            create.mutate(
-              { email, full_name: fullName, role },
-              {
-                onSuccess: (created) => {
-                  toast.success(t('Заведён {email}', { email }))
-                  // ссылку показываем сразу: письмо могло уйти в журнал,
-                  // и без неё человеку нечем задать себе пароль
-                  setFresh(created.invite ?? null)
-                  setEmail('')
-                  setFullName('')
-                  closePanel()
-                },
-                onError: (e) => setError(e instanceof Error ? e.message : t('Не удалось завести')),
-              },
-            )
+      {panel === 'create' && (
+        <PersonDialog
+          initialRole={role}
+          onClose={closePanel}
+          onCreated={(made: PersonCreated) => {
+            // ссылку или пароль показываем сразу: письмо могло уйти в журнал,
+            // и без них человеку нечем задать себе пароль
+            setFresh(made.invite ?? null)
+            setIssuedOne(made.password ?? null)
           }}
-        >
-          <Field kind="email" name="email" label={t('Почта')} value={email} required onChange={setEmail} />
-          <Field name="full_name" label={t('ФИО')} value={fullName} onChange={setFullName} />
-          <Field kind="select" name="role" label={t('Роль')} value={role} onChange={(value) => setRole(value as Role)} options={ROLES.map((r) => ({ value: r.value, title: t(r.title) }))} />
-          <div className="acad__actions">
-            <Button type="submit" disabled={create.isPending}>
-              {t('Завести и пригласить')}
-            </Button>
-            <Button variant="outline" type="button" onClick={closePanel}>
-              {t('Отмена')}
-            </Button>
-          </div>
-        </form>
-      </EditDrawer>
+        />
+      )}
+      {editingId !== null && (
+        <PersonDialog
+          user={editingRow ?? undefined}
+          userId={editingRow ? undefined : editingId}
+          onClose={() => {
+            setEditingId(null)
+            if (editId) dropParam('edit')
+          }}
+        />
+      )}
 
-      <EditDrawer open={panel === 'invite'} onClose={closePanel} title={t('Массовое приглашение')} sub={t('Распознано адресов: {n}', { n: emails.length })}>
-        <div className="acad__form">
-          <Field kind="textarea" name="emails" label={t('Почты через запятую или с новой строки')} rows={8} value={bulk} placeholder={'asel@school.kz\ndamir@school.kz'} onChange={setBulk} />
-          <Field kind="select" name="invite_role" label={t('Роль')} value={role} onChange={(value) => setRole(value as Role)} options={ROLES.map((r) => ({ value: r.value, title: t(r.title) }))} />
-          <MailForceOption checked={forceInvite} onChange={setForceInvite} />
-          {invite.error && <ErrorNote error={invite.error} />}
-          <div className="acad__actions">
-            <Button
-              disabled={emails.length === 0 || invite.isPending}
-              onClick={() =>
-                invite.mutate(
-                  { emails, role, force: forceInvite },
-                  {
-                    onSuccess: (result) => {
-                      setMailResult(result)
-                      setFilter('tab', '')
-                      setForceInvite(false)
-                      setBulk('')
-                      closePanel()
+      {panel === 'invite' && (
+        <Modal title={t('Массовое приглашение')} note={t('Распознано адресов: {n}', { n: emails.length })} onClose={closePanel}>
+          <div className="acad__form">
+            <Field kind="textarea" name="emails" label={t('Почты через запятую или с новой строки')} rows={8} value={bulk} placeholder={'asel@school.kz\ndamir@school.kz'} onChange={setBulk} />
+            <Field kind="select" name="invite_role" label={t('Роль')} value={role} onChange={(value) => setRole(value as Role)} options={ROLES.map((r) => ({ value: r.value, title: t(r.title) }))} />
+            <MailForceOption checked={forceInvite} onChange={setForceInvite} />
+            {invite.error && <ErrorNote error={invite.error} />}
+            <div className="acad__actions">
+              <Button
+                disabled={emails.length === 0 || invite.isPending}
+                onClick={() =>
+                  invite.mutate(
+                    { emails, role, force: forceInvite },
+                    {
+                      onSuccess: (result) => {
+                        setMailResult(result)
+                        setFilter('tab', '')
+                        setForceInvite(false)
+                        setBulk('')
+                        closePanel()
+                      },
+                      onError: (e) => setError(e instanceof Error ? e.message : t('Не удалось пригласить')),
                     },
-                    onError: (e) => setError(e instanceof Error ? e.message : t('Не удалось пригласить')),
-                  },
-                )
-              }
-            >
-              {t('Разослать приглашения')}
-            </Button>
-            <Button variant="outline" onClick={closePanel}>
-              {t('Отмена')}
-            </Button>
+                  )
+                }
+              >
+                {t('Разослать приглашения')}
+              </Button>
+              <Button variant="outline" onClick={closePanel}>
+                {t('Отмена')}
+              </Button>
+            </div>
           </div>
-        </div>
-      </EditDrawer>
+        </Modal>
+      )}
 
-      {/* заведение учеников списком — в панели, а не в потоке: встроенная
+      {/* заведение учеников списком — в широком окне, не в потоке: встроенная
           форма с предпросмотром файла сжимала список под собой на пол-экрана */}
-      <EditDrawer open={panel === 'enroll'} onClose={closePanel} title={t('Завести учеников списком')} className="drawer--wide">
-        <EnrollPanel onDone={(text) => toast.success(text)} onIssued={setIssued} />
-      </EditDrawer>
+      {panel === 'enroll' && (
+        <Modal title={t('Завести учеников списком')} wide onClose={closePanel}>
+          <EnrollPanel onDone={(text) => toast.success(text)} onIssued={setIssued} />
+        </Modal>
+      )}
 
       {fresh && <InviteLinkBox invite={fresh} onClose={() => setFresh(null)} />}
+      {issuedOne && <PasswordBox issued={issuedOne} onClose={() => setIssuedOne(null)} />}
       {issued.length > 0 && <CredentialsBox rows={issued} onClose={() => setIssued([])} />}
       {showHandout && <HandoutDialog filters={filters} picked={picked} onClose={() => setShowHandout(false)} />}
       {exporting && (
