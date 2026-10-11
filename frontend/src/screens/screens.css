@@ -79,13 +79,14 @@
   margin-top: calc(var(--space) * 4);
 }
 
-/* кнопки реестра варианта `link`; класс экрана поверх — через `[data-variant]` (D80) */
-.login__link[data-variant] {
+/* кнопки реестра варианта `link`; класс экрана поверх — селектором с `[data-variant]` (D80) */
+body [data-slot='button'][data-variant].login__link {
   min-height: calc(var(--space) * 11);
   font-size: var(--type-body);
+  font-weight: 500;
 }
 
-.login__link--small[data-variant] {
+body [data-slot='button'][data-variant].login__link--small {
   font-size: var(--type-note);
   color: var(--ink-2);
 }
@@ -111,14 +112,15 @@
   color: var(--ink-3);
 }
 
-.login__lang[data-variant] {
+body [data-slot='button'][data-variant].login__lang {
   padding: calc(var(--space) * 2) 0;
   min-height: calc(var(--space) * 11);
   font-size: var(--type-note);
+  font-weight: 500;
   color: var(--ink-2);
 }
 
-.login__lang--on[data-variant] {
+body [data-slot='button'][data-variant].login__lang--on {
   color: var(--accent);
   font-weight: 600;
 }
