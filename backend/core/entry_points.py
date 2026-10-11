@@ -42,8 +42,9 @@ CREATE, UPDATE, DELETE = "create", "update", "delete"
 ENTRY_POINTS: dict[str, dict[str, Entry]] = {
     # --- Реестр школы ---
     "students.Student": {
-        CREATE: Entry("/table", "AddStudent", ("admin",)),
-        UPDATE: Entry("/students/:id", "StudentRegistryCard", ("admin",)),
+        # с 11.10.2026 ученика заводят и правят на «Пользователях» одним окном по роли
+        CREATE: Entry("/users", "PersonDialog", ("admin",)),
+        UPDATE: Entry("/users", "PersonDialog", ("admin",)),
         DELETE: Entry("/students/:id", "DeleteButton", ("admin",)),
     },
     "students.StudyGroup": {
