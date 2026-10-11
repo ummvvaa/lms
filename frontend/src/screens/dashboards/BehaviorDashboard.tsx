@@ -156,11 +156,10 @@ export default function BehaviorDashboard() {
             <DataCard title={t('Разговоры за неделю')}>
               <Rows>
                 <Row title={t('Записано')} note={tn(cabinet.talks.written, '{n} разговор|{n} разговора|{n} разговоров')} />
+                {/* ссылки на экран ученика нет: сотруднику он закрыт (D95, решение владельца 11.10.2026) */}
                 <Row
                   title={t('Ждут вашего ответа')}
                   note={tn(cabinet.talks.waiting, '{n} вопрос от учеников|{n} вопроса от учеников|{n} вопросов от учеников')}
-                  onOpen={() => navigate('/roadmap')}
-                  openLabel={t('Открыть')}
                 />
               </Rows>
             </DataCard>

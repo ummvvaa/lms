@@ -15,9 +15,9 @@ import pytest
 from academics import calendar as school_calendar
 from academics import schedule
 from academics.cohorts import group_cohort, make_stream
-from academics.models import Bell, BellSchedule
+from academics.models import BellSchedule
 from academics.schedule import create_once
-from academics.tests.conftest import login, school_day
+from academics.tests.conftest import give_bells, login, school_day
 from students.models import StudyGroup
 
 pytestmark = pytest.mark.django_db
@@ -28,17 +28,16 @@ SENIOR_BELLS = (("10:15", "11:00"), ("11:05", "11:50"), ("12:00", "12:45"), ("13
 
 
 def bells(year, title: str, rows, group) -> BellSchedule:
-    found = BellSchedule.objects.create(year=year, title=title)
-    for number, (starts, ends) in enumerate(rows, start=1):
-        Bell.objects.create(
-            year=year,
-            schedule=found,
-            number=number,
-            starts=dt.time.fromisoformat(starts),
-            ends=dt.time.fromisoformat(ends),
-        )
-    found.groups.add(group)
-    return found
+    """Свои звонки группе — через `give_bells`: из звонков года группа уходит.
+
+    Раньше группа оставалась и в звонках года (фикстура `year` вешает их на
+    каждую новую группу), и в своих: календарь брал то расписание, чья строка
+    связи шла в выборке последней, — порядок строк без сортировки менялся от
+    состояния базы, и в полном прогоне ряд недели получал 08:30 вместо 10:15.
+    """
+    return give_bells(
+        year, title, [group], [(number, starts, ends) for number, (starts, ends) in enumerate(rows, start=1)]
+    )
 
 
 @pytest.fixture

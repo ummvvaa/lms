@@ -289,11 +289,13 @@ def load(year: AcademicYear | None = None) -> SchoolCalendar:
     for bell in year.bells.all():
         if bell.schedule_id in schedules:
             schedules[bell.schedule_id][bell.number] = (bell.starts, bell.ends)
+    # группа бывает в двух расписаниях только по ошибке (экран и импорт снимают прежнее);
+    # если всё же так — берётся связь, заведённая последней, а не случайная по порядку строк
     group_schedule = {
         group_id: schedule_id
-        for schedule_id, group_id in BellSchedule.groups.through.objects.filter(bellschedule__year=year).values_list(
-            "bellschedule_id", "studygroup_id"
-        )
+        for schedule_id, group_id in BellSchedule.groups.through.objects.filter(bellschedule__year=year)
+        .order_by("pk")
+        .values_list("bellschedule_id", "studygroup_id")
     }
     return SchoolCalendar(
         year=year,
