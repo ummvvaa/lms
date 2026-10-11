@@ -89,6 +89,10 @@ class Student(Archivable):
     #: почта школы — необязательна: у 8–10 её нет, они входят по логину
     #: учётной записи (`accounts.User.login`)
     email = models.EmailField("Email", unique=True, null=True, blank=True)
+    #: телефон ученика в реестровой карточке — для всех параллелей, ведёт
+    #: администратор на «Пользователях»; телефон в блоке «Поступление» у Асем
+    #: остаётся её полем (решение владельца, 11.10.2026)
+    phone = models.CharField(gettext_lazy("Телефон"), max_length=20, blank=True)
     group = models.ForeignKey(
         StudyGroup,
         verbose_name=gettext_lazy("Группа"),

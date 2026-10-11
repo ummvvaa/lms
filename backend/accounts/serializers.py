@@ -260,30 +260,43 @@ class UserSerializer(serializers.ModelSerializer):
         return student.group.code if student is not None and student.group_id else ""
 
 
-class UserWriteSerializer(serializers.Serializer):
-    """Заведение и правка учётной записи администратором.
+class PersonSerializer(serializers.Serializer):
+    """Заведение и правка человека по роли на «Пользователях» (`accounts.people`).
 
     Пароля здесь нет намеренно: его человек устанавливает себе сам
-    по одноразовой ссылке, чтобы администратор его не знал.
+    по одноразовой ссылке или меняет временный при первом входе.
+    Что из полей обязательно, решает роль — проверяет сервис, не схема.
     """
 
-    email = serializers.EmailField(required=False)
-    full_name = serializers.CharField(required=False, allow_blank=True, max_length=200)
     role = serializers.ChoiceField(choices=Role.choices, required=False)
+    full_name = serializers.CharField(required=False, allow_blank=True, max_length=200)
+    last_name = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    first_name = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    middle_name = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    #: сотрудник: почта или логин одной строкой; пусто — логин выдастся сам
+    handle = serializers.CharField(required=False, allow_blank=True, max_length=254)
+    #: школьная почта ученика (и почта сотрудника — для прежних вызовов)
+    email = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=254)
+    personal_email = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=254)
+    phone = serializers.CharField(required=False, allow_blank=True, max_length=32)
+    group = serializers.IntegerField(required=False, allow_null=True)
+    subjects = serializers.ListField(child=serializers.IntegerField(), required=False)
+    room = serializers.CharField(required=False, allow_blank=True, max_length=40)
+    groups = serializers.ListField(child=serializers.IntegerField(), required=False)
     sees_whole_school = serializers.BooleanField(required=False)
     is_active = serializers.BooleanField(required=False)
 
-    def validate_full_name(self, value: str) -> str:
+    def _name(self, value: str) -> str:
         """Имя с пометкой заглушки не заводим: см. `accounts.naming`."""
         try:
             return check_full_name(value)
         except NameRejected as error:
             raise serializers.ValidationError(str(error)) from error
 
-    def validate(self, attrs):
-        if self.partial is False and not attrs.get("email"):
-            raise serializers.ValidationError({"email": gettext("Почта обязательна")})
-        return attrs
+    validate_full_name = _name
+    validate_last_name = _name
+    validate_first_name = _name
+    validate_middle_name = _name
 
 
 class InviteSerializer(serializers.Serializer):

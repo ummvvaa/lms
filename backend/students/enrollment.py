@@ -240,6 +240,65 @@ def _split_name(full_name: str) -> tuple[str, str, str]:
     return last, first, middle
 
 
+def enroll_one(
+    *,
+    last_name: str,
+    first_name: str,
+    middle_name: str = "",
+    email: str | None = None,
+    group: StudyGroup,
+    phone: str = "",
+    actor=None,
+    send_mail: bool = True,
+) -> dict[str, Any]:
+    """Один ученик из полей: карточка, пять профилей, учётная запись, временный пароль.
+
+    Этим путём идут и строка файла, и окно «Завести пользователя» (решение
+    владельца, 11.10.2026): карточка без учётной записи — ученик, который
+    не может войти, а запись без карточки — человек, которому нечего показать.
+    Без почты учётная запись получает логин «имя.фамилия». Письмо уходит
+    только тем, у кого есть почта. Транзакцию держит вызывающий код.
+    """
+    from accounts import temporary
+    from accounts.logins import make_login
+    from core.parallels import graduation_year_for
+    from students.linking import adopt_group_language
+
+    email = (email or "").strip().lower() or None
+    student = Student.objects.create(
+        last_name=last_name.strip(),
+        first_name=first_name.strip(),
+        middle_name=(middle_name or "").strip(),
+        email=email,
+        phone=phone,
+        group=group,
+        graduation_year=graduation_year_for(group.parallel),
+    )
+    _make_profiles(student)
+
+    login = None if email else make_login(student.first_name, student.last_name)
+    user = User.objects.create_user(
+        email=email, login=login, password=None, full_name=student.full_name, role=Role.STUDENT
+    )
+    password = temporary.issue(user)
+    # связываем сразу: почта или логин — строка одна, искать нечего
+    student.user = user
+    student.save(update_fields=["user"])
+    adopt_group_language(user, student)
+
+    sent = temporary.send_letter(user, password, actor=actor) if send_mail else False
+    return {
+        "student": student.pk,
+        "user": user.pk,
+        "full_name": student.full_name,
+        "email": email or "",
+        "login": user.handle,
+        "group": group.code,
+        "password": password,
+        "sent": sent,
+    }
+
+
 @transaction.atomic
 def enroll(*, rows: list[dict[str, Any]], actor=None, send_mail: bool = True) -> dict[str, Any]:
     """Завести учеников из проверенных строк.
@@ -251,11 +310,6 @@ def enroll(*, rows: list[dict[str, Any]], actor=None, send_mail: bool = True) ->
     и только тому, кто нажал кнопку. На сервере они не сохраняются.
     Письмо уходит только тем, у кого есть почта.
     """
-    from accounts import temporary
-    from accounts.logins import make_login
-    from core.parallels import graduation_year_for
-    from students.linking import adopt_group_language, link_student
-
     created: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
     groups = {group.code.lower(): group for group in StudyGroup.objects.all()}
@@ -282,39 +336,16 @@ def enroll(*, rows: list[dict[str, Any]], actor=None, send_mail: bool = True) ->
             continue
 
         last, first, middle = _split_name(full_name)
-        student = Student.objects.create(
-            last_name=last,
-            first_name=first,
-            middle_name=middle,
-            email=email,
-            group=group,
-            graduation_year=graduation_year_for(group.parallel),
-        )
-        _make_profiles(student)
-
-        login = None if email else make_login(first, last)
-        user = User.objects.create_user(email=email, login=login, password=None, full_name=full_name, role=Role.STUDENT)
-        password = temporary.issue(user)
-        if email:
-            link_student(student)
-        else:
-            # без почты связывать не по чему — связываем сразу, строка одна
-            student.user = user
-            student.save(update_fields=["user"])
-            adopt_group_language(user, student)
-
-        sent = temporary.send_letter(user, password) if send_mail else False
         created.append(
-            {
-                "student": student.pk,
-                "user": user.pk,
-                "full_name": full_name,
-                "email": email or "",
-                "login": user.handle,
-                "group": group.code,
-                "password": password,
-                "sent": sent,
-            }
+            enroll_one(
+                last_name=last,
+                first_name=first,
+                middle_name=middle,
+                email=email,
+                group=group,
+                actor=actor,
+                send_mail=send_mail,
+            )
         )
 
     letters = sum(1 for row in created if row["sent"])

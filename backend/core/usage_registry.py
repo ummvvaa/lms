@@ -141,6 +141,7 @@ ACTIONS = (
     Action("filter.change", gettext_noop("Изменение фильтра"), source="client"),
     Action("auth.login", gettext_noop("Вход в платформу"), "/login"),
     Action("access.link.issue", gettext_noop("Выдача ссылки пользователю"), "/users"),
+    Action("access.password.issue", gettext_noop("Выдача временного пароля при заведении"), "/users"),
     Action("access.student_link.issue", gettext_noop("Выдача ссылки ученику"), "/students/:id"),
     Action("access.invite.bulk", gettext_noop("Запуск рассылки приглашений"), "/users"),
     Action("journal.grade.set", gettext_noop("Изменение оценки"), "/journals/:id"),

@@ -77,17 +77,20 @@ def test_invited_person_sets_password_and_gets_own_screens(as_admin, db):
 
 @pytest.mark.django_db
 def test_duplicate_email_is_refused(as_admin):
-    as_admin.post("/api/users/", {"email": "dubl@school.kz"}, format="json")
-    again = as_admin.post("/api/users/", {"email": "dubl@school.kz"}, format="json")
+    # ученик без карточки с 11.10.2026 не заводится — учётная запись сотрудника
+    first = as_admin.post("/api/users/", {"email": "dubl@school.kz", "role": Role.DIRECTOR_SPORT}, format="json")
+    again = as_admin.post("/api/users/", {"email": "dubl@school.kz", "role": Role.DIRECTOR_SPORT}, format="json")
 
+    assert first.status_code == 201
     assert again.status_code == 400
+    assert "занята" in again.data["detail"]
 
 
 @pytest.mark.django_db
 def test_deactivation_keeps_the_record(as_admin, db):
     from core.models import AuditLog
 
-    as_admin.post("/api/users/", {"email": "byebye@school.kz"}, format="json")
+    as_admin.post("/api/users/", {"email": "byebye@school.kz", "role": Role.DIRECTOR_SPORT}, format="json")
     user = User.objects.get(email="byebye@school.kz")
     AuditLog.objects.create(
         actor=user,
@@ -144,7 +147,11 @@ def test_bulk_invite_skips_deactivated(as_admin, db):
 
 @pytest.mark.django_db
 def test_search_finds_by_name_and_email(as_admin):
-    as_admin.post("/api/users/", {"email": "saltanat@school.kz", "full_name": "Салтанат"}, format="json")
+    as_admin.post(
+        "/api/users/",
+        {"email": "saltanat@school.kz", "full_name": "Салтанат", "role": Role.DIRECTOR_BEHAVIOR},
+        format="json",
+    )
 
     by_name = as_admin.get("/api/users/?search=Салтанат")
     by_email = as_admin.get("/api/users/?search=saltanat")

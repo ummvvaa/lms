@@ -17044,3 +17044,103 @@ msgstr "Summary for the student"
 #: career
 msgid "Почему подходит — для ученика"
 msgstr "Why it fits — for the student"
+
+#: accounts/people.py
+#, python-brace-format
+msgid "Временный пароль для {login} выпущен и отправлен письмом"
+msgstr "A temporary password for {login} has been issued and sent by email"
+
+#: accounts/people.py
+#, python-brace-format
+msgid "Временный пароль для {login} выпущен. Письма не было — передайте пароль лично"
+msgstr "A temporary password for {login} has been issued. No email was sent — hand the password over in person"
+
+#: accounts/people.py
+msgid "Выберите учебную группу — без неё у ученика нет параллели и разделов"
+msgstr "Choose a study group — without it the student has no parallel and no sections"
+
+#: students/serializers.py
+msgid "Выберите учебную группу — год выпуска считается от неё"
+msgstr "Choose a study group — the graduation year is derived from it"
+
+#: core/usage_registry.py
+msgid "Выдача временного пароля при заведении"
+msgstr "Temporary password issued on creation"
+
+#: accounts/people.py
+#, python-brace-format
+msgid "Домен «{domain}» станет чужим — его поля будут видны, но не правятся; записи в журнале останутся"
+msgstr "The “{domain}” domain will no longer be theirs — its fields stay visible but not editable; journal entries remain"
+
+#: accounts/people.py
+#, python-brace-format
+msgid "Личная почта «{email}» не похожа на адрес"
+msgstr "Personal email “{email}” does not look like an address"
+
+#: accounts/people.py
+#, python-brace-format
+msgid "Логин «{login}» уже занят"
+msgstr "Login “{login}” is already taken"
+
+#: accounts/people.py
+msgid "Логин — строчная латиница, цифры, точка и дефис: например, aliya.akhmetova"
+msgstr "A login is lowercase Latin letters, digits, dot and hyphen: for example, aliya.akhmetova"
+
+#: accounts/people.py
+#, python-brace-format
+msgid "Назначения групп ({count}) закроются сегодняшним днём, заметки и история подтверждений останутся в журнале"
+msgstr "Group assignments ({count}) will be closed as of today; notes and confirmation history stay in the journal"
+
+#: accounts/people.py
+msgid "Нужна почта или логин — без них человеку нечем войти"
+msgstr "An email or a login is needed — without them the person cannot sign in"
+
+#: accounts/people.py
+msgid "Нужны фамилия и имя"
+msgstr "Last name and first name are required"
+
+#: accounts/people.py
+msgid "Нужны фамилия и имя — без них ученика не найти в списке"
+msgstr "Last name and first name are required — without them the student cannot be found in the list"
+
+#: accounts/people.py
+msgid "Нужны фамилия и имя — из них выдаётся логин"
+msgstr "Last name and first name are required — the login is made from them"
+
+#: accounts/people.py
+msgid "Нужны фамилия, имя и группа ученика"
+msgstr "The student’s last name, first name and group are required"
+
+#: accounts/people.py
+msgid "Пользователи, настройки школы, импорт и архив закроются; записи в журнале останутся"
+msgstr "Users, school settings, import and archive will close; journal entries remain"
+
+#: accounts/people.py
+#, python-brace-format
+msgid "Почта «{email}» не похожа на адрес"
+msgstr "Email “{email}” does not look like an address"
+
+#: accounts/people.py
+msgid "Профиль с предметами, журналы и уроки в расписании останутся; «Сегодня» и «Журналы» будут видны, пока у человека есть уроки"
+msgstr "The profile with subjects, journals and timetable lessons remain; “Today” and “Journals” stay visible while the person has lessons"
+
+#: accounts/people.py
+msgid "Такой роли нет"
+msgstr "There is no such role"
+
+#: accounts/people.py
+msgid "Такой учебной группы нет — заведите её на вкладке «Учебные группы»"
+msgstr "There is no such study group — create it on the “Study groups” tab"
+
+#: accounts/people.py
+#, python-brace-format
+msgid "Такой ученик в группе {group} уже заведён"
+msgstr "This student is already registered in group {group}"
+
+#: accounts/people.py
+msgid "Ученика в сотрудника и сотрудника в ученика не переводят: заведите отдельную запись"
+msgstr "A student is not turned into a staff member or vice versa: create a separate account"
+
+#: accounts/people.py
+msgid "Ученика в сотрудника не переводят: карточка, оценки и портфолио — это другая запись"
+msgstr "A student is not turned into a staff member: the card, grades and portfolio are a different record"

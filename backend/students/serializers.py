@@ -307,8 +307,23 @@ class StudentWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ("id", "last_name", "first_name", "middle_name", "email", "group", "graduation_year", "login")
-        extra_kwargs = {"email": {"required": False, "allow_null": True, "allow_blank": True}}
+        fields = ("id", "last_name", "first_name", "middle_name", "email", "phone", "group", "graduation_year", "login")
+        extra_kwargs = {
+            "email": {"required": False, "allow_null": True, "allow_blank": True},
+            # год выпуска считается от параллели группы (решение владельца, 11.10.2026);
+            # без группы — как прислали: так заводят карточки посев и прежние вызовы
+            "graduation_year": {"required": False},
+        }
+
+    def validate(self, attrs):
+        group = attrs.get("group", getattr(self.instance, "group", None))
+        if group is not None:
+            from core.parallels import graduation_year_for
+
+            attrs["graduation_year"] = graduation_year_for(group.parallel)
+        elif self.instance is None and not attrs.get("graduation_year"):
+            raise serializers.ValidationError({"group": _("Выберите учебную группу — год выпуска считается от неё")})
+        return attrs
 
     def validate_login(self, value: str) -> str:
         from accounts.models import User
@@ -400,6 +415,9 @@ class StudentSerializer(serializers.ModelSerializer):
             "middle_name",
             "full_name",
             "email",
+            "phone",
+            # учётная запись — чтобы карточка вела на «Пользователи», где правится ФИО и группа
+            "user",
             "parallel",
             "group",
             "group_code",

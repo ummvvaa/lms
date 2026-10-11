@@ -26,7 +26,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
-from accounts import magic_link, passwords, temporary
+from accounts import magic_link, passwords, people, temporary
 from accounts.models import LinkPurpose, Role, User
 from accounts.permissions import IsAdmin
 from accounts.serializers import (
@@ -43,9 +43,9 @@ from accounts.serializers import (
     MeSerializer,
     PasswordChangeSerializer,
     PasswordResetConfirmSerializer,
+    PersonSerializer,
     PreferencesSerializer,
     UserSerializer,
-    UserWriteSerializer,
 )
 from accounts.services import create_user, deactivate, link_email_identity, touch_identity
 from core import usage
@@ -391,31 +391,29 @@ def confirm_identity(request):
 # --- Управление пользователями: только роль `admin` ----------------------
 
 
-@extend_schema(request=UserWriteSerializer, responses=UserSerializer(many=True))
+@extend_schema(request=PersonSerializer, responses=UserSerializer(many=True))
 @api_view(["GET", "POST"])
 @permission_classes([IsAdmin])
 def users(request):
-    """Список с поиском и заведение новой учётной записи."""
+    """Список с поиском и заведение человека по роли (`accounts.people`)."""
     if request.method == "POST":
-        serializer = UserWriteSerializer(data=request.data)
+        serializer = PersonSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        if User.objects.filter(email__iexact=data["email"]).exists():
-            return Response({"detail": _("Такая почта уже заведена")}, status=status.HTTP_400_BAD_REQUEST)
-
-        user = create_user(
-            email=data["email"],
-            full_name=data.get("full_name", ""),
-            role=data.get("role", Role.STUDENT),
-            sees_whole_school=data.get("sees_whole_school", False),
-        )
-        token, sent_to = magic_link.issue_for(user, purpose=LinkPurpose.INVITE, actor=request.user)
-        # ссылку отдаём сразу: пока почта не настроена, письмо уходит
-        # в журнал, и без ссылки на экране завести человека нечем
+        try:
+            made = people.create(serializer.validated_data, actor=request.user)
+        except people.PersonError as error:
+            return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
+        user = made["user"]
         payload = UserSerializer(user).data
-        payload["invite"] = _invite_payload(user, token, sent_to)
-        if token:
-            usage.track(request, "access.link.issue")
+        if "password" in made:
+            payload["password"] = made["password"]
+            usage.track(request, "access.password.issue")
+        else:
+            # ссылку отдаём сразу: пока почта не настроена, письмо уходит
+            # в журнал, и без ссылки на экране завести человека нечем
+            payload["invite"] = _invite_payload(user, made["invite_token"], made["invite_sent_to"])
+            if made["invite_token"]:
+                usage.track(request, "access.link.issue")
         return Response(payload, status=status.HTTP_201_CREATED)
 
     from accounts import states
@@ -525,11 +523,11 @@ def _group_codes() -> list[str]:
     return list(StudyGroup.objects.filter(is_active=True).order_by("code").values_list("code", flat=True))
 
 
-@extend_schema(request=UserWriteSerializer, responses=UserSerializer)
-@api_view(["PATCH", "DELETE"])
+@extend_schema(request=PersonSerializer, responses=UserSerializer)
+@api_view(["GET", "PATCH", "DELETE"])
 @permission_classes([IsAdmin])
 def user_detail(request, pk: int):
-    """Смена роли, флага «видит всю школу» и отключение доступа.
+    """Человек целиком: чтение для окна правки, правка полей роли, смена роли, отключение.
 
     Физического удаления нет и не будет: на пользователе висят записи
     аудита, и удаление развалило бы историю правок (инвариант №13).
@@ -539,6 +537,9 @@ def user_detail(request, pk: int):
     user = User.objects.filter(pk=pk).first()
     if user is None:
         return Response({"detail": _("Пользователь не найден")}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "GET":
+        return Response({**UserSerializer(user).data, **people.detail(user)})
 
     if request.method == "DELETE":
         if request.user.pk == user.pk:
@@ -566,7 +567,7 @@ def user_detail(request, pk: int):
             }
         )
 
-    serializer = UserWriteSerializer(data=request.data, partial=True)
+    serializer = PersonSerializer(data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
 
@@ -580,46 +581,26 @@ def user_detail(request, pk: int):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    email = (data.get("email") or "").strip().lower()
-    if email and email != (user.email or "").lower():
-        # почта — это логин: занятую отдаём отказом словами, а не 500 из базы
-        if User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
-            return Response(
-                {"detail": _("Почта {email} уже занята другой учётной записью").format(email=email)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        data["email"] = email
-    else:
-        data.pop("email", None)
-
-    login_changed = "email" in data
-    was_email = user.email
-
     # правка идёт общим журналом (`apply_changes`): учётной записи нет
     # в реестре доменов, и сигнал аудита её не пишет — а видеть, кто и что
     # поменял человеку в карточке, надо ровно так же, как у ученика
-    from core.audit import apply_changes
-
-    changes = {
-        field: data[field]
-        for field in ("email", "full_name", "role", "sees_whole_school", "is_active")
-        if field in data
-    }
-    if changes:
-        apply_changes(user, changes, actor=request.user)
+    try:
+        result = people.update(user, data, actor=request.user)
+    except people.PersonError as error:
+        return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
     if data.get("is_active") is False:
         deactivate(user)
 
-    payload = UserSerializer(user).data
-    if login_changed:
+    payload = {**UserSerializer(user).data, **people.detail(user)}
+    if result["login_changed"]:
         # ссылка на прежнюю почту больше не придёт — сказать об этом прямо
         payload["login_changed"] = {
-            "was": was_email,
+            "was": result["was_email"],
             "now": user.email,
             "detail": _(
                 "Вход теперь по почте {email}. Прежняя ссылка уходила на {old_email} "
                 "и больше не придёт — вышлите приглашение заново"
-            ).format(email=user.email, old_email=was_email),
+            ).format(email=user.email, old_email=result["was_email"]),
         }
     return Response(payload)
 

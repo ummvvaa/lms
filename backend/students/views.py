@@ -160,7 +160,12 @@ class StudentViewSet(
         link_student(student)
 
     def perform_update(self, serializer):
-        link_student(serializer.save())
+        student = serializer.save()
+        link_student(student)
+        # ФИО и почта учётной записи — производные от карточки (решение владельца, 11.10.2026)
+        from accounts.people import sync_account
+
+        sync_account(student, actor=self.request.user)
 
     def get_queryset(self):
         # ученик видит только себя (инвариант №7), куратор — свои группы
