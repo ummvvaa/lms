@@ -10,7 +10,7 @@ import OfflineScreen from './components/OfflineScreen'
 import { useConnection } from './api/useConnection'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import UsageProvider, { UsageScreenVisit } from './usage/UsageProvider'
-import { language, languageReady, loadLanguage, rememberLanguage, setLanguage } from './i18n'
+import { LANGUAGE_EVENT, language, languageReady, loadLanguage, rememberLanguage, setLanguage } from './i18n'
 import { offeredLanguage } from './components/ProfileMenu'
 import { applyTheme } from './theme'
 import Shell from './layout/Shell'
@@ -247,6 +247,12 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
  */
 function PersonalSettings({ children }: { children: ReactNode }) {
   const { me } = useAuth()
+  // до входа язык меняет переключатель на экране входа: по событию читаем память устройства заново
+  const [, deviceChanged] = useReducer((count: number) => count + 1, 0)
+  useEffect(() => {
+    window.addEventListener(LANGUAGE_EVENT, deviceChanged)
+    return () => window.removeEventListener(LANGUAGE_EVENT, deviceChanged)
+  }, [])
   // сохранённый в профиле язык действует, только если он предлагается; до входа — язык устройства
   const wanted = offeredLanguage(me)
   // словарь — отдельный кусок сборки: пока он едет, интерфейс остаётся на

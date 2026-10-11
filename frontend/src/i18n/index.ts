@@ -104,9 +104,14 @@ export function deviceLanguage(): Lang {
   return 'ru'
 }
 
-/** Запомнить язык вошедшего — экран входа на этом устройстве откроется на нём. */
+/** Событие смены языка устройства: экран входа переключает язык до входа, оболочка перерисовывается. */
+export const LANGUAGE_EVENT = 'lms:language'
+
+/** Запомнить язык — экран входа на этом устройстве откроется на нём. */
 export function rememberLanguage(lang: Lang) {
+  const before = readText(DEVICE_KEY)
   writeText(DEVICE_KEY, lang)
+  if (before !== lang && typeof window !== 'undefined') window.dispatchEvent(new Event(LANGUAGE_EVENT))
 }
 
 /** Текущий язык интерфейса. */

@@ -16,9 +16,11 @@
  * `Field.Row` ставит два или три поля в ряд, на телефоне — друг под другом.
  * `Field.Static` — подпись и значение без поля, когда править нечего.
  */
-import { useId, useRef, type ReactNode } from 'react'
+import { type ReactNode, useId, useRef, useState } from 'react'
 import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
+import { t } from '../i18n'
+import { EyeIcon, EyeOffIcon } from 'lucide-react'
 import { Textarea } from './ui/textarea'
 import { SelectField } from './SelectField'
 import { useTrack } from '../usage/context'
@@ -95,6 +97,8 @@ function Field(props: FieldProps) {
   }
   const generated = useId()
   const id = props.id ?? `field-${generated}`
+  // пароль показывается по глазку: набранное с ошибкой видно без повторного ввода (11.10.2026)
+  const [shown, setShown] = useState(false)
   const hintId = `${id}-hint`
   const errorId = `${id}-error`
   const invalid = Boolean(props.error)
@@ -185,7 +189,7 @@ function Field(props: FieldProps) {
     control = (
       <Input
         {...shared}
-        type={kind}
+        type={kind === 'password' && shown ? 'text' : kind}
         inputMode={kind === 'number' ? 'decimal' : undefined}
         value={props.value ?? ''}
         placeholder={props.placeholder}
@@ -202,12 +206,26 @@ function Field(props: FieldProps) {
     )
   }
 
+  const password = props.kind === 'password'
   return (
     <div className={classes}>
       <label className="field__label t-caps" htmlFor={id}>
         {props.label}
       </label>
-      <div className="field__control">{control}</div>
+      <div className={`field__control${password ? ' field__control--password' : ''}`}>
+        {control}
+        {password && (
+          <button
+            type="button"
+            className="field__eye"
+            aria-label={shown ? t('Скрыть пароль') : t('Показать пароль')}
+            aria-pressed={shown}
+            onClick={() => setShown((value) => !value)}
+          >
+            {shown ? <EyeOffIcon size={18} aria-hidden="true" /> : <EyeIcon size={18} aria-hidden="true" />}
+          </button>
+        )}
+      </div>
       {foot}
     </div>
   )

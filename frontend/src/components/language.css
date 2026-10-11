@@ -109,6 +109,37 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 16%, transparent);
 }
 
+/* поле пароля: глазок справа внутри поля, цель касания 44 */
+.field__control--password {
+  position: relative;
+}
+
+.field__control--password :where([data-slot='input']) {
+  padding-right: calc(var(--space) * 12);
+}
+
+.field__eye {
+  position: absolute;
+  top: 50%;
+  right: calc(var(--space) * 1);
+  width: calc(var(--space) * 11);
+  height: calc(var(--space) * 11);
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  cursor: pointer;
+  border-radius: var(--radius-inrow);
+}
+
+.field__eye:hover,
+.field__eye[aria-pressed='true'] {
+  color: var(--ink);
+}
+
 .field__hint {
   color: var(--ink-3);
 }
