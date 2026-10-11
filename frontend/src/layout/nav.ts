@@ -183,7 +183,6 @@ export const NAV: Record<Role, NavItem[]> = {
     // конструктор эссе: типы, гайды, проверка, примеры (фаза 43)
     { path: '/essay-content', label: tk('Конструктор эссе'), icon: 'doc', group: 'data' },
     // справочник стипендий: ведёт он же, ученик видит его у себя (фаза 44)
-    { path: '/scholarship-directory', label: tk('Стипендии'), icon: 'card', group: 'data' },
   ],
   director_exam: [
     ...DIRECTOR_COMMON,
@@ -513,7 +512,6 @@ export const STAFF_ONLY = [
   '/sport-types',
   '/exam-kinds',
   '/essay-content',
-  '/scholarship-directory',
   '/badges',
   '/home-cues',
   '/call-rules',
@@ -546,6 +544,5 @@ export const DOMAIN_ONLY: Record<string, Role> = {
   '/tracks': 'director_talent',
   '/competitions': 'director_sport',
   '/essay-content': 'director_admission',
-  '/scholarship-directory': 'director_admission',
   '/call-rules': 'director_behavior',
 }

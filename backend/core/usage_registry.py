@@ -106,7 +106,6 @@ SCREENS = (
     Screen("/essays", gettext_noop("Эссе"), (ROLE_STUDENT,)),
     Screen("/essay-content", gettext_noop("Конструктор эссе"), DIRECTORS),
     Screen("/scholarships", gettext_noop("Стипендии"), (ROLE_STUDENT,)),
-    Screen("/scholarship-directory", gettext_noop("Справочник стипендий"), DIRECTORS),
     Screen("/resources", gettext_noop("Ресурсы"), (*DIRECTORS, ROLE_STUDENT)),
     Screen("/resources/:id", gettext_noop("Ресурс"), (*DIRECTORS, ROLE_STUDENT)),
     Screen("/career", gettext_noop("Профтест"), (ROLE_STUDENT,)),

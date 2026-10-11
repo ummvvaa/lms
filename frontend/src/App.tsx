@@ -102,7 +102,6 @@ const Favorites = lazy(() => import('./screens/Favorites'))
 const Plan = lazy(() => import('./screens/Plan'))
 const EssayContent = lazy(() => import('./screens/EssayContent'))
 const Scholarships = lazy(() => import('./screens/Scholarships'))
-const ScholarshipDirectory = lazy(() => import('./screens/ScholarshipDirectory'))
 const Resources = lazy(() => import('./screens/Resources'))
 const Career = lazy(() => import('./screens/career/Career'))
 const CareerTake = lazy(() => import('./screens/career/CareerTake'))
@@ -387,7 +386,6 @@ function Routing() {
         <Route path="/essays" element={<Essays />} />
         <Route path="/essay-content" element={<EssayContent />} />
         <Route path="/scholarships" element={<Scholarships />} />
-        <Route path="/scholarship-directory" element={<ScholarshipDirectory />} />
         {/* ресурсы читают все роли: раздел не закрыт ни доменом, ни группой */}
         <Route path="/resources" element={<Resources />} />
         <Route path="/resources/:id" element={<Resources />} />

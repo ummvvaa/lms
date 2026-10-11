@@ -160,7 +160,6 @@ def test_the_screen_actually_uses_what_it_declares():
             "essays": ("Essays",),
             "essay-content": ("EssayContent",),
             "scholarships": ("Scholarships",),
-            "scholarship-directory": ("ScholarshipDirectory",),
             "resources": ("Resources",),
             "career-questions": ("CareerQuestions",),
             "badges": ("Badges",),

@@ -70,7 +70,6 @@ export const ROUTES: Record<string, string[]> = {
     "/table",
     "/deadlines",
     "/directory",
-    "/scholarship-directory",
     "/essay-content",
     "/career-tests",
     "/task-templates",

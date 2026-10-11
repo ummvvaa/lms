@@ -210,13 +210,9 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         UPDATE: Entry("/directory", "useUpdateRound", ("director_admission",)),
         DELETE: Entry("/directory", "DeleteButton", ("director_admission",)),
     },
-    # стипендии (фаза 44): справочник ведёт директор по поступлению,
-    # сохраняет ученик — отметка живёт на его же экране
-    "universities.Scholarship": {
-        CREATE: Entry("/scholarship-directory", "useScholarshipDirectory", ("director_admission",)),
-        UPDATE: Entry("/scholarship-directory", "useScholarshipDirectory", ("director_admission",)),
-        DELETE: Entry("/scholarship-directory", "useScholarshipDirectory", ("director_admission",)),
-    },
+    # стипендии (фаза 44): справочник директора по поступлению скрыт с экранов
+    # 11.10.2026 (решение владельца), данные и API остались; сохраняет ученик —
+    # отметка живёт на его же экране
     "universities.SavedScholarship": {
         CREATE: Entry("/scholarships", "useSaveScholarship", ("student",)),
         DELETE: Entry("/scholarships", "useSaveScholarship", ("student",)),
@@ -393,6 +389,11 @@ NO_SCREEN: dict[tuple[str, str], str] = {  # i18n-skip: причины для т
         "universities.SavedScholarship",
         UPDATE,
     ): "у отметки «сохранено» нечего править: её ставят и снимают, как сердечко в избранном",
+    # справочник стипендий скрыт с экранов 11.10.2026 (решение владельца): записи остаются
+    # в базе, каталог и календарь ученика читают их; экрана правки больше нет
+    ("universities.Scholarship", CREATE): "справочник стипендий скрыт с экранов 11.10.2026, данные остались",
+    ("universities.Scholarship", UPDATE): "справочник стипендий скрыт с экранов 11.10.2026, данные остались",
+    ("universities.Scholarship", DELETE): "справочник стипендий скрыт с экранов 11.10.2026, данные остались",
 }
 
 

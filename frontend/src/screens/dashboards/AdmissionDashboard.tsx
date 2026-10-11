@@ -139,9 +139,6 @@ export default function AdmissionDashboard() {
             <Button variant="outline" size="sm" onClick={() => navigate('/directory')}>
               {t('Справочник вузов')}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/scholarship-directory')}>
-              {t('Стипендии')}
-            </Button>
             <Button size="sm" onClick={() => navigate('/deadlines')}>
               {t('Дедлайны')}
             </Button>
@@ -222,12 +219,6 @@ export default function AdmissionDashboard() {
                     note={String(cabinet.directory.universities)}
                     onOpen={() => navigate('/directory')}
                     openLabel={t('Открыть справочник')}
-                  />
-                  <Row
-                    title={t('Стипендий')}
-                    note={String(cabinet.directory.scholarships)}
-                    onOpen={() => navigate('/scholarship-directory')}
-                    openLabel={t('Открыть стипендии')}
                   />
                   <Row
                     title={t('Дедлайн не проверялся месяц')}
