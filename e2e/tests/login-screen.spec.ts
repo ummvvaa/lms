@@ -91,24 +91,32 @@ for (const size of SIZES) {
   });
 }
 
+// Выбор до входа живёт только в памяти устройства (`localStorage`), на сервер
+// не пишется: свой контекст теста — своя память, общий вход не задевается.
+// И всё же в конце — русский, даже после падения: ни один шаг не оставляет
+// экран входа на другом языке
 test("переключатель языка меняет подписи и помнится на устройстве", async ({ browser }) => {
   const page = await open(browser, SIZES[0]);
   // подпись группы переводится вместе с экраном — берём её по классу
   const langs = page.locator(".login__langs");
-  await expect(langs.getByRole("button", { name: "Рус" })).toBeVisible();
-  await langs.getByRole("button", { name: "Қаз" }).click();
-  await expect(page.getByLabel("Пошта немесе логин", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Кіру", exact: true })).toBeVisible();
-  await expect(langs.getByRole("button", { name: "Қаз" })).toHaveAttribute("aria-pressed", "true");
+  try {
+    await expect(langs.getByRole("button", { name: "Рус" })).toBeVisible();
+    await langs.getByRole("button", { name: "Қаз" }).click();
+    await expect(page.getByLabel("Пошта немесе логин", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Кіру", exact: true })).toBeVisible();
+    await expect(langs.getByRole("button", { name: "Қаз" })).toHaveAttribute("aria-pressed", "true");
 
-  await page.reload();
-  await expect(page.getByLabel("Пошта немесе логин", { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Пошта немесе логин", { exact: true })).toBeVisible();
 
-  await langs.getByRole("button", { name: "Eng" }).click();
-  await expect(page.getByLabel("Email or login", { exact: true })).toBeVisible();
-  await langs.getByRole("button", { name: "Рус" }).click();
-  await expect(page.getByLabel("Почта или логин", { exact: true })).toBeVisible();
-  await page.context().close();
+    await langs.getByRole("button", { name: "Eng" }).click();
+    await expect(page.getByLabel("Email or login", { exact: true })).toBeVisible();
+  } finally {
+    // подписи языков не переводятся — «Рус» есть на любом языке экрана
+    await langs.getByRole("button", { name: "Рус" }).click();
+    await expect(page.getByLabel("Почта или логин", { exact: true })).toBeVisible();
+    await page.context().close();
+  }
 });
 
 test("вход учеником с нового экрана проходит", async ({ browser }) => {

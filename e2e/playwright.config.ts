@@ -73,6 +73,9 @@ export default defineConfig({
         /screen-walk\.spec\.ts/,
         /empty-school\.spec\.ts/,
         /screen-height\.spec\.ts/,
+        // аудит кнопок и обход адресов — свой проект по команде (ниже)
+        /audit\.spec\.ts/,
+        /academics-walk\.spec\.ts/,
       ],
       use: { ...devices["Desktop Chrome"] },
     },
@@ -111,6 +114,15 @@ export default defineConfig({
     {
       name: "screen-walk",
       testMatch: process.env.SCREEN_WALK ? /screen-walk\.spec\.ts/ : /^$/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    // Аудит кнопок (41 минута) и обход адресов девяти ролей (13 минут) —
+    // по команде, а не в каждом полном прогоне: вместе они занимали треть
+    // его времени, а аудит ничего не проверяет — складывает наблюдения.
+    // Идут на данных посева: AUDIT=1 npx playwright test --project=seed --project=audit
+    {
+      name: "audit",
+      testMatch: process.env.AUDIT ? /(audit|academics-walk)\.spec\.ts/ : /^$/,
       use: { ...devices["Desktop Chrome"] },
     },
   ],

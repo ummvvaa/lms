@@ -6,6 +6,7 @@
  * поэтому слушатели вешаются до первой навигации.
  */
 import type { ConsoleMessage, Page, Request, Response } from "@playwright/test";
+import { russianOnServer } from "./language";
 import type { RoleAccount } from "./roles";
 
 export interface NetCall {
@@ -91,7 +92,7 @@ export async function login(page: Page, account: RoleAccount): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Почта или логин", { exact: true }).fill(account.email);
   await page.getByLabel("Пароль", { exact: true }).fill(account.password);
-  await Promise.all([
+  const [entered] = await Promise.all([
     page.waitForResponse(
       (r) =>
         r.url().includes("/api/auth/login/") && r.request().method() === "POST",
@@ -99,6 +100,15 @@ export async function login(page: Page, account: RoleAccount): Promise<void> {
     page.getByRole("button", { name: "Войти", exact: true }).click(),
   ]);
   await page.waitForURL(/\/(dashboard|onboarding)/, { timeout: 15_000 });
+  // язык записи — на сервере; чужой сценарий мог его сменить, а этот ждёт русский
+  const me = entered.ok()
+    ? ((await entered.json().catch(() => ({}))) as { language?: string })
+    : {};
+  if (me.language && me.language !== "ru") {
+    await russianOnServer(page.request, await page.context().cookies());
+    await page.reload();
+    await page.waitForURL(/\/(dashboard|onboarding)/, { timeout: 15_000 });
+  }
 }
 
 /**

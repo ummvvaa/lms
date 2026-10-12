@@ -205,9 +205,10 @@ export async function openAs(
   });
   const csrf =
     (await context.cookies()).find((c) => c.name === "csrftoken")?.value ?? "";
+  // язык — тоже настройка на сервере: обход ждёт русские подписи
   await page.request
     .patch("/api/auth/me/preferences/", {
-      data: { theme: "light", sidebar_collapsed: false },
+      data: { theme: "light", sidebar_collapsed: false, language: "ru" },
       headers: { "X-CSRFToken": csrf },
     })
     .catch(() => undefined);
