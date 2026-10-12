@@ -23,9 +23,14 @@ export async function wizardFile(page: Page, name: string, csv: string): Promise
   ]);
 }
 
+/** Кнопка «Дальше» того шага, что открыт: в разметке их две, видна одна (07.10.2026). */
+export function wizardNext(page: Page) {
+  return page.getByRole("button", { name: "Дальше", exact: true }).locator("visible=true").first();
+}
+
 /** Шаг 1 → шаг 2 «Что заполняем». */
 export async function wizardToColumns(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Дальше", exact: true }).click();
+  await wizardNext(page).click();
   await expect(page.getByText("Колонка → поле → домен: из реестра соответствий")).toBeVisible();
 }
 
@@ -39,7 +44,7 @@ export async function wizardAssign(page: Page, header: string, key: string): Pro
 
 /** Шаг 2 → шаг 3 «Проверка строк». */
 export async function wizardToRows(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Дальше", exact: true }).click();
+  await wizardNext(page).click();
   await expect(page.getByRole("button", { name: "Применить", exact: true })).toBeVisible();
 }
 

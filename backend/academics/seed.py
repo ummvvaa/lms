@@ -817,16 +817,34 @@ def _september(calendar, rng, teachers) -> int:
 PROBE_TEACHER = "teacher@probe.local"
 #: второй учитель прогона: чужие уроки в расписании, чтобы у учителя прогона были не все
 PROBE_OTHER = "teacher2@probe.local"
+#: третий учитель прогона ведёт профориентацию — у него есть «Профтест»; у учителя
+#: прогона этого предмета нет намеренно: его журналы и уроки проверяют сценарии оценок
+PROBE_CAREER = "career@probe.local"
+#: предмет профориентации прогона: ведётся в LMS, без оценок, результат — попытка профтеста
+PROBE_CAREER_SUBJECT = ("career", "Профориентация", "Проф.")
+#: предмет «только расписание» прогона: урок стоит в неделе, журнала и отметок нет;
+#: ведёт его четвёртый учитель прогона — он попадает во вкладку «Только расписание»
+PROBE_SCHEDULE_ONLY = "pe"
+PROBE_SCHEDULE_TEACHER = "schedule@probe.local"
 #: предметы группам прогона: (код, чей учитель, уроков в неделю)
-PROBE_PLAN = (("alg", PROBE_TEACHER, 3), ("phy", PROBE_TEACHER, 2), ("eng", PROBE_OTHER, 3), ("hkz", PROBE_OTHER, 2))
+PROBE_PLAN = (
+    ("alg", PROBE_TEACHER, 3),
+    ("phy", PROBE_TEACHER, 2),
+    ("eng", PROBE_OTHER, 3),
+    ("hkz", PROBE_OTHER, 2),
+    (PROBE_SCHEDULE_ONLY, PROBE_SCHEDULE_TEACHER, 1),
+    (PROBE_CAREER_SUBJECT[0], PROBE_CAREER, 1),
+)
 
 
-def seed_probe(*, actor=None) -> dict:
+def seed_probe(*, actor=None, password: str = "") -> dict:
     """Год, предметы, составы и недельное расписание для групп прогона.
 
     Учеников не заводит: их сеет сценарий через API. Повторный запуск
     на живой базе ничего не дублирует — уроки заводятся только там,
-    где у группы их ещё нет.
+    где у группы их ещё нет. `password` — пароль учителя профориентации
+    (тот же `PROBE_PASSWORD`, что у остальных записей прогона): под ним
+    сценарий входит через форму, своей сохранённой сессии у него нет.
     """
     from django.conf import settings
 
@@ -837,11 +855,53 @@ def seed_probe(*, actor=None) -> dict:
         raise SeedRefused("Учётной записи учителя прогона нет: сначала create_probe_users")
     year = _year()
     subjects = _subjects()
+    # предметы прогона сверх общего списка: профориентация (ведётся в LMS, без оценок)
+    # и физкультура «только расписание» — урок в неделе есть, журнала и отметок нет
+    code, title, short = PROBE_CAREER_SUBJECT
+    # предмет профориентации в базе уже может быть (книга школы, прежний посев):
+    # второй «Профориентации» не заводим, как и `keep_subjects` — ищем по названию
+    existing = Subject.objects.filter(title__iexact=title).order_by("pk").first()
+    if existing is not None:
+        existing.scheme = Scheme.FO
+        existing.in_lms = True
+        existing.is_career = True
+        existing.is_active = True
+        existing.save(update_fields=["scheme", "in_lms", "is_career", "is_active"])
+        subjects[code] = existing
+        # остаток прежнего посева под кодом прогона без уроков — убрать, иначе
+        # на экране предметов две «Профориентации»; с уроками — хотя бы без признака
+        stray = Subject.objects.filter(code=code).exclude(pk=existing.pk)
+        stray.filter(courses__isnull=True).delete()
+        stray.update(is_career=False)
+    else:
+        subjects[code] = Subject.objects.create(
+            code=code,
+            title=title,
+            short_title=short,
+            scheme=Scheme.FO,
+            in_lms=True,
+            is_career=True,
+            order=len(SUBJECTS) + 1,
+            is_fictional=True,
+        )
+    # признаки — заново при каждом посеве: база разработки могла перевести
+    # предметы в «только расписание» руками, а сценарии ждут ровно один такой
+    Subject.objects.filter(code__in=[row[0] for row in SUBJECTS]).update(in_lms=True, is_career=False)
+    Subject.objects.filter(code=PROBE_SCHEDULE_ONLY).update(in_lms=False)
+    for row in subjects.values():
+        row.in_lms = row.code != PROBE_SCHEDULE_ONLY
     _assign_bells(year, StudyGroup.objects.filter(is_active=True, archived_at__isnull=True))
     calendar = school_calendar.load(year)
     other = _user(PROBE_OTHER, "Прогон Второй учитель", Role.TEACHER, "")
-    staff = {PROBE_TEACHER: teacher, PROBE_OTHER: other}
-    for user, codes, room in ((teacher, ("alg", "phy"), "204"), (other, ("eng", "hkz"), "305")):
+    career = _user(PROBE_CAREER, "Прогон Профориентатор", Role.TEACHER, password)
+    sched = _user(PROBE_SCHEDULE_TEACHER, "Прогон Физрук", Role.TEACHER, "")
+    staff = {PROBE_TEACHER: teacher, PROBE_OTHER: other, PROBE_CAREER: career, PROBE_SCHEDULE_TEACHER: sched}
+    for user, codes, room in (
+        (teacher, ("alg", "phy"), "204"),
+        (other, ("eng", "hkz"), "305"),
+        (career, (code,), "306"),
+        (sched, (PROBE_SCHEDULE_ONLY,), "307"),
+    ):
         profile, _ = TeacherProfile.objects.get_or_create(user=user)
         profile.room = room
         profile.is_fictional = True
@@ -869,7 +929,7 @@ def seed_probe(*, actor=None) -> dict:
                     cohort=cohort,
                     starts=starts,
                     slot=(slot % 6) + 1,
-                    room="204" if email == PROBE_TEACHER else "305",
+                    room={PROBE_TEACHER: "204", PROBE_OTHER: "305", PROBE_CAREER: "306"}.get(email, "307"),
                     calendar=calendar,
                     actor=actor,
                 )

@@ -1220,8 +1220,9 @@ test("дисциплина: три недели уроков с пропуска
   }
   await teacher.context().close();
   // уроки второго учителя отмечает администратор: он отмечает любой урок
+  // предмет «только расписание» не отмечается: у его уроков нет журнала (07.10.2026)
   const others = (await lessonsBetween(admin, daysAgo(21), daysAgo(0))).filter(
-    (row) => row.date < daysAgo(0) && !mine.some((own) => own.id === row.id),
+    (row) => row.date < daysAgo(0) && row.subject.in_lms !== false && !mine.some((own) => own.id === row.id),
   );
   for (const lesson of others) await markLesson(admin, lesson.id, "all");
 
@@ -1295,6 +1296,70 @@ test("удаление навсегда: запись с журналом и у�
   await apiPatch(admin, `/api/students/${row!.id}/`, { graduation_year: 2027 });
 
   await admin.context().close();
+});
+
+/**
+ * Учитель профориентации прогона (`career@probe.local`, заводит
+ * `seed_probe_academics`) входит через форму под общим паролем записей:
+ * сохранённой сессии, как у девяти ролей, у него нет.
+ */
+async function asCareerTeacher(browser: Browser): Promise<Page> {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const login = await page.request.post("/api/auth/login/", {
+    data: { email: probeEmail("career"), password: probePassword() },
+  });
+  expect(login.ok(), `вход учителя профориентации: ${login.status()}`).toBeTruthy();
+  return page;
+}
+
+/** Файл теста профориентации — образец школы из `guides/examples`. */
+const CAREER_FILE = "karta_interesov.xlsx";
+
+test("профтест: учитель профориентации грузит образец, включает и открывает CHICAGO", async ({
+  browser,
+}) => {
+  // профориентация ведётся третьим учителем прогона (08.10.2026): тест —
+  // образец «Карта интересов», файлом через тот же API, что окно «Загрузить
+  // тест»; открыт группе ученика прогона целиком. Повторный посев тест
+  // не дублирует: тот же файл второй раз не грузится
+  seedProbeAcademics();
+  const teacher = await asCareerTeacher(browser);
+  const csrf =
+    (await teacher.context().cookies()).find((c) => c.name === "csrftoken")?.value ?? "";
+  const listing = (await (await teacher.request.get("/api/career/tests/")).json()) as {
+    manage: boolean;
+    tests: { id: number; file_name: string; is_active: boolean }[];
+  };
+  expect(listing.manage, "учитель профориентации ведёт тесты").toBeTruthy();
+  let row = listing.tests.find((test) => test.file_name === CAREER_FILE);
+  if (!row) {
+    const uploaded = await teacher.request.post("/api/career/tests/", {
+      multipart: {
+        file: {
+          name: CAREER_FILE,
+          mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          buffer: readFileSync(path.join(__dirname, "..", "..", "guides", "examples", CAREER_FILE)),
+        },
+      },
+      headers: { "X-CSRFToken": csrf },
+    });
+    expect(uploaded.status(), await uploaded.text()).toBe(201);
+    row = (await uploaded.json()) as { id: number; file_name: string; is_active: boolean };
+  }
+  if (!row.is_active) await apiPatch(teacher, `/api/career/tests/${row.id}/`, { is_active: true });
+
+  const groups = (await (await teacher.request.get("/api/career/groups/")).json()) as {
+    groups: { id: number; code: string; assignable: boolean }[];
+  };
+  const chicago = groups.groups.find((g) => g.code === "CHICAGO");
+  expect(chicago?.assignable, "CHICAGO — состав учителя профориентации").toBeTruthy();
+  const assigned = await teacher.request.put(`/api/career/tests/${row.id}/assignments/`, {
+    data: { groups: [{ group: chicago!.id, students: null }] },
+    headers: { "X-CSRFToken": csrf },
+  });
+  expect(assigned.status(), await assigned.text()).toBe(200);
+  await teacher.context().close();
 });
 
 test("посев помечает свои карточки вымышленными", async () => {

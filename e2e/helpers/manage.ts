@@ -125,5 +125,8 @@ export function markFictional(): void {
  * `seed.spec.ts` через API; отметки уроков тоже ставит сценарий.
  */
 export function seedProbeAcademics(): string {
-  return manage(["seed_probe_academics"]);
+  // учитель профориентации прогона входит через форму под общим паролем записей
+  return manage(["seed_probe_academics"], {
+    PROBE_PASSWORD: process.env.PROBE_PASSWORD ?? "",
+  });
 }

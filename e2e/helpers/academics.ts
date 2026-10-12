@@ -18,7 +18,8 @@ export interface LessonRow {
   bell?: string;
   is_live?: boolean;
   actual_teacher?: { id: number; short: string } | null;
-  subject: { id: number; title: string; short_title: string };
+  /** `in_lms: false` — предмет «только расписание»: урок в неделе есть, отметок и оценок нет */
+  subject: { id: number; title: string; short_title: string; in_lms?: boolean };
   cohort: { id: number; name: string; group: string; students?: number };
 }
 
