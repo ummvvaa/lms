@@ -444,6 +444,9 @@ export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = 
   if (role === 'student' && extras.sections) {
     const open = extras.sections
     items = items.filter((item) => studentMayOpen(open, item.path))
+    // у 8–10 поступления нет, а «Профтест» открыт всем: без каталога вузов
+    // заголовок «Поступление» стоял бы ради одного пункта — он идёт в «Основное»
+    if (!open.includes('/catalog')) items = items.map((item) => (item.path === '/career' ? { ...item, group: 'main' } : item))
   }
   return items
 }

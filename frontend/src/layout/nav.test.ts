@@ -5,6 +5,16 @@ import { curatorMayOpen, homeworkReviewOpen, navFor, tabsFor, usageOpen } from '
 const reviewPath = '/homework-review'
 const reviewPages = [reviewPath, `${reviewPath}/42`]
 
+describe('профтест в меню ученика', () => {
+  it('у 8–10 без каталога вузов «Профтест» стоит в «Основном», у 11 — в «Поступлении»', () => {
+    const junior = navFor('student', false, { sections: ['/dashboard', '/schedule', '/career'] })
+    expect(junior.find((item) => item.path === '/career')?.group).toBe('main')
+    expect(junior.some((item) => item.group === 'admission')).toBe(false)
+    const senior = navFor('student', false, { sections: ['/dashboard', '/catalog', '/career'] })
+    expect(senior.find((item) => item.path === '/career')?.group).toBe('admission')
+  })
+})
+
 describe('проверка ДЗ в навигации', () => {
   it('куратор со своими уроками видит пункт и проходит оба шлюза страницы', () => {
     const items = navFor('curator', false, { teaches: true })

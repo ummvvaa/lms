@@ -491,7 +491,8 @@ export default function Journal() {
   const columns: MatrixColumn[] = data.columns.map((column) => ({
     key: column.lesson,
     title: dateShort(column.date),
-    sub: column.unmarked ? t('не отмечен') : `${column.kind_label} · ${column.weekday}`,
+    // у предмета без оценок вид урока («ФО») под датой не нужен — только день недели (D102)
+    sub: column.unmarked ? t('не отмечен') : passOnly ? column.weekday : `${column.kind_label} · ${column.weekday}`,
   }))
   const summaryColumns: MatrixColumn[] = [
     { key: 's-abs', title: t('Пропуски') },

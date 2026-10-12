@@ -3785,7 +3785,7 @@ export const en: Record<string, string> = {
   'со вчера ничего не менялось': 'nothing has changed since yesterday',
   'соберутся сами {cadence}': 'built automatically: {cadence}',
   'соберутся сами {cadence} · или выберите вид отчёта выше': 'built automatically: {cadence} · or choose a report type above',
-  'соберутся сами в последнюю пятницу месяца и после четверти': 'will be built automatically on the last Friday of the month and after the term',
+  'соберутся сами в последнюю пятницу месяца': 'will be built automatically on the last Friday of the month',
   'соберутся сами после закрытия четверти': 'will be built automatically after the term closes',
   'собрано {date}': 'built {date}',
   'собрано правилами': 'rule-based',

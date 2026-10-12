@@ -50,8 +50,11 @@ export function Tile({
  * плитка под рядом читается как отдельный блок и ломает сетку (правило П-5).
  */
 export function StatRow({ children }: { children: ReactNode }) {
+  // `{условие && <Kpi />}` даёт `false` в детях: `Children.count` его считает, и ряд
+  // из четырёх плиток получал раскладку пяти — на телефоне «2 + 1 + 1» (D101).
+  // `toArray` отбрасывает `null`, `undefined` и булевы — считаем только плитки
   return (
-    <div className="statrow" data-count={Children.count(children)}>
+    <div className="statrow" data-count={Children.toArray(children).length}>
       {children}
     </div>
   )
