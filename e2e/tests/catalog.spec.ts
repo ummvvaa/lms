@@ -124,7 +124,7 @@ test.describe("каталог глазами ученика", () => {
   });
 
   test("нигде не обещается шанс поступления", async ({ page }) => {
-    for (const route of ["/catalog", "/universities"]) {
+    for (const route of ["/catalog", "/catalog?mode=mine"]) {
       await page.goto(route);
       await page.waitForTimeout(700);
       const text = await page.locator("main").innerText();
@@ -245,8 +245,8 @@ test.describe("добавление в свой список", () => {
     expect(added.status()).toBe(201);
     await expect(card).toContainText("в списке");
 
-    // она видна в «Моих вузах» и помечена как ждущая подтверждения
-    await student.goto("/universities");
+    // она видна в «Моих вузах» — вкладке каталога — и помечена как ждущая подтверждения
+    await student.goto("/catalog?mode=mine");
     await expect(
       student.locator(".uni__item").filter({ hasText: target.university_name }),
     ).toContainText("ждёт подтверждения");
@@ -348,7 +348,7 @@ test.describe("добавление в свой список", () => {
       storageState: statePath("student"),
     });
     const student = await context.newPage();
-    await student.goto("/universities");
+    await student.goto("/catalog?mode=mine");
 
     const { results } = await (
       await student.request.get("/api/catalog/")

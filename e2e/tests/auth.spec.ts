@@ -142,29 +142,34 @@ test.describe("администратор заводит человека", () =
     await page.goto("/users");
     await expect(page.locator("h1")).toContainText("Пользователи");
 
+    // окно человека по роли (11.10.2026): роль первой, под неё поля сотрудника
     await page.getByRole("button", { name: "Завести пользователя" }).click();
-    await page.getByLabel("Почта", { exact: true }).fill(email);
-    await page.getByLabel("ФИО").fill("Приглашённый Директор");
-    await page.locator(".drawer").getByLabel("Роль").selectOption("director_sport");
+    const person = page.getByRole("dialog");
+    await person.getByLabel("Роль", { exact: true }).selectOption("director_sport");
+    await person.getByLabel("Фамилия и имя").fill("Приглашённый Директор");
+    await person.getByLabel("Почта или логин").fill(email);
 
     const [created] = await Promise.all([
       page.waitForResponse(
         (r) =>
           r.url().endsWith("/api/users/") && r.request().method() === "POST",
       ),
-      page.getByRole("button", { name: "Завести и пригласить" }).click(),
+      person.getByRole("button", { name: "Завести", exact: true }).click(),
     ]);
     expect(created.status()).toBe(201);
     // с фазы 69 сообщение уходит тостом внизу экрана, а не плашкой в списке
     await expect(page.locator("[data-sonner-toast]").first()).toContainText(
-      email,
+      "Приглашённый Директор",
     );
+    // сотруднику с почтой ссылка показывается один раз — закрываем окно
+    await expect(page.getByRole("dialog")).toContainText("Ссылка на установку пароля");
+    await page.keyboard.press("Escape");
 
-    // в списке он виден и помечен как «Пароль не задан»
+    // в списке он виден и помечен «Ссылка выдана» (состояния с 07.10.2026)
     await page.getByPlaceholder("Поиск по имени или почте").fill(email);
     await expect(page.locator("table.tbl tbody tr")).toHaveCount(1);
     await expect(page.locator("table.tbl tbody tr")).toContainText(
-      "Пароль не задан",
+      "Ссылка выдана",
     );
 
     // ссылку из письма берём из журнала: почтового сервера в контуре нет

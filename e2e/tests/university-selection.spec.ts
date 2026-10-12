@@ -4,8 +4,8 @@
  * Ученик запускает подбор и получает результат-снимок: сводка профиля,
  * три карточки стратегии, воронка числами, объяснение процентов,
  * категории и секции, карточка вуза с двумя числами соответствия.
- * Избранное живёт отдельно от списка подачи. Повторный подбор
- * с фильтром стран даёт другой результат, оба в истории.
+ * Повторный подбор с фильтром стран даёт другой результат, оба в истории.
+ * Экрана «Избранное» с 07.10.2026 нет, его API проверяет `api_probe.py`.
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
@@ -81,38 +81,6 @@ test("карточка вуза: два числа соответствия и �
   await expect(card.getByText("вес", { exact: false }).first()).toBeVisible();
 });
 
-test("избранное работает отдельно от списка подачи", async ({ browser }) => {
-  const page = await as(browser, "student");
-  await page.goto("/selection");
-  await page.locator(".datacard", { hasText: "История подборов" }).locator(".rowline--link")
-    .first()
-    .click();
-  await waitForResult(page);
-
-  const card = page.locator(".sel__result").first();
-  const heart = card.locator(".sel__heart");
-  const wasOn =
-    (await heart.getAttribute("class"))?.includes("sel__heart--on") ?? false;
-  if (!wasOn) {
-    const [response] = await Promise.all([
-      page.waitForResponse((r) => r.url().includes("/api/favorites/")),
-      heart.click(),
-    ]);
-    expect([200, 201]).toContain(response.status());
-  }
-
-  await page.goto("/favorites");
-  await expect(page.locator(".sel__result").first()).toBeVisible();
-
-  // избранное — не список подачи: на «Моих вузах» этой пометки нет
-  const favorites = (await (
-    await page.request.get("/api/favorites/")
-  ).json()) as {
-    results: { in_my_list: boolean }[];
-  };
-  expect(favorites.results.length).toBeGreaterThan(0);
-});
-
 test("повторный подбор с фильтром стран — другой результат, оба в истории", async ({
   browser,
 }) => {
@@ -129,9 +97,7 @@ test("повторный подбор с фильтром стран — дру�
     .click();
   await page.getByRole("button", { name: "Запустить подбор" }).click();
   await waitForResult(page);
-  await expect(
-    page.getByText(`Страны: ${country}`, { exact: false }),
-  ).toBeVisible();
+  await expect(page.locator(".rowline", { hasText: "Страны" }).first()).toContainText(country);
 
   await page.goto("/selection");
   const history = (await (

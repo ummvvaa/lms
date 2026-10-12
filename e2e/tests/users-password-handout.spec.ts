@@ -41,7 +41,8 @@ test("чипы фильтруют список и остаются в адрес
   const chips = page.locator(".segrow", { hasText: "Все" }).first().locator(".segrow__item");
   await expect(chips.first()).toBeVisible();
   // сегментов пять: «Все» и четыре состояния пароля
-  await expect(chips).toHaveCount(5);
+  // шесть состояний с 07.10.2026: «Все», «Не выдавали», «Ссылка выдана», «Ждёт смены пароля», «Срок истёк», «Пароль задан»
+  await expect(chips).toHaveCount(6);
 
   const waiting = chips.filter({ hasText: "Ждёт смены пароля" });
   const counter = Number(((await waiting.innerText()).match(/\d+/) ?? ["0"])[0]);
@@ -96,7 +97,8 @@ test("выдача паролей: разбивка, защита и отмен�
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("Действие по отмеченным строкам");
   await expect(dialog).toContainText("Кого затронет");
-  await expect(dialog).toContainText("Пароль не задан");
+  // состояние без ссылки с 07.10.2026 называется «Не выдавали»
+  await expect(dialog).toContainText(/Не выдавали|Ссылка выдана/);
 
   // пока число не набрано, кнопка не работает
   const confirm = dialog.getByRole("button", { name: "Выдать пароли" });
@@ -104,42 +106,50 @@ test("выдача паролей: разбивка, защита и отмен�
   await dialog.getByLabel("Число затронутых").fill("99");
   await expect(confirm).toBeDisabled();
 
-  // отмена ничего не меняет
+  // отмена ничего не меняет: состояние то же, что до окна (запись с почтой
+  // получает ссылку при заведении — «Ссылка выдана», без пароля)
+  const stateOf = async () =>
+    ((await (await page.request.get(`/api/users/?search=${VICTIM}`)).json()) as {
+      results: { password_state: string }[];
+    }).results[0].password_state;
+  const before = await stateOf();
+  expect(before, "пароль ещё не выдан").not.toBe("ready");
   await dialog.getByRole("button", { name: "Отмена" }).click();
   await expect(dialog).toBeHidden();
-  const after = (await (
-    await page.request.get(`/api/users/?search=${VICTIM}`)
-  ).json()) as { results: { password_state: string }[] };
-  expect(after.results[0].password_state, "пароль не выдан").toBe(
-    "no_password",
-  );
+  expect(await stateOf(), "пароль не выдан").toBe(before);
 
   expect(diag.consoleErrors, "ошибки в консоли").toEqual([]);
   expect(diag.pageErrors, "исключения").toEqual([]);
   await page.context().close();
 });
 
-test("тост виден внизу, а в ячейке действий ничего не остаётся", async ({
+test("итог письма — в окне, а в ячейке действий ничего не остаётся", async ({
   browser,
 }) => {
   const page = await as(browser, "admin");
   const diag = watch(page);
 
   await page.goto("/users");
+  // выключенная запись прячется из списка — показываем неактивных заранее
+  await page.getByLabel(/Показать неактивных/).first().check();
   await page.getByPlaceholder("Поиск по имени или почте").fill(VICTIM);
   const row = page.locator("tr", { hasText: VICTIM });
   await expect(row).toBeVisible();
   const before = (await row.boundingBox())!.height;
 
+  // письмо с 07.10.2026 уходит из окна, итог — в нём же, а не плашкой в строке
   await row.getByRole("button", { name: "Ещё действия" }).click();
   await page.getByRole("menuitem", { name: "Выслать письмо заново" }).click();
-
-  const toast = page.locator("[data-sonner-toast]").first();
-  await expect(toast).toBeVisible();
-  // тост внизу экрана, а не поверх строк таблицы
-  const box = (await toast.boundingBox())!;
-  const view = page.viewportSize()!;
-  expect(box.y, "тост внизу экрана").toBeGreaterThan(view.height / 2);
+  const mailing = page.getByRole("dialog");
+  await expect(mailing).toContainText("Выслать письмо заново");
+  const [sent] = await Promise.all([
+    page.waitForResponse((r) => r.url().includes("/api/users/invite/") && r.request().method() === "POST"),
+    mailing.getByRole("button", { name: "Выслать письмо" }).click(),
+  ]);
+  expect(sent.status()).toBe(200);
+  await expect(mailing).toContainText(/Отправлено|в очереди|пропущено|ошибок отправки/);
+  await page.keyboard.press("Escape");
+  await expect(mailing).toBeHidden();
 
   // в ячейке действий плашки не появилось, и строка не подросла.
   // Меню ждём закрытым: пока оно открыто, блокировка прокрутки меняет
@@ -151,8 +161,6 @@ test("тост виден внизу, а в ячейке действий нич
     1,
   );
 
-  // и он уходит сам
-  await expect(toast).toBeHidden({ timeout: 15_000 });
 
   // пароль и ссылку скопировать надо — они открываются окном поверх
   // таблицы, а не карточкой внутри ячейки, которая растила строку

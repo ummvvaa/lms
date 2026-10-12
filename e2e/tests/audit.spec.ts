@@ -87,8 +87,6 @@ const ROUTES = [
   "/assistant",
   "/digest",
   "/import",
-  "/roadmap",
-  "/universities",
   "/essays",
   "/my-data",
   "/groups",

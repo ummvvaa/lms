@@ -16,6 +16,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail } from "../helpers/roles";
 import { watch } from "../helpers/session";
+import { daysAgo, lessonsBetween } from "../helpers/academics";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
@@ -51,8 +52,10 @@ test("посещаемость: день матрицей по урокам, м�
   await page.goto("/attendance");
   await expect(page.locator("h1")).toContainText("Посещаемость");
 
-  // день выбираем вчерашний: у посева там отмеченные уроки
-  await page.getByLabel("День").fill(YESTERDAY);
+  // день — последний учебный с уроками: в понедельник «вчера» без уроков
+  const past = (await lessonsBetween(page, daysAgo(10), daysAgo(1))).map((row) => row.date).sort();
+  const day = past[past.length - 1] ?? YESTERDAY;
+  await page.getByLabel("День").fill(day);
   const grid = page.locator(".matrix").first();
   await expect(grid).toBeVisible();
   const rows = grid.locator("tbody tr");

@@ -53,10 +53,8 @@ const PHONE_SHOTS: Record<string, string[]> = {
     "/dashboard",
     "/my-data",
     "/calendar",
-    "/roadmap",
-    "/universities",
     "/catalog",
-    "/scholarships",
+    "/career",
   ],
   director_exam: ["/dashboard", "/table", "/suggestions", "/digest"],
   director_admission: ["/dashboard", "/table"],
@@ -413,8 +411,8 @@ test.describe("телефон 390×844", () => {
     const input = form.locator("input").first();
     await input.fill("7.5");
     await send.click();
-    // ушло предложение: строка помечена «ждёт проверки»
-    await expect(student.getByText("ждёт проверки").first()).toBeVisible({
+    // ушло предложение: строка помечена «на проверке у директора»
+    await expect(student.getByText("на проверке у директора").first()).toBeVisible({
       timeout: 15_000,
     });
     await student.context().close();

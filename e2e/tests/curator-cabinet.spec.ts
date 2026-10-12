@@ -312,10 +312,13 @@ test("ученик видит задачу куратора и знает, чт�
   });
   await curator.context().close();
 
-  await student.goto("/roadmap");
-  await expect(student.locator("body")).toContainText(
-    "Проверка из прогона: принести аттестат",
-  );
+  // задачи ученика с 07.10.2026 — полным списком на главной, роадмапа нет
+  await student.goto("/dashboard");
+  const tasks = student.locator(".datacard", { hasText: "Задачи" }).first();
+  // длинный список показывает первые строки и «Показать все N»
+  const more = tasks.getByRole("button", { name: /Показать все/ });
+  if (await more.count()) await more.click();
+  await expect(tasks).toContainText("Проверка из прогона: принести аттестат");
   // имя куратора ученику не показывается нигде (инвариант фазы 60)
   await expect(student.locator("body")).not.toContainText("Асель");
   await student.context().close();

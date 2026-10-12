@@ -1,6 +1,6 @@
 /**
- * Пользователи с панелями и ролью «Учитель»; архив с удалённым уроком
- * и «Вернуть». Заведённое сценарием убирается им же.
+ * Пользователи: учитель заводится окном человека по роли (11.10.2026);
+ * архив с удалённым уроком и «Вернуть». Заведённое сценарием убирается им же.
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { daysAgo, lessonsBetween } from "../helpers/academics";
@@ -19,7 +19,7 @@ async function as(browser: Browser, role: string): Promise<Page> {
 
 const TEACHER = probeEmail("teacher-panel");
 
-test("пользователи: учитель заводится в панели, фильтр по роли, пароль выдаётся", async ({ browser }) => {
+test("пользователи: учитель заводится в окне, фильтр по роли, пароль выдаётся", async ({ browser }) => {
   const admin = await as(browser, "admin");
   const diag = watch(admin);
   await admin.goto("/users");
@@ -31,15 +31,15 @@ test("пользователи: учитель заводится в панел�
   await admin.getByRole("tab", { name: "Учётные записи" }).click();
 
   await admin.getByRole("button", { name: "Завести пользователя" }).click();
-  const panel = admin.locator(".drawer");
-  await expect(panel).toContainText("Новая учётная запись");
-  await panel.getByLabel("Почта").fill(TEACHER);
-  await panel.getByLabel("ФИО").fill("Прогон Учитель Панельный");
-  await panel.getByLabel("Роль").selectOption("teacher");
+  const panel = admin.getByRole("dialog");
+  await expect(panel).toContainText("Завести пользователя");
+  await panel.getByLabel("Роль", { exact: true }).selectOption("teacher");
+  await panel.getByLabel("Фамилия и имя").fill("Прогон Учитель Панельный");
+  await panel.getByLabel("Почта или логин").fill(TEACHER);
   const created = admin.waitForResponse(
     (r) => r.url().endsWith("/api/users/") && r.request().method() === "POST",
   );
-  await panel.getByRole("button", { name: "Завести и пригласить" }).click();
+  await panel.getByRole("button", { name: "Завести", exact: true }).click();
   expect((await created).status()).toBe(201);
   await expect(admin.locator("body")).toContainText("Ссылка на установку пароля");
   // окно со ссылкой закрывается клавишей: кнопки «Закрыть» у него нет
@@ -51,8 +51,8 @@ test("пользователи: учитель заводится в панел�
   await expect(admin).toHaveURL(/role=teacher/);
   const rows = admin.locator("table.tbl tbody tr");
   await expect(rows.filter({ hasText: TEACHER })).toHaveCount(1);
-  for (const cell of await rows.locator("select").allTextContents())
-    expect(cell).toContain("Учитель");
+  // роль с 11.10.2026 — подписью под именем, а не выпадающим списком
+  await expect(rows.filter({ hasText: "@" }).filter({ hasNotText: "Учитель" })).toHaveCount(0);
 
   // пароль выдаётся из строки и показывается один раз
   const issued = admin.waitForResponse(
@@ -68,9 +68,10 @@ test("пользователи: учитель заводится в панел�
 test("архив: удалённый урок лежит строкой типа «урок» и возвращается", async ({ browser }) => {
   const kymbat = await as(browser, "director_exam");
   // прошедший урок не удаляется — это история журнала; в архив уходит будущий
-  const marked = (await lessonsBetween(kymbat, daysAgo(0), daysAgo(-14))).filter(
-    (row) => row.date > daysAgo(0) && row.actual_teacher?.short?.includes("Прогон"),
-  );
+  // урок учителя прогона — берём из его же недели, у него только предметы LMS
+  const teacher = await as(browser, "teacher");
+  const marked = (await lessonsBetween(teacher, daysAgo(0), daysAgo(-14))).filter((row) => row.date > daysAgo(0));
+  await teacher.context().close();
   expect(marked.length, "есть отмеченный урок учителя прогона").toBeGreaterThan(0);
   const lesson = marked[0];
   const deleted = await apiPost<{ archived?: boolean; deleted?: number }>(

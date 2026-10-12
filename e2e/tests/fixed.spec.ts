@@ -131,7 +131,7 @@ test.describe("I4 · чужой экран не открывается", () => {
     page,
   }) => {
     const diag = watch(page);
-    await page.goto("/roadmap");
+    await page.goto("/catalog");
     await page.waitForURL(/\/dashboard/);
     expect(diag.failed, "экран чужой роли снова сыплет 404").toEqual([]);
   });
@@ -191,10 +191,10 @@ test.describe("I6 · черновик можно отменить", () => {
 test.describe("C1 · заголовок не двоится", () => {
   test.use({ storageState: statePath("student") });
 
+  // «Мои вузы» с 07.10.2026 — вкладка каталога, заголовок экрана у неё общий
   for (const [route, title] of [
-    ["/roadmap", "Роадмап"],
     ["/essays", "Эссе"],
-    ["/universities", "Мои вузы"],
+    ["/catalog?mode=mine", "Каталог вузов"],
   ]) {
     test(`${route}: «${title}» встречается один раз`, async ({ page }) => {
       await page.goto(route);

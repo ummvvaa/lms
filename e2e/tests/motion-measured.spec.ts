@@ -501,9 +501,8 @@ test.describe("кабинет ученика", () => {
     for (const route of [
       "/dashboard",
       "/my-data",
-      "/roadmap",
-      "/universities",
       "/catalog",
+      "/catalog?mode=mine",
       "/prep",
       "/essays",
       "/profile",

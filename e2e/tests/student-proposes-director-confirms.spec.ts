@@ -1,11 +1,12 @@
 /**
- * Ученик вносит, директор подтверждает: предложения ученика по своим данным и лестница готовности из пяти ступеней.
+ * Ученик вносит, директор подтверждает: предложения ученика по своим данным.
  *
  * Ученик вносит себе балл IELTS: значение видно сразу с пометкой
- * «ждёт проверки», в профиль ничего не пишется. Директор спорта этой
+ * «на проверке у директора», в профиль ничего не пишется. Директор спорта этой
  * строки в своей очереди не видит; академический директор видит,
  * подтверждает — пометка исчезает, в журнале источник «предложил ученик».
- * Плюс лестница пяти шагов на месте и с запертым пятым, пока нет вузов.
+ * Лестница пяти шагов («Мой путь») с 07.10.2026 из кабинета убрана, её API
+ * проверяет `api_probe.py`.
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
@@ -26,7 +27,7 @@ function nextValue(current: string | null): string {
 
 let proposed = "";
 
-test("ученик вносит балл IELTS — сразу видно «ждёт проверки», профиль не тронут", async ({
+test("ученик вносит балл IELTS — сразу видно «на проверке у директора», профиль не тронут", async ({
   browser,
 }) => {
   const page = await as(browser, "student");
@@ -36,22 +37,21 @@ test("ученик вносит балл IELTS — сразу видно «жд�
   proposed = nextValue(me.exam.ielts_current);
 
   await page.goto("/my-data");
-  const examCard = page.locator("section", { hasText: "Ваши баллы" }).first();
-  await examCard.getByRole("button", { name: "Внести данные" }).click();
-
-  const field = examCard
-    .locator("label", { hasText: "Текущий балл IELTS" })
-    .locator("input");
+  // с 07.10.2026 «Обзор» без дублей: баллы вносятся формой «Внести баллы» прямо в карточке
+  await page.getByRole("button", { name: "Внести баллы" }).click();
+  const form = page.locator(".propose__form").first();
+  await expect(form).toBeVisible();
+  const field = form.locator("label", { hasText: "IELTS" }).locator("input").first();
   await field.fill(proposed);
 
   const [response] = await Promise.all([
     page.waitForResponse((r) => r.url().includes("/api/suggestions/propose/")),
-    examCard.getByRole("button", { name: "Отправить на проверку" }).click(),
+    page.getByRole("button", { name: "Отправить на проверку" }).click(),
   ]);
   expect(response.status()).toBe(201);
 
   // пометка на месте, значение показывается сразу
-  await expect(examCard.getByText("ждёт проверки").first()).toBeVisible();
+  await expect(page.getByText("на проверке у директора").first()).toBeVisible();
 
   // а профиль не изменился: решение ещё не принято
   const after = (await (
@@ -114,54 +114,8 @@ test("после подтверждения пометка у ученика и�
   const page = await as(browser, "student");
   await page.goto("/my-data");
   const examCard = page.locator("section", { hasText: "Ваши баллы" }).first();
-  await expect(examCard.getByText("ждёт проверки")).toHaveCount(0);
+  await expect(examCard.getByText("на проверке у директора")).toHaveCount(0);
   await expect(
     examCard.getByText(proposed, { exact: true }).first(),
   ).toBeVisible();
-});
-
-test("лестница пяти шагов открывается и честно показывает состояние", async ({
-  browser,
-}) => {
-  const page = await as(browser, "student");
-  const journey = (await (await page.request.get("/api/journey/")).json()) as {
-    total: number;
-    complete: boolean;
-    steps: { code: string; locked: boolean }[];
-  };
-  expect(journey.total).toBe(5);
-
-  await page.goto("/journey");
-  await expect(page.getByText("Ваш путь к поступлению")).toBeVisible();
-  await expect(page.locator(".datacard", { hasText: "Пять шагов" }).locator(".rowline")).toHaveCount(5);
-  await expect(
-    page.getByText(/Выполнено \d+ из \d+/),
-  ).toBeVisible();
-
-  const plan = journey.steps.find((s) => s.code === "plan")!;
-  const planCard = page.locator(".rowline", { hasText: /[Пп]лан/ });
-  if (plan.locked) {
-    await expect(planCard.getByText("Пока закрыто")).toBeVisible();
-  } else {
-    await expect(planCard.getByRole("button").first()).toBeVisible();
-  }
-
-  // Главная: с фазы 48 лестница осталась своим экраном, а на главной
-  // стоит карточка призыва со следующим шагом — человек, зашедший
-  // в кабинет, должен видеть свои дела, а не список несделанного
-  await page.goto("/dashboard");
-  await expect(
-    page.getByRole("heading", { name: "Главная", exact: true }),
-  ).toBeVisible();
-  // с фазы 49 на месте карточки призыва — карусель незакрытых мест;
-  // закрывать нечего — её нет вовсе, и календарь занимает её место
-  const cues = (await (await page.request.get("/api/home/cues/")).json()) as {
-    cues: { title: string }[];
-  };
-  const closing = page.locator(".datacard", { hasText: "Что закрыть" }).first();
-  if (cues.cues.length > 0) {
-    await expect(closing.locator(".rowline").first()).toBeVisible();
-  } else {
-    await expect(closing).toContainText("незакрытых мест нет");
-  }
 });

@@ -1,6 +1,7 @@
 /**
  * Кабинет ученика 8–10: вход логином, меню без поступления, главная
  * про учёбу, олимпиады и спорт, помощник про учёбу, личная почта.
+ * Профтест с 08.10.2026 открыт всем параллелям — кто проходит, решает учитель.
  *
  * Ученик прогона без почты — `probe_junior` (заводит create_probe_users),
  * его карточку в девятой группе LISBON связывает посев (`seed.spec.ts`).
@@ -14,7 +15,7 @@ import { watch } from "../helpers/session";
 test.describe.configure({ timeout: 180_000 });
 
 const LOGIN = "probe_junior";
-const ADMISSION = ["Каталог вузов", "Мои вузы", "Подбор вузов", "План поступления", "Стипендии", "Эссе", "Профтест", "Портфолио", "Мой путь"];
+const ADMISSION = ["Каталог вузов", "Подбор вузов", "Эссе", "Портфолио"];
 
 async function asJunior(browser: Browser): Promise<Page> {
   const context = await browser.newContext();
@@ -22,7 +23,7 @@ async function asJunior(browser: Browser): Promise<Page> {
   await page.addInitScript(() => window.localStorage.setItem("first-run-seen", "1"));
   await page.goto("/login");
   await page.getByLabel("Почта или логин").fill(LOGIN);
-  await page.getByLabel("Пароль").fill(probePassword());
+  await page.getByLabel("Пароль", { exact: true }).fill(probePassword());
   const signed = page.waitForResponse((r) => r.url().includes("/api/auth/login/"));
   await page.getByRole("button", { name: "Войти" }).click();
   expect((await signed).status(), "вход логином").toBe(200);
@@ -38,7 +39,9 @@ test("вход логином: меню 8–10 без поступления, г
   for (const item of ["Главная", "Расписание", "Оценки", "Календарь", "Олимпиады", "Спорт"])
     await expect(menu, `пункт «${item}»`).toContainText(item);
   await expect(menu).toContainText("Достижения");
-  for (const item of ["Поступление", ...ADMISSION])
+  await expect(menu, "профтест открыт всем параллелям").toContainText("Профтест");
+  // заголовок группы «Поступление» у 8–10 остаётся: в ней стоит «Профтест» (вопрос владельцу — в отчёте)
+  for (const item of ADMISSION)
     await expect(menu, `пункт поступления «${item}»`).not.toContainText(item);
 
   await expect(page.locator("h1")).toContainText("Главная");
@@ -55,7 +58,7 @@ test("вход логином: меню 8–10 без поступления, г
 
 test("поступление закрыто и по адресу, и в API", async ({ browser }) => {
   const page = await asJunior(browser);
-  for (const path of ["/catalog", "/universities", "/my-data", "/journey", "/prep", "/essays"]) {
+  for (const path of ["/catalog", "/my-data", "/prep", "/essays"]) {
     await page.goto(path);
     await expect(page, `${path} уводит на главную`).toHaveURL(/\/dashboard/);
   }
@@ -78,7 +81,7 @@ test("олимпиады: запись уходит на проверку и в�
   await page.getByRole("button", { name: "Отправить на проверку" }).click();
   expect((await sent).status(), "предложение принято").toBe(201);
   await page.reload();
-  await expect(page.locator(".rows__item", { hasText: title })).toContainText("ждёт проверки");
+  await expect(page.locator(".rows__item", { hasText: title })).toContainText("на проверке у директора");
 
   await page.goto("/sport");
   await expect(page.locator("h1")).toContainText("Спорт");

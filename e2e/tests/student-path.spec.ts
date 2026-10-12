@@ -3,8 +3,9 @@
  *
  * Один непрерывный сценарий: администратор заводит ученика списком,
  * ученик входит по временному паролю и идёт весь путь — анкета, портфолио,
- * цели, подбор, план, подготовка, эссе, стипендии, ресурсы, — а директора
- * подтверждают внесённое.
+ * цели, подбор, задачи плана на главной, подготовка, эссе, — а директора
+ * подтверждают внесённое. «Мой путь», план поступления, стипендии, роадмап
+ * и ресурсы из кабинета убраны 07.10.2026 — их шагов в пути больше нет.
  *
  * Задача не «проверить функции», а поймать места, где непонятно, что делать
  * дальше: каждая заминка записывается в отчёт. Отдельно считается, сколько
@@ -14,7 +15,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { dropUsers, resetAll, serviceLog, waitForApi } from "../helpers/manage";
 import { byKey } from "../helpers/roles";
-import { login } from "../helpers/session";
+import { apiPost, login } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 600_000 });
 
@@ -65,6 +66,9 @@ test("сквозной путь ученика: от временного пар
 }) => {
   // --- 1. Администратор заводит ученика списком -------------------------
   const adminPage = await as(browser, "admin");
+  // группа обязательна и заводится заранее (11.10.2026): без неё строка списка — ошибка
+  await adminPage.goto("/dashboard");
+  await apiPost(adminPage, "/api/groups/", { code: "11A", parallel: 11 });
   await adminPage.goto("/users");
   await adminPage.locator(".head__actions").getByLabel("Ещё действия").click();
   await adminPage
@@ -109,7 +113,7 @@ test("сквозной путь ученика: от временного пар
   const learner = await learnerContext.newPage();
   await learner.goto("/login");
   await learner.getByLabel("Почта").fill(STUDENT);
-  await learner.getByLabel("Пароль").fill(temporary);
+  await learner.getByLabel("Пароль", { exact: true }).fill(temporary);
   await learner.getByRole("button", { name: "Войти" }).click();
   step("вход по временному паролю");
 
@@ -127,29 +131,16 @@ test("сквозной путь ученика: от временного пар
   const firstRun = learner.getByRole("button", { name: "Пропустить" }).first();
   if (await firstRun.count()) await firstRun.click();
 
-  // --- 3. Лестница пяти шагов -------------------------------------------
-  await learner.goto("/journey");
+  // --- 3. Главная: задачи полным списком, убранные разделы ведут на главную ---
+  await learner.goto("/dashboard");
   await expect(
-    learner.locator(".datacard", { hasText: "Пять шагов" }).locator(".rowline"),
-  ).toHaveCount(5);
-  step("лестница пяти шагов");
-
-  // разделы, до которых ученик ещё не дошёл, показаны с замком
-  const locks = (await (
-    await learner.request.get("/api/journey/locks/")
-  ).json()) as {
-    locks: { path: string; locked: boolean; reason: string }[];
-  };
-  const planLock = locks.locks.find((row) => row.path === "/plan");
-  expect(planLock?.locked, "план до выбора вузов закрыт").toBeTruthy();
-  await learner.goto("/plan");
-  // с фазы 48 закрытый раздел показывается приглушённым поверх настоящего
-  // содержимого, а не пустой заглушкой
-  await expect(learner.locator(".dimmed")).toBeVisible();
-  await expect(learner.locator(".dimmed__veil")).toBeVisible();
-  await expect(
-    learner.getByText("Откроется, когда выберете вузы"),
+    learner.locator(".datacard", { hasText: "Задачи" }).first(),
   ).toBeVisible();
+  for (const hidden of ["/journey", "/plan", "/roadmap"]) {
+    await learner.goto(hidden);
+    await expect(learner, `${hidden} уводит на главную`).toHaveURL(/\/dashboard/);
+  }
+  step("главная с задачами");
 
   // --- 4. Анкета первого входа ------------------------------------------
   await learner.goto("/onboarding");
@@ -210,7 +201,7 @@ test("сквозной путь ученика: от временного пар
     .getByRole("button", { name: "Отправить на проверку" })
     .click();
   expect((await proposed).status()).toBe(201);
-  await expect(achievements.getByText("ждёт проверки").first()).toBeVisible();
+  await expect(achievements.getByText("на проверке у директора").first()).toBeVisible();
   step("достижение с документом");
 
   // --- 6. Цели по экзаменам с датами ------------------------------------
@@ -224,7 +215,7 @@ test("сквозной путь ученика: от временного пар
     .toISOString()
     .slice(0, 10);
   const row = goals.locator('[data-exam="IELTS"]');
-  await row.getByLabel(/Целевой балл/).fill("7.0");
+  await row.getByLabel(/Желаемый балл/).fill("7.0");
   await row.getByLabel(/Дата экзамена/).fill(examDate);
   const goalProposed = learner.waitForResponse((r) =>
     r.url().includes("/api/suggestions/propose/"),
@@ -267,46 +258,6 @@ test("сквозной путь ученика: от временного пар
     seeded.ok(),
     "стартовый справочник должен заводиться одной кнопкой",
   ).toBeTruthy();
-
-  // и заводит стипендию с ресурсом — ученику будет что найти
-  const deadline = new Date(Date.now() + 30 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  const scholarship = await admission.request.post("/api/scholarships/", {
-    headers: { "X-CSRFToken": admissionToken },
-    data: {
-      name: "Грант сквозного пути",
-      organizer: "Фонд прогона",
-      country: "Канада",
-      funding_type: "full",
-      for_international: true,
-      amount_max: "20000",
-      currency: "USD",
-      deadline,
-    },
-  });
-  expect(scholarship.ok()).toBeTruthy();
-
-  const categories = (await (
-    await admission.request.get("/api/resource-categories/")
-  ).json()) as {
-    results: { id: number; code: string }[];
-  };
-  const category =
-    categories.results.find((c) => c.code === "applications") ??
-    categories.results[0];
-  const resource = await admission.request.post("/api/resources/", {
-    headers: { "X-CSRFToken": admissionToken },
-    data: {
-      title: "Памятка сквозного пути",
-      category: category.id,
-      summary: "Что делать после подачи",
-      body: "Первый абзац памятки.",
-      reading_minutes: 3,
-      is_published: true,
-    },
-  });
-  expect(resource.ok()).toBeTruthy();
 
   // --- 8. Подбор вузов: уходим с экрана и возвращаемся ------------------
   await learner.goto("/selection");
@@ -408,18 +359,12 @@ test("сквозной путь ученика: от временного пар
     .toBeGreaterThan(0);
   step("план завёлся сам при добавлении вуза");
 
-  await learner.goto("/plan");
+  // задачи плана видны на главной полным списком — экрана плана у ученика нет
+  await learner.goto("/dashboard");
   await expect(
-    learner.locator(".dimmed"),
-    "после выбора вузов замок снят",
-  ).toHaveCount(0);
-  await expect(learner.getByText("Всего задач")).toBeVisible();
-  await expect(learner.getByText("Стратегия поступления")).toBeVisible();
-
-  // задачи плана видны и в общем роадмапе — с пометкой вуза
-  await learner.goto("/roadmap");
-  await expect(learner.locator(".rowline").first()).toBeVisible();
-  step("задачи плана применены и видны в роадмапе");
+    learner.locator(".datacard", { hasText: "Задачи" }).first().locator(".rowline").first(),
+  ).toBeVisible();
+  step("задачи плана применены и видны на главной");
 
   // --- 11. Центр подготовки на пустом банке ------------------------------
   await learner.goto("/prep");
@@ -444,39 +389,6 @@ test("сквозной путь ученика: от временного пар
   if (await toEditor.count()) await toEditor.click();
   await expect(learner.getByText(/\d+ \/ \d+ слов/)).toBeVisible();
   step("эссе заведено");
-
-  // --- 13. Стипендия: находит, сохраняет, видит дедлайн ------------------
-  await learner.goto("/scholarships");
-  const card = learner
-    .locator("table.tbl tbody tr", { hasText: "Грант сквозного пути" })
-    .first();
-  await expect(card).toBeVisible();
-  const savedResponse = learner.waitForResponse(
-    (r) =>
-      r.url().includes("/api/scholarships-saved/") &&
-      r.request().method() === "POST",
-  );
-  await card.getByRole("button", { name: "Сохранить стипендию" }).click();
-  expect((await savedResponse).status()).toBe(201);
-  await learner.goto("/calendar");
-  await expect(
-    learner.getByText("Стипендия: Грант сквозного пути").first(),
-  ).toBeVisible();
-  step("стипендия сохранена, дедлайн в календаре");
-
-  // --- 14. Ресурсы --------------------------------------------------------
-  await learner.goto("/resources");
-  const guide = learner
-    .locator(".catcard", { hasText: "Памятка сквозного пути" })
-    .first();
-  await expect(guide).toBeVisible();
-  await guide.getByRole("button", { name: "Читать" }).click();
-  await expect(learner.getByText("Первый абзац памятки.")).toBeVisible();
-  await learner.getByRole("button", { name: "Отметить прочитанным" }).click();
-  await expect(
-    learner.getByRole("button", { name: "Снять отметку" }),
-  ).toBeVisible();
-  step("материал прочитан");
 
   // --- 15. Директора подтверждают внесённое ------------------------------
   const talent = await as(browser, "director_talent");

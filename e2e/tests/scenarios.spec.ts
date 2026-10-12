@@ -134,8 +134,8 @@ test.describe("кабинет ученика", () => {
 
   for (const route of [
     "/dashboard",
-    "/roadmap",
-    "/universities",
+    "/catalog",
+    "/catalog?mode=mine",
     "/essays",
     "/alumni",
   ]) {

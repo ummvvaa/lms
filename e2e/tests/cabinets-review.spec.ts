@@ -14,7 +14,8 @@
  *  6, 7. Справочник: кнопки строки в одну линию; направление — своё, порядка нет.
  *  9. Соревнование: «показывать в карточке».
  * 10. Посещаемость у Салтанат на чтение; журнал за месяц; выгрузка через предпросмотр.
- * 11–13. Профтест у Асем; сюжеты у администратора карточками; бейджи карточками.
+ * 11–13. Профтест: у Асем только чтение (с 08.10.2026 тесты ведёт учитель профориентации);
+ *     сюжеты у администратора карточками; бейджи карточками.
  * 14. Дашборд Салтанат: плитка группы не уже своего текста.
  * 15. Выгрузка пользователей через предпросмотр, без паролей.
  * 16. Документы ученика: одна карточка, «Загрузить» в пустой строке.
@@ -25,6 +26,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { exportThroughPreview } from "../helpers/export";
 import { apiDelete, apiPatch, apiPost, watch } from "../helpers/session";
+import { daysAgo, lessonsBetween } from "../helpers/academics";
 
 test.describe.configure({ mode: "serial", timeout: 300_000 });
 
@@ -64,17 +66,19 @@ test.beforeAll(async ({ browser }) => {
 
 // --- 3, 11, 12: меню четырёх ролей ------------------------------------------------
 
-test("меню: импорт у администратора и Кымбат, профтест у Асем, сюжеты у администратора", async ({
+test("меню: импорт у администратора и Кымбат, профтест у Асем и куратора, сюжеты у администратора", async ({
   browser,
 }) => {
+  // «Профтест» сотрудника — у того, кто ведёт профориентацию, администратора,
+  // Асем и куратора (08.10.2026); прежней «анкеты» и «Вопросов профтеста» нет ни у кого
   const expectations: [string, string[], string[]][] = [
-    ["admin", ["Импорт", "Сюжеты главной", "Достижения школы"], ["Вопросы профтеста"]],
-    ["director_exam", ["Импорт"], ["Сюжеты главной", "Вопросы профтеста"]],
-    ["director_admission", ["Вопросы профтеста"], ["Импорт", "Сюжеты главной"]],
-    ["director_behavior", ["Правила обзвона"], ["Импорт", "Сюжеты главной", "Вопросы профтеста", "Достижения школы"]],
-    ["director_talent", ["Предметы"], ["Импорт"]],
-    ["director_sport", ["Соревнования"], ["Импорт"]],
-    ["curator", ["Посещаемость"], ["Импорт"]],
+    ["admin", ["Импорт", "Сюжеты главной", "Достижения школы", "Профтест"], ["Вопросы профтеста"]],
+    ["director_exam", ["Импорт"], ["Сюжеты главной", "Вопросы профтеста", "Профтест"]],
+    ["director_admission", ["Профтест"], ["Импорт", "Сюжеты главной", "Вопросы профтеста"]],
+    ["director_behavior", ["Правила обзвона"], ["Импорт", "Сюжеты главной", "Вопросы профтеста", "Достижения школы", "Профтест"]],
+    ["director_talent", ["Предметы"], ["Импорт", "Профтест"]],
+    ["director_sport", ["Соревнования"], ["Импорт", "Профтест"]],
+    ["curator", ["Посещаемость", "Профтест"], ["Импорт"]],
   ];
   for (const [role, has, lacks] of expectations) {
     const page = await as(browser, role);
@@ -92,8 +96,12 @@ test("меню: импорт у администратора и Кымбат, п
   const asem = await as(browser, "director_admission");
   await asem.goto("/import");
   await asem.waitForURL(/\/dashboard/, { timeout: 15_000 });
+  // прежняя анкета убрана с экранов: адрес уводит на главную; новый «Профтест» открыт на чтение
   await asem.goto("/career-questions");
-  await expect(asem.getByRole("heading", { name: "Вопросы профтеста" })).toBeVisible();
+  await asem.waitForURL(/\/dashboard/, { timeout: 15_000 });
+  await asem.goto("/career-tests");
+  await expect(asem.getByRole("heading", { name: "Профтест", exact: true })).toBeVisible();
+  await expect(asem.getByRole("button", { name: "Загрузить тест" })).toHaveCount(0);
   await asem.context().close();
 });
 
@@ -455,8 +463,13 @@ test("посещаемость у Салтанат на чтение: день �
 
   await page.goto("/attendance");
   await expect(page.locator("h1")).toContainText("Посещаемость");
-  // у Салтанат одиннадцать групп — список: выбираем группу, тогда появится матрица
-  await page.getByRole("combobox", { name: "Группа" }).selectOption({ index: 1 });
+  // групп больше пяти — список, меньше — сегменты (05.10.2026): выбираем первую
+  const combo = page.getByRole("combobox", { name: "Группа" });
+  if (await combo.count()) await combo.selectOption({ index: 1 });
+  else await page.getByRole("group", { name: "Группа" }).getByRole("button", { name: "CHICAGO" }).click();
+  // день — последний учебный с уроками: сегодня их может ещё не быть
+  const past = (await lessonsBetween(page, daysAgo(10), daysAgo(1))).map((row) => row.date).sort();
+  if (past.length) await page.getByLabel("День").fill(past[past.length - 1]);
   await expect(page.locator(".matrix").first()).toBeVisible();
   // оформить причину и напомнить Салтанат нечем
   await expect(page.getByRole("button", { name: "Оформить" })).toHaveCount(0);

@@ -58,9 +58,10 @@ test("ФИО учётной записи правится из меню стро
   await row.getByRole("button", { name: "Ещё действия" }).click();
   await page.getByRole("menuitem", { name: "Изменить" }).click();
 
+  // с 11.10.2026 «Изменить» открывает окно человека по роли
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText("Изменить учётную запись");
-  await dialog.getByLabel("Имя и фамилия").fill(RENAMED);
+  await expect(dialog).toContainText("Изменить:");
+  await dialog.getByLabel("Фамилия и имя").fill(RENAMED);
 
   const saved = page.waitForResponse(
     (response) =>

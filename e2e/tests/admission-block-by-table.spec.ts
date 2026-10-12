@@ -114,7 +114,7 @@ test("вузы ученика: добавить, сделать приорите
     expect(added.status(), await added.text()).toBe(201);
   }
 
-  await page.goto("/universities");
+  await page.goto("/catalog?mode=mine");
   const cards = page.locator(".uni__item");
   await expect(cards.first()).toBeVisible();
 

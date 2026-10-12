@@ -70,12 +70,12 @@ async function clearMock(
   date: string,
 ): Promise<void> {
   const list = (await (
-    await page.request.get("/api/mock-imports/?group=all")
-  ).json()) as { results: { id: number; group: string; date: string }[] };
+    await page.request.get(`/api/mock-imports/?group=${group}`)
+  ).json()) as { results?: { id: number; group: string; date: string }[] };
   const csrf =
     (await page.context().cookies()).find((c) => c.name === "csrftoken")
       ?.value ?? "";
-  for (const row of list.results.filter(
+  for (const row of (list.results ?? []).filter(
     (r) => r.group === group && r.date === date,
   )) {
     await page.request.post(`/api/mock-imports/${row.id}/archive/`, {
@@ -172,7 +172,7 @@ test("мастер: три беды в файле, две исправлены, 
   await expect(apply).toBeEnabled();
   const applyMark = diag.mark();
   await apply.click();
-  await expect(wizard).toContainText("результатов записано");
+  await expect(wizard).toContainText(/результат(а|ов) записано/);
   await expect(wizard).toContainText("Пропущено строк:");
   expect(
     diag
@@ -236,14 +236,16 @@ test("результаты: сдавали, средний, ниже цели, �
 test("карточка: секции последнего пробника, искры и кто загрузил", async ({
   browser,
 }) => {
+  // пробник файлом грузят Кымбат и администратор; куратор смотрит карточку
+  const kymbat = await as(browser, "director_exam");
   const page = await as(browser, "curator");
   // свой свежий пробник: у загрузок прошлых прогонов автор удалён вместе
   // с одноразовой записью, и «кто загрузил» там честно пусто
-  await clearMock(page, "CHICAGO", CARD_DATE);
+  await clearMock(kymbat, "CHICAGO", CARD_DATE);
   const csrf =
-    (await page.context().cookies()).find((c) => c.name === "csrftoken")
+    (await kymbat.context().cookies()).find((c) => c.name === "csrftoken")
       ?.value ?? "";
-  const made = await page.request.post("/api/mock-imports/apply/", {
+  const made = await kymbat.request.post("/api/mock-imports/apply/", {
     multipart: {
       exam_type: "IELTS",
       group: "CHICAGO",
@@ -264,7 +266,7 @@ test("карточка: секции последнего пробника, ис
 
   const diag = watch(page);
   const listing = (await (
-    await page.request.get(
+    await kymbat.request.get(
       `/api/mock-imports/${((await made.json()) as { import: number }).import}/`,
     )
   ).json()) as {
@@ -285,8 +287,9 @@ test("карточка: секции последнего пробника, ис
   // несколько пробников из посева — искра по секции рисуется
   await expect(page.locator(".csec__tile .cspark").first()).toBeVisible();
 
-  // история пробников: кто загрузил и какой учитель
-  await expect(page.locator("body")).toContainText("загрузил Асель");
+  // история пробников: кто загрузил (Кымбат — файлом грузит она) и какой учитель
+  const uploader = (await (await kymbat.request.get("/api/auth/me/")).json()) as { full_name: string };
+  await expect(page.locator("body")).toContainText(`загрузил ${uploader.full_name.split(" ")[0]}`);
   await expect(page.locator("body")).toContainText("учитель Гульмира Абаевна");
   expect(diag.consoleErrors).toEqual([]);
   await page.context().close();
@@ -295,7 +298,8 @@ test("карточка: секции последнего пробника, ис
 test("ученик: пробник помечен, править нечем, официальный балл не сдвинулся", async ({
   browser,
 }) => {
-  const curator = await as(browser, "director_exam");
+  // список куратора — под куратором: ручка `/api/curator/students/` только его
+  const curator = await as(browser, "curator");
   const before = (await (
     await curator.request.get("/api/curator/students/")
   ).json()) as {
@@ -377,7 +381,7 @@ test("Кымбат: грузит в чужую группу и возвраща�
   await expect(wizard.getByRole("button", { name: "Применить" })).toBeEnabled();
   const mark = diag.mark();
   await wizard.getByRole("button", { name: "Применить" }).click();
-  await expect(wizard).toContainText("результатов записано");
+  await expect(wizard).toContainText(/результат(а|ов) записано/);
   expect(
     diag.since(mark).some((c) => c.url.includes("/apply/") && c.status === 201),
   ).toBeTruthy();

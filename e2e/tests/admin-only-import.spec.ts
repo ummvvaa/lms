@@ -179,7 +179,9 @@ test("администратор: файл → что заполняем → п�
   const column = page.locator("table.tbl tbody tr").filter({ hasText: "Текущий балл IELTS" }).first();
   await expect(column).toContainText("Экзамены");
   await wizardToRows(page);
-  await expect(page.locator(".toolbar").filter({ hasText: "Строк готово:" }).first()).toContainText("Строк готово: 1");
+  // предпросмотр 07.10.2026: счётчики-фильтры по состоянию строки и чип готовности
+  await expect(page.getByRole("group", { name: "Состояние строки" })).toContainText("Все строки: 1");
+  await expect(page.locator(".card", { hasText: "Проверка строк" }).first()).toContainText("Готово к применению");
 
   const mark = diag.mark();
   await wizardApply(page);

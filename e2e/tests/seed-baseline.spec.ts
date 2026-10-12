@@ -173,13 +173,15 @@ test("пустые дашборды: карточка без данных — о
     await expect(folded.first()).toBeVisible();
     for (const card of await folded.all()) {
       const box = await card.boundingBox();
+      const title = ((await card.innerText()).split("\n")[0] ?? "").slice(0, 60);
       // на телефоне причина может уйти на вторую строку — заголовок остаётся один
-      expect(box!.height, "пустая карточка — одна строка").toBeLessThanOrEqual(phone ? 80 : 56);
+      expect(box!.height, `пустая карточка — одна строка: ${role} «${title}»`).toBeLessThanOrEqual(phone ? 80 : 56);
       await expect(card.locator("table, .rowlist")).toHaveCount(0);
     }
     if (role === "director_exam") {
-      await expect(page.getByText("Мок просел", { exact: true })).toHaveCount(1);
-      await expect(folded.filter({ hasText: "Мок просел" })).toContainText("ни у кого балл не просел");
+      // карточка называется «Балл Mock Test просел» (слово «пробник» не используется)
+      await expect(page.getByText("Балл Mock Test просел", { exact: true })).toHaveCount(1);
+      await expect(folded.filter({ hasText: "Балл Mock Test просел" })).toContainText("ни у кого балл не просел");
     }
     if (role === "curator") {
       await expect(folded.filter({ hasText: "Очередь подтверждений" })).toContainText("всё подтверждено");

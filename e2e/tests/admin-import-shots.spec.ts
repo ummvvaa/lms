@@ -25,8 +25,11 @@ const SHOTS: {
     screen: "/import",
     name: "admin_import_exam",
     prepare: async (page) => {
-      // мастер импорта с файлом-списком на шаге «Что заполняем»: колонки узнаны по реестру
-      await wizardFile(page, "баллы.csv", "email,ielts,ielts цель\nnobody@probe.local,6.5,7.5\n");
+      // мастер импорта с файлом-списком на шаге «Что заполняем»: колонки узнаны по реестру;
+      // ученик настоящий — без найденных строк «Дальше» закрыта (07.10.2026)
+      const list = (await (await page.request.get("/api/students/?page_size=1")).json()) as { results: { email: string }[] };
+      const email = list.results[0]?.email ?? "nobody@probe.local";
+      await wizardFile(page, "баллы.csv", `email,ielts,ielts цель\n${email},6.5,7.5\n`);
       await wizardToColumns(page);
       await page.waitForTimeout(300);
     },
@@ -67,7 +70,7 @@ const SIZES = [
   { name: "narrow", width: 820, height: 1180 },
 ];
 
-test.describe.configure({ mode: "serial" });
+test.describe.configure({ mode: "serial", timeout: 300_000 });
 
 for (const size of SIZES) {
   test(`снимки фазы 35 · ${size.name}`, async ({ browser }) => {

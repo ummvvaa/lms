@@ -71,7 +71,8 @@ test("ученик ставит цель IELTS с датой — строка у
   await expect(goals.locator('[data-exam="ЕНТ"]')).toHaveCount(0);
 
   const row = goals.locator('[data-exam="IELTS"]');
-  await row.getByLabel(/Целевой балл/).fill("7.0");
+  // у ученика с 07.10.2026 — «Желаемый балл» и дата экзамена с подписями
+  await row.getByLabel(/Желаемый балл/).fill("7.0");
   await row.getByLabel(/Дата экзамена/).fill(EXAM_DATE);
 
   const [propose] = await Promise.all([
@@ -158,8 +159,8 @@ test("дневной прогон: уведомление и задача о р�
   };
   expect(notes.rows.some((n) => n.text.includes("IELTS"))).toBe(true);
 
-  // задача в роадмапе со сроком из цели
-  await student.goto("/roadmap");
+  // задача со сроком из цели — на главной, полным списком (07.10.2026)
+  await student.goto("/dashboard");
   await expect(
     student.getByText("Зарегистрироваться на экзамен IELTS").first(),
   ).toBeVisible();

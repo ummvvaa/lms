@@ -32,7 +32,6 @@ const DESKTOP_SCREENS: { role: string; path: string }[] = [
   { role: "student", path: "/dashboard" },
   { role: "student", path: "/my-data" },
   { role: "student", path: "/calendar" },
-  { role: "student", path: "/roadmap" },
   { role: "director_exam", path: "/dashboard" },
   { role: "director_exam", path: "/table" },
   { role: "director_exam", path: "/suggestions" },

@@ -37,8 +37,8 @@ const SCREENS: Record<string, string[]> = {
     "/table",
     "/suggestions",
     "/deadlines",
-    // анкету профтеста ведёт Асем; мастера импорта у неё нет
-    "/career-questions",
+    // профтест Асем читает: результаты и разборы; мастера импорта у неё нет
+    "/career-tests",
   ],
   director_exam: [
     "/dashboard",
@@ -71,23 +71,19 @@ const SCREENS: Record<string, string[]> = {
   curator: ["/dashboard", "/profile"],
   // Все экраны кабинета — фаза 48 переделала вид каждого, и снимков
   // восьми из семнадцати перестало хватать
+  // кабинет 11 класса с 07.10.2026 без «Моего пути», плана, стипендий, роадмапа,
+  // ресурсов и избранного; «Мои вузы» — вкладка каталога
   student: [
     "/dashboard",
-    "/journey",
     "/calendar",
     "/my-data",
     "/selection",
     "/catalog",
-    "/favorites",
-    "/universities",
-    "/plan",
-    "/scholarships",
+    "/catalog?mode=mine",
     "/career",
     "/essays",
     "/prep",
-    "/roadmap",
     "/achievements",
-    "/resources",
     "/profile",
   ],
 };
@@ -135,7 +131,7 @@ for (const [role, screens] of Object.entries(SCREENS)) {
             await page.goto(screen);
             await page.waitForLoadState("networkidle").catch(() => undefined);
             await page.waitForTimeout(400);
-            const name = `${role}${screen.replace(/\//g, "_")}.png`;
+            const name = `${role}${screen.replace(/\//g, "_").replace(/[?=]/g, "-")}.png`;
             await page.screenshot({
               path: path.join(DIR, folder, name),
               fullPage: true,

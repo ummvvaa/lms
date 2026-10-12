@@ -29,7 +29,7 @@ async function juniorId(page: Page): Promise<number> {
   return row!.id;
 }
 
-test("Асем не видит 8–10, Салтанат находит их фильтром по параллели", async ({ browser }) => {
+test("Асем видит 8–10 без поступления, Салтанат находит их фильтром по параллели", async ({ browser }) => {
   const saltanat = await as(browser, "director_behavior");
   const id = await juniorId(saltanat);
   await saltanat.goto("/table");
@@ -41,12 +41,12 @@ test("Асем не видит 8–10, Салтанат находит их фи
   await expect(saltanat.locator("main")).toContainText("Прогон Ерлан");
   await saltanat.context().close();
 
+  // Асем, как все руководители, видит 8–10: карточка открывается, но без блока «Поступление»
   const asem = await as(browser, "director_admission");
-  expect((await asem.request.get(`/api/students/${id}/`)).status(), "карточка 8–10 у Асем").toBe(404);
-  const list = await (await asem.request.get("/api/students/?page_size=500")).json();
-  expect((list.results as { full_name: string }[]).map((r) => r.full_name)).not.toContain("Прогон Ерлан");
-  await asem.goto("/table");
-  await expect(asem.getByRole("combobox", { name: "Параллель" }), "у Асем выбирать нечего").toHaveCount(0);
+  expect((await asem.request.get(`/api/students/${id}/`)).status(), "карточка 8–10 у Асем").toBe(200);
+  await asem.goto(`/students/${id}`);
+  await expect(asem.locator("h1")).toContainText("Прогон Ерлан");
+  await expect(asem.locator("main")).not.toContainText("Поступление");
   await asem.context().close();
 });
 
@@ -64,7 +64,8 @@ test("куратор: карточка 8–10 без поступления, с�
   expect((await issued).status()).toBe(200);
   const dialog = curator.getByRole("dialog");
   await expect(dialog).toContainText("probe_junior");
-  await expect(dialog).toContainText("Письма не было");
+  // без почты письмо не уходит — ссылку передают лично (07.10.2026)
+  await expect(dialog).toContainText("Письмо не отправлено");
   await expect(dialog.locator("input")).toHaveValue(/\/set-password\?token=/);
   await curator.context().close();
 });

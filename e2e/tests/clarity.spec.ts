@@ -137,7 +137,7 @@ test.describe("ошибка в файле объясняется по-челов
     await wizardToRows(page);
 
     // сообщение называет поле, значение и допустимый диапазон — в строке ученика
-    const bad = page.locator("table.tbl tbody tr.aimp__row--bad");
+    const bad = page.locator("table.tbl tbody tr.import-preview__row--error");
     await expect(bad).toHaveCount(1);
     await expect(bad).toContainText(emails[1]);
     await expect(bad).toContainText("Текущий балл IELTS");
@@ -162,7 +162,7 @@ test.describe("ошибка в файле объясняется по-челов
     await wizardFile(page, "баллы-исправленный.csv", fixed);
     await wizardToColumns(page);
     await wizardToRows(page);
-    await expect(page.locator("table.tbl tbody tr.aimp__row--bad")).toHaveCount(0);
+    await expect(page.locator("table.tbl tbody tr.import-preview__row--error")).toHaveCount(0);
     await wizardApply(page);
 
     // значение видно в базе после перезагрузки

@@ -7,7 +7,7 @@
  *    не тянет страницу вбок (очередь куратора).
  * 2. Помощник: на телефоне герб в шапке, плавающей кнопки нет; окно
  *    открывается из шапки.
- * 3. «Мои документы» у ученика: названия видны; профтест без дубля;
+ * 3. «Мои документы» у ученика: названия видны; «Профтест» открывается списком тестов;
  *    у Салтанат в таблице подпись статуса, а не код.
  * 4. Очередь на дашборде директора не выше кураторской плотности.
  * 5. Панели фильтров свёрнуты в строку и раскрываются; «Действия» ради
@@ -105,7 +105,7 @@ test("помощник на телефоне — в шапке, плавающе
   await page.context().close();
 });
 
-test("названия документов, профтест без дубля, статус подписью", async ({ browser }) => {
+test("названия документов, профтест списком тестов, статус подписью", async ({ browser }) => {
   const student = await as(browser, "student");
   await student.goto("/my-data");
   await settle(student);
@@ -123,14 +123,11 @@ test("названия документов, профтест без дубля,
     return actions ? actions.top < label.bottom && actions.bottom > label.top : false;
   });
   expect(overlap, "кнопки не лежат на названии").toBe(false);
+  // профтест с 08.10.2026 — тесты учителя профориентации: экран — список тестов
   await student.goto("/career");
   await settle(student);
-  const closed = student.locator(".dimmed .t-note").first();
-  if ((await closed.count()) > 0) {
-    const text = (await closed.textContent()) ?? "";
-    const phrase = "бессмысленный результат";
-    expect(text.split(phrase).length - 1, "объяснение один раз").toBeLessThanOrEqual(1);
-  }
+  await expect(student.getByRole("heading", { name: "Профтест", exact: true })).toBeVisible();
+  await expect(student.locator(".datacard", { hasText: "Тесты" }).first()).toBeVisible();
   await student.context().close();
 
   const behavior = await as(browser, "director_behavior");
@@ -180,10 +177,11 @@ test("панели фильтров свёрнуты и раскрываются
   await admin.context().close();
 
   const student = await as(browser, "student");
-  await student.goto("/universities");
+  // «Мои вузы» — вкладка каталога; «Что откроется, если» стоит в карточке списка, а не прячется в меню
+  await student.goto("/catalog?mode=mine");
   await settle(student);
   await expect(student.locator(".head__actions").getByRole("button", { name: "Действия" })).toHaveCount(0);
-  await expect(student.locator(".head__actions").getByRole("button", { name: /Что откроется/ })).toBeVisible();
+  await expect(student.getByRole("button", { name: /Что откроется/ })).toBeVisible();
   await student.context().close();
 });
 

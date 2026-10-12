@@ -19,6 +19,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { watch } from "../helpers/session";
 import { sidebar } from "../helpers/shell";
+import { wizardNext } from "../helpers/wizard";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
@@ -46,8 +47,8 @@ async function toStepTwo(page: Page): Promise<void> {
     buffer: TABLE,
   });
   await responded;
-  await page.getByRole("button", { name: "Дальше" }).click();
-  await expect(page.getByRole("button", { name: "Дальше" })).toBeVisible();
+  await wizardNext(page).click();
+  await expect(wizardNext(page)).toBeVisible();
 }
 
 test("полный проход мастера: колонки, домены, проверка, отчёт", async ({
@@ -74,11 +75,11 @@ test("полный проход мастера: колонки, домены, п
   await expect(chips).toHaveCount(3);
   await expect(page.locator(".wizard__sum")).toContainText("Будет записано — полей:");
 
-  await page.getByRole("button", { name: "Дальше" }).click();
+  await wizardNext(page).click();
   // шаг 3: беда в строке — пропускаем осознанно, иначе «Применить» закрыта
   await expect(page.getByRole("button", { name: "Применить" })).toBeDisabled();
   // пропущенная строка остаётся помеченной, но кнопки у неё уже нет
-  const pending = page.locator("tr.aimp__row--bad:has(button)");
+  const pending = page.locator("tr.import-preview__row--error:has(button)");
   while ((await pending.count()) > 0) {
     const responded = page.waitForResponse((r) =>
       r.url().includes("/admission-imports/preview/"),
@@ -119,8 +120,8 @@ test("снятый домен не пишется и не попадает в о
   await expect(exams).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("table.tbl tbody tr", { hasText: "не будет записано" }).first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Дальше" }).click();
-  const bad = page.locator("tr.aimp__row--bad:has(button)");
+  await wizardNext(page).click();
+  const bad = page.locator("tr.import-preview__row--error:has(button)");
   while ((await bad.count()) > 0) {
     const responded = page.waitForResponse((r) =>
       r.url().includes("/admission-imports/preview/"),
@@ -186,10 +187,9 @@ test("CSV с нераспознанной колонкой: группа на п
   // группа распознана: плашка «Группы:» на первом шаге
   await expect(page.getByText(/Группы:/)).toContainText("CHICAGO");
 
-  await page.getByRole("button", { name: "Дальше" }).click();
-  await expect(page.locator(".wizard__unknown")).toContainText(
-    "«Любимый цвет»",
-  );
+  await wizardNext(page).click();
+  // неузнанные колонки — таблицей под подсказкой (07.10.2026): колонка названа, место выбирают
+  await expect(page.locator("table.tbl").filter({ hasText: "Любимый цвет" }).first()).toBeVisible();
   // GPA — её домен: чип доступен; «Поступление» — чужой: чип закрыт,
   // а строка телефона подписана «домен не ваш, будет пропущен»
   const chips = page.locator(".wizard__chips [data-slot='button']");
@@ -199,7 +199,7 @@ test("CSV с нераспознанной колонкой: группа на п
     .locator("table.tbl tbody tr")
     .filter({ hasText: "Номер телефона" })
     .first();
-  await expect(phone).toHaveClass(/wizard__off/);
+  // чужой домен подписан плашкой в строке (07.10.2026), отдельного класса строки нет
   await expect(phone).toContainText("домен не ваш, будет пропущен");
   const gpa = page
     .locator("table.tbl tbody tr")

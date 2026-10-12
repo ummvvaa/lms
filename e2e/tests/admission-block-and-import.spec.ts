@@ -23,6 +23,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail } from "../helpers/roles";
 import { watch } from "../helpers/session";
+import { wizardNext } from "../helpers/wizard";
 import { exportThroughPreview } from "../helpers/export";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
@@ -133,8 +134,8 @@ test("мастер импорта: беды в строках, правка, п�
     buffer: TABLE,
   });
   await responded;
-  await page.getByRole("button", { name: "Дальше" }).click();
-  await page.getByRole("button", { name: "Дальше" }).click();
+  await wizardNext(page).click();
+  await wizardNext(page).click();
 
   const preview = page
     .locator(".card")
@@ -143,7 +144,8 @@ test("мастер импорта: беды в строках, правка, п�
   await expect(preview).toBeVisible();
 
   // беды из файла названы словами
-  await expect(preview).toContainText("Строк с ошибкой:");
+  await expect(preview).toContainText("Есть ошибки");
+  await expect(preview.getByRole("group", { name: "Состояние строки" })).toContainText(/С ошибкой: [1-9]/);
   await expect(preview).toContainText("ученик не найден в этой группе");
   await expect(preview).toContainText("не разбирается");
   await expect(preview).toContainText("не балл, а текст");
@@ -156,7 +158,7 @@ test("мастер импорта: беды в строках, правка, п�
 
   // строки с бедой пропускаем осознанно — они попадут в отчёт с причиной;
   // пропущенная остаётся помеченной, но кнопки у неё уже нет
-  const pending = preview.locator("tr.aimp__row--bad:has(button)");
+  const pending = preview.locator("tr.import-preview__row--error:has(button)");
   await expect(pending.first()).toBeVisible();
   while ((await pending.count()) > 0) {
     const again = page.waitForResponse((r) =>
@@ -165,7 +167,7 @@ test("мастер импорта: беды в строках, правка, п�
     await pending.first().getByRole("button", { name: "Пропустить" }).click();
     await again;
   }
-  await expect(preview).toContainText("пропущена");
+  await expect(preview.getByRole("group", { name: "Состояние строки" })).toContainText(/Пропуск: [1-9]/);
 
   const applied = page.waitForResponse(
     (r) =>

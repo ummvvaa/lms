@@ -54,6 +54,29 @@ async function csrfOf(page: Page): Promise<string> {
  * Своя вкладка на каждого: установка пароля сразу открывает сессию,
  * и в общем контексте она вышибла бы того, кто там уже сидит.
  */
+/**
+ * Смена временного пароля на постоянный — как ученик при первом входе:
+ * вход временным, смена через тот же API, что экран «Сменить пароль».
+ */
+async function setPasswordByTemp(
+  browser: Browser,
+  email: string,
+  temporary: string,
+): Promise<void> {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const entered = await page.request.post("/api/auth/login/", {
+    data: { email, password: temporary },
+  });
+  expect(entered.ok(), `вход временным паролем: ${entered.status()}`).toBeTruthy();
+  const changed = await page.request.post("/api/auth/password/change/", {
+    data: { current_password: temporary, new_password: NEW_PASSWORD },
+    headers: { "X-CSRFToken": await csrfOf(page) },
+  });
+  expect(changed.ok(), `смена пароля: ${await changed.text()}`).toBeTruthy();
+  await context.close();
+}
+
 async function setPasswordByLink(
   browser: Browser,
   email: string,
@@ -114,12 +137,6 @@ test("сквозной путь: от пустой базы до возврат�
     "директор должен заводиться из интерфейса",
   ).toBeTruthy();
 
-  const madeUser = await adminPage.request.post("/api/users/", {
-    data: { email: NEW_STUDENT, full_name: "Алия (сквозной)", role: "student" },
-    headers: { "X-CSRFToken": csrf },
-  });
-  expect(madeUser.ok()).toBeTruthy();
-
   // учебная группа и карточка ученика — через интерфейс администратора
   await adminPage.goto("/users?tab=groups");
   // с фазы 31 форма группы открывается кнопкой, а не стоит в потоке; группы — своей вкладкой
@@ -135,25 +152,41 @@ test("сквозной путь: от пустой базы до возврат�
   // пока его нет, группа так и говорит
   await expect(group).toContainText("куратор не назначен");
 
+  // ученика заводит окно человека на «Пользователях» (11.10.2026): кнопка
+  // «Завести ученика» в «Таблице» ведёт туда с выбранной ролью, карточка,
+  // профили и учётная запись заводятся одной транзакцией
   await adminPage.goto("/table");
   await adminPage.getByRole("button", { name: "Завести ученика" }).click();
-  await adminPage.getByLabel("Фамилия").fill("Ахметова");
-  await adminPage.getByLabel("Имя").fill("Алия");
-  await adminPage.getByLabel("Почта").fill(NEW_STUDENT);
-  await adminPage.getByRole("button", { name: "Завести", exact: true }).click();
-  await adminPage.waitForURL(/\/students\/\d+/);
-  const studentId = Number(adminPage.url().split("/").pop());
+  await adminPage.waitForURL(/\/users\?new=student/);
+  const person = adminPage.getByRole("dialog");
+  await person.getByLabel("Фамилия", { exact: true }).fill("Ахметова");
+  await person.getByLabel("Имя", { exact: true }).fill("Алия");
+  await person.getByLabel("Учебная группа").selectOption({ label: "11A · 11" });
+  await person.getByLabel("Школьная почта").fill(NEW_STUDENT);
+  const [madeStudent] = await Promise.all([
+    adminPage.waitForResponse(
+      (r) => r.url().endsWith("/api/users/") && r.request().method() === "POST",
+    ),
+    person.getByRole("button", { name: "Завести", exact: true }).click(),
+  ]);
+  expect(madeStudent.status()).toBe(201);
+  const issued = (await madeStudent.json()) as { password?: { password: string } };
+  expect(issued.password?.password, "ученику выдаётся временный пароль").toBeTruthy();
+  // временный пароль показывается один раз — закрываем окно
+  await expect(adminPage.getByRole("dialog")).toContainText("Временный пароль");
+  await adminPage.keyboard.press("Escape");
+
+  // карточка заведена той же транзакцией и привязана по почте
+  const found = (await (
+    await adminPage.request.get(`/api/students/?search=${encodeURIComponent(NEW_STUDENT)}`)
+  ).json()) as { results: { id: number; email: string }[] };
+  const studentId = found.results.find((row) => row.email === NEW_STUDENT)?.id ?? 0;
+  expect(studentId, "карточка ученика заведена").toBeGreaterThan(0);
+  await adminPage.goto(`/students/${studentId}`);
   await expect(adminPage.locator(".card__name")).toContainText("Ахметова Алия");
 
-  // карточка и учётная запись связались сами — по общей почте.
-  // Отдельного поля «привязать аккаунт» в интерфейсе нет, и не должно быть
-  const card = await (
-    await adminPage.request.get(`/api/students/${studentId}/`)
-  ).json();
-  expect(card.email).toBe(NEW_STUDENT);
-
   await setPasswordByLink(browser, NEW_DIRECTOR);
-  await setPasswordByLink(browser, NEW_STUDENT);
+  await setPasswordByTemp(browser, NEW_STUDENT, issued.password!.password);
 
   // --- 3. Стартовый справочник и снятие плашки --------------------------
   const director = await browser.newContext();

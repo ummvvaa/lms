@@ -23,6 +23,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail } from "../helpers/roles";
 import { ROUTES, clickTab } from "../helpers/routes";
+import { wizardNext } from "../helpers/wizard";
 import { watch } from "../helpers/session";
 
 // обход всех адресов всех ролей на телефоне: на 115 адресов с ожиданием
@@ -389,7 +390,7 @@ test("«Пользователи»: строка в две линии, дейс�
   for (const label of ["Изменить", "Удалить"])
     await expect(menu.getByRole("menuitem", { name: label })).toBeVisible();
   await expect(
-    menu.getByRole("menuitemcheckbox", { name: "Видит всю школу" }),
+    menu.getByRole("menuitem", { name: /видит всю школу/i }),
   ).toBeVisible();
   // «Удалить»: пункт называется так, окно открывается и не обрезано
   const menuBox = await menu.boundingBox();
@@ -483,7 +484,7 @@ test("ни одна страница ни одной роли не шире эк
     const bad = await overflowOf(admin);
     if (bad) offenders.push(`admin /import ${step} — ${bad}`);
     if (step !== "шаг 3") {
-      await admin.getByRole("button", { name: "Дальше" }).click();
+      await wizardNext(admin).click();
       await settle(admin);
     }
   }

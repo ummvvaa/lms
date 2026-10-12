@@ -387,7 +387,7 @@ test("заметки: куратор пишет, Кымбат читает, уч
 
   // ученик — никогда: ни на экранах, ни в API
   const student = await as(browser, "student");
-  for (const path of ["/dashboard", "/my-data", "/roadmap"]) {
+  for (const path of ["/dashboard", "/my-data", "/catalog"]) {
     await student.goto(path);
     await expect(student.locator("h1").first()).toBeVisible();
     await expect(student.locator("body")).not.toContainText("Заметка прогона");
