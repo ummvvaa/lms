@@ -2546,7 +2546,10 @@ body [data-slot='button'][data-variant].notif__all {
      стороны, как у остальных малых кнопок на телефоне (D100); текстовые
      кнопки плашек и подсказок получают поле касания без роста видимого
      размера. Размеры кнопок реестра — в `patterns.css` */
-  body [data-slot='button'][data-variant].rowmenu__button {
+  /* кнопка отдана триггеру меню через `render`, и `data-slot` у неё —
+     `dropdown-menu-trigger`, не `button`: селектор держится на варианте
+     и размере (12.10.2026, прежний с `data-slot='button'` не срабатывал) */
+  body [data-variant][data-size].rowmenu__button {
     min-width: var(--touch);
     min-height: var(--touch);
   }
@@ -2738,8 +2741,19 @@ body [data-slot='button'][data-variant].notif__all {
     align-items: center;
   }
 
-  /* поле касания 44 px при значке 16 px; специфичность в два класса —
-     чтобы утилиты размера кнопки не спорили */
+  /* поле касания 44 px при значке 16 px: кнопка реестра `size="icon"` даёт
+     32, а значок строки — цель касания. Кнопка отдана подсказке через
+     `render`, и `data-slot` у неё — `tooltip-trigger`, не `button`: селектор
+     держится на варианте и размере, вес тот же, что у правила варианта */
+  body [data-variant][data-size='icon'].cadm__ibtn {
+    width: calc(var(--space) * 11);
+    height: var(--touch);
+    color: var(--ink-2);
+  }
+
+  body [data-variant][data-size='icon'].cadm__ibtn:hover {
+    color: var(--ink);
+  }
 }
 
 /* --- Пояснительная плашка (фаза 75) -----------------------------------

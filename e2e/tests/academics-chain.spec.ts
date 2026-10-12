@@ -8,7 +8,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { daysAgo, lessonsBetween } from "../helpers/academics";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail } from "../helpers/roles";
-import { apiPost, watch } from "../helpers/session";
+import { apiDelete, apiPost, watch } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 240_000 });
 
@@ -91,16 +91,30 @@ test("куратор: уважительная причина за период 
     (r) => r.url().includes("/api/acad/excuses/") && r.request().method() === "POST",
   );
   await dialog.getByRole("button", { name: "Оформить" }).click();
-  expect((await made).status()).toBe(201);
+  const response = await made;
+  expect(response.status()).toBe(201);
+  const { excuse } = (await response.json()) as { excuse: { id: number } };
   await expect(curator.locator("body")).toContainText("Причина оформлена");
   expect(diag.consoleErrors, "ошибки в консоли").toEqual([]);
-  await curator.context().close();
 
   const teacher = await as(browser, "teacher");
   await teacher.goto(`/journals/${courseId}`);
   await expect(teacher.locator(".matrix")).toBeVisible();
   const row = teacher.locator(".matrix tr", { hasText: studentName }).first();
-  await expect(row).toContainText("у");
+  const cells = (mark: RegExp) => row.locator("[data-col]").filter({ hasText: mark });
+  await expect(cells(/^у$/)).toHaveCount(1);
+
+  // причина снимается — «н» возвращается. Заодно журнал не остаётся с «у»
+  // у ученика прогона: следующий файл ставит «н» с клавиатуры тому же
+  // ученику за тот же урок и ждёт именно «н»
+  await apiDelete(curator, `/api/acad/excuses/${excuse.id}/`);
+  await curator.context().close();
+  await teacher.reload();
+  await expect(teacher.locator(".matrix")).toBeVisible();
+  // «н» снова есть (сколько — зависит от посева: у ученика есть и другие
+  // пропуски), а «у» в строке не осталось; первая проверка ждёт журнал
+  await expect(cells(/^н$/)).not.toHaveCount(0);
+  await expect(cells(/^у$/)).toHaveCount(0);
   await teacher.context().close();
 });
 
@@ -108,9 +122,11 @@ test("отчёт: собран, проверен, PDF скачан, отправ
   const kymbat = await as(browser, "director_exam");
   await kymbat.goto("/reports");
   await expect(kymbat.locator("h1")).toContainText("Отчёты родителям");
-  await kymbat.locator(".head__actions").getByLabel("Ещё действия").click();
-  await kymbat.getByRole("menuitem", { name: "Собрать за период" }).click();
-  const dialog = kymbat.getByRole("dialog", { name: "Собрать отчёты за период" });
+  // вид отчёта выбирается карточкой на странице (30.09.2026), не из меню «⋯»:
+  // стандартный отчёт LMS за текущий месяц по всем группам
+  await kymbat.getByRole("button", { name: /^Стандартный/ }).click();
+  const dialog = kymbat.getByRole("dialog", { name: "Стандартный" });
+  await expect(dialog.getByLabel("Период")).toBeVisible();
   const built = kymbat.waitForResponse(
     (r) => r.url().includes("/api/acad/reports/build/") && r.request().method() === "POST",
   );

@@ -135,7 +135,8 @@ test("срок паспорта виден без ссылки, строк ро�
   await page.goto(`/students/${id}`);
   const expiry = line(page, "Срок годности паспорта");
   await expect(expiry).toContainText("16.01.2030");
-  await expect(line(page, "Ссылка на паспорт")).toContainText("—");
+  // пустое значение — слово «нет», прочерков в карточке нет (правило 1)
+  await expect(line(page, "Ссылка на паспорт")).toContainText("нет");
   await expect(page.locator(".cadm")).not.toContainText("срок не указан");
 
   // строки блока: 8 полей + GPA + 6 попыток + 2 документа = 17
