@@ -3,7 +3,7 @@
  * архив с удалённым уроком и «Вернуть». Заведённое сценарием убирается им же.
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { daysAgo, lessonsBetween } from "../helpers/academics";
+import { daysAgo, lessonsBetween, markLesson } from "../helpers/academics";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail } from "../helpers/roles";
 import { apiPost, watch } from "../helpers/session";
@@ -67,13 +67,19 @@ test("пользователи: учитель заводится в окне, �
 
 test("архив: удалённый урок лежит строкой типа «урок» и возвращается", async ({ browser }) => {
   const kymbat = await as(browser, "director_exam");
-  // прошедший урок не удаляется — это история журнала; в архив уходит будущий
-  // урок учителя прогона — берём из его же недели, у него только предметы LMS
+  // в архив уходит только урок с отметками, без отметок удаляется насовсем,
+  // а прошедший не меняется вовсе — значит, нужен сегодняшний начавшийся урок
+  // учителя прогона, который он сам и отмечает
   const teacher = await as(browser, "teacher");
-  const marked = (await lessonsBetween(teacher, daysAgo(0), daysAgo(-14))).filter((row) => row.date > daysAgo(0));
+  const now = new Date();
+  const clock = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const started = (await lessonsBetween(teacher, daysAgo(0), daysAgo(0))).filter(
+    (row) => row.is_live !== false && Boolean(row.bell) && (row.bell ?? "") <= clock,
+  );
+  test.skip(started.length === 0, "сегодня у учителя прогона ещё нет начавшегося урока");
+  const lesson = started[0];
+  await markLesson(teacher, lesson.id, "all");
   await teacher.context().close();
-  expect(marked.length, "есть отмеченный урок учителя прогона").toBeGreaterThan(0);
-  const lesson = marked[0];
   const deleted = await apiPost<{ archived?: boolean; deleted?: number }>(
     kymbat,
     `/api/acad/lessons/${lesson.id}/delete/`,
@@ -87,7 +93,8 @@ test("архив: удалённый урок лежит строкой типа
   await admin.goto("/archive");
   await expect(admin.locator("h1")).toContainText("Архив");
   await admin.getByRole("button", { name: /^урок/i }).first().click().catch(() => undefined);
-  const row = admin.locator("table.tbl tbody tr", { hasText: lesson.subject.title }).first();
+  // запись архива называется «предмет · состав · дата, N урок»
+  const row = admin.locator("table.tbl tbody tr", { hasText: lesson.subject.title }).filter({ hasText: "в архиве" }).first();
   await expect(row).toBeVisible();
   await expect(row).toContainText("в архиве");
   const restored = admin.waitForResponse(

@@ -188,6 +188,8 @@ test("журнал профориентации без оценок: «Проф�
     await journal.getByRole("button", { name: "Открыть" }).click();
     await teacher.waitForURL(/\/journals\/\d+/);
     await expect(teacher.locator("thead")).toContainText("Профтест");
+    // под датами — только дни недели, вида урока «ФО» у предмета без оценок нет (D102)
+    await expect(teacher.locator("thead")).not.toContainText("ФО");
     const pupil = teacher.locator("tbody tr", { hasText: STUDENT_NAME }).first();
     await expect(pupil).toContainText("сдан");
     // оценка по профориентации отвечает 403 — у предмета нет оценок

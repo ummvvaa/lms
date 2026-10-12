@@ -40,8 +40,8 @@ test("вход логином: меню 8–10 без поступления, г
     await expect(menu, `пункт «${item}»`).toContainText(item);
   await expect(menu).toContainText("Достижения");
   await expect(menu, "профтест открыт всем параллелям").toContainText("Профтест");
-  // заголовок группы «Поступление» у 8–10 остаётся: в ней стоит «Профтест» (вопрос владельцу — в отчёте)
-  for (const item of ADMISSION)
+  // «Профтест» у 8–10 стоит в «Основном», заголовка «Поступление» нет (O10)
+  for (const item of ["Поступление", ...ADMISSION])
     await expect(menu, `пункт поступления «${item}»`).not.toContainText(item);
 
   await expect(page.locator("h1")).toContainText("Главная");

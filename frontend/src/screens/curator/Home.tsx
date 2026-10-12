@@ -141,7 +141,7 @@ function useAcademicsCards(group: string): BoardCard[] {
             (reports === null || reports.total === 0) &&
             // сервер отдаёт код расписания отчётов: month | quarter; подпись короткая —
             // свёрнутая карточка на 1440 должна оставаться одной строкой
-            (data.cadence === 'quarter' ? t('соберутся сами после закрытия четверти') : t('соберутся сами в последнюю пятницу месяца'))
+            (data.cadence === 'quarter' ? t('соберутся сами после закрытия четверти') : t('соберутся сами в конце месяца'))
           }
           right={
             <Button variant="outline" size="sm" onClick={() => navigate('/reports')}>

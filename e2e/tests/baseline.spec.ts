@@ -130,8 +130,13 @@ async function as(
   return page;
 }
 
-/** Ждём, пока экран дорисуется. */
+/** Ждём, пока экран дорисуется: первая карточка видна, сеть стихла (D104). */
 async function settle(page: Page): Promise<void> {
+  await page
+    .locator("main .card, main .datacard, main .kpi")
+    .first()
+    .waitFor({ state: "visible", timeout: 15_000 })
+    .catch(() => undefined);
   await page.waitForLoadState("networkidle").catch(() => undefined);
   await page.waitForTimeout(600);
 }

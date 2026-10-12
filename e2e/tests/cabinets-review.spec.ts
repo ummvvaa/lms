@@ -480,9 +480,11 @@ test("посещаемость у Салтанат на чтение: день �
   await expect(page.locator(".matrix").first()).toBeVisible();
   await expect(page.locator(".statrow")).toContainText("Дни без причины");
 
-  // прежние отметки дня — третьим видом, на чтение
+  // прежние отметки дня — третьим видом, на чтение: карточка месяца и список,
+  // фразы «отметка дня закрыта» на экране нет — так отвечает сервер на запись
   await page.getByRole("button", { name: "Отметки дня до уроков" }).click();
-  await expect(page.locator("body")).toContainText("Отметка дня закрыта");
+  await expect(page.locator(".datacard", { hasText: "отметки дня" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Внести посещаемость" })).toHaveCount(0);
 
   // и сервер отвечает отказом, если обойти экран
   const sheet = (await (await page.request.get("/api/attendance/")).json()) as {
@@ -503,7 +505,8 @@ test("посещаемость у Салтанат на чтение: день �
   const curator = await as(browser, "curator");
   await curator.goto("/attendance?view=month");
   await expect(curator.locator(".matrix").first()).toBeVisible();
-  await expect(curator.locator("body")).toContainText("Вы оформляете уважительную причину");
+  // у куратора у дней без причины стоит «Оформить» — подсказки абзацем на экране больше нет
+  await expect(curator.getByRole("button", { name: "Оформить" }).first()).toBeVisible();
   await curator.context().close();
 });
 

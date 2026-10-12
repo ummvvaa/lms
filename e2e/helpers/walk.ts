@@ -243,7 +243,17 @@ export function listen(page: Page) {
   return { consoleErrors, pageErrors, badResponses, requests };
 }
 
+/**
+ * Дождаться экрана: первая карточка в `main` отрисована, сеть стихла.
+ * Одного `networkidle` мало — на телефоне кадр снимался до первой
+ * отрисовки карточек, и в эталон уходила пустая страница (D104).
+ */
 export async function settle(page: Page): Promise<void> {
+  await page
+    .locator("main .card, main .datacard, main .kpi, main .empty, main .start")
+    .first()
+    .waitFor({ state: "visible", timeout: 15_000 })
+    .catch(() => undefined);
   await page.waitForLoadState("networkidle").catch(() => undefined);
   await page.waitForTimeout(400);
 }

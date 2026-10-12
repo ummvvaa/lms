@@ -81,6 +81,23 @@ test.beforeAll(async ({ browser }) => {
   studentId = me.id;
   studentName = me.full_name;
   await student.context().close();
+
+  // контакт родителя с телефоном — свой: «Позвонить родителям» нужен владелец
+  // контакта, а посев заводит контакты не ученику прогона
+  const curator = await as(browser, "curator");
+  const contacts = (await (
+    await curator.request.get(`/api/contacts/?student=${studentId}`)
+  ).json()) as { results: { id: number; phone: string }[] };
+  if (!contacts.results.some((row) => row.phone)) {
+    await apiPost(curator, "/api/contacts/", {
+      student: studentId,
+      full_name: "Прогон Гульнара",
+      relation: "mother",
+      phone: "+77015550199",
+      is_primary: true,
+    });
+  }
+  await curator.context().close();
 });
 
 test("экран «Документы»: пять чисел, фильтры, матрица, выгрузка", async ({
@@ -408,8 +425,8 @@ test("звонок родителям: телефон с владельцем, �
 
   await page.getByRole("button", { name: "Родителям" }).first().click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText("Контакт ведёт");
-  await expect(dialog).toContainText("Салтанат");
+  // у контакта назван владелец домена: «ведёт Салтанат»
+  await expect(dialog).toContainText("ведёт Салтанат");
   await dialog.getByPlaceholder("Коротко").fill(CALL);
   const mark = diag.mark();
   await dialog.getByRole("button", { name: "Сохранить итог звонка" }).click();

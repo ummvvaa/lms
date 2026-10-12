@@ -1,6 +1,10 @@
 /**
  * Снимки экранов, которых коснулся перенос загрузки файлов администратору, на двух ширинах.
  *
+ * Не страж, а инструмент: с 12.10.2026 снимок мастера на шаге «Что заполняем»
+ * не снимается — «Дальше» первого шага не нажимается и с учеником 11 класса в файле;
+ * причина не найдена, снимок помечен и оставлен (отчёт серии 12.10).
+ *
  * Узкий набор по заданию: импорт администратора (мастер с файлом-списком),
  * история загрузок и таблица директора, помощник с выбором домена,
  * соревнования и контакты без кнопки загрузки. Полный набор всех экранов
@@ -27,8 +31,9 @@ const SHOTS: {
     prepare: async (page) => {
       // мастер импорта с файлом-списком на шаге «Что заполняем»: колонки узнаны по реестру;
       // ученик настоящий — без найденных строк «Дальше» закрыта (07.10.2026)
-      const list = (await (await page.request.get("/api/students/?page_size=1")).json()) as { results: { email: string }[] };
-      const email = list.results[0]?.email ?? "nobody@probe.local";
+      // первый по списку — ученик 9 класса, у него домен экзаменов закрыт и строк не будет
+      const list = (await (await page.request.get("/api/students/?search=pupil01&page_size=5")).json()) as { results: { email: string }[] };
+      const email = list.results.find((row) => row.email.startsWith("pupil01@"))?.email ?? "nobody@probe.local";
       await wizardFile(page, "баллы.csv", `email,ielts,ielts цель\n${email},6.5,7.5\n`);
       await wizardToColumns(page);
       await page.waitForTimeout(300);
