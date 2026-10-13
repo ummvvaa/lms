@@ -49,6 +49,7 @@ urlpatterns = [
     path("acad/teachers/close-schedule-only/", schedule_views.teachers_close_schedule_only, name="acad-teachers-close"),
     path("acad/teachers/<int:pk>/", schedule_views.teacher_detail, name="acad-teacher"),
     path("acad/teachers/<int:pk>/remind/", schedule_views.teacher_remind, name="acad-teacher-remind"),
+    path("acad/teachers/<int:pk>/courses/", schedule_views.teacher_courses, name="acad-teacher-courses"),
     # успеваемость
     path("acad/grades/school/", schedule_views.school_grades, name="acad-school-grades"),
     path("acad/grades/school/cell/", schedule_views.school_grades_cell, name="acad-school-grades-cell"),

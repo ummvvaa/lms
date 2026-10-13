@@ -17192,3 +17192,15 @@ msgstr "{where}: SAT is run as two subjects — specify SAT Math or SAT Verbal"
 #: academics/teacher_views.py
 msgid "Журнала нет: предмет только в расписании"
 msgstr "No journal: the subject is schedule-only"
+
+#: academics/schedule_views.py
+msgid "Выберите предмет, который ведётся в LMS"
+msgstr "Choose a subject that is kept in the LMS"
+
+#: academics/schedule_views.py
+msgid "Выберите группу"
+msgstr "Choose a group"
+
+#: academics/schedule_views.py
+msgid "Учитель уже ведёт этот журнал"
+msgstr "The teacher already keeps this gradebook"

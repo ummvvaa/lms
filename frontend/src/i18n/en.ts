@@ -4036,4 +4036,13 @@ export const en: Record<string, string> = {
   'открытых задач нет: их ставят куратор и школа, дедлайны вузов добавляются сами': 'no open tasks: your curator and the school set them, university deadlines are added automatically',
   'Задача выполнена': 'Task done',
   'Желаемый балл': 'Target score',
+  '{subject} — нет групп': '{subject} — no groups',
+  'Уроков этого предмета у учителя нет': 'The teacher has no lessons of this subject',
+  'Группа добавлена: {name}': 'Group added: {name}',
+  'Учитель уже ведёт этот журнал': 'The teacher already keeps this gradebook',
+  'Этот предмет в группе ведёт {teacher}. Уроки с даты перейдут к новому учителю, журнал общий: прежние оценки он видит, но править не может.': 'In this group the subject is taught by {teacher}. From the chosen date the lessons pass to the new teacher; the gradebook is shared: earlier grades are visible to them but not editable.',
+  'Журнал есть, учитель не назначен: его уроки перейдут этому учителю': 'The gradebook exists with no teacher assigned: its lessons will pass to this teacher',
+  'Журнал заведётся пустым: уроки появятся, когда предмет встанет в расписание группы': 'The gradebook starts empty: lessons appear once the subject is placed in the group timetable',
+  '{name} · {students} · ведёт {teacher}': '{name} · {students} · taught by {teacher}',
+  '{name} · {students}': '{name} · {students}',
 }

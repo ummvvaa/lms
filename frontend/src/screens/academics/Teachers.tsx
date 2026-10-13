@@ -19,10 +19,13 @@ import {
   useReassignCourse,
   useRemindAllTeachers,
   useRemindTeacher,
+  useAddTeacherCourse,
+  useTeacherCourseOptions,
   useTeacherDetail,
   useTeachers,
   useUpdateTeacher,
   type AcadCourse,
+  type AcadSubject,
   type ScheduleOnlyTeacher,
   type TeacherRow,
 } from '../../api/academics'
@@ -120,6 +123,105 @@ function ReassignDialog({
   )
 }
 
+/**
+ * Группа учителю по предмету руками (решение владельца, 13.10.2026): журнала
+ * нет — заводится пустой, уроки придут с расписанием; журнал без учителя —
+ * назначается; журнал другого учителя — передаётся с даты, как «Сменить учителя».
+ */
+function AddGroupDialog({ teacher, subject, onClose }: { teacher: number; subject: AcadSubject; onClose: () => void }) {
+  const options = useTeacherCourseOptions(teacher, subject.id)
+  const add = useAddTeacherCourse()
+  const [group, setGroup] = useState('')
+  const [cohort, setCohort] = useState('')
+  const [since, setSince] = useState(todayAlmaty())
+  const [error, setError] = useState('')
+  const groups = options.data?.groups ?? []
+  const picked = groups.find((g) => String(g.id) === group)
+  const cohorts = picked?.cohorts ?? []
+  const chosen = cohorts.find((c) => String(c.id) === cohort) ?? cohorts[0]
+  const existing = chosen?.course ?? null
+  const transfer = Boolean(existing?.teacher && !existing.mine)
+  const cohortTitle = (c: (typeof cohorts)[number]) =>
+    c.course?.teacher
+      ? t('{name} · {students} · ведёт {teacher}', { name: c.name, students: counted(c.students, 'ученик|ученика|учеников'), teacher: c.course.teacher })
+      : t('{name} · {students}', { name: c.name, students: counted(c.students, 'ученик|ученика|учеников') })
+  const submit = () =>
+    chosen &&
+    add.mutate(
+      { teacher, subject: subject.id, cohort: chosen.id, since },
+      {
+        onSuccess: (course) => {
+          toast.success(
+            course.transferred
+              ? t('С {date} ведёт другой учитель', { date: dateWords(since) })
+              : t('Группа добавлена: {name}', { name: chosen.name }),
+          )
+          onClose()
+        },
+        onError: (e) => setError(e.message),
+      },
+    )
+  return (
+    <Modal title={t('Добавить группу')} note={subject.title} onClose={onClose}>
+      {options.isLoading ? (
+        <Loading />
+      ) : options.error ? (
+        <ErrorNote error={options.error} />
+      ) : (
+        <>
+          <Field
+            kind="select"
+            name="group"
+            label={t('Группа')}
+            value={group}
+            placeholder={t('выберите группу')}
+            onChange={(value) => {
+              setGroup(value)
+              setCohort('')
+              setError('')
+            }}
+            options={groups.map((g) => ({ value: String(g.id), title: g.code }))}
+          />
+          {picked && cohorts.length > 1 && (
+            <Field
+              kind="select"
+              name="cohort"
+              label={t('Состав')}
+              value={String(chosen?.id ?? '')}
+              onChange={setCohort}
+              options={cohorts.map((c) => ({ value: String(c.id), title: cohortTitle(c) }))}
+            />
+          )}
+          {chosen && (
+            <p className="acad__note">
+              {existing
+                ? existing.mine
+                  ? t('Учитель уже ведёт этот журнал')
+                  : existing.teacher
+                    ? t(
+                        'Этот предмет в группе ведёт {teacher}. Уроки с даты перейдут к новому учителю, журнал общий: прежние оценки он видит, но править не может.',
+                        { teacher: existing.teacher },
+                      )
+                    : t('Журнал есть, учитель не назначен: его уроки перейдут этому учителю')
+                : t('Журнал заведётся пустым: уроки появятся, когда предмет встанет в расписание группы')}
+            </p>
+          )}
+          {transfer && <Field kind="date" name="since" label={t('С даты')} value={since} onChange={setSince} />}
+          {error && <Chip tone="bad">{error}</Chip>}
+          <div className="acad__actions">
+            <Button onClick={submit} disabled={!chosen || Boolean(existing?.mine) || add.isPending}>
+              {transfer ? t('Передать') : t('Добавить')}
+            </Button>
+            <Button variant="outline" onClick={onClose}>
+              {t('Отмена')}
+            </Button>
+          </div>
+        </>
+      )}
+    </Modal>
+  )
+}
+
 const reportRoles = () => [
   { value: '', title: t('в отчёт не идёт отдельно') },
   { value: 'eep', title: 'GE / EEP' },
@@ -161,6 +263,7 @@ function TeacherDrawer({
   const [room, setRoom] = useState('')
   const [subjects, setSubjects] = useState<Set<number>>(new Set())
   const [reassign, setReassign] = useState<AcadCourse | null>(null)
+  const [adding, setAdding] = useState<AcadSubject | null>(null)
   useEffect(() => {
     if (detail.data) {
       setRoom(detail.data.room)
@@ -174,10 +277,15 @@ function TeacherDrawer({
   )
   const chosen = all.filter((s) => subjects.has(s.id))
   const rest = all.filter((s) => !subjects.has(s.id))
+  // сохранённый предмет LMS без единого журнала у этого учителя: после «Сохранить»
+  // человек видит, что дальше — дать группу (решение владельца, 13.10.2026)
+  const withoutGroups = (data?.subjects ?? []).filter(
+    (s) => s.in_lms && !(data?.courses ?? []).some((course) => course.subject.id === s.id),
+  )
   return (
     <>
       <EditDrawer
-        open={reassign === null}
+        open={reassign === null && adding === null}
         onClose={onClose}
         title={data?.full_name ?? t('Учитель')}
         sub={data ? `${data.subject_titles || t('предметы не назначены')} · ${data.email}` : undefined}
@@ -248,6 +356,24 @@ function TeacherDrawer({
                 </Button>
               ))}
             </div>
+            {withoutGroups.length > 0 && (
+              <Rows>
+                {withoutGroups.map((s) => (
+                  <Row
+                    key={s.id}
+                    icon="alert"
+                    tone="warn"
+                    title={t('{subject} — нет групп', { subject: s.title })}
+                    note={t('Уроков этого предмета у учителя нет')}
+                    right={
+                      <Button variant="secondary" size="sm" onClick={() => setAdding(s)}>
+                        {t('Добавить группу')}
+                      </Button>
+                    }
+                  />
+                ))}
+              </Rows>
+            )}
             <Field
               kind="select"
               name="add-subject"
@@ -314,6 +440,7 @@ function TeacherDrawer({
         )}
       </EditDrawer>
       {reassign && <ReassignDialog course={reassign} teachers={teachers} onClose={() => setReassign(null)} />}
+      {adding && <AddGroupDialog teacher={id} subject={adding} onClose={() => setAdding(null)} />}
     </>
   )
 }

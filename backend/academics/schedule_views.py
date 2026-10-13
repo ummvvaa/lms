@@ -20,7 +20,7 @@ from academics import cohorts as composing
 from academics import rights, sat_subjects, schedule, teachers
 from academics.cache import cached
 from academics.calendar import lesson_groups, period_choices, scale_of, today, week_start
-from academics.cohorts import group_ids_of, member_ids
+from academics.cohorts import group_ids_of, kind_title, member_ids
 from academics.models import (
     AcademicYear,
     Bell,
@@ -806,6 +806,97 @@ def teacher_remind(request, pk: int):
     if user is None:
         return _not_found()
     return Response({"reminded": _remind(user, school_calendar.load())})
+
+
+def _course_options(user: User, subject: Subject) -> list[dict]:
+    """Группы и их составы по предмету: вся группа, подгруппы предмета, потоки группы."""
+    rows = []
+    for group in StudyGroup.objects.filter(is_active=True).order_by("parallel", "code"):
+        cohorts = [composing.group_cohort(group)]
+        cohorts += list(
+            Cohort.objects.filter(
+                kind=CohortKind.SUBGROUP, group=group, subject=subject, archived_at__isnull=True
+            ).order_by("number", "name")
+        )
+        for stream in Cohort.objects.filter(kind=CohortKind.STREAM, archived_at__isnull=True).order_by("name"):
+            if group.pk not in group_ids_of(stream):
+                continue
+            cohorts.append(stream)
+            cohorts += list(
+                Cohort.objects.filter(
+                    kind=CohortKind.SUBGROUP, stream=stream, subject=subject, archived_at__isnull=True
+                ).order_by("number", "name")
+            )
+        items = []
+        for cohort in cohorts:
+            course = (
+                Course.objects.filter(subject=subject, cohort=cohort, archived_at__isnull=True)
+                .select_related("teacher")
+                .order_by("teacher_id")
+                .first()
+            )
+            items.append(
+                {
+                    "id": cohort.pk,
+                    "name": cohort.name,
+                    "kind": cohort.kind,
+                    "kind_title": kind_title(cohort),
+                    "students": len(member_ids(cohort)),
+                    "course": (
+                        None
+                        if course is None
+                        else {
+                            "id": course.pk,
+                            "teacher": user_name(course.teacher),
+                            "mine": course.teacher_id == user.pk,
+                        }
+                    ),
+                }
+            )
+        rows.append({"id": group.pk, "code": group.code, "parallel": group.parallel, "cohorts": items})
+    return rows
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+@cached
+def teacher_courses(request, pk: int):
+    """Группа учителю по предмету руками, без импорта (решение владельца, 13.10.2026).
+
+    GET `?subject=` — группы и их составы по предмету, у каждого — кто уже ведёт
+    журнал. POST `{subject, cohort, since}` — журнал: нет — заводится пустой,
+    уроки придут с расписанием; без учителя — назначается; у другого учителя —
+    передаётся с даты, как «Сменить учителя» (уроки с даты переходят, журнал общий).
+    """
+    refusal = _editor(request)
+    if refusal:
+        return refusal
+    user = User.objects.filter(pk=pk, role=Role.TEACHER).first()
+    if user is None:
+        return _not_found()
+    data = request.query_params if request.method == "GET" else request.data
+    subject = Subject.objects.filter(pk=_int(data.get("subject")), in_lms=True).first()
+    if subject is None:
+        return _bad(_("Выберите предмет, который ведётся в LMS"))
+    if request.method == "GET":
+        return Response({"groups": _course_options(user, subject)})
+    cohort = Cohort.objects.filter(pk=_int(data.get("cohort")), archived_at__isnull=True).first()
+    if cohort is None or (cohort.kind == CohortKind.SUBGROUP and cohort.subject_id != subject.pk):
+        return _bad(_("Выберите группу"))
+    course = (
+        Course.objects.filter(subject=subject, cohort=cohort, archived_at__isnull=True)
+        .select_related("subject", "cohort", "teacher")
+        .order_by("teacher_id")
+        .first()
+    )
+    if course is not None and course.teacher_id == user.pk:
+        return _bad(_("Учитель уже ведёт этот журнал"))
+    transferred = course is not None and course.teacher_id is not None
+    if course is None:
+        course = Course.objects.create(subject=subject, cohort=cohort)
+    schedule.reassign(course, teacher=user, since=_date(data.get("since"), today()), actor=request.user)
+    return Response({**course_dict(course), "transferred": transferred})
 
 
 def _remind(user: User, calendar) -> int:

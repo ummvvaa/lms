@@ -869,6 +869,37 @@ export const useTeacherDetail = (id: number | null) =>
 export const useUpdateTeacher = () =>
   useAcadMutation((input: { id: number; subjects?: number[]; room?: string }) => patch<TeacherRow>(`/acad/teachers/${input.id}/`, input), { saved: true })
 
+/** Группы и их составы по предмету для окна «Добавить группу» в карточке учителя:
+ *  у каждого состава — кто уже ведёт журнал (13.10.2026). */
+export interface TeacherCourseOptions {
+  groups: {
+    id: number
+    code: string
+    parallel: number
+    cohorts: {
+      id: number
+      name: string
+      kind: string
+      kind_title: string
+      students: number
+      course: { id: number; teacher: string; mine: boolean } | null
+    }[]
+  }[]
+}
+
+export const useTeacherCourseOptions = (teacher: number, subject: number) =>
+  useQuery({
+    queryKey: ['acad', 'teacher-courses', teacher, subject],
+    queryFn: () => get<TeacherCourseOptions>(`/acad/teachers/${teacher}/courses/${query({ subject })}`),
+  })
+
+/** Журнал предмета у состава этому учителю: новый пустой, без учителя — назначить,
+ *  чужой — передать с даты, как «Сменить учителя». */
+export const useAddTeacherCourse = () =>
+  useAcadMutation((input: { teacher: number; subject: number; cohort: number; since: string }) =>
+    post<AcadCourse & { transferred: boolean }>(`/acad/teachers/${input.teacher}/courses/`, input),
+  )
+
 export const useRemindTeacher = () => useAcadMutation((id: number) => post<{ reminded: number }>(`/acad/teachers/${id}/remind/`, {}))
 
 export const useRemindAllTeachers = () => useAcadMutation(() => post<{ teachers: number }>('/acad/teachers/remind-all/', {}))

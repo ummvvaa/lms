@@ -17111,3 +17111,15 @@ msgstr "{where}: SAT екі пәнмен жүргізіледі — SAT Math н�
 #: academics/teacher_views.py
 msgid "Журнала нет: предмет только в расписании"
 msgstr "Журнал жоқ: пән тек кестеде"
+
+#: academics/schedule_views.py
+msgid "Выберите предмет, который ведётся в LMS"
+msgstr "LMS-те жүргізілетін пәнді таңдаңыз"
+
+#: academics/schedule_views.py
+msgid "Выберите группу"
+msgstr "Топты таңдаңыз"
+
+#: academics/schedule_views.py
+msgid "Учитель уже ведёт этот журнал"
+msgstr "Мұғалім бұл журналды бұрыннан жүргізеді"
