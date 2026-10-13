@@ -255,7 +255,9 @@ export async function settle(page: Page): Promise<void> {
     .first()
     .waitFor({ state: "visible", timeout: 15_000 })
     .catch(() => undefined);
-  await page.waitForLoadState("networkidle").catch(() => undefined);
+  // предел: страница с медленной ручкой (дайджест, D106) без него держала
+  // ожидание до конца теста — 545 секунд в обходе пустой школы 13.10.2026
+  await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
   await page.waitForTimeout(400);
 }
 

@@ -70,10 +70,11 @@ test("ученик создаёт эссе: тип, гайд, проверка, 
   await page.goto("/essays");
   await page.getByRole("button", { name: "Новое эссе" }).first().click();
 
-  // выбираем тип Personal Statement
+  // выбираем тип Personal Statement: у строки типа своя кнопка «Создать»
   await page
     .locator(".rowline", { hasText: "Personal Statement" })
     .first()
+    .getByRole("button", { name: "Создать" })
     .click();
 
   // гайд: четыре шага

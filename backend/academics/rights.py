@@ -140,8 +140,18 @@ def sees_course(user, course) -> bool:
     """Читает журнал: учитель свой, Кымбат и администратор любой, куратор — своих групп."""
     if not course.subject.in_lms:
         return False
+    return sees_schedule_course(user, course)
+
+
+def sees_schedule_course(user, course) -> bool:
+    """Видит курс в расписании — те же люди, что читали бы его журнал, будь он в LMS.
+
+    Нужно экрану журнала: у предмета «только расписание» журнала нет, и человеку,
+    который этот курс видит, экран говорит об этом словами, а не «не найдено».
+    """
     role = getattr(user, "role", "")
-    if owns_course(user, course):
+    # как `owns_course`, но без проверки «ведётся в LMS»: учитель — свой, Кымбат и администратор — любой
+    if role in ACADEMICS_READERS or (role == ROLE_TEACHER and course.teacher_id == getattr(user, "pk", None)):
         return True
     if role == ROLE_CURATOR:
         from academics.cohorts import group_ids_of

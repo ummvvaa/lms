@@ -17188,3 +17188,7 @@ msgstr "“No” — SAT is one subject, Math and Verbal are report sections of 
 #, python-brace-format
 msgid "{where}: SAT ведётся двумя предметами — укажите SAT Math или SAT Verbal"
 msgstr "{where}: SAT is run as two subjects — specify SAT Math or SAT Verbal"
+
+#: academics/teacher_views.py
+msgid "Журнала нет: предмет только в расписании"
+msgstr "No journal: the subject is schedule-only"

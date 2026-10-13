@@ -52,8 +52,8 @@ test("Кымбат: список длиннее пяти строк раскры
   await expect(card.getByText("G7", { exact: true })).toBeVisible();
   await expect(card.getByRole("button", { name: "Свернуть" })).toHaveAttribute("aria-expanded", "true");
 
-  // «мок просел» — один раз: списком, где по ученику есть действие
-  await expect(page.getByText("Мок просел", { exact: true })).toHaveCount(1);
+  // «Балл Mock Test просел» — один раз: списком, где по ученику есть действие
+  await expect(page.getByText("Балл Mock Test просел", { exact: true })).toHaveCount(1);
   await page.context().close();
 });
 

@@ -17107,3 +17107,7 @@ msgstr "«Жоқ» — SAT бір пән, Math пен Verbal — журналд�
 #, python-brace-format
 msgid "{where}: SAT ведётся двумя предметами — укажите SAT Math или SAT Verbal"
 msgstr "{where}: SAT екі пәнмен жүргізіледі — SAT Math немесе SAT Verbal көрсетіңіз"
+
+#: academics/teacher_views.py
+msgid "Журнала нет: предмет только в расписании"
+msgstr "Журнал жоқ: пән тек кестеде"

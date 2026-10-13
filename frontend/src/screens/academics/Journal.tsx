@@ -31,6 +31,7 @@ import Field from '../../components/Field'
 import Matrix, { type MatrixCell, type MatrixColumn, type MatrixRow, type MatrixTone } from '../../components/Matrix'
 import Modal from '../../components/Modal'
 import { Row, Rows, Segmented, StatRow } from '../../components/patterns'
+import { ApiError } from '../../api/client'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { ExportPreview } from '../../components/ExportPreview'
@@ -477,7 +478,19 @@ export default function Journal() {
   const mayReview = Boolean(me && homeworkReviewOpen(me.role, me.teaches))
 
   if (journal.isLoading && !journal.data) return <Loading kind="table" />
-  if (journal.error) return <ErrorNote error={journal.error} />
+  if (journal.error) {
+    // предмет «только расписание»: журнала нет, и экран говорит это словами,
+    // а не строкой ошибки под пустым заголовком (13.10.2026)
+    const payload = journal.error instanceof ApiError ? (journal.error.payload as { code?: string } | null) : null
+    if (payload?.code === 'schedule_only')
+      return (
+        <div>
+          <ScreenHead title={t('Журнал')} />
+          <DataCard title={t('Журнал')} empty={journal.error.message} />
+        </div>
+      )
+    return <ErrorNote error={journal.error} />
+  }
   if (!journal.data) return null
   const data = journal.data
   const setPeriod = (code: string) => {

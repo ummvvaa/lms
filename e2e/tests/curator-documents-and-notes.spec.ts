@@ -518,11 +518,14 @@ test("передача Кымбат: строка уходит к владель
   // уведомления живут в меню пользователя внизу бокового меню
   await back.getByRole("button", { name: "Меню профиля" }).click();
   await back.getByRole("menuitem", { name: /^Уведомления/ }).click();
+  // строки списка уведомлений — общий компонент строки: у непрочитанной
+  // справа точка, поэтому переход — отдельной кнопкой «Открыть» в строке
   const notice = back
-    .locator(".notif__row", { hasText: "ответ на переданное" })
+    .getByRole("dialog", { name: "Уведомления" })
+    .locator(".rowline", { hasText: "ответ на переданное" })
     .first();
   await expect(notice).toBeVisible();
-  await notice.click();
+  await notice.getByRole("button", { name: "Открыть" }).click();
   await expect(back).toHaveURL(/\/students\/\d+/);
   await back.context().close();
 });

@@ -99,8 +99,14 @@ def test_disabled_teacher_cannot_log_in(teacher):
 
 
 def test_schedule_only_lesson_has_no_journal_marks_or_grades(schedule_only, lesson, as_teacher, as_admin, pupils):
-    assert as_teacher.get(f"/api/acad/journals/{lesson.course_id}/").status_code == 404
-    assert as_admin.get(f"/api/acad/journals/{lesson.course_id}/").status_code == 404
+    # журнала нет, и тому, кто курс видит, ответ говорит это словами, а не «не найдено»:
+    # экран показывает строку карточкой, страж высоты не видит пустоты под заголовком
+    for client in (as_teacher, as_admin):
+        journal = client.get(f"/api/acad/journals/{lesson.course_id}/")
+        assert journal.status_code == 404
+        assert journal.json() == {"detail": "Журнала нет: предмет только в расписании", "code": "schedule_only"}
+    # чужому курс не виден вовсе — обычное «не найдено» без подсказки, что курс есть
+    assert "code" not in as_admin.get("/api/acad/journals/999999/").json()
     journals = as_teacher.get("/api/acad/teacher/journals/").json()
     assert all(row["id"] != lesson.course_id for row in journals.get("rows", journals.get("journals", [])))
     for client in (as_teacher, as_admin):

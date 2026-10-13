@@ -27,8 +27,12 @@ test("неделя по группе: панель урока и правка «
     (row) => row.actual_teacher?.short?.includes("Прогон") && row.is_live !== false,
   );
   expect(future.length, "впереди есть уроки учителя прогона").toBeGreaterThan(1);
+  // учителей «Прогон» в посеве четверо (12.10.2026): накладка — только у одного
+  // и того же человека, поэтому второй урок берём у учителя первого
   const lesson = future[0];
-  const other = future.find((row) => row.date === lesson.date && row.slot !== lesson.slot) ?? future[1];
+  const same = future.filter((row) => row.actual_teacher?.id === lesson.actual_teacher?.id);
+  expect(same.length, "у учителя первого урока есть и другие уроки").toBeGreaterThan(1);
+  const other = same.find((row) => row.date === lesson.date && row.slot !== lesson.slot) ?? same[1];
 
   await kymbat.goto(`/schedule?from=${lesson.date}`);
   await expect(kymbat.locator("h1")).toContainText("Расписание");

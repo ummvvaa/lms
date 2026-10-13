@@ -27,6 +27,7 @@ import { statePath } from "../helpers/auth-state";
 import { exportThroughPreview } from "../helpers/export";
 import { apiDelete, apiPatch, apiPost, watch } from "../helpers/session";
 import { daysAgo, lessonsBetween } from "../helpers/academics";
+import { probeEmail } from "../helpers/roles";
 
 test.describe.configure({ mode: "serial", timeout: 300_000 });
 
@@ -501,13 +502,60 @@ test("посещаемость у Салтанат на чтение: день �
   expect(diag.pageErrors, "исключения").toEqual([]);
   await page.context().close();
 
-  // куратор видит тот же экран, но с «Оформить» у дней без причины
+  // куратор видит тот же экран, но с «Оформить» у дней без причины. День без
+  // причины — не меньше двух «н» и 60 % уроков дня (правило школы), а в посеве
+  // пропуски по одному уроку: такого дня нет ни у кого. Заводим его сами:
+  // администратор отмечает ученику прогона «н» на всех уроках одного дня
+  const admin = await as(browser, "admin");
+  const pupils = (await (
+    await admin.request.get("/api/students/?page_size=500")
+  ).json()) as { results: { id: number; email: string }[] };
+  const pupil = pupils.results.find((row) => row.email === probeEmail("student"));
+  expect(pupil, "ученик прогона заведён").toBeTruthy();
+  const month = daysAgo(0).slice(0, 7);
+  const lessons = (await lessonsBetween(admin, `${month}-01`, daysAgo(1)))
+    .filter((row) => row.in_lms !== false && row.is_live !== false);
+  const byDay = new Map<string, typeof lessons>();
+  for (const row of lessons) byDay.set(row.date, [...(byDay.get(row.date) ?? []), row]);
+  // уроки дня берутся по ученику: подгруппы и потоки тоже считаются в его день
+  let day: string | null = null;
+  let dayLessons: typeof lessons = [];
+  for (const [date] of [...byDay.entries()].sort((a, b) => b[0].localeCompare(a[0]))) {
+    const own = (await (
+      await admin.request.get(`/api/acad/lessons/?from=${date}&to=${date}&student=${pupil!.id}`)
+    ).json()) as { lessons?: typeof lessons };
+    const rows = (own.lessons ?? []).filter((row) => row.in_lms !== false && row.is_live !== false);
+    if (rows.length >= 2) {
+      day = date;
+      dayLessons = rows;
+      break;
+    }
+  }
+  expect(day, "в этом месяце есть день с двумя и больше уроками ученика прогона").toBeTruthy();
+  for (const row of dayLessons) {
+    await apiPost(admin, `/api/acad/lessons/${row.id}/attendance/`, {
+      rows: [{ student: pupil!.id, mark: "absent" }],
+    });
+  }
+  await admin.context().close();
+
   const curator = await as(browser, "curator");
-  await curator.goto("/attendance?view=month");
+  await curator.goto("/attendance?view=month&group=CHICAGO");
   await expect(curator.locator(".matrix").first()).toBeVisible();
-  // у куратора у дней без причины стоит «Оформить» — подсказки абзацем на экране больше нет
-  await expect(curator.getByRole("button", { name: "Оформить" }).first()).toBeVisible();
+  const unexcused = curator.locator(".datacard", { hasText: "Дни без причины" }).first();
+  await expect(unexcused).toContainText("Прогон Айгерим");
+  // у куратора у дня без причины стоит «Оформить» — подсказки абзацем на экране больше нет
+  await expect(unexcused.getByRole("button", { name: "Оформить" }).first()).toBeVisible();
   await curator.context().close();
+
+  // возвращаем отметки: «н» целого дня не должно уехать в другие сценарии
+  const cleanup = await as(browser, "admin");
+  for (const row of dayLessons) {
+    await apiPost(cleanup, `/api/acad/lessons/${row.id}/attendance/`, {
+      rows: [{ student: pupil!.id, mark: "present" }],
+    });
+  }
+  await cleanup.context().close();
 });
 
 // --- 12, 13: карточки справочников --------------------------------------------------------
@@ -548,11 +596,14 @@ test("выгрузка пользователей — по фильтру, че�
   await admin.goto("/users");
   await admin.getByPlaceholder("Поиск по имени или почте").fill("probe.local");
   await expect(admin.locator("body")).toContainText("probe.local");
+  // с 11.10.2026 выгрузка — пункт меню «⋯» в шапке, а не кнопка
+  await admin.locator(".head__actions").getByLabel("Ещё действия").click();
   const exported = await exportThroughPreview(
     admin,
-    admin.getByRole("button", { name: "Выгрузить", exact: true }),
+    admin.getByRole("menuitem", { name: "Выгрузить", exact: true }),
   );
-  expect(exported.columns).toEqual(["ФИО", "Почта", "Роль", "Группа", "Состояние пароля", "Активен"]);
+  // «Логин» — с входа по логину у 8–10 без почты (02.10.2026)
+  expect(exported.columns).toEqual(["ФИО", "Почта", "Логин", "Роль", "Группа", "Состояние пароля", "Активен"]);
   await admin.context().close();
 });
 

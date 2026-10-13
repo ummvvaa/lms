@@ -49,7 +49,7 @@ export async function openDashboard(
     })
     .catch(() => undefined);
   await page.goto("/dashboard");
-  await page.waitForLoadState("networkidle").catch(() => undefined);
+  await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
   await page.waitForTimeout(600);
   return page;
 }

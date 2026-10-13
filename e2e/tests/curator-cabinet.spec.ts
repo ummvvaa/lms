@@ -315,7 +315,9 @@ test("ученик видит задачу куратора и знает, чт�
   // задачи ученика с 07.10.2026 — полным списком на главной, роадмапа нет
   await student.goto("/dashboard");
   const tasks = student.locator(".datacard", { hasText: "Задачи" }).first();
-  // длинный список показывает первые строки и «Показать все N»
+  // длинный список показывает первые строки и «Показать все N»: ждём строки,
+  // иначе кнопка ищется до отрисовки и задача без срока остаётся за сгибом
+  await expect(tasks.locator(".rowline").first()).toBeVisible();
   const more = tasks.getByRole("button", { name: /Показать все/ });
   if (await more.count()) await more.click();
   await expect(tasks).toContainText("Проверка из прогона: принести аттестат");

@@ -18,6 +18,8 @@ export interface LessonRow {
   bell?: string;
   is_live?: boolean;
   actual_teacher?: { id: number; short: string } | null;
+  /** предмет ведётся в LMS: есть журнал, отметки и оценки */
+  in_lms?: boolean;
   /** `in_lms: false` — предмет «только расписание»: урок в неделе есть, отметок и оценок нет */
   subject: { id: number; title: string; short_title: string; in_lms?: boolean };
   cohort: { id: number; name: string; group: string; students?: number };
@@ -57,8 +59,10 @@ export async function findCourse(page: Page, role: string): Promise<number> {
       if (body.rows?.[0]) return body.rows[0].id;
     }
   }
+  // журнал есть только у предмета «ведётся в LMS»: у «только расписание»
+  // экран отвечает словами, а стражу нужен настоящий журнал (13.10.2026)
   const rows = await lessonsBetween(page, daysAgo(21), daysAgo(0));
-  return rows[0]?.course ?? 0;
+  return (rows.find((row) => row.in_lms !== false) ?? rows[0])?.course ?? 0;
 }
 
 /** Ученик из состава урока — для `/students/{id}` у учителя. */

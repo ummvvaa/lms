@@ -398,6 +398,14 @@ def journal(request, pk: int):
     """Журнал за период. Учитель — свой, Кымбат и администратор — любой, куратор — своих групп."""
     course = _course_for(request.user, pk)
     if course is None:
+        # курс есть и человек его видит, но предмет «только расписание»: журнала
+        # нет — экран объясняет это словами, а не «не найдено» (13.10.2026)
+        plain = Course.objects.select_related("subject", "cohort", "cohort__group", "teacher").filter(pk=pk).first()
+        if plain is not None and not plain.subject.in_lms and rights.sees_schedule_course(request.user, plain):
+            return Response(
+                {"detail": _("Журнала нет: предмет только в расписании"), "code": "schedule_only"},
+                status=http.HTTP_404_NOT_FOUND,
+            )
         return _not_found()
     return Response(journal_payload(course, request.user, str(request.query_params.get("period") or "")))
 

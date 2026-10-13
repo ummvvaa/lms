@@ -186,14 +186,31 @@ test.describe("ответы ученика ждут подтверждения",
   });
 });
 
+// карточка задач на главной с 07.10.2026 называется «Задачи», фраза стрика — её подзаголовок
 test.describe("XP и стрик", () => {
   test.use({ storageState: statePath("student") });
+
+  // у пустой карточки подзаголовка нет и галочки нет: куратор ставит ученику
+  // задачу, чтобы и выполнение, и фраза стрика проверялись на настоящих строках
+  test.beforeAll(async ({ browser }) => {
+    const student = await browser.newContext({ storageState: statePath("student") });
+    const me = (await (await student.request.get("/api/students/me/")).json()) as { id: number };
+    await student.close();
+    const curator = await browser.newContext({ storageState: statePath("curator") });
+    const page = await curator.newPage();
+    await page.goto("/dashboard");
+    await apiPost(page, "/api/curator/tasks/", {
+      student: me.id,
+      title: "Задача прогона: отметить галочкой на главной",
+    });
+    await curator.close();
+  });
 
   test("выполнение задачи начисляет XP прямо с дашборда", async ({ page }) => {
     await page.goto("/dashboard");
     const before = await (await page.request.get("/api/game/me/")).json();
 
-    const panel = page.locator(".datacard", { hasText: "Задачи на сегодня" });
+    const panel = page.locator(".datacard", { has: page.locator(".datacard__title", { hasText: /^Задачи/ }) });
     await expect(panel).toBeVisible();
     // жмём сам переключатель, а не скрытый input внутри него: у компонента
     // реестра их два, и клик по скрытому до обработчика не доходит
@@ -206,8 +223,9 @@ test.describe("XP и стрик", () => {
       ]);
       expect(moved.status()).toBe(200);
 
-      // отмеченная задача уходит из списка, поэтому её след — подтверждение XP
-      await expect(panel).toContainText("XP");
+      // отмеченная задача уходит из списка; XP начисляет сервер, на карточке
+      // с 07.10.2026 чипа XP нет — след действия: уведомление и счётчик в API
+      await expect(page.getByText("Задача выполнена")).toBeVisible();
       await expect
         .poll(
           async () =>
@@ -222,7 +240,7 @@ test.describe("XP и стрик", () => {
     page,
   }) => {
     await page.goto("/dashboard");
-    const panel = page.locator(".datacard", { hasText: "Задачи на сегодня" });
+    const panel = page.locator(".datacard", { has: page.locator(".datacard__title", { hasText: /^Задачи/ }) });
 
     await expect(panel).toContainText("подряд");
     // XP показывается у выполненной задачи; у невыполненных чипа нет
@@ -248,7 +266,7 @@ test.describe("XP и стрик", () => {
     const state = await (await page.request.get("/api/game/me/")).json();
 
     expect(state.streak_phrase.toLowerCase()).not.toContain("потер");
-    await expect(page.locator(".datacard", { hasText: "Задачи на сегодня" })).toContainText(
+    await expect(page.locator(".datacard", { has: page.locator(".datacard__title", { hasText: /^Задачи/ }) })).toContainText(
       state.streak_phrase,
     );
   });

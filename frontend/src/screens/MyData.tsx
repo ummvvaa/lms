@@ -318,6 +318,9 @@ export default function MyData() {
   const examDomain = domains.find((d) => d.code === 'exam')
   const examModel = examDomain ? profileModelOf(examDomain) : undefined
   const examProposable = (examModel?.fields ?? []).filter((f) => f.student_proposable)
+  // поля экзаменов, чьё нынешнее значение внёс куратор, — по журналу (сервер)
+  const curatorFields = (card.exam?.entered_by_curator as string[] | undefined) ?? []
+  const byCurator = (field: string) => curatorFields.includes(field)
 
   const activityModel = modelOf(meta.data, 'students.Activity')
   const competitionModel = modelOf(meta.data, 'students.Competition')
@@ -407,24 +410,26 @@ export default function MyData() {
             <DataCard
               title={t('Академические результаты')}
             >
+              {/* кто внёс значение, ученику видно и здесь (13.10.2026): подпись
+                  плитки — «внёс куратор», когда последнюю запись сделал он */}
               <div className="portfolio__academics">
                 <div className="portfolio__score">
                   <span className="portfolio__scorelabel">GPA</span>
                   <b className="num portfolio__scorevalue">{state?.academics.gpa ?? t('нет')}</b>
-                  <span className="portfolio__scorenote">{t('из 4.0')}</span>
+                  <span className="portfolio__scorenote">{byCurator('gpa') ? t('внёс куратор') : t('из 4.0')}</span>
                 </div>
                 <div className="portfolio__score">
                   <span className="portfolio__scorelabel">IELTS</span>
                   <b className="num portfolio__scorevalue">{state?.academics.ielts ?? t('нет')}</b>
                   <span className="portfolio__scorenote">
-                    {state?.academics.ielts ? t('внесён') : t('не внесён')}
+                    {byCurator('ielts_current') ? t('внёс куратор') : state?.academics.ielts ? t('внесён') : t('не внесён')}
                   </span>
                 </div>
                 <div className="portfolio__score">
                   <span className="portfolio__scorelabel">SAT</span>
                   <b className="num portfolio__scorevalue">{state?.academics.sat ?? t('нет')}</b>
                   <span className="portfolio__scorenote">
-                    {state?.academics.sat ? t('внесён') : t('не внесён')}
+                    {byCurator('sat_current') ? t('внёс куратор') : state?.academics.sat ? t('внесён') : t('не внесён')}
                   </span>
                 </div>
               </div>

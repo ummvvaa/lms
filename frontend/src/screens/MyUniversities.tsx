@@ -68,13 +68,7 @@ export default function MyUniversities({ onMode }: { onMode: (mode: CatalogMode)
             title={t('Список подачи')}
             count={results.length || undefined}
             note={results.length === 0 ? undefined : tn(results.length, '{n} программа · по {open} вы проходите уже сейчас|{n} программы · по {open} вы проходите уже сейчас|{n} программ · по {open} вы проходите уже сейчас', { open: openCount })}
-            right={
-              results.length > 0 ? (
-                <Button variant="link" size="sm" onClick={() => onMode('whatif')}>
-                  {t('Что откроется, если')}
-                </Button>
-              ) : undefined
-            }
+            // «Что откроется, если» — режим полосы над карточкой, второй кнопки здесь нет (13.10.2026)
             empty={results.length === 0 && t('выберите программы в каталоге — по каждой видно, проходите ли вы, а дедлайны сами станут задачами')}
             emptyAction={
               <Button variant="secondary" size="sm" onClick={() => onMode('catalog')}>

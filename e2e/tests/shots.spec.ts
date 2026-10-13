@@ -129,7 +129,8 @@ for (const [role, screens] of Object.entries(SCREENS)) {
         try {
           for (const screen of screens) {
             await page.goto(screen);
-            await page.waitForLoadState("networkidle").catch(() => undefined);
+            // предел: экран с медленной ручкой (дайджест, D106) иначе съедает весь тест
+            await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
             await page.waitForTimeout(400);
             const name = `${role}${screen.replace(/\//g, "_").replace(/[?=]/g, "-")}.png`;
             await page.screenshot({
