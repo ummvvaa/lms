@@ -4,6 +4,12 @@
  * группы без звонков названы строкой ошибки. Шкала
  * оценивания, настройки отчётов родителям, закрытие четверти.
  * Казахские названия предметов — для отчётов родителям на казахском (30.09.2026).
+ *
+ * Раскладка (решение владельца, 13.10.2026): две колонки близкой высоты —
+ * четверти с итогами слева, шкала, отчёты и названия справа; ниже звонки
+ * рядом по три на всю ширину, строка «не назначены звонки» над ними без
+ * своей карточки; внизу таблица предметов. Столбик карточек звонков слева
+ * оставлял полэкрана пустоты справа.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -17,6 +23,7 @@ import { SelectField } from '../../components/SelectField'
 import RowMenu, { RowMenuItem } from '../../components/RowMenu'
 import { Row, Rows } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import Icon from '../../layout/icons'
 import { Button } from '../../components/ui/button'
 import { t, tk, tn } from '../../i18n'
 import { dateFull, dateWords } from './shared'
@@ -493,29 +500,19 @@ export default function AcademicYear() {
               ))}
             </Rows>
           </DataCard>
-          {/* общей сетки нет: группе без звонков негде взять время урока — это ошибка, и она названа */}
-          {(data.groups_without_bells.length > 0 || schedules.length === 0) && (
-            <DataCard title={t('Звонки')} empty={schedules.length === 0 && data.groups_without_bells.length === 0 && t('расписаний звонков нет')}>
-              {data.groups_without_bells.length > 0 && (
-                <Rows>
-                  <Row
-                    icon="alert"
-                    tone="bad"
-                    title={t('Не назначены звонки: {groups}', { groups: data.groups_without_bells.join(', ') })}
-                    note={t('У уроков этих групп нет времени начала. Отметьте группы в расписании звонков или добавьте новое.')}
-                  />
-                </Rows>
-              )}
+          {current && (
+            <DataCard title={t('Итоги четверти')}>
+              <Rows>
+                <Row title={t('Четверть')} value={current.name ?? current.title} />
+                <Row title={t('Итоги в журнале до')} value={dateWords(current.ends)} />
+              </Rows>
+              <div className="acad__actions">
+                <Button variant={current.closed ? 'outline' : 'default'} size="sm" onClick={() => (current.closed ? close.mutate({ id: current.id, closed: false }, { onSuccess: () => toast.success(t('Приём итогов открыт')) }) : setClosing(current))}>
+                  {current.closed ? t('Открыть приём итогов') : t('Закрыть приём итогов')}
+                </Button>
+              </div>
             </DataCard>
           )}
-          {schedules.map((schedule) => (
-            <BellsCard
-              key={schedule.id}
-              schedule={schedule}
-              onEdit={() => setDialog({ bells: schedule })}
-              onDrop={() => save.mutate({ drop_bell_schedule: schedule.id }, { onSuccess: () => toast.success(t('Расписание звонков удалено')), onError: (e) => toast.error(e.message) })}
-            />
-          ))}
         </div>
         <div className="acad__stack">
           <DataCard title={t('Шкала оценивания')} right={<Button variant="link" size="sm" onClick={() => setDialog('scale')}>{t('Изменить')}</Button>}>
@@ -549,21 +546,31 @@ export default function AcademicYear() {
               />
             </Rows>
           </DataCard>
-          {current && (
-            <DataCard title={t('Итоги четверти')}>
-              <Rows>
-                <Row title={t('Четверть')} value={current.name ?? current.title} />
-                <Row title={t('Итоги в журнале до')} value={dateWords(current.ends)} />
-              </Rows>
-              <div className="acad__actions">
-                <Button variant={current.closed ? 'outline' : 'default'} size="sm" onClick={() => (current.closed ? close.mutate({ id: current.id, closed: false }, { onSuccess: () => toast.success(t('Приём итогов открыт')) }) : setClosing(current))}>
-                  {current.closed ? t('Открыть приём итогов') : t('Закрыть приём итогов')}
-                </Button>
-              </div>
-            </DataCard>
-          )}
         </div>
       </div>
+      {/* общей сетки нет: группе без звонков негде взять время урока — это ошибка,
+          и она названа одной строкой над рядом звонков, без своей карточки */}
+      {data.groups_without_bells.length > 0 && (
+        <p className="year__nobells">
+          <Icon name="alert" size={16} />
+          <b>{t('Не назначены звонки: {groups}', { groups: data.groups_without_bells.join(', ') })}</b>
+          <span>{t('У уроков этих групп нет времени начала. Отметьте группы в расписании звонков или добавьте новое.')}</span>
+        </p>
+      )}
+      {schedules.length === 0 ? (
+        <DataCard title={t('Звонки')} empty={t('расписаний звонков нет')} emptyAction={<Button variant="secondary" size="sm" onClick={() => setDialog({ bells: null })}>{t('Добавить расписание звонков')}</Button>} />
+      ) : (
+        <div className="year__bells">
+          {schedules.map((schedule) => (
+            <BellsCard
+              key={schedule.id}
+              schedule={schedule}
+              onEdit={() => setDialog({ bells: schedule })}
+              onDrop={() => save.mutate({ drop_bell_schedule: schedule.id }, { onSuccess: () => toast.success(t('Расписание звонков удалено')), onError: (e) => toast.error(e.message) })}
+            />
+          ))}
+        </div>
+      )}
       <SubjectsCard rows={data.subject_rows ?? []} sat={data.sat} />
       {dialog === 'quarters' && <QuartersDialog year={data} onClose={() => setDialog(null)} />}
       {dialog === 'scale' && <ScaleDialog year={data} onClose={() => setDialog(null)} />}

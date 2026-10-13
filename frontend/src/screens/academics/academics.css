@@ -568,6 +568,34 @@ body [data-slot='button'][data-variant].acad__heatcell {
   margin-bottom: var(--gap-block);
 }
 
+/* «Учебный год»: звонки рядом по три на всю ширину, строка «не назначены
+   звонки» над рядом без своей карточки (13.10.2026) */
+.year__bells {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gap-block);
+  margin-bottom: var(--gap-block);
+}
+
+.year__bells > .datacard {
+  margin: 0;
+}
+
+.year__nobells {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 1) calc(var(--space) * 2);
+  margin: 0 0 var(--gap-block);
+  color: var(--bad);
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+}
+
+.year__nobells > svg {
+  flex: none;
+}
+
 /* --- Общее ------------------------------------------------------------------- */
 /* Правило ширины для всех экранов (30.09.2026): таблицы и списки — на всю
    ширину контента; единственный блок в двух колонках тоже на всю ширину,
@@ -700,6 +728,10 @@ body [data-slot='button'][data-variant].acad__heatcell {
   .acad__cols {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .year__bells {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .acad__cols > *,
