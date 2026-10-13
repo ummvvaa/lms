@@ -6,10 +6,11 @@
  * Казахские названия предметов — для отчётов родителям на казахском (30.09.2026).
  *
  * Раскладка (решение владельца, 13.10.2026): две колонки близкой высоты —
- * четверти с итогами слева, шкала, отчёты и названия справа; ниже звонки
- * рядом по три на всю ширину, строка «не назначены звонки» над ними без
- * своей карточки; внизу таблица предметов. Столбик карточек звонков слева
- * оставлял полэкрана пустоты справа.
+ * четверти, итоги и названия предметов слева, шкала и отчёты справа (на проде
+ * с названиями справа левая колонка была вдвое ниже); ниже звонки рядом по
+ * три на всю ширину, строка «не назначены звонки» над ними без своей
+ * карточки; внизу таблица предметов. На телефоне столбиком: четверти, итоги,
+ * шкала, отчёты, названия — названиям свой порядок через CSS `order`.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -479,7 +480,7 @@ export default function AcademicYear() {
           </Button>
         }
       />
-      <div className="acad__cols acad__cols--even">
+      <div className="acad__cols acad__cols--even year__cols">
         <div className="acad__stack">
           <DataCard title={t('Четверти')} right={<Button variant="link" size="sm" onClick={() => setDialog('quarters')}>{t('Изменить')}</Button>}>
             <Rows>
@@ -513,6 +514,18 @@ export default function AcademicYear() {
               </div>
             </DataCard>
           )}
+          <DataCard className="year__names" title={t('Названия предметов на других языках')} right={<Button variant="link" size="sm" onClick={() => setDialog('subjects')}>{t('Изменить')}</Button>}>
+            <Rows>
+              <Row
+                title={t('На казахском')}
+                note={t('{filled} из {total} заполнено', { filled: data.subjects.filter((s) => s.title_kk).length, total: data.subjects.length })}
+              />
+              <Row
+                title={t('На английском')}
+                note={t('{filled} из {total} заполнено', { filled: data.subjects.filter((s) => s.title_en).length, total: data.subjects.length })}
+              />
+            </Rows>
+          </DataCard>
         </div>
         <div className="acad__stack">
           <DataCard title={t('Шкала оценивания')} right={<Button variant="link" size="sm" onClick={() => setDialog('scale')}>{t('Изменить')}</Button>}>
@@ -532,18 +545,6 @@ export default function AcademicYear() {
             <Rows>
               <Row title={t('Когда собираются')} note={data.reports.cadence_title} />
               <Row title={t('Что входит')} note={SECTIONS.filter((s) => data.reports.sections[s.key]).map((s) => t(s.label).toLowerCase()).join(', ')} />
-            </Rows>
-          </DataCard>
-          <DataCard title={t('Названия предметов на других языках')} right={<Button variant="link" size="sm" onClick={() => setDialog('subjects')}>{t('Изменить')}</Button>}>
-            <Rows>
-              <Row
-                title={t('На казахском')}
-                note={t('{filled} из {total} заполнено', { filled: data.subjects.filter((s) => s.title_kk).length, total: data.subjects.length })}
-              />
-              <Row
-                title={t('На английском')}
-                note={t('{filled} из {total} заполнено', { filled: data.subjects.filter((s) => s.title_en).length, total: data.subjects.length })}
-              />
             </Rows>
           </DataCard>
         </div>

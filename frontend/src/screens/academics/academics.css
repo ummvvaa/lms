@@ -734,6 +734,16 @@ body [data-slot='button'][data-variant].acad__heatcell {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* столбиком: четверти, итоги, шкала, отчёты, названия — колонки раскрываются
+     в один ряд карточек, и названия встают после отчётов */
+  .year__cols > .acad__stack {
+    display: contents;
+  }
+
+  .year__names {
+    order: 1;
+  }
+
   .acad__cols > *,
   .acad__cols > :first-child {
     flex: none;
