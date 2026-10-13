@@ -133,10 +133,27 @@ def materialize(series: LessonSeries, calendar: SchoolCalendar, *, since: dt.dat
     return len(rows)
 
 
+def give_subject(teacher, subject) -> None:
+    """Предмет журнала — в предметы учителя: кто ведёт журнал, тот ведёт предмет.
+
+    Предметы профиля — единственный источник «ведёт профориентацию»
+    (`career.rights`, решение владельца, 13.10.2026): журнал, заведённый
+    расписанием или передачей, не должен расходиться с карточкой учителя.
+    """
+    from academics.models import TeacherProfile
+
+    if teacher is None or not getattr(teacher, "pk", None):
+        return
+    profile, _ = TeacherProfile.objects.get_or_create(user=teacher)
+    if not profile.subjects.filter(pk=subject.pk).exists():
+        profile.subjects.add(subject)
+
+
 def _course(subject, teacher, cohort: Cohort) -> Course:
     course = Course.objects.filter(subject=subject, teacher=teacher, cohort=cohort).first()
     if course is None:
         course = Course.objects.create(subject=subject, teacher=teacher, cohort=cohort)
+        give_subject(teacher, subject)
     return course
 
 
@@ -791,6 +808,7 @@ def reassign(course: Course, *, teacher, since: dt.date, actor=None) -> Course:
     old = course.teacher
     course.teacher = teacher
     course.save(update_fields=["teacher"])
+    give_subject(teacher, course.subject)
     Lesson.objects.filter(course=course, date__gte=since, substitute__isnull=True).update(teacher=teacher)
     params = {
         "subject": course.subject.short.lower(),

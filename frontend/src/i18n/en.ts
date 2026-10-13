@@ -3842,7 +3842,7 @@ export const en: Record<string, string> = {
   'требования не заведены': 'requirements not added',
   'у': 'E',
   'у {owner} · «{comment}»': 'with {owner} · “{comment}”',
-  'у вас нет журнала профориентации — назначать некому': 'you have no career guidance gradebook — nobody to assign to',
+  'групп нет — назначать некому': 'there are no groups — nobody to assign to',
   'у владельца · «{comment}»': 'with the domain owner · “{comment}”',
   'у урока нет учителя — оценку ставит Кымбат или администратор': 'the lesson has no teacher — Kymbat or the administrator enters marks',
   'уважительная': 'excused',

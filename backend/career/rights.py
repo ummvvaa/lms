@@ -1,11 +1,15 @@
 """Кто ведёт профтест и кто читает его результаты.
 
-Роль у учётки одна, а тесты ведёт тот, кто ведёт предмет профориентации
-(`Subject.is_career`), при любой роли — так же, как уроки отмечает тот,
-кто записан учителем (решение владельца, 29.09.2026). Администратор —
-как всегда, за всех. Результаты и разборы читают учитель профориентации,
-администратор, директор по поступлению, куратор — по своим группам
-(решение владельца, 08.10.2026). Граница — группа ученика.
+Роль у учётки одна, а тесты ведёт тот, у кого в предметах учителя есть
+предмет профориентации (`Subject.is_career`), при любой роли — так же,
+как уроки отмечает тот, кто записан учителем (решение владельца,
+29.09.2026). Журналы для этого не нужны (решение владельца, 13.10.2026:
+учителю дали предмет в карточке, а все уроки профориентации стоят у
+другого — раздел всё равно его): журнал только подсказывает группы по
+умолчанию — свои составы; без журнала учитель выбирает любую группу.
+Администратор — как всегда, за всех. Результаты и разборы читают учитель
+профориентации, администратор, директор по поступлению, куратор — по своим
+группам (решение владельца, 08.10.2026). Граница — группа ученика.
 """
 
 from __future__ import annotations
@@ -29,7 +33,16 @@ def career_courses(user):
 
 
 def teaches_career(user) -> bool:
-    return career_courses(user).exists()
+    """В предметах учителя есть предмет профориентации — единственный источник права.
+
+    Журнал предмета добавляет его в профиль сам (`academics.schedule`), так что
+    тот, кто ведёт уроки профориентации, сюда тоже попадает.
+    """
+    from academics.models import TeacherProfile
+
+    if user is None or not getattr(user, "pk", None) or getattr(user, "role", "") == ROLE_STUDENT:
+        return False
+    return TeacherProfile.objects.filter(user=user, subjects__is_career=True, subjects__in_lms=True).exists()
 
 
 def manages(user) -> bool:
@@ -37,8 +50,17 @@ def manages(user) -> bool:
     return getattr(user, "role", "") == ROLE_ADMIN or teaches_career(user)
 
 
+def _all_group_ids() -> list[int]:
+    return list(StudyGroup.objects.filter(is_active=True).values_list("pk", flat=True))
+
+
 def taught_group_ids(user) -> list[int]:
-    """Группы составов профориентации учителя — кому он может назначать тесты."""
+    """Группы, которым учитель профориентации назначает тесты и чьи результаты читает.
+
+    Есть журналы профориентации — группы их составов; журналов нет, а предмет
+    в профиле есть — любая группа (решение владельца, 13.10.2026). Тому, кто
+    профориентацию не ведёт, — пусто.
+    """
     from academics.cohorts import group_ids_of
 
     out: list[int] = []
@@ -46,6 +68,8 @@ def taught_group_ids(user) -> list[int]:
         for gid in group_ids_of(course.cohort):
             if gid not in out:
                 out.append(gid)
+    if not out and teaches_career(user):
+        return _all_group_ids()
     return out
 
 
@@ -53,7 +77,7 @@ def visible_group_ids(user) -> list[int]:
     """Группы, чьи результаты и разборы человек читает. Ученику — пусто."""
     role = getattr(user, "role", "")
     if role in (ROLE_ADMIN, ADMISSION_DIRECTOR):
-        return list(StudyGroup.objects.filter(is_active=True).values_list("pk", flat=True))
+        return _all_group_ids()
     if role == ROLE_STUDENT or not role:
         return []
     out = taught_group_ids(user)

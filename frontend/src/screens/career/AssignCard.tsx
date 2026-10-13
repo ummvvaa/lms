@@ -47,7 +47,7 @@ export default function AssignCard({ test, onClose }: { test: CareerTestDetail; 
   return (
     <Modal title={t('Кому открыт тест')} note={test.title} onClose={onClose}>
       {rows.length === 0 ? (
-        <EmptyNote what={tk('у вас нет журнала профориентации — назначать некому')} />
+        <EmptyNote what={tk('групп нет — назначать некому')} />
       ) : (
         <Rows>
           {rows.map((group) => {

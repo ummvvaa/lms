@@ -2,6 +2,9 @@
 
 * тесты ведёт учитель профориентации при любой роли и администратор; другой
   учитель, куратор без профориентации и Кымбат получают отказ словами;
+* право даёт предмет профориентации в предметах учителя, журнал не нужен
+  (13.10.2026): без журнала учитель назначает любой группе и читает все,
+  с журналом — только свои составы; журнал дописывает предмет в профиль сам;
 * ученик видит только назначенные включённые тесты, в ответах нет ключа;
 * одна попытка на тест, заново — только с разрешения учителя;
 * результаты читают учитель, администратор, Асем и куратор своих групп;
@@ -41,6 +44,70 @@ def test_only_career_teacher_and_admin_upload(teacher, other_teacher, curator, k
 def test_me_tells_the_menu_who_manages(teacher, other_teacher, admin, curator):
     for user, expected in ((teacher, True), (admin, True), (other_teacher, False), (curator, False)):
         assert login(user).get("/api/auth/me/").json()["career_tests"] is expected, user.email
+
+
+@pytest.fixture
+def subject_only_teacher(make_user, career_subject):
+    """Профориентация в карточке есть, журналов нет: случай с прода 13.10.2026."""
+    from academics.models import TeacherProfile
+    from accounts.models import Role
+
+    user = make_user(Role.TEACHER, "dinmukhammed@example.kz", full_name="Динмухаммед Профориентатор")
+    TeacherProfile.objects.create(user=user, room="102").subjects.set([career_subject])
+    return user
+
+
+def test_subject_without_journals_opens_the_section(subject_only_teacher, boston, riga, pupils, example_bytes):
+    client = login(subject_only_teacher)
+    assert client.get("/api/auth/me/").json()["career_tests"] is True
+    assert upload(client, example_bytes).status_code == 201
+    # журналов нет — назначать можно любой группе, и результаты читаются у всех
+    groups = client.get("/api/career/groups/").json()
+    assert groups["manage"] is True
+    assert {g["code"]: g["assignable"] for g in groups["groups"]} == {"BOSTON": True, "RIGA": True}
+    test_id = CareerTest.objects.get().pk
+    response = client.put(f"/api/career/tests/{test_id}/assignments/", {"groups": [{"group": riga.pk}]}, format="json")
+    assert response.status_code == 200
+    assert client.get(f"/api/career/results/?group={boston.pk}").status_code == 200
+    assert client.get(f"/api/career/students/{pupils['nurai'].pk}/").status_code == 200
+
+
+def test_journals_narrow_the_groups_to_own_cohorts(teacher, boston, riga):
+    other = type(boston).objects.create(code="OSAKA", parallel=10)
+    groups = login(teacher).get("/api/career/groups/").json()["groups"]
+    assert {g["code"] for g in groups} == {"BOSTON", "RIGA"}
+    assert other.pk not in {g["id"] for g in groups}
+
+
+def test_journal_alone_does_not_open_the_section_but_adds_the_subject(other_teacher, career_subject, boston):
+    """Единственный источник — предметы учителя; журнал дописывает предмет сам."""
+    import datetime as dt
+
+    from academics import schedule
+    from academics.cohorts import group_cohort
+    from academics.models import Course
+
+    course = Course.objects.create(subject=career_subject, teacher=None, cohort=group_cohort(boston))
+    assert login(other_teacher).get("/api/auth/me/").json()["career_tests"] is False
+    schedule.reassign(course, teacher=other_teacher, since=dt.date(2026, 10, 13))
+    assert other_teacher.teacher_profile.subjects.filter(pk=career_subject.pk).exists()
+    assert login(other_teacher).get("/api/auth/me/").json()["career_tests"] is True
+
+
+def test_migration_gives_teachers_the_subjects_of_their_journals(other_teacher, career_subject, boston):
+    from importlib import import_module
+
+    from django.apps import apps
+
+    from academics.cohorts import group_cohort
+    from academics.models import Course
+
+    migration = import_module("academics.migrations.0012_teacher_subjects_from_courses")
+
+    Course.objects.create(subject=career_subject, teacher=other_teacher, cohort=group_cohort(boston))
+    assert not other_teacher.teacher_profile.subjects.filter(pk=career_subject.pk).exists()
+    migration.forwards(apps, None)
+    assert other_teacher.teacher_profile.subjects.filter(pk=career_subject.pk).exists()
 
 
 def test_broken_file_is_refused_with_report(teacher):
