@@ -1425,8 +1425,9 @@ export interface ScheduleImportReport {
   /** уроки с даты замены, на которых есть данные: остаются, решает человек */
   lessons_kept: { id: number; date: string; slot: number; cohort: string; subject: string; teacher: string; data: string }[]
   /** пары «группа + предмет», которых в файле нет: не трогаются */
-  /** `same_cell` — сколько его уроков в неделю стоят в клетке урока из файла: после замены их будет два */
-  untouched: { subject: string; cohort: string; teacher: string; count: number; same_cell: number }[]
+  untouched: { subject: string; cohort: string; teacher: string; count: number }[]
+  /** пары не из файла, чей урок стоял в клетке урока из файла: предмет сменился, заменяются */
+  subject_changed: { subject: string; cohort: string; teacher: string; count: number }[]
   journals_passed: { cohort: string; subject: string; was: string; will: string }[]
   subgroups_unused: string[]
   detail: string

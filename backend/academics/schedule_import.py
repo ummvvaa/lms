@@ -480,6 +480,8 @@ class Report:
     lessons_deleted: int = 0
     lessons_kept: list[dict] = field(default_factory=list)
     untouched: list[dict] = field(default_factory=list)
+    #: пары не из файла, чей урок стоял в клетке урока из файла: заменяются
+    subject_changed: list[dict] = field(default_factory=list)
     journals_passed: list[dict] = field(default_factory=list)
     subgroups_unused: list[str] = field(default_factory=list)
 
@@ -512,6 +514,7 @@ class Report:
             "lessons_deleted": self.lessons_deleted,
             "lessons_kept": self.lessons_kept,
             "untouched": self.untouched,
+            "subject_changed": self.subject_changed,
             "journals_passed": self.journals_passed,
             "subgroups_unused": self.subgroups_unused,
             "detail": self.detail(),
@@ -1451,8 +1454,12 @@ class _Writer:
 
         Пара — группа и предмет: подгруппа английского считается своими группами,
         поэтому прежняя подгруппа, которой в файле нет, тоже заменяется, если
-        английский этих групп в файле есть. Уроки до даты не трогаются никогда;
-        с даты — без данных удаляются, с данными остаются и называются.
+        английский этих групп в файле есть. Пары, которой в файле нет совсем,
+        замена не трогает, если её урок не стоит в клетке урока из файла; стоит —
+        предмет сменился (у CALIFORNIA «Математика» стала «Алгеброй»), и пара
+        заканчивается целиком, как обычная (решение владельца, 15.10.2026).
+        Уроки до даты не трогаются никогда; с даты — без данных удаляются,
+        с данными остаются и называются.
         """
         cut = self.replace_from
         in_file = {(gid, unit["subject"].pk) for unit in self.units for gid in self._groups_of(unit["cohort"])}
@@ -1471,21 +1478,39 @@ class _Writer:
             .select_related("course__subject", "course__cohort", "course__teacher")
             .order_by("course__subject__title", "course__cohort__name", "weekday", "slot")
         )
+        rows = list(rows)
+
+        def pair(series: LessonSeries) -> tuple[int, int]:
+            return series.course.cohort_id, series.course.subject_id
+
+        # пара не из файла, чей урок стоит в клетке урока из файла: предмет сменился
+        changed = {
+            pair(series)
+            for series in rows
+            if not covered(series.course)
+            and any((gid, series.weekday, series.slot) in cells for gid in self._groups_of(series.course.cohort))
+        }
         replaced: list[LessonSeries] = []
-        untouched: dict[tuple[str, str, str], list[int]] = defaultdict(lambda: [0, 0])
+        untouched: dict[tuple[str, str, str], int] = defaultdict(int)
+        subject_changed: dict[tuple[str, str, str], int] = defaultdict(int)
         for series in rows:
             course = series.course
+            key = (course.subject.title, course.cohort.name, user_name(course.teacher))
             if covered(course):
                 replaced.append(series)
+            elif pair(series) in changed:
+                replaced.append(series)
+                if series.ends >= cut:
+                    subject_changed[key] += 1
             elif series.ends >= cut:
-                row = untouched[(course.subject.title, course.cohort.name, user_name(course.teacher))]
-                row[0] += 1
-                # в той же клетке у этих групп урок из файла — после замены их будет два
-                groups = self._groups_of(course.cohort)
-                row[1] += any((gid, series.weekday, series.slot) in cells for gid in groups)
+                untouched[key] += 1
         self.report.untouched = [
-            {"subject": subject, "cohort": cohort, "teacher": teacher, "count": count, "same_cell": same_cell}
-            for (subject, cohort, teacher), (count, same_cell) in sorted(untouched.items())
+            {"subject": subject, "cohort": cohort, "teacher": teacher, "count": count}
+            for (subject, cohort, teacher), count in sorted(untouched.items())
+        ]
+        self.report.subject_changed = [
+            {"subject": subject, "cohort": cohort, "teacher": teacher, "count": count}
+            for (subject, cohort, teacher), count in sorted(subject_changed.items())
         ]
 
         lessons = (

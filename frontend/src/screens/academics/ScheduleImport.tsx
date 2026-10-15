@@ -239,13 +239,27 @@ function Replace({ data }: { data: ScheduleImportReport }) {
         </Block>
       )}
 
+      {data.subject_changed.length > 0 && (
+        <Block title={t('Заменяются, предмет сменился')} count={data.subject_changed.length}>
+          <p className="muted">
+            {t('Этих пар в файле нет, но их уроки стоят в клетках уроков из файла — заканчиваются, как остальные.')}
+          </p>
+          <Rows>
+            <ShowAll limit={5}>
+              {data.subject_changed.map((row) => (
+                <Row
+                  key={`${row.subject}-${row.cohort}-${row.teacher}`}
+                  title={`${row.subject} · ${row.cohort}`}
+                  note={[row.teacher || t('учитель не назначен'), t('Уроков в неделю: {n}', { n: row.count })].join(' · ')}
+                />
+              ))}
+            </ShowAll>
+          </Rows>
+        </Block>
+      )}
+
       {data.untouched.length > 0 && (
         <Block title={t('Не трогаются: этих пар в файле нет')} count={data.untouched.length}>
-          {data.untouched.some((row) => row.same_cell > 0) && (
-            <p className="muted">
-              {t('Пометка «в клетке урока из файла» — после замены у группы в это время будет два урока. Если пара больше не ведётся, уберите её в расписании.')}
-            </p>
-          )}
           <Rows>
             <ShowAll limit={5}>
               {data.untouched.map((row) => (
@@ -253,13 +267,6 @@ function Replace({ data }: { data: ScheduleImportReport }) {
                   key={`${row.subject}-${row.cohort}-${row.teacher}`}
                   title={`${row.subject} · ${row.cohort}`}
                   note={[row.teacher || t('учитель не назначен'), t('Уроков в неделю: {n}', { n: row.count })].join(' · ')}
-                  right={
-                    row.same_cell > 0 ? (
-                      <Chip tone="warn" size="sm">
-                        {t('в клетке урока из файла: {n}', { n: row.same_cell })}
-                      </Chip>
-                    ) : undefined
-                  }
                 />
               ))}
             </ShowAll>

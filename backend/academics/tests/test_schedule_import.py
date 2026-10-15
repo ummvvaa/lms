@@ -829,18 +829,32 @@ def test_pair_missing_from_the_file_is_not_touched(old_schedule):
     physics.refresh_from_db()
     assert physics.ends == ends
     assert set(Lesson.objects.filter(series=physics).values_list("pk", flat=True)) == lessons
-    row = {"subject": "Физика", "cohort": "BOSTON", "teacher": "Физикова Дана Тестовна", "count": 1, "same_cell": 0}
-    assert row in report["untouched"]
-
-
-def test_untouched_lesson_in_the_cell_of_a_file_lesson_is_marked(old_schedule):
-    # физику BOSTON по средам вторым уроком в новом файле занял Creative Writing
-    lessons = [*NEW_LESSONS, {**LESSONS[1], "День": "Ср", "Учитель не менять": "да"}]
-    report = _replace(small_book(lessons=lessons, subgroups=NEW_SUBGROUPS), old_schedule)
-    physics = [row for row in report["untouched"] if row["subject"] == "Физика"]
-    assert physics == [
-        {"subject": "Физика", "cohort": "BOSTON", "teacher": "Физикова Дана Тестовна", "count": 1, "same_cell": 1}
+    assert report["untouched"] == [
+        {"subject": "Физика", "cohort": "BOSTON", "teacher": "Физикова Дана Тестовна", "count": 1}
     ]
+    assert report["subject_changed"] == []
+
+
+def test_missing_pair_in_the_cell_of_a_file_lesson_is_replaced_as_subject_changed(old_schedule):
+    """Физику BOSTON по средам вторым уроком в новом файле занял другой предмет."""
+    lessons = [*NEW_LESSONS, {**LESSONS[1], "День": "Ср", "Учитель не менять": "да"}]
+    physics = _series("Физика", "BOSTON", 3, 2)
+    before_cut = set(Lesson.objects.filter(series=physics, date__lt=CUT).values_list("pk", flat=True))
+    assert Lesson.objects.filter(series=physics, date__gte=CUT).exists()
+
+    report = _replace(small_book(lessons=lessons, subgroups=NEW_SUBGROUPS), old_schedule)
+
+    physics.refresh_from_db()
+    assert physics.ends == CUT - dt.timedelta(days=1)
+    assert not Lesson.objects.filter(series=physics, date__gte=CUT).exists()
+    assert set(Lesson.objects.filter(series=physics, date__lt=CUT).values_list("pk", flat=True)) == before_cut
+    assert report["subject_changed"] == [
+        {"subject": "Физика", "cohort": "BOSTON", "teacher": "Физикова Дана Тестовна", "count": 1}
+    ]
+    assert not [row for row in report["untouched"] if row["subject"] == "Физика"]
+    # повтор с той же датой ничего не меняет и пару больше не называет
+    again = _replace(small_book(lessons=lessons, subgroups=NEW_SUBGROUPS), old_schedule)
+    assert again["series_ended"] == 0 and again["lessons_deleted"] == 0 and again["subject_changed"] == []
 
 
 def test_keep_teacher_column_keeps_the_teacher_of_the_journal(old_schedule):
