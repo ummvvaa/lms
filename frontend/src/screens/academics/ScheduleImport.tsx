@@ -8,6 +8,9 @@
  *
  * Пароли новых учёток приходят один раз в ответе «Применить»: они на экране
  * и скачиваются списком один раз. В базе только их отпечатки.
+ *
+ * «Заменить расписание с даты»: дата входит в отпечаток, поэтому смена
+ * галочки или даты заново запускает предпросмотр — применяется то, что видели.
  */
 import { useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -22,8 +25,10 @@ import DataTable from '../../components/DataTable'
 import { Row, Rows, ShowAll } from '../../components/patterns'
 import { Chip, ErrorNote, Loading } from '../../components/ui'
 import { Button } from '../../components/ui/button'
+import { Checkbox } from '../../components/ui/checkbox'
 import { Input } from '../../components/ui/input'
 import { t } from '../../i18n'
+import { todayAlmaty } from '../../lib/dates'
 import { dateWords } from './shared'
 
 type Section = ScheduleImportReport['sections'][number]
@@ -74,6 +79,8 @@ function Report({ data }: { data: ScheduleImportReport }) {
           rowKey={(row) => row.code}
         />
       )}
+
+      {data.replace_from && <Replace data={data} />}
 
       {data.lessons_from && (
         <p className="acad__note">
@@ -135,6 +142,23 @@ function Report({ data }: { data: ScheduleImportReport }) {
         </Block>
       )}
 
+      {data.without_teacher.length > 0 && (
+        <Block title={t('Без учителя')} count={data.without_teacher.length}>
+          <p className="muted">{t('Учителя назначьте в его карточке на странице «Учителя»: «Добавить группу».')}</p>
+          <Rows>
+            <ShowAll limit={5}>
+              {data.without_teacher.map((row) => (
+                <Row
+                  key={`${row.cohort}-${row.subject}`}
+                  title={`${row.subject} · ${row.cohort}`}
+                  note={t('Уроков в неделю: {n}', { n: row.count })}
+                />
+              ))}
+            </ShowAll>
+          </Rows>
+        </Block>
+      )}
+
       {data.stale_series.length > 0 && (
         <Block title={t('Уроки в LMS, которых нет в файле')} count={data.stale_series.length}>
           <p className="muted">{t('Импорт их не удаляет. Если они лишние — уберите в расписании.')}</p>
@@ -151,6 +175,89 @@ function Report({ data }: { data: ScheduleImportReport }) {
       {data.groups_outside.length > 0 && (
         <p className="acad__note">
           {t('Группы в LMS, которых нет в файле, не меняются')}: {data.groups_outside.join(', ')}
+        </p>
+      )}
+    </>
+  )
+}
+
+/** Замена с даты: что заканчивается, что удаляется, что остаётся и что не трогается. */
+function Replace({ data }: { data: ScheduleImportReport }) {
+  const date = dateWords(data.replace_from ?? '')
+  const numbers = [
+    { key: 'ended', title: t('Еженедельных уроков закончится накануне {date}', { date }), value: data.series_ended },
+    { key: 'deleted', title: t('Уроков с {date} удалится — на них нет данных', { date }), value: data.lessons_deleted },
+    { key: 'kept', title: t('Уроков с {date} останется — на них есть данные', { date }), value: data.lessons_kept.length },
+    { key: 'created', title: t('Уроков заведётся с {date} по новому расписанию', { date }), value: data.lessons_to_create },
+  ]
+  return (
+    <>
+      <Block title={t('Замена расписания с {date}', { date })}>
+        <p className="muted">
+          {t('Уроки до этой даты не меняются. Пары «группа + предмет», которых в файле нет, не трогаются.')}
+        </p>
+        <Rows>
+          {numbers.map((row) => (
+            <Row key={row.key} title={row.title} right={<Chip className="num">{row.value}</Chip>} />
+          ))}
+        </Rows>
+      </Block>
+
+      {data.lessons_kept.length > 0 && (
+        <Block title={t('Остаются из-за данных')} count={data.lessons_kept.length}>
+          <p className="muted">
+            {t('Импорт их не удаляет: на них оценки, посещаемость, ДЗ, тема или СОР и СОЧ. Лишние уберите в расписании.')}
+          </p>
+          <Rows>
+            <ShowAll limit={10}>
+              {data.lessons_kept.map((row) => (
+                <Row
+                  key={row.id}
+                  title={`${dateWords(row.date)} · ${t('{n} урок', { n: row.slot })} · ${row.subject} · ${row.cohort}`}
+                  note={[row.teacher || t('учитель не назначен'), row.data].join(' · ')}
+                />
+              ))}
+            </ShowAll>
+          </Rows>
+        </Block>
+      )}
+
+      {data.journals_passed.length > 0 && (
+        <Block title={t('Журнал передаётся с {date}', { date })} count={data.journals_passed.length}>
+          <p className="muted">{t('Журнал общий: оценки до даты замены остаются в нём.')}</p>
+          <Rows>
+            <ShowAll limit={8}>
+              {data.journals_passed.map((row) => (
+                <Row
+                  key={`${row.subject}-${row.cohort}`}
+                  title={`${row.subject} · ${row.cohort}`}
+                  note={`${row.was || t('не назначен')} → ${row.will || t('учитель не назначен')}`}
+                />
+              ))}
+            </ShowAll>
+          </Rows>
+        </Block>
+      )}
+
+      {data.untouched.length > 0 && (
+        <Block title={t('Не трогаются: этих пар в файле нет')} count={data.untouched.length}>
+          <Rows>
+            <ShowAll limit={5}>
+              {data.untouched.map((row) => (
+                <Row
+                  key={`${row.subject}-${row.cohort}-${row.teacher}`}
+                  title={`${row.subject} · ${row.cohort}`}
+                  note={[row.teacher || t('учитель не назначен'), t('Уроков в неделю: {n}', { n: row.count })].join(' · ')}
+                />
+              ))}
+            </ShowAll>
+          </Rows>
+        </Block>
+      )}
+
+      {data.subgroups_unused.length > 0 && (
+        <p className="acad__note">
+          {t('Подгруппы больше не используются, не удаляются')}: {data.subgroups_unused.join(', ')}
         </p>
       )}
     </>
@@ -198,6 +305,16 @@ export default function ScheduleImport() {
   const [file, setFile] = useState<File | null>(null)
   const [data, setData] = useState<ScheduleImportReport | null>(null)
   const [done, setDone] = useState<ScheduleImportReport | null>(null)
+  const today = todayAlmaty()
+  const [replace, setReplace] = useState(false)
+  const [since, setSince] = useState(today)
+  const replaceFrom = replace && since ? since : null
+
+  // дата — в отпечатке: другой режим или дата — новый предпросмотр
+  const check = (picked: File | null, from: string | null) => {
+    setData(null)
+    if (picked) preview.mutate({ file: picked, replaceFrom: from }, { onSuccess: setData })
+  }
 
   if (done) {
     return (
@@ -213,6 +330,36 @@ export default function ScheduleImport() {
       <p className="muted">
         {t('Книга школы с листами «Сотрудники», «Группы», «Предметы», «Звонки», «Подгруппы», «Уроки». Сначала предпросмотр: база не меняется, пока не нажата «Применить». Повторный импорт того же файла ничего не удваивает.')}
       </p>
+      <div className="acad__replace">
+        <label className="acad__replace-check">
+          <Checkbox
+            checked={replace}
+            aria-label={t('Заменить расписание с даты')}
+            onCheckedChange={(on) => {
+              setReplace(Boolean(on))
+              check(file, on ? since : null)
+            }}
+          />
+          {t('Заменить расписание с даты')}
+        </label>
+        <Input
+          type="date"
+          className="acad__replace-date"
+          aria-label={t('Дата замены')}
+          value={since}
+          min={today}
+          disabled={!replace}
+          onChange={(event) => {
+            setSince(event.target.value)
+            if (event.target.value >= today) check(file, event.target.value)
+          }}
+        />
+      </div>
+      {replace && (
+        <p className="muted">
+          {t('Прежние еженедельные уроки пар «группа + предмет» из файла, которых в нём нет, закончатся накануне даты. Их уроки с даты без данных удалятся, с данными — останутся и будут названы. Сменился учитель — журнал передаётся ему с даты.')}
+        </p>
+      )}
       <Input
         ref={fileInput}
         type="file"
@@ -223,8 +370,7 @@ export default function ScheduleImport() {
           event.target.value = ''
           if (!picked) return
           setFile(picked)
-          setData(null)
-          preview.mutate(picked, { onSuccess: setData })
+          check(picked, replaceFrom)
         }}
       />
       <div className="toolbar mb-0">
@@ -247,7 +393,7 @@ export default function ScheduleImport() {
               onClick={() =>
                 file &&
                 apply.mutate(
-                  { file, fingerprint: data.fingerprint },
+                  { file, fingerprint: data.fingerprint, replaceFrom: data.replace_from },
                   {
                     onSuccess: (result) => {
                       toast.success(result.detail)

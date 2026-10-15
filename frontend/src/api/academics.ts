@@ -1414,15 +1414,28 @@ export interface ScheduleImportReport {
   lessons_from: string | null
   lessons_to_create: number
   series_without_teacher: number
+  /** уроки в неделю без учителя: состав и предмет */
+  without_teacher: { cohort: string; subject: string; count: number }[]
   /** пароли новых учёток — только в ответе «Применить», один раз */
   credentials: ScheduleImportCredential[]
+  /** замена расписания с даты; `null` — импорт без замены */
+  replace_from: string | null
+  series_ended: number
+  lessons_deleted: number
+  /** уроки с даты замены, на которых есть данные: остаются, решает человек */
+  lessons_kept: { id: number; date: string; slot: number; cohort: string; subject: string; teacher: string; data: string }[]
+  /** пары «группа + предмет», которых в файле нет: не трогаются */
+  untouched: { subject: string; cohort: string; teacher: string; count: number }[]
+  journals_passed: { cohort: string; subject: string; was: string; will: string }[]
+  subgroups_unused: string[]
   detail: string
 }
 
-function importBody(file: File, fingerprint?: string): FormData {
+function importBody(file: File, fingerprint?: string, replaceFrom?: string | null): FormData {
   const body = new FormData()
   body.append('file', file)
   if (fingerprint) body.append('fingerprint', fingerprint)
+  if (replaceFrom) body.append('replace_from', replaceFrom)
   return body
 }
 
@@ -1471,16 +1484,22 @@ export function useSubgroupMembersApply() {
 
 export function useScheduleImportPreview() {
   return useMutation({
-    mutationFn: (file: File) =>
-      api<ScheduleImportReport>('/acad/schedule/import/preview/', { method: 'POST', body: importBody(file) }),
+    mutationFn: ({ file, replaceFrom }: { file: File; replaceFrom: string | null }) =>
+      api<ScheduleImportReport>('/acad/schedule/import/preview/', {
+        method: 'POST',
+        body: importBody(file, undefined, replaceFrom),
+      }),
   })
 }
 
 export function useScheduleImportApply() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: ({ file, fingerprint }: { file: File; fingerprint: string }) =>
-      api<ScheduleImportReport>('/acad/schedule/import/apply/', { method: 'POST', body: importBody(file, fingerprint) }),
+    mutationFn: ({ file, fingerprint, replaceFrom }: { file: File; fingerprint: string; replaceFrom: string | null }) =>
+      api<ScheduleImportReport>('/acad/schedule/import/apply/', {
+        method: 'POST',
+        body: importBody(file, fingerprint, replaceFrom),
+      }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['acad'] })
       void client.invalidateQueries({ queryKey: ['users'] })
