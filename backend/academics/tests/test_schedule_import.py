@@ -829,8 +829,17 @@ def test_pair_missing_from_the_file_is_not_touched(old_schedule):
     physics.refresh_from_db()
     assert physics.ends == ends
     assert set(Lesson.objects.filter(series=physics).values_list("pk", flat=True)) == lessons
-    assert {"subject": "Физика", "cohort": "BOSTON", "teacher": "Физикова Дана Тестовна", "count": 1} in report[
-        "untouched"
+    row = {"subject": "Физика", "cohort": "BOSTON", "teacher": "Физикова Дана Тестовна", "count": 1, "same_cell": 0}
+    assert row in report["untouched"]
+
+
+def test_untouched_lesson_in_the_cell_of_a_file_lesson_is_marked(old_schedule):
+    # физику BOSTON по средам вторым уроком в новом файле занял Creative Writing
+    lessons = [*NEW_LESSONS, {**LESSONS[1], "День": "Ср", "Учитель не менять": "да"}]
+    report = _replace(small_book(lessons=lessons, subgroups=NEW_SUBGROUPS), old_schedule)
+    physics = [row for row in report["untouched"] if row["subject"] == "Физика"]
+    assert physics == [
+        {"subject": "Физика", "cohort": "BOSTON", "teacher": "Физикова Дана Тестовна", "count": 1, "same_cell": 1}
     ]
 
 

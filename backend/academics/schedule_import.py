@@ -594,7 +594,8 @@ class _Writer:
         self.new_series: list[LessonSeries] = []
         self.units: list[dict] = []
         self.cohort_groups: dict[int, set[int]] = {}
-        self.current_teachers: dict[tuple[int, int], User | None] = {}
+        self.current_teachers: dict[tuple[int, int, int, int], User | None] = {}
+        self.keep_warned: set[tuple[int, int]] = set()
 
     def error(self, text: str) -> None:
         self.report.errors.append(text)
@@ -1292,7 +1293,7 @@ class _Writer:
                         where=where, code=row.teacher
                     ),
                 )
-            teacher = self._current_teacher(cohort, subject)
+            teacher = self._current_teacher(cohort, subject, row.weekday, row.slot)
         parallel = row.parallel or (groups[0].parallel if groups else None)
         grid = self.grids.get(parallel or 0, {})
         bell = grid.get(row.slot)
@@ -1364,17 +1365,31 @@ class _Writer:
         Lesson.objects.filter(series=series, date__gte=self.cut, status=LessonStatus.PLANNED).update(room=unit["room"])
         return "updated"
 
-    def _current_teacher(self, cohort: Cohort, subject: Subject) -> User | None:
-        """Учитель, что сейчас ведёт журнал состава по предмету. Журнала нет — без учителя."""
-        key = (cohort.pk, subject.pk)
+    def _current_teacher(self, cohort: Cohort, subject: Subject, weekday: int, slot: int) -> User | None:
+        """Учитель, что сейчас ведёт журнал состава по предмету. Журнала нет — без учителя.
+
+        Журналов у состава по предмету несколько — берётся учитель урока
+        в той же клетке (день и номер); не нашёлся один — без учителя
+        и предупреждение.
+        """
+        key = (cohort.pk, subject.pk, weekday, slot)
         if key not in self.current_teachers:
             courses = list(Course.objects.filter(cohort=cohort, subject=subject).select_related("teacher"))
             live = [c for c in courses if c.series.filter(ends__gte=self.cut).exists()] or courses
             teachers = {c.teacher_id: c.teacher for c in live}
+            if len(teachers) > 1:
+                same_cell = {
+                    c.teacher_id: c.teacher
+                    for c in live
+                    if c.series.filter(ends__gte=self.cut, weekday=weekday, slot=slot).exists()
+                }
+                teachers = same_cell if len(same_cell) == 1 else teachers
             found = None
             if len(teachers) == 1:
                 found = next(iter(teachers.values()))
-            elif teachers:
+            elif teachers and (cohort.pk, subject.pk) not in self.keep_warned:
+                # одно предупреждение на пару, а не на каждую клетку
+                self.keep_warned.add((cohort.pk, subject.pk))
                 self.report.warn(
                     "teacher",
                     _("{cohort} {subject}: «Учитель не менять», а журналов несколько — урок без учителя").format(
@@ -1442,6 +1457,8 @@ class _Writer:
         cut = self.replace_from
         in_file = {(gid, unit["subject"].pk) for unit in self.units for gid in self._groups_of(unit["cohort"])}
 
+        cells = {(gid, unit["weekday"], unit["slot"]) for unit in self.units for gid in self._groups_of(unit["cohort"])}
+
         def covered(course: Course) -> bool:
             return any((gid, course.subject_id) in in_file for gid in self._groups_of(course.cohort))
 
@@ -1455,16 +1472,20 @@ class _Writer:
             .order_by("course__subject__title", "course__cohort__name", "weekday", "slot")
         )
         replaced: list[LessonSeries] = []
-        untouched: dict[tuple[str, str, str], int] = defaultdict(int)
+        untouched: dict[tuple[str, str, str], list[int]] = defaultdict(lambda: [0, 0])
         for series in rows:
             course = series.course
             if covered(course):
                 replaced.append(series)
             elif series.ends >= cut:
-                untouched[(course.subject.title, course.cohort.name, user_name(course.teacher))] += 1
+                row = untouched[(course.subject.title, course.cohort.name, user_name(course.teacher))]
+                row[0] += 1
+                # в той же клетке у этих групп урок из файла — после замены их будет два
+                groups = self._groups_of(course.cohort)
+                row[1] += any((gid, series.weekday, series.slot) in cells for gid in groups)
         self.report.untouched = [
-            {"subject": subject, "cohort": cohort, "teacher": teacher, "count": count}
-            for (subject, cohort, teacher), count in sorted(untouched.items())
+            {"subject": subject, "cohort": cohort, "teacher": teacher, "count": count, "same_cell": same_cell}
+            for (subject, cohort, teacher), (count, same_cell) in sorted(untouched.items())
         ]
 
         lessons = (

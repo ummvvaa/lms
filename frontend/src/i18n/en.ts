@@ -4062,4 +4062,6 @@ export const en: Record<string, string> = {
   'Заменить расписание с даты': 'Replace the timetable from a date',
   'Дата замены': 'Replacement date',
   'Прежние еженедельные уроки пар «группа + предмет» из файла, которых в нём нет, закончатся накануне даты. Их уроки с даты без данных удалятся, с данными — останутся и будут названы. Сменился учитель — журнал передаётся ему с даты.': 'Earlier weekly lessons of «group + subject» pairs from the file that the file no longer has end the day before the date. Their lessons from the date with no data are deleted; those with data stay and are listed. If the teacher changed, the gradebook passes to them from the date.',
+  'Пометка «в клетке урока из файла» — после замены у группы в это время будет два урока. Если пара больше не ведётся, уберите её в расписании.': 'The «in the cell of a file lesson» mark means the group will have two lessons at that time after the replacement. If the pair is no longer taught, remove it in the timetable.',
+  'в клетке урока из файла: {n}': 'in the cell of a file lesson: {n}',
 }
