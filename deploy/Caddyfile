@@ -81,3 +81,8 @@
 		file_server
 	}
 }
+
+# Другие сайты на этой ВМ (например, edu.bhs.kz — конкурс AI Future, репо ai-future).
+# Их блоки лежат на хосте в /opt/caddy-sites и в этот репозиторий не входят;
+# пустая папка — не ошибка. После правки файла там: docker exec <caddy> caddy reload
+import /etc/caddy/sites/*.caddy
