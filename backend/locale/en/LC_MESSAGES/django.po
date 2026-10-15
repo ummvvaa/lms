@@ -1783,10 +1783,6 @@ msgid ""
 "{warnings}"
 msgstr "Preview: to create {created}, to update {updated}, warnings {warnings}"
 
-#: academics/schedule_import.py:500
-msgid "Файл не тот, что в предпросмотре: загрузите его заново и проверьте"
-msgstr "This is not the file from the preview: upload it again and check it"
-
 #: academics/schedule_import.py:506
 msgid "Файл больше 5 МБ — это не книга расписания"
 msgstr "The file is larger than 5 MB — it is not a timetable workbook"
@@ -17204,3 +17200,51 @@ msgstr "Choose a group"
 #: academics/schedule_views.py
 msgid "Учитель уже ведёт этот журнал"
 msgstr "The teacher already keeps this gradebook"
+
+#: academics/schedule_import.py
+msgid "{cohort} {subject}: «Учитель не менять», а журналов несколько — урок без учителя"
+msgstr "{cohort} {subject}: «Учитель не менять» is set, but there are several gradebooks — the lesson has no teacher"
+
+#: academics/schedule_import.py
+msgid "{where}: «Учитель не менять» — ID учителя {code} не берётся"
+msgstr "{where}: «Учитель не менять» — teacher ID {code} is ignored"
+
+#: academics/schedule_import.py
+msgid "{where}: в колонке «{column}» — «да» или пусто"
+msgstr "{where}: column «{column}» takes «да» or nothing"
+
+#: academics/schedule_views.py
+msgid "Дата замены не похожа на дату"
+msgstr "The replacement date is not a date"
+
+#: academics/schedule_import.py
+msgid "Дата замены позже конца учебного года"
+msgstr "The replacement date is after the end of the school year"
+
+#: academics/schedule_import.py
+msgid "Дата замены — не раньше сегодняшнего дня"
+msgstr "The replacement date cannot be earlier than today"
+
+#: core/stored_text.py
+msgid "Журнал {subject} {cohort}: с {date} без учителя вместо {old}"
+msgstr "Gradebook {subject} {cohort}: from {date} without a teacher instead of {old}"
+
+#: academics/schedule_import.py
+msgid "Файл или дата замены не те, что в предпросмотре: загрузите файл заново и проверьте"
+msgstr "The file or the replacement date differs from the preview: upload the file again and check it"
+
+#: academics/schedule_import.py
+msgid "замена с {date}: еженедельных уроков закончилось {ended}, уроков удалено {deleted}, оставлено из-за данных {kept}"
+msgstr "replacement from {date}: weekly lessons ended {ended}, lessons deleted {deleted}, kept because of data {kept}"
+
+#: academics/schedule_import.py
+msgid "оценки"
+msgstr "marks"
+
+#: academics/schedule_import.py
+msgid "посещаемость"
+msgstr "attendance"
+
+#: academics/schedule_import.py
+msgid "тема"
+msgstr "topic"

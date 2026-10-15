@@ -803,8 +803,12 @@ def delete(lesson: Lesson, *, scope: str, actor=None) -> dict:
 
 
 @transaction.atomic
-def reassign(course: Course, *, teacher, since: dt.date, actor=None) -> Course:
-    """Сменить учителя журнала с даты: уроки с неё переходят к новому."""
+def reassign(course: Course, *, teacher, since: dt.date, actor=None, source: str = Source.MANUAL) -> Course:
+    """Сменить учителя журнала с даты: уроки с неё переходят к новому.
+
+    `teacher=None` — журнал остаётся без учителя: так импорт передаёт уроки
+    учителю, которого в файле школы ещё нет.
+    """
     old = course.teacher
     course.teacher = teacher
     course.save(update_fields=["teacher"])
@@ -817,14 +821,13 @@ def reassign(course: Course, *, teacher, since: dt.date, actor=None) -> Course:
         "teacher": user_name(teacher),
     }
     old_name = user_name(old)
-    log_change(
-        (
-            stored_text.store(stored_text.JOURNAL_TEACHER, old=old_name, **params)
-            if old_name
-            else stored_text.store(stored_text.JOURNAL_TEACHER_FIRST, **params)
-        ),
-        actor=actor,
-    )
+    if teacher is None:
+        text = stored_text.store(stored_text.JOURNAL_NO_TEACHER, old=old_name, **params)
+    elif old_name:
+        text = stored_text.store(stored_text.JOURNAL_TEACHER, old=old_name, **params)
+    else:
+        text = stored_text.store(stored_text.JOURNAL_TEACHER_FIRST, **params)
+    log_change(text, actor=actor, source=source)
     return course
 
 

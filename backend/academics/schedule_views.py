@@ -1745,6 +1745,17 @@ def _import_file(request) -> tuple[bytes | None, Response | None]:
     return uploaded.read(), None
 
 
+def _replace_from(request) -> tuple[dt.date | None, Response | None]:
+    """Дата замены расписания: пусто — импорт без замены, как раньше."""
+    raw = str(request.data.get("replace_from") or "").strip()
+    if not raw:
+        return None, None
+    found = _date(raw)
+    if found is None:
+        return None, _bad(_("Дата замены не похожа на дату"))
+    return found, None
+
+
 @extend_schema(request=None, responses={200: dict})
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -1756,8 +1767,11 @@ def schedule_import_preview(request):
     data, refusal = _import_file(request)
     if refusal:
         return refusal
+    replace_from, refusal = _replace_from(request)
+    if refusal:
+        return refusal
     try:
-        report = schedule_import.preview(data)
+        report = schedule_import.preview(data, replace_from=replace_from)
     except schedule_import.ImportRefused as error:
         return _bad(str(error))
     return Response(report)
@@ -1774,8 +1788,16 @@ def schedule_import_apply(request):
     data, refusal = _import_file(request)
     if refusal:
         return refusal
+    replace_from, refusal = _replace_from(request)
+    if refusal:
+        return refusal
     try:
-        report = schedule_import.apply(data, actor=request.user, expected=str(request.data.get("fingerprint") or ""))
+        report = schedule_import.apply(
+            data,
+            actor=request.user,
+            expected=str(request.data.get("fingerprint") or ""),
+            replace_from=replace_from,
+        )
     except schedule_import.ImportRefused as error:
         return _bad(str(error))
     if report["errors"]:
@@ -1784,6 +1806,9 @@ def schedule_import_apply(request):
         any(part["created"] or part["updated"] for part in report["sections"])
         or report["lessons_to_create"]
         or report["curator_changes"]
+        or report["series_ended"]
+        or report["lessons_deleted"]
+        or report["journals_passed"]
     ):
         usage.track(request, "import.schedule.apply")
     response = Response(report)

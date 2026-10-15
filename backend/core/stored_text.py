@@ -31,6 +31,7 @@ LESSON_RESTORED = gettext_noop("Урок возвращён как было: {le
 SERIES_DELETED = gettext_noop("Удалено: {title}, уроков: {count}, с {date}")
 JOURNAL_TEACHER = gettext_noop("Журнал {subject} {cohort}: с {date} ведёт {teacher} вместо {old}")
 JOURNAL_TEACHER_FIRST = gettext_noop("Журнал {subject} {cohort}: с {date} ведёт {teacher}")
+JOURNAL_NO_TEACHER = gettext_noop("Журнал {subject} {cohort}: с {date} без учителя вместо {old}")
 COHORT_CHANGED = gettext_noop("Изменён состав {name}: учеников {count}, с {date}")
 STREAM_CHANGED = gettext_noop("Изменён поток {name}")
 GROUP_SPLIT = gettext_noop("Разделена группа {group}: {subject}, подгрупп: {count}")
@@ -80,6 +81,7 @@ TEMPLATES = (
     SERIES_DELETED,
     JOURNAL_TEACHER,
     JOURNAL_TEACHER_FIRST,
+    JOURNAL_NO_TEACHER,
     COHORT_CHANGED,
     STREAM_CHANGED,
     GROUP_SPLIT,

@@ -1780,11 +1780,6 @@ msgstr ""
 "Алдын ала қарау: жаңасы — {created}, жаңартылатыны — {updated}, ескерту — "
 "{warnings}"
 
-#: academics/schedule_import.py:500
-msgid "Файл не тот, что в предпросмотре: загрузите его заново и проверьте"
-msgstr ""
-"Файл алдын ала қаралған файлмен сәйкес емес: оны қайта жүктеп, тексеріңіз"
-
 #: academics/schedule_import.py:506
 msgid "Файл больше 5 МБ — это не книга расписания"
 msgstr "Файл 5 МБ-тан үлкен — бұл сабақ кестесінің кітабы емес"
@@ -17123,3 +17118,51 @@ msgstr "Топты таңдаңыз"
 #: academics/schedule_views.py
 msgid "Учитель уже ведёт этот журнал"
 msgstr "Мұғалім бұл журналды бұрыннан жүргізеді"
+
+#: academics/schedule_import.py
+msgid "{cohort} {subject}: «Учитель не менять», а журналов несколько — урок без учителя"
+msgstr "{cohort} {subject}: «Учитель не менять» белгіленген, бірақ журнал бірнешеу — сабақ мұғалімсіз"
+
+#: academics/schedule_import.py
+msgid "{where}: «Учитель не менять» — ID учителя {code} не берётся"
+msgstr "{where}: «Учитель не менять» — {code} мұғалім ID-і алынбайды"
+
+#: academics/schedule_import.py
+msgid "{where}: в колонке «{column}» — «да» или пусто"
+msgstr "{where}: «{column}» бағанында — «да» немесе бос"
+
+#: academics/schedule_views.py
+msgid "Дата замены не похожа на дату"
+msgstr "Ауыстыру күні күнге ұқсамайды"
+
+#: academics/schedule_import.py
+msgid "Дата замены позже конца учебного года"
+msgstr "Ауыстыру күні оқу жылының соңынан кейін"
+
+#: academics/schedule_import.py
+msgid "Дата замены — не раньше сегодняшнего дня"
+msgstr "Ауыстыру күні бүгіннен ерте болмайды"
+
+#: core/stored_text.py
+msgid "Журнал {subject} {cohort}: с {date} без учителя вместо {old}"
+msgstr "{subject} {cohort} журналы: {date} бастап {old} орнына мұғалімсіз"
+
+#: academics/schedule_import.py
+msgid "Файл или дата замены не те, что в предпросмотре: загрузите файл заново и проверьте"
+msgstr "Файл немесе ауыстыру күні алдын ала қараудағыдай емес: файлды қайта жүктеп, тексеріңіз"
+
+#: academics/schedule_import.py
+msgid "замена с {date}: еженедельных уроков закончилось {ended}, уроков удалено {deleted}, оставлено из-за данных {kept}"
+msgstr "{date} бастап ауыстыру: аяқталған апталық сабақ — {ended}, өшірілген сабақ — {deleted}, деректері үшін қалдырылған — {kept}"
+
+#: academics/schedule_import.py
+msgid "оценки"
+msgstr "бағалар"
+
+#: academics/schedule_import.py
+msgid "посещаемость"
+msgstr "сабаққа қатысу"
+
+#: academics/schedule_import.py
+msgid "тема"
+msgstr "тақырып"

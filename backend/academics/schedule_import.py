@@ -15,6 +15,14 @@
 подгруппа и поток — по названию, журнал — по предмету, учителю и составу,
 еженедельный урок — по журналу, дню и номеру.
 
+Замена расписания с даты (решение владельца, 15.10.2026): файл заменяет
+прежнее расписание у пар «группа + предмет», которые в нём есть. Еженедельный
+урок такой пары, которого нет в файле, заканчивается накануне даты замены;
+его уроки с этой даты без данных удаляются, с данными остаются и называются
+в отчёте. Пары, которых в файле нет совсем, не трогаются. Учитель пары
+сменился — журнал передаётся с даты замены, как «Сменить учителя»: журнал
+общий, итоги четверти и раздел отчёта остаются при нём.
+
 Что правило, а что предупреждение:
 
 - ошибка останавливает весь импорт: нет листа или колонки, ссылка
@@ -37,6 +45,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 from django.db import transaction
+from django.db.models import Exists, OuterRef, Q
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy, gettext_noop
 
@@ -46,12 +55,15 @@ from academics.calendar import today
 from academics.cohorts import group_cohort, make_stream
 from academics.models import (
     AcademicYear,
+    Attendance,
     Bell,
     BellSchedule,
     Cohort,
     CohortKind,
     Course,
+    Grade,
     Lesson,
+    LessonKind,
     LessonSeries,
     LessonStatus,
     ReportRole,
@@ -61,7 +73,7 @@ from academics.models import (
     TeacherProfile,
 )
 from academics.payloads import user_name
-from academics.schedule import SCHEDULE_EVENT, materialize, series_dates
+from academics.schedule import SCHEDULE_EVENT, materialize, reassign, series_dates
 from accounts.models import Role, User
 from core.audit import record_change
 from core.domains import Source
@@ -107,7 +119,13 @@ SHEETS: dict[str, tuple[str, ...]] = {  # i18n-skip: заголовки коло
 }
 
 #: Колонки, которых в старых книгах нет: пустое значение — умолчание
-OPTIONAL: dict[str, tuple[str, ...]] = {SUBJECTS: ("Оценивание",)}  # i18n-skip: заголовок колонки книги школы
+OPTIONAL: dict[str, tuple[str, ...]] = {  # i18n-skip: заголовки колонок книги школы
+    SUBJECTS: ("Оценивание",),
+    LESSONS: ("Учитель не менять",),
+}
+
+#: «Учитель не менять» = «да»: учитель — тот, что сейчас у журнала в LMS
+KEEP_TEACHER = "да"  # i18n-skip: значение ячейки книги школы
 
 #: «Оценивание» на листе «Предметы» → схема предмета. «Без оценок» — существующая
 #: схема «Только ФО», в табель не идёт (решение владельца, 29.09.2026); пусто — ФО, СОР, СОЧ
@@ -272,6 +290,8 @@ class LessonRow:
     teacher: str
     room: str
     joint: str
+    #: «Учитель не менять» как в файле, без регистра; пусто — колонки нет
+    keep_teacher: str = ""
 
 
 @dataclass
@@ -285,9 +305,15 @@ class Book:
     errors: list[str] = field(default_factory=list)
 
 
-def fingerprint(data: bytes) -> str:
-    """Отпечаток файла: «Применить» принимает только тот, что видели в предпросмотре."""
-    return hashlib.sha256(data).hexdigest()
+def fingerprint(data: bytes, replace_from: dt.date | None = None) -> str:
+    """Отпечаток файла и режима: «Применить» принимает только то, что видели в предпросмотре.
+
+    Дата замены входит в отпечаток: тот же файл с другой датой — другой импорт.
+    """
+    digest = hashlib.sha256(data)
+    if replace_from is not None:
+        digest.update(f"|replace:{replace_from.isoformat()}".encode())
+    return digest.hexdigest()
 
 
 def _rows(sheet, title: str, errors: list[str]):
@@ -401,6 +427,7 @@ def parse(data: bytes) -> Book:
                 teacher=_text(cells["ID учителя"]),
                 room=_text(cells["Кабинет"]),
                 joint=_text(cells["Совместный урок"]),
+                keep_teacher=_key(_text(cells["Учитель не менять"])),
             )
         )
     workbook.close()
@@ -444,7 +471,17 @@ class Report:
     lessons_from: dt.date | None = None
     lessons_to_create: int = 0
     series_without_teacher: int = 0
+    #: уроки в неделю без учителя: состав и предмет
+    without_teacher: list[dict] = field(default_factory=list)
     credentials: list[dict] = field(default_factory=list)
+    # --- замена расписания с даты ---
+    replace_from: dt.date | None = None
+    series_ended: int = 0
+    lessons_deleted: int = 0
+    lessons_kept: list[dict] = field(default_factory=list)
+    untouched: list[dict] = field(default_factory=list)
+    journals_passed: list[dict] = field(default_factory=list)
+    subgroups_unused: list[str] = field(default_factory=list)
 
     def section(self, code: str, title: str) -> Section:
         return self.sections.setdefault(code, Section(code, title))
@@ -468,7 +505,15 @@ class Report:
             "lessons_from": self.lessons_from,
             "lessons_to_create": self.lessons_to_create,
             "series_without_teacher": self.series_without_teacher,
+            "without_teacher": self.without_teacher,
             "credentials": self.credentials,
+            "replace_from": self.replace_from,
+            "series_ended": self.series_ended,
+            "lessons_deleted": self.lessons_deleted,
+            "lessons_kept": self.lessons_kept,
+            "untouched": self.untouched,
+            "journals_passed": self.journals_passed,
+            "subgroups_unused": self.subgroups_unused,
             "detail": self.detail(),
         }
 
@@ -490,29 +535,32 @@ class Report:
 # --- Запись -----------------------------------------------------------------------
 
 
-def preview(data: bytes) -> dict:
+def preview(data: bytes, *, replace_from: dt.date | None = None) -> dict:
     """Что сделает импорт — без единой записи в базе."""
-    return _run(data, actor=None, commit=False)
+    return _run(data, actor=None, commit=False, replace_from=replace_from)
 
 
-def apply(data: bytes, *, actor, expected: str) -> dict:
+def apply(data: bytes, *, actor, expected: str, replace_from: dt.date | None = None) -> dict:
     """Применить файл, который видели в предпросмотре. Всё или ничего."""
-    if expected != fingerprint(data):
-        raise ImportRefused(_("Файл не тот, что в предпросмотре: загрузите его заново и проверьте"))
-    return _run(data, actor=actor, commit=True)
+    if expected != fingerprint(data, replace_from):
+        raise ImportRefused(_("Файл или дата замены не те, что в предпросмотре: загрузите файл заново и проверьте"))
+    return _run(data, actor=actor, commit=True, replace_from=replace_from)
 
 
-def _run(data: bytes, *, actor, commit: bool) -> dict:
+def _run(data: bytes, *, actor, commit: bool, replace_from: dt.date | None = None) -> dict:
     if len(data) > MAX_BYTES:
         raise ImportRefused(_("Файл больше 5 МБ — это не книга расписания"))
-    report = Report(fingerprint=fingerprint(data))
+    if replace_from is not None and replace_from < today():
+        # прошедшие уроки не меняются: иначе за прошедшие дни заведутся неотмеченные уроки
+        raise ImportRefused(_("Дата замены — не раньше сегодняшнего дня"))
+    report = Report(fingerprint=fingerprint(data, replace_from), replace_from=replace_from)
     book = parse(data)
     report.errors.extend(book.errors)
     if report.errors:
         return report.as_dict()
     try:
         with transaction.atomic():
-            _Writer(book, report, actor=actor, commit=commit).run()
+            _Writer(book, report, actor=actor, commit=commit, replace_from=replace_from).run()
             if report.errors or not commit:
                 raise _Rollback
     except _Rollback:
@@ -526,12 +574,15 @@ def _run(data: bytes, *, actor, commit: bool) -> dict:
 class _Writer:
     """Один проход по книге: листы по порядку, всё в одной транзакции."""
 
-    def __init__(self, book: Book, report: Report, *, actor, commit: bool) -> None:
+    def __init__(self, book: Book, report: Report, *, actor, commit: bool, replace_from: dt.date | None = None) -> None:
         self.book = book
         self.report = report
         self.actor = actor if getattr(actor, "pk", None) else None
         self.commit = commit
         self.day = today()
+        self.replace_from = replace_from
+        #: с какого дня импорт меняет уроки: дата замены или сегодня
+        self.cut = replace_from or self.day
         self.year: AcademicYear | None = None
         self.subjects: dict[str, Subject] = {}
         self.staff: dict[str, User] = {}
@@ -541,6 +592,9 @@ class _Writer:
         self.touched_series: set[int] = set()
         self.missing_bells: dict[tuple, list[str]] = defaultdict(list)
         self.new_series: list[LessonSeries] = []
+        self.units: list[dict] = []
+        self.cohort_groups: dict[int, set[int]] = {}
+        self.current_teachers: dict[tuple[int, int], User | None] = {}
 
     def error(self, text: str) -> None:
         self.report.errors.append(text)
@@ -549,6 +603,9 @@ class _Writer:
         self.year = school_calendar.current_year()
         if self.year is None:
             self.error(_("Нет текущего учебного года: заведите его на странице «Учебный год»"))
+            return
+        if self.replace_from is not None and self.replace_from > self.year.ends:
+            self.error(_("Дата замены позже конца учебного года"))
             return
         self._subjects()
         self._staff()
@@ -559,7 +616,10 @@ class _Writer:
             return
         self._lessons()
         self._missing_bells()
-        self._stale()
+        if self.replace_from is not None:
+            self._replace()
+        else:
+            self._stale()
         self._conflicts()
         if self.report.errors:
             return
@@ -1130,6 +1190,13 @@ class _Writer:
             if row.weekday is None or row.slot is None:
                 self.error(_("{where}: не понятны день или номер урока").format(where=where))
                 continue
+            if row.keep_teacher not in ("", KEEP_TEACHER):
+                self.error(
+                    _("{where}: в колонке «{column}» — «да» или пусто").format(
+                        where=where, column="Учитель не менять"  # i18n-skip: заголовок колонки книги школы
+                    )
+                )
+                continue
             if row.joint:
                 joint[row.joint].append(row)
                 continue
@@ -1160,6 +1227,8 @@ class _Writer:
         if self.report.errors:
             return
         self.units = units
+        if self.replace_from is not None:
+            self._pass_journals(units)
         seen: set[tuple[int, int, int]] = set()
         for unit in units:
             key = (unit["cohort"].pk, unit["weekday"], unit["slot"])
@@ -1177,6 +1246,14 @@ class _Writer:
                 section.unchanged += 1
             if unit["teacher"] is None:
                 self.report.series_without_teacher += 1
+        without: dict[tuple[str, str], int] = defaultdict(int)
+        for unit in units:
+            if unit["teacher"] is None:
+                without[(unit["cohort"].name, unit["subject"].title)] += 1
+        self.report.without_teacher = [
+            {"cohort": cohort, "subject": subject, "count": count}
+            for (cohort, subject), count in sorted(without.items())
+        ]
 
     def _unit(self, row: LessonRow, rows: list[LessonRow]) -> dict | None:
         """Урок недели: состав, предмет, учитель, день, номер, кабинет, время."""
@@ -1207,6 +1284,15 @@ class _Writer:
             name = " + ".join(g.code for g in groups)
         if subject is None:
             return None
+        if row.keep_teacher == KEEP_TEACHER:
+            if row.teacher:
+                self.report.warn(
+                    "teacher",
+                    _("{where}: «Учитель не менять» — ID учителя {code} не берётся").format(
+                        where=where, code=row.teacher
+                    ),
+                )
+            teacher = self._current_teacher(cohort, subject)
         parallel = row.parallel or (groups[0].parallel if groups else None)
         grid = self.grids.get(parallel or 0, {})
         bell = grid.get(row.slot)
@@ -1252,7 +1338,7 @@ class _Writer:
                 report_role=unit.get("report_role") or ReportRole.NONE,
             )
         series = (
-            LessonSeries.objects.filter(course=course, weekday=unit["weekday"], slot=unit["slot"], ends__gte=self.day)
+            LessonSeries.objects.filter(course=course, weekday=unit["weekday"], slot=unit["slot"], ends__gte=self.cut)
             .order_by("-starts")
             .first()
         )
@@ -1262,7 +1348,8 @@ class _Writer:
                 weekday=unit["weekday"],
                 slot=unit["slot"],
                 room=unit["room"],
-                starts=SERIES_START,
+                # замена: новое расписание — с даты замены, прежнее до неё остаётся
+                starts=self.replace_from or SERIES_START,
                 ends=self.year.ends,
                 created_by=self.actor,
             )
@@ -1274,8 +1361,160 @@ class _Writer:
             return "same"
         series.room = unit["room"]
         series.save(update_fields=["room"])
-        Lesson.objects.filter(series=series, date__gte=self.day, status=LessonStatus.PLANNED).update(room=unit["room"])
+        Lesson.objects.filter(series=series, date__gte=self.cut, status=LessonStatus.PLANNED).update(room=unit["room"])
         return "updated"
+
+    def _current_teacher(self, cohort: Cohort, subject: Subject) -> User | None:
+        """Учитель, что сейчас ведёт журнал состава по предмету. Журнала нет — без учителя."""
+        key = (cohort.pk, subject.pk)
+        if key not in self.current_teachers:
+            courses = list(Course.objects.filter(cohort=cohort, subject=subject).select_related("teacher"))
+            live = [c for c in courses if c.series.filter(ends__gte=self.cut).exists()] or courses
+            teachers = {c.teacher_id: c.teacher for c in live}
+            found = None
+            if len(teachers) == 1:
+                found = next(iter(teachers.values()))
+            elif teachers:
+                self.report.warn(
+                    "teacher",
+                    _("{cohort} {subject}: «Учитель не менять», а журналов несколько — урок без учителя").format(
+                        cohort=cohort.name, subject=subject.title
+                    ),
+                )
+            self.current_teachers[key] = found
+        return self.current_teachers[key]
+
+    def _pass_journals(self, units: list[dict]) -> None:
+        """Сменился учитель пары «состав + предмет» — журнал передаётся с даты замены.
+
+        Передаётся, только когда ясно, кому: у пары ровно один журнал теряет
+        учителя и ровно один учитель (или «без учителя») приходит. Иначе —
+        как без замены: новый журнал, у прежнего серии заканчиваются.
+        """
+        wanted: dict[tuple[int, int], dict] = {}
+        for unit in units:
+            pair = wanted.setdefault(
+                (unit["cohort"].pk, unit["subject"].pk), {"cohort": unit["cohort"], "subject": unit["subject"]}
+            )
+            teacher = unit["teacher"]
+            pair.setdefault("teachers", {})[teacher.pk if teacher else None] = teacher
+        for pair in wanted.values():
+            live = (
+                Course.objects.filter(cohort=pair["cohort"], subject=pair["subject"], series__ends__gte=self.cut)
+                .distinct()
+                .select_related("teacher")
+            )
+            current = {course.teacher_id: course for course in live}
+            gone = set(current) - set(pair["teachers"])
+            came = set(pair["teachers"]) - set(current)
+            if len(gone) != 1 or len(came) != 1:
+                continue
+            course = current[gone.pop()]
+            teacher = pair["teachers"][came.pop()]
+            if Course.objects.filter(cohort=pair["cohort"], subject=pair["subject"], teacher=teacher).exists():
+                # у нового учителя журнал этого состава уже есть — уроки пойдут в него
+                continue
+            was = user_name(course.teacher)
+            reassign(course, teacher=teacher, since=self.cut, actor=self.actor, source=Source.IMPORT)
+            self.report.journals_passed.append(
+                {
+                    "cohort": pair["cohort"].name,
+                    "subject": pair["subject"].title,
+                    "was": was,
+                    "will": user_name(teacher),
+                }
+            )
+        self.report.journals_passed.sort(key=lambda row: (row["subject"], row["cohort"]))
+
+    def _groups_of(self, cohort: Cohort) -> set[int]:
+        if cohort.pk not in self.cohort_groups:
+            self.cohort_groups[cohort.pk] = _stream_group_ids(cohort)
+        return self.cohort_groups[cohort.pk]
+
+    def _replace(self) -> None:
+        """Замена с даты: прежние еженедельные уроки пар из файла заканчиваются накануне.
+
+        Пара — группа и предмет: подгруппа английского считается своими группами,
+        поэтому прежняя подгруппа, которой в файле нет, тоже заменяется, если
+        английский этих групп в файле есть. Уроки до даты не трогаются никогда;
+        с даты — без данных удаляются, с данными остаются и называются.
+        """
+        cut = self.replace_from
+        in_file = {(gid, unit["subject"].pk) for unit in self.units for gid in self._groups_of(unit["cohort"])}
+
+        def covered(course: Course) -> bool:
+            return any((gid, course.subject_id) in in_file for gid in self._groups_of(course.cohort))
+
+        later = Lesson.objects.filter(date__gte=cut, series__isnull=False).values("series_id")
+        rows = (
+            LessonSeries.objects.filter(course__archived_at__isnull=True)
+            # закончившиеся с уроками после даты — те, что прошлая замена оставила из-за данных
+            .filter(Q(ends__gte=cut) | Q(pk__in=later))
+            .exclude(pk__in=self.touched_series)
+            .select_related("course__subject", "course__cohort", "course__teacher")
+            .order_by("course__subject__title", "course__cohort__name", "weekday", "slot")
+        )
+        replaced: list[LessonSeries] = []
+        untouched: dict[tuple[str, str, str], int] = defaultdict(int)
+        for series in rows:
+            course = series.course
+            if covered(course):
+                replaced.append(series)
+            elif series.ends >= cut:
+                untouched[(course.subject.title, course.cohort.name, user_name(course.teacher))] += 1
+        self.report.untouched = [
+            {"subject": subject, "cohort": cohort, "teacher": teacher, "count": count}
+            for (subject, cohort, teacher), count in sorted(untouched.items())
+        ]
+
+        lessons = (
+            Lesson.objects.filter(series__in=replaced, date__gte=cut)
+            .annotate(
+                has_attendance=Exists(Attendance.objects.filter(lesson=OuterRef("pk"))),
+                has_grades=Exists(Grade.objects.filter(lesson=OuterRef("pk"))),
+                has_assignment=Exists(_assignments().filter(lesson=OuterRef("pk"))),
+            )
+            .select_related("course__subject", "course__cohort", "teacher")
+            .order_by("date", "slot", "course__cohort__name")
+        )
+        gone: list[int] = []
+        for lesson in lessons:
+            what = _lesson_data(lesson)
+            if not what:
+                gone.append(lesson.pk)
+                continue
+            self.report.lessons_kept.append(
+                {
+                    "id": lesson.pk,
+                    "date": lesson.date,
+                    "slot": lesson.slot,
+                    "cohort": lesson.course.cohort.name,
+                    "subject": lesson.course.subject.title,
+                    "teacher": user_name(lesson.teacher),
+                    "data": ", ".join(what),
+                }
+            )
+        if gone:
+            Lesson.objects.filter(pk__in=gone).delete()
+        self.report.lessons_deleted = len(gone)
+
+        for series in replaced:
+            if series.ends < cut:
+                continue
+            self.report.series_ended += 1
+            series.ends = cut - dt.timedelta(days=1)
+            if series.ends < series.starts and not Lesson.all_objects.filter(series=series).exists():
+                # серия начиналась с даты замены или позже — от неё ничего не осталось
+                series.delete()
+            else:
+                series.save(update_fields=["ends"])
+
+        on_sheet = set(self.subgroups)
+        self.report.subgroups_unused = sorted(
+            cohort.name
+            for cohort in Cohort.objects.filter(kind=CohortKind.SUBGROUP).prefetch_related("courses")
+            if _key(cohort.name) not in on_sheet and any(covered(course) for course in cohort.courses.all())
+        )
 
     def _missing_bells(self) -> None:
         """Урок с номером, которого нет в звонках его параллели: время у него не покажется."""
@@ -1347,7 +1586,7 @@ class _Writer:
         calendar = school_calendar.load(self.year)
         if not calendar.quarters:
             self.report.warn("year", _("У учебного года нет четвертей — строки уроков не заведутся"))
-        since = max(self.day, SERIES_START)
+        since = max(self.day, SERIES_START, self.replace_from or SERIES_START)
         self.report.lessons_from = since
         for series in self.new_series:
             if self.commit:
@@ -1363,6 +1602,18 @@ class _Writer:
             )
             for s in self.report.sections.values()
         ]
+        if self.replace_from is not None:
+            parts.append(
+                _(
+                    "замена с {date}: еженедельных уроков закончилось {ended}, уроков удалено {deleted}, "
+                    "оставлено из-за данных {kept}"
+                ).format(
+                    date=f"{self.replace_from:%d.%m.%Y}",
+                    ended=self.report.series_ended,
+                    deleted=self.report.lessons_deleted,
+                    kept=len(self.report.lessons_kept),
+                )
+            )
         AuditLog.objects.create(
             actor=self.actor,
             actor_role=getattr(self.actor, "role", "") or "",
@@ -1393,6 +1644,34 @@ def _stream_name(subgroup: str) -> str:
     match = re.fullmatch(r"(.+?)[-\s]*\d+", subgroup)
     # имя потока — ключ повторного импорта, не подпись: не переводится
     return match.group(1) if match else f"{subgroup} · поток"  # i18n-skip: ключ записи потока
+
+
+def _assignments():
+    from homework.models import Assignment
+
+    return Assignment.objects.all()
+
+
+def _lesson_data(lesson: Lesson) -> list[str]:
+    """Что на уроке есть, кроме расписания. Пусто — урок можно удалить.
+
+    Данные — работа учителя и учеников: посещаемость, оценки, ДЗ, тема,
+    назначенный СОР или СОЧ (решение владельца, 15.10.2026). Замена, перенос
+    и отмена — нет: они про прежнюю сетку. Замечания к уроку не привязаны —
+    они остаются у ученика при любом раскладе.
+    """
+    what = []
+    if lesson.marked_at is not None or lesson.has_attendance:
+        what.append(_("посещаемость"))
+    if lesson.has_grades:
+        what.append(_("оценки"))
+    if lesson.has_assignment or lesson.homework.strip():
+        what.append(_("ДЗ"))
+    if lesson.topic.strip():
+        what.append(_("тема"))
+    if lesson.kind in (LessonKind.SOR, LessonKind.SOCH):
+        what.append(lesson.get_kind_display())
+    return what
 
 
 def _stream_group_ids(cohort: Cohort) -> set[int]:

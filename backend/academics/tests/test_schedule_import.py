@@ -21,6 +21,7 @@ from academics import schedule_import
 from academics.cohorts import group_ids_of
 from academics.models import (
     AcademicYear,
+    Attendance,
     Bell,
     BellSchedule,
     Cohort,
@@ -29,13 +30,14 @@ from academics.models import (
     GradingScale,
     Lesson,
     LessonSeries,
+    Mark,
     Quarter,
     Scheme,
     Subject,
     TeacherProfile,
 )
 from academics.rights import grades_lesson, marks_lesson
-from academics.tests.conftest import days, login
+from academics.tests.conftest import days, login, make_student
 from accounts.curators import assign, curator_of
 from accounts.models import CuratorAssignment, Role, User
 from core.models import AuditLog
@@ -733,3 +735,245 @@ def test_real_book_imports_once_and_the_second_time_changes_nothing(short_year, 
     assert _counts() == before
     assert all(s["created"] == 0 and s["updated"] == 0 for s in again["sections"])
     assert again["credentials"] == [] and again["curator_changes"] == [] and again["stale_series"] == []
+
+
+# --- Замена расписания с даты -------------------------------------------------------
+
+#: дата замены: неделя до неё и неделя после неё — внутри короткой четверти
+CUT = days(7)
+BOSTON_PHYSICS = _lesson(11, "Ср", 2, "11:00", "11:40", "Физика", "С02", "206", group="BOSTON")
+OLD_LESSONS = [*LESSONS, BOSTON_PHYSICS]
+NEW_LESSONS = [
+    # алгебра BOSTON переехала с понедельника на четверг
+    _lesson(11, "Чт", 1, "10:15", "10:55", "Алгебра", "С01", "206", group="BOSTON"),
+    {**LESSONS[1], "Учитель не менять": "да"},
+    # у классного часа учителя в файле нет: журнал остаётся без учителя с даты замены
+    {**LESSONS[2], "ID учителя": ""},
+    *LESSONS[3:5],
+    # английский NYU и YALE — в новой подгруппе, прежней в файле нет
+    {**LESSONS[5], "Подгруппа": "EEP-9-2"},
+    *LESSONS[6:],
+    # физики BOSTON в файле нет совсем — пара «группа + предмет» не трогается
+]
+NEW_SUBGROUPS = [{**SUBGROUPS[0], "Подгруппа": "EEP-9-2"}]
+
+
+def _new_book() -> bytes:
+    return small_book(lessons=NEW_LESSONS, subgroups=NEW_SUBGROUPS)
+
+
+def _replace(data: bytes, actor, cut: dt.date = CUT) -> dict:
+    return schedule_import.apply(data, actor=actor, expected=schedule_import.fingerprint(data, cut), replace_from=cut)
+
+
+def _series(subject: str, cohort: str, weekday: int, slot: int) -> LessonSeries:
+    return LessonSeries.objects.get(
+        course__subject__title=subject, course__cohort__name=cohort, weekday=weekday, slot=slot
+    )
+
+
+@pytest.fixture
+def old_schedule(short_year, admin) -> User:
+    """Прежнее расписание; у Creative Writing BOSTON учителя назначили в LMS руками."""
+    assert _apply(small_book(lessons=OLD_LESSONS), admin)["errors"] == []
+    from academics.schedule import reassign
+
+    writing = Course.objects.get(subject__title="Creative Writing", cohort__name="BOSTON")
+    reassign(writing, teacher=User.objects.get(login="t02.test"), since=days(0))
+    return admin
+
+
+def test_replace_keeps_a_lesson_with_attendance_and_deletes_planned_ones(old_schedule):
+    algebra = _series("Алгебра", "BOSTON", 1, 1)
+    marked = Lesson.objects.filter(series=algebra, date__gte=CUT).first()
+    planned = list(Lesson.objects.filter(series=algebra, date__gte=CUT).exclude(pk=marked.pk))
+    planned += list(Lesson.objects.filter(series=_series("Английский язык (EEP)", "EEP-9-1", 2, 2), date__gte=CUT))
+    assert planned
+    pupil = make_student(StudyGroup.objects.get(code="BOSTON"), "Отмеченова", "Аня", "anya@example.kz")
+    Attendance.objects.create(lesson=marked, student=pupil, mark=Mark.ABSENT)
+
+    report = _replace(_new_book(), old_schedule)
+
+    assert report["errors"] == [] and report["applied"]
+    assert Lesson.objects.filter(pk=marked.pk).exists()
+    assert not Lesson.objects.filter(pk__in=[row.pk for row in planned]).exists()
+    kept = [row for row in report["lessons_kept"] if row["id"] == marked.pk]
+    assert kept and kept[0]["data"] == "посещаемость" and kept[0]["cohort"] == "BOSTON"
+    algebra.refresh_from_db()
+    assert algebra.ends == CUT - dt.timedelta(days=1)
+    assert report["series_ended"] >= 1 and report["lessons_deleted"] >= len(planned)
+    # новый урок недели — с даты замены, а не с 1 сентября
+    thursday = _series("Алгебра", "BOSTON", 4, 1)
+    assert thursday.starts == CUT
+    assert not Lesson.objects.filter(series=thursday, date__lt=CUT).exists()
+    assert Lesson.objects.filter(series=thursday, date__gte=CUT).exists()
+
+
+def test_lessons_before_the_date_are_never_touched(old_schedule):
+    algebra = _series("Алгебра", "BOSTON", 1, 1)
+    before = list(Lesson.objects.filter(series=algebra, date__lt=CUT).values_list("pk", "date", "teacher_id"))
+    assert before
+
+    _replace(_new_book(), old_schedule)
+
+    assert list(Lesson.objects.filter(series=algebra, date__lt=CUT).values_list("pk", "date", "teacher_id")) == before
+
+
+def test_pair_missing_from_the_file_is_not_touched(old_schedule):
+    physics = _series("Физика", "BOSTON", 3, 2)
+    lessons = set(Lesson.objects.filter(series=physics).values_list("pk", flat=True))
+    ends = physics.ends
+
+    report = _replace(_new_book(), old_schedule)
+
+    physics.refresh_from_db()
+    assert physics.ends == ends
+    assert set(Lesson.objects.filter(series=physics).values_list("pk", flat=True)) == lessons
+    assert {"subject": "Физика", "cohort": "BOSTON", "teacher": "Физикова Дана Тестовна", "count": 1} in report[
+        "untouched"
+    ]
+
+
+def test_keep_teacher_column_keeps_the_teacher_of_the_journal(old_schedule):
+    writing = Course.objects.get(subject__title="Creative Writing", cohort__name="BOSTON")
+    teacher = User.objects.get(login="t02.test")
+    assert writing.teacher == teacher
+
+    report = _replace(_new_book(), old_schedule)
+
+    assert report["errors"] == []
+    assert Course.objects.filter(subject__title="Creative Writing", cohort__name="BOSTON").get() == writing
+    writing.refresh_from_db()
+    assert writing.teacher == teacher
+    assert not Lesson.objects.filter(course=writing, date__gte=CUT).exclude(teacher=teacher).exists()
+    assert not [row for row in report["without_teacher"] if row["subject"] == "Creative Writing"]
+
+
+def test_keep_teacher_without_a_journal_is_a_lesson_without_teacher(short_year, admin):
+    lessons = [{**LESSONS[1], "Учитель не менять": "да", "ID учителя": ""}]
+    report = _apply(small_book(lessons=lessons), admin)
+    assert report["errors"] == []
+    assert Course.objects.get(subject__title="Creative Writing").teacher is None
+    assert report["without_teacher"] == [{"cohort": "BOSTON", "subject": "Creative Writing", "count": 1}]
+
+
+def test_unknown_keep_teacher_value_is_an_error(short_year, admin):
+    report = schedule_import.preview(small_book(lessons=[{**LESSONS[1], "Учитель не менять": "может быть"}]))
+    assert report["errors"] and "Учитель не менять" in report["errors"][0]
+
+
+def test_teacher_change_passes_the_journal_from_the_date(old_schedule):
+    homeroom = Course.objects.get(subject__title="Классный час", cohort__name="BOSTON")
+    was = homeroom.teacher
+    series = _series("Классный час", "BOSTON", 2, 1)
+
+    report = _replace(_new_book(), old_schedule)
+
+    # журнал тот же, учителя у него нет с даты замены; прежние уроки — за прежним
+    assert Course.objects.filter(subject__title="Классный час", cohort__name="BOSTON").get() == homeroom
+    homeroom.refresh_from_db()
+    assert homeroom.teacher is None
+    assert not Lesson.objects.filter(course=homeroom, date__gte=CUT, teacher__isnull=False).exists()
+    assert not Lesson.objects.filter(course=homeroom, date__lt=CUT).exclude(teacher=was).exists()
+    series.refresh_from_db()
+    assert series.ends == AcademicYear.objects.get().ends
+    assert report["journals_passed"] == [
+        {"cohort": "BOSTON", "subject": "Классный час", "was": "Физикова Дана Тестовна", "will": ""}
+    ]
+    assert AuditLog.objects.filter(new_value__contains="без учителя вместо Физикова", source="import").exists()
+
+
+def test_subgroup_missing_from_the_file_is_replaced_and_listed_unused(old_schedule):
+    old = _series("Английский язык (EEP)", "EEP-9-1", 2, 2)
+
+    report = _replace(_new_book(), old_schedule)
+
+    old.refresh_from_db()
+    assert old.ends == CUT - dt.timedelta(days=1)
+    assert not Lesson.objects.filter(series=old, date__gte=CUT).exists()
+    assert Cohort.objects.filter(kind=CohortKind.SUBGROUP, name="EEP-9-1").exists()
+    assert report["subgroups_unused"] == ["EEP-9-1"]
+    assert _series("Английский язык (EEP)", "EEP-9-2", 2, 2).starts == CUT
+
+
+def test_repeat_of_the_same_file_and_date_changes_nothing(old_schedule):
+    algebra = _series("Алгебра", "BOSTON", 1, 1)
+    marked = Lesson.objects.filter(series=algebra, date__gte=CUT).first()
+    marked.topic = "Квадратные уравнения"
+    marked.save(update_fields=["topic"])
+    data = _new_book()
+    first = _replace(data, old_schedule)
+    assert first["series_ended"] and first["lessons_deleted"] and first["journals_passed"]
+    before = _counts()
+    ends = dict(LessonSeries.objects.values_list("pk", "ends"))
+    teachers = dict(Lesson.objects.values_list("pk", "teacher_id"))
+
+    again = _replace(data, old_schedule)
+
+    assert _counts() == before
+    assert dict(LessonSeries.objects.values_list("pk", "ends")) == ends
+    assert dict(Lesson.objects.values_list("pk", "teacher_id")) == teachers
+    assert again["series_ended"] == 0 and again["lessons_deleted"] == 0 and again["journals_passed"] == []
+    assert again["lessons_to_create"] == 0
+    assert all(s["created"] == 0 and s["updated"] == 0 for s in again["sections"])
+    # урок с данными по-прежнему назван: решение о нём за человеком
+    assert [row["id"] for row in again["lessons_kept"]] == [marked.pk]
+    assert again["lessons_kept"][0]["data"] == "тема"
+
+
+def test_preview_of_replace_writes_nothing_and_matches_apply(old_schedule):
+    data = _new_book()
+    before = _counts()
+    seen = schedule_import.preview(data, replace_from=CUT)
+    assert _counts() == before
+    done = _replace(data, old_schedule)
+    for key in ("series_ended", "lessons_deleted", "lessons_to_create", "journals_passed", "subgroups_unused"):
+        assert seen[key] == done[key], key
+    assert len(seen["lessons_kept"]) == len(done["lessons_kept"])
+
+
+def test_replace_date_is_part_of_the_fingerprint_and_not_in_the_past(old_schedule):
+    data = _new_book()
+    with pytest.raises(schedule_import.ImportRefused):
+        schedule_import.apply(data, actor=old_schedule, expected=schedule_import.fingerprint(data), replace_from=CUT)
+    with pytest.raises(schedule_import.ImportRefused):
+        schedule_import.preview(data, replace_from=days(-1))
+    late = schedule_import.preview(data, replace_from=days(400))
+    assert late["errors"]
+
+
+def test_without_replace_the_import_only_lists_what_is_missing(old_schedule):
+    algebra = _series("Алгебра", "BOSTON", 1, 1)
+    count = Lesson.objects.filter(series=algebra).count()
+    report = _apply(_new_book(), old_schedule)
+    algebra.refresh_from_db()
+    assert algebra.ends == AcademicYear.objects.get().ends
+    assert Lesson.objects.filter(series=algebra).count() == count
+    assert any("Алгебра · BOSTON" in text for text in report["stale_series"])
+    assert report["series_ended"] == 0 and report["journals_passed"] == []
+
+
+def test_replace_through_the_api(old_schedule):
+    client = login(old_schedule)
+    data = _new_book()
+    seen = _upload(client, "/api/acad/schedule/import/preview/", data, replace_from=CUT.isoformat()).json()
+    assert seen["replace_from"] == CUT.isoformat() and seen["series_ended"] > 0
+    # отпечаток предпросмотра без замены к замене не подходит
+    wrong = _upload(
+        client,
+        "/api/acad/schedule/import/apply/",
+        data,
+        fingerprint=schedule_import.fingerprint(data),
+        replace_from=CUT.isoformat(),
+    )
+    assert wrong.status_code == 400
+    done = _upload(
+        client,
+        "/api/acad/schedule/import/apply/",
+        data,
+        fingerprint=seen["fingerprint"],
+        replace_from=CUT.isoformat(),
+    )
+    assert done.status_code == 200 and done.json()["applied"]
+    bad = _upload(client, "/api/acad/schedule/import/preview/", data, replace_from="15.10.2026")
+    assert bad.status_code == 400
