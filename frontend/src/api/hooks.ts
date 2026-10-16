@@ -1979,7 +1979,7 @@ export function useInviteLink() {
   })
 }
 
-/** Смена почты меняет вход: экран говорит об этом прямо (фаза 67). */
+/** Смена почты или логина меняет вход: экран говорит об этом прямо (фаза 67; логин за ФИО — 16.10.2026). */
 export interface LoginChanged {
   was: string
   now: string
@@ -1990,7 +1990,7 @@ export function useUpdateUser() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, ...body }: { id: number } & PersonWrite) =>
-      patch<PersonDetail & { login_changed?: LoginChanged }>(`/users/${id}/`, body),
+      patch<PersonDetail & { login_changed?: LoginChanged; login_moved?: LoginChanged }>(`/users/${id}/`, body),
     onSuccess: () => {
       for (const key of PEOPLE_KEYS) void queryClient.invalidateQueries({ queryKey: key })
     },

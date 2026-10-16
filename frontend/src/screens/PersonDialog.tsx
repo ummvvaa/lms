@@ -8,7 +8,9 @@
  * и запись роли одной транзакцией на сервере (`accounts.people`).
  *
  * ФИО ученика живёт в карточке, учётная запись повторяет его; «Таблица»
- * и карточка ученика на это окно ссылаются, а не правят сами.
+ * и карточка ученика на это окно ссылаются, а не правят сами. У учётки без
+ * почты логин идёт за именем и фамилией: сервер пересчитывает его при
+ * сохранении, окно говорит одной строкой, что прежний не действует.
  * Окно одно на заведение и правку: второе место для тех же полей
  * разошлось бы с первым в первый же месяц.
  */
@@ -110,7 +112,8 @@ export default function PersonDialog({
   const update = useUpdateUser()
   const [form, setForm] = useState<Form>({ ...EMPTY, role: initialRole ?? 'student' })
   const [loaded, setLoaded] = useState(false)
-  const [moved, setMoved] = useState<string | null>(null)
+  // сменился вход: почта — с письмом заново, логин — только сказать об этом
+  const [moved, setMoved] = useState<{ text: string; mail: boolean } | null>(null)
   const [mailing, setMailing] = useState(false)
   const detail = person.data
 
@@ -193,7 +196,13 @@ export default function PersonDialog({
       {
         onSuccess: (data) => {
           if (data.login_changed) {
-            setMoved(data.login_changed.detail)
+            setMoved({ text: data.login_changed.detail, mail: true })
+            return
+          }
+          if (data.login_moved) {
+            // поле сотрудника — тем логином, которым он теперь входит, а не прежним
+            if (!student) set('handle', data.login_moved.now)
+            setMoved({ text: data.login_moved.detail, mail: false })
             return
           }
           toast.success(t('Сохранено'))
@@ -419,12 +428,14 @@ export default function PersonDialog({
 
         {moved ? (
           <>
-            <p className="pform__done">{moved}</p>
+            <p className="pform__done">{moved.text}</p>
             <div className="acad__actions">
-              <Button size="sm" onClick={() => setMailing(true)}>
-                {t('Выслать письмо заново')}
-              </Button>
-              <Button variant="outline" size="sm" onClick={onClose}>
+              {moved.mail && (
+                <Button size="sm" onClick={() => setMailing(true)}>
+                  {t('Выслать письмо заново')}
+                </Button>
+              )}
+              <Button variant={moved.mail ? 'outline' : 'default'} size="sm" onClick={onClose}>
                 {t('Закрыть')}
               </Button>
             </div>

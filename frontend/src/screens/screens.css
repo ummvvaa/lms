@@ -65,9 +65,23 @@
   width: 100%;
 }
 
-.login__hint {
+/* чип подсказки — фразой целиком: у Badge высота строки, запрет переноса и
+   inline-flex (текст — флекс-элемент, уже своей длины не сжимается), и длинный
+   отказ («Слишком много попыток…») уходил за край карточки на телефоне;
+   общее `[data-slot='badge']` из base.css грузится позже — нужен его же атрибут */
+[data-slot='badge'].login__hint {
   font-size: var(--type-note);
   margin-top: calc(var(--space) * 3);
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: calc(var(--space) * 2) calc(var(--space) * 3);
+  /* в несколько строк пилюля срезала бы буквы по углам: радиус поля и кнопки */
+  border-radius: var(--radius-row);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: var(--leading-body);
+  text-align: left;
 }
 
 /* тихие ссылки под кнопкой: без рамки, без разделителя; выпускник — мельче */
