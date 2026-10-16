@@ -81,21 +81,33 @@ def base_login(first_name: str, last_name: str) -> str:
     return ".".join(parts) or "uchenik"
 
 
-def make_login(first_name: str, last_name: str, *, taken: set[str] | None = None) -> str:
+def make_login(first_name: str, last_name: str, *, taken: set[str] | None = None, exclude: int | None = None) -> str:
     """Свободный логин: при совпадении — с цифрой, начиная с 2.
 
     `taken` — логины, уже выданные в этом же заходе, но ещё не сохранённые:
-    два тёзки в одном списке не должны получить один логин.
+    два тёзки в одном списке не должны получить один логин. `exclude` —
+    учётная запись, которой логин пересчитывают: свой логин ей не помеха.
     """
     from accounts.models import User
 
     base = base_login(first_name, last_name)
     taken = {value.lower() for value in (taken or set())}
+    others = User.objects.exclude(pk=exclude) if exclude else User.objects.all()
     candidate, number = base, 1
-    while candidate in taken or User.objects.filter(login__iexact=candidate).exists():
+    while candidate in taken or others.filter(login__iexact=candidate).exists():
         number += 1
         candidate = f"{base}{number}"
     return candidate
+
+
+def fits(login: str, first_name: str, last_name: str) -> bool:
+    """Логин уже собран из этих имени и фамилии — с цифрой дубля или без.
+
+    «Алия» → «Әлия» даёт ту же латиницу, и логин остаться должен; цифра
+    тёзки («aliya.akhmetova2») от правки отчества или телефона не растёт.
+    """
+    base = re.escape(base_login(first_name, last_name))
+    return re.fullmatch(rf"{base}(?:[2-9]|[1-9]\d+)?", (login or "").lower()) is not None
 
 
 def normalize(identifier: str) -> str:

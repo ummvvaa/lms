@@ -17166,3 +17166,7 @@ msgstr "сабаққа қатысу"
 #: academics/schedule_import.py
 msgid "тема"
 msgstr "тақырып"
+
+#: accounts/views.py
+msgid "Логин сменился: теперь {now}, прежний {was} не действует"
+msgstr "Логин ауысты: енді {now}, бұрынғы {was} жарамсыз"

@@ -16,6 +16,9 @@
 * год выпуска считается от параллели группы и руками не вводится;
 * без почты учётная запись получает логин «имя.фамилия»
   (`accounts.logins.make_login`); сотруднику логин можно задать и руками;
+* логин следует за ФИО (решение владельца, 16.10.2026): сменились имя или
+  фамилия у учётки без почты — логин пересчитывается тем же правилом и
+  сохраняется вместе с ФИО, прежний больше не действует; пароль не меняется;
 * личная почта, внесённая администратором, остаётся неподтверждённой, пока
   человек не откроет ссылку из письма, — иначе чужой адрес с опечаткой стал
   бы дверью в учётную запись;
@@ -34,7 +37,7 @@ from django.utils.translation import gettext as _
 
 from accounts import magic_link, temporary
 from accounts.curators import AssignmentRefused, active_assignments, assign
-from accounts.logins import LOGIN_RE, make_login, normalize
+from accounts.logins import LOGIN_RE, fits, make_login, normalize
 from accounts.models import IdentityProvider, LinkPurpose, Role, User
 from accounts.naming import NameRejected, check_full_name
 from accounts.services import create_user, link_email_identity
@@ -380,9 +383,9 @@ def update(user: User, data: dict[str, Any], *, actor=None) -> dict[str, Any]:
         change_role(user, data["role"], actor=actor)
 
     if user.role == Role.STUDENT:
-        _update_student(user, data, actor=actor)
+        moved = _update_student(user, data, actor=actor)
     else:
-        _update_staff(user, data, actor=actor)
+        moved = _update_staff(user, data, actor=actor)
     _personal_email(user, data)
     _role_fields(user, data, actor=actor)
 
@@ -390,7 +393,7 @@ def update(user: User, data: dict[str, Any], *, actor=None) -> dict[str, Any]:
     if flags:
         _apply(user, flags, actor=actor)
     user.refresh_from_db()
-    return {"login_changed": bool(was_email) and user.email != was_email, "was_email": was_email}
+    return {"login_changed": bool(was_email) and user.email != was_email, "was_email": was_email, "login_moved": moved}
 
 
 def _apply(instance, changes: dict[str, Any], *, actor) -> None:
@@ -400,7 +403,7 @@ def _apply(instance, changes: dict[str, Any], *, actor) -> None:
         raise PersonError(str(error)) from error
 
 
-def _update_student(user: User, data: dict[str, Any], *, actor) -> None:
+def _update_student(user: User, data: dict[str, Any], *, actor) -> dict[str, str] | None:
     student = getattr(user, "student", None)
     if student is None:
         # учётная запись без карточки: править можно только имя учётной записи
@@ -412,7 +415,8 @@ def _update_student(user: User, data: dict[str, Any], *, actor) -> None:
                 raise PersonError(str(error)) from error
         if changes:
             _apply(user, changes, actor=actor)
-        return
+        return None
+    named = (student.last_name, student.first_name)
     changes: dict[str, Any] = {}
     if any(key in data for key in ("last_name", "first_name", "middle_name", "full_name")):
         last, first, middle = _name_parts({**data, "full_name": data.get("full_name")})
@@ -440,21 +444,30 @@ def _update_student(user: User, data: dict[str, Any], *, actor) -> None:
     if changes:
         _apply(student, changes, actor=actor)
         student.refresh_from_db()
-    sync_account(student, actor=actor)
+    return sync_account(student, actor=actor, renamed=named != (student.last_name, student.first_name))
 
 
-def _update_staff(user: User, data: dict[str, Any], *, actor) -> None:
+def _update_staff(user: User, data: dict[str, Any], *, actor) -> dict[str, str] | None:
     changes: dict[str, Any] = {}
+    named: tuple[str, str] | None = None
     if "full_name" in data or "last_name" in data or "first_name" in data:
-        full_name = " ".join(part for part in _name_parts(data) if part) or (data.get("full_name") or "").strip()
+        last, first, middle = _name_parts(data)
+        full_name = " ".join(part for part in (last, first, middle) if part) or (data.get("full_name") or "").strip()
         if not full_name:
             raise PersonError(_("Нужны фамилия и имя"))
+        # прежнее ФИО — как записано, без проверки слов: её проходило новое
+        was = (user.full_name or "").split()
+        if (was[0] if was else "", was[1] if len(was) > 1 else "") != (last, first):
+            named = (last, first)
         changes["full_name"] = full_name
+    typed = False
     if "handle" in data or "email" in data:
         email, login = _handle(data, user=user)
         if email:
             changes["email"] = email
         elif login:
+            # логин, вписанный руками в этом же сохранении, сильнее пересчёта
+            typed = login != (user.login or "").lower()
             changes["login"] = login
         elif not user.login:
             raise PersonError(_("Нужна почта или логин — без них человеку нечем войти"))
@@ -462,18 +475,42 @@ def _update_staff(user: User, data: dict[str, Any], *, actor) -> None:
         changes["phone"] = _phone(data)
     if changes:
         _apply(user, changes, actor=actor)
+    if named is None or typed:
+        return None
+    return follow_name(user, first=named[1], last=named[0], actor=actor)
 
 
-def sync_account(student: Student, *, actor=None) -> None:
-    """`User.full_name` и `User.email` ученика — производные от карточки, одно место записи."""
+def follow_name(user: User, *, first: str, last: str, actor=None) -> dict[str, str] | None:
+    """Логин следует за ФИО: пересчитать по имени и фамилии, если он из них не собран.
+
+    Только у учётки без почты: кто входит по почте, тому логин не нужен.
+    Запись прогона (`probe_…`) не трогается — по приставке её находит уборка.
+    Смена пишется в журнал учётки обычной правкой поля: было → стало, кто.
+    """
+    if user.email or not user.login or user.is_probe or fits(user.login, first, last):
+        return None
+    was = user.login
+    _apply(user, {"login": make_login(first, last, exclude=user.pk)}, actor=actor)
+    return {"was": was, "now": user.login}
+
+
+def sync_account(student: Student, *, actor=None, renamed: bool = False) -> dict[str, str] | None:
+    """`User.full_name` и `User.email` ученика — производные от карточки, одно место записи.
+
+    `renamed` — в этой правке сменились имя или фамилия: логин идёт за ними
+    (`follow_name`). Возвращает смену логина, если она была.
+    """
     user = student.user
     if user is None:
-        return
+        return None
     changes: dict[str, Any] = {"full_name": student.full_name}
     if student.email and (user.email or "").lower() != student.email.lower():
         _free_email(student.email, user=user, student=student)
         changes["email"] = student.email
     _apply(user, changes, actor=actor)
+    if not renamed:
+        return None
+    return follow_name(user, first=student.first_name, last=student.last_name, actor=actor)
 
 
 def change_role(user: User, role: str, *, actor=None) -> None:

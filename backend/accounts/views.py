@@ -592,6 +592,13 @@ def user_detail(request, pk: int):
         deactivate(user)
 
     payload = {**UserSerializer(user).data, **people.detail(user)}
+    if result["login_moved"]:
+        # прежний логин больше не находится при входе — сказать об этом прямо
+        moved = result["login_moved"]
+        payload["login_moved"] = {
+            **moved,
+            "detail": _("Логин сменился: теперь {now}, прежний {was} не действует").format(**moved),
+        }
     if result["login_changed"]:
         # ссылка на прежнюю почту больше не придёт — сказать об этом прямо
         payload["login_changed"] = {

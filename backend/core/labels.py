@@ -34,6 +34,7 @@ EXTRA_TITLES: dict[str, tuple[Any, Any]] = {
     "students.StudyGroup.name": (gettext_lazy("Название группы"), gettext_lazy("Группа")),
     "students.StudyGroup.code": (gettext_lazy("Код группы"), gettext_lazy("Код")),
     "accounts.User.email": (gettext_lazy("Почта"), gettext_lazy("Почта")),
+    "accounts.User.login": (gettext_lazy("Логин"), gettext_lazy("Логин")),
     "accounts.User.full_name": (gettext_lazy("Имя и фамилия"), gettext_lazy("Имя")),
     "accounts.User.role": (gettext_lazy("Роль"), gettext_lazy("Роль")),
     "accounts.User.is_active": (gettext_lazy("Доступ включён"), gettext_lazy("Доступ")),

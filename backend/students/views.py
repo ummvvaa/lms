@@ -160,12 +160,14 @@ class StudentViewSet(
         link_student(student)
 
     def perform_update(self, serializer):
+        named = (serializer.instance.last_name, serializer.instance.first_name)
         student = serializer.save()
         link_student(student)
-        # ФИО и почта учётной записи — производные от карточки (решение владельца, 11.10.2026)
+        # ФИО и почта учётной записи — производные от карточки (решение владельца, 11.10.2026);
+        # логин учётки без почты идёт за именем и фамилией (16.10.2026)
         from accounts.people import sync_account
 
-        sync_account(student, actor=self.request.user)
+        sync_account(student, actor=self.request.user, renamed=named != (student.last_name, student.first_name))
 
     def get_queryset(self):
         # ученик видит только себя (инвариант №7), куратор — свои группы

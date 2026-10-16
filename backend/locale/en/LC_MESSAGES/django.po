@@ -17248,3 +17248,7 @@ msgstr "attendance"
 #: academics/schedule_import.py
 msgid "тема"
 msgstr "topic"
+
+#: accounts/views.py
+msgid "Логин сменился: теперь {now}, прежний {was} не действует"
+msgstr "The login has changed: now {now}, the old {was} no longer works"
