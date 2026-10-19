@@ -104,11 +104,11 @@ def test_reminder_delay_is_a_school_setting(year, subjects, teacher, cohorts, ca
     assert tasks.remind_unmarked() == 1
 
 
-def test_curator_reminds_the_teacher_about_an_unmarked_lesson(lesson, teacher, as_curator):
+def test_curator_has_no_reminder_for_the_teacher(lesson, teacher, as_curator):
+    """Напоминания учителю у куратора нет (решение владельца, 19.10.2026): шлюз отвечает 403."""
     response = as_curator.post(f"/api/acad/lessons/{lesson.pk}/remind/", {}, format="json")
-    assert response.status_code == 200
-    note = Notification.objects.get(recipient=teacher, kind=Notification.Kind.LESSON_UNMARKED)
-    assert "Куратор напоминает" in note.text
+    assert response.status_code == 403
+    assert not Notification.objects.filter(recipient=teacher, kind=Notification.Kind.LESSON_UNMARKED).exists()
 
 
 def test_attendance_day_and_month_for_the_curator(lesson, pupils, teacher, boston, calendar, as_teacher, as_curator):

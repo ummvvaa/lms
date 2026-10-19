@@ -34,10 +34,13 @@ def upload(client, data: bytes, *, preview: bool = False):
 def test_only_career_teacher_and_admin_upload(teacher, other_teacher, curator, kymbat, admin, example_bytes):
     assert upload(login(teacher), example_bytes, preview=True).status_code == 200
     assert upload(login(admin), example_bytes).status_code == 201
-    for user in (other_teacher, curator, kymbat):
+    for user in (other_teacher, kymbat):
         response = upload(login(user), example_bytes)
         assert response.status_code == 403, user.role
         assert "учитель профориентации" in response.json()["detail"]
+    # куратору запись в профтесте закрыта шлюзом раньше вьюхи (решение владельца, 19.10.2026)
+    refused = upload(login(curator), example_bytes)
+    assert refused.status_code == 403 and "куратору не открыт" in refused.json()["detail"]
     assert CareerTest.objects.count() == 1
 
 
