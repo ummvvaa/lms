@@ -39,6 +39,7 @@ import { usePhone } from '../../phone'
 import GradesTab from '../academics/GradesTab'
 import StudentCareerBlock from '../career/StudentCareerBlock'
 import ContactsBlock from './ContactsBlock'
+import { CURATOR_HIDDEN } from '../../layout/nav'
 import { CallDialog, EscalateStudentDialog, TransferDialog } from './Dialogs'
 import { DocumentEntry, ExamsEntry, PortfolioEntry, UniversitiesEntry } from './DirectEntry'
 import DisciplineBlock from './DisciplineBlock'
@@ -550,19 +551,24 @@ export default function CuratorCard() {
         actions={
           <>
             {/* кнопки отдельно от окон (фаза 75): на телефоне они уходят
-                в меню «Действия», а окна остаются у экрана */}
-            <Button variant="outline" size="sm" onClick={() => setDialog('call')}>
-              {t('Родителям')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setDialog('escalate')}>
-              {t('Передать')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setDialog('report')}>
-              {t('Отчёт родителям')}
-            </Button>
-            <Button variant="outline" size="sm" disabled={passwordLink.pending} onClick={passwordLink.open}>
-              {t('Ссылка на пароль')}
-            </Button>
+                в меню «Действия», а окна остаются у экрана. Четыре кнопки спрятаны
+                переключателем `CURATOR_HIDDEN.cardActions` (решение владельца, 19.10.2026) */}
+            {!CURATOR_HIDDEN.cardActions && (
+              <>
+                <Button variant="outline" size="sm" onClick={() => setDialog('call')}>
+                  {t('Родителям')}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setDialog('escalate')}>
+                  {t('Передать')}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setDialog('report')}>
+                  {t('Отчёт родителям')}
+                </Button>
+                <Button variant="outline" size="sm" disabled={passwordLink.pending} onClick={passwordLink.open}>
+                  {t('Ссылка на пароль')}
+                </Button>
+              </>
+            )}
             <Button variant="outline" size="sm" onClick={() => setDialog('transfer')}>
               {t('Перевести в группу')}
             </Button>

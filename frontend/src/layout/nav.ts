@@ -115,8 +115,19 @@ const HOMEWORK_REVIEW: NavItem = { path: '/homework-review', label: tk('Пров
  */
 export function homeworkReviewOpen(role: Role, teaches = false): boolean {
   if (['teacher', 'director_exam', 'admin'].includes(role)) return true
+  // куратору «Проверка ДЗ» спрятана переключателем (решение владельца, 19.10.2026)
+  if (role === 'curator' && CURATOR_HIDDEN.homeworkReview) return false
   return teaches && role !== 'student'
 }
+
+/**
+ * Что спрятано у куратора одним переключателем (решение владельца, 19.10.2026):
+ * код остаётся, вернуть — поменять значение. `homeworkReview` — пункт
+ * «Проверка ДЗ», «Ещё» на телефоне и адрес; `cardActions` — кнопки шапки
+ * карточки ученика «Родителям», «Передать», «Отчёт родителям», «Ссылка
+ * на пароль». Серверные ручки открыты: отчёт нужен экрану «Отчёты родителям».
+ */
+export const CURATOR_HIDDEN = { homeworkReview: true, cardActions: true }
 
 /** Аналитика использования доступна администратору и директору школы. */
 export function usageOpen(role: Role): boolean {

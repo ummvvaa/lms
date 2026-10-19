@@ -1,17 +1,17 @@
 /**
  * Успеваемость группы у куратора: ученики × предметы, посещаемость,
- * кому нужна помощь, журналы учителей с неотмеченными уроками.
+ * кому нужна помощь. Про учителей здесь ничего нет (решение владельца,
+ * 19.10.2026): неотмеченные уроки и напоминания — дело Кымбат и администратора.
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { toast } from 'sonner'
-import { useGroupGrades, useRemindTeacher, type GroupGrades } from '../../api/academics'
+import { useGroupGrades, type GroupGrades } from '../../api/academics'
 import DataTable, { type Column } from '../../components/DataTable'
 import { ExportPreview } from '../../components/ExportPreview'
 import { Row, Rows, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { plural, t, tn } from '../../i18n'
+import { plural, t } from '../../i18n'
 import GroupSwitch from '../curator/GroupSwitch'
 import { useGroup, useMyGroups } from '../curator/state'
 import { PeriodSwitch, subjectHead } from './shared'
@@ -25,7 +25,6 @@ export default function CuratorGrades() {
   const picked = group === 'all' ? (groups[0]?.code ?? '') : group
   const [period, setPeriod] = useState('')
   const { data, isLoading, error } = useGroupGrades(picked, period, ready && picked !== '')
-  const remind = useRemindTeacher()
   const [exporting, setExporting] = useState(false)
   if (!ready || (isLoading && !data)) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
@@ -76,57 +75,34 @@ export default function CuratorGrades() {
         }
       />
       {switcher}
-      <div className="acad__toolbar">
-        <PeriodSwitch value={data.period.code} periods={data.periods} onChange={setPeriod} />
-      </div>
-      <StatRow>
-        <Kpi label={t('Посещаемость')} value={data.kpis.attendance !== null ? `${data.kpis.attendance} %` : null} none={t('нет данных')} />
-        <Kpi label={t('Двойка в прогнозе')} value={data.kpis.risk || null} none={t('нет')} tone={data.kpis.risk ? 'bad' : undefined} note={plural(data.kpis.risk, 'ученик|ученика|учеников')} />
-        <Kpi label={t('Пропуски без причины')} value={data.kpis.absent || null} none={t('нет')} action={data.kpis.absent ? { label: t('Оформить'), to: '/attendance' } : undefined} />
-        <Kpi label={t('Не отмечено учителями')} value={data.kpis.unmarked || null} none={t('всё отмечено')} note={tn(data.kpis.unmarked_days, 'за {n} день|за {n} дня|за {n} дней')} tone={data.kpis.unmarked ? 'warn' : undefined} />
-      </StatRow>
-      <div className="card">
-        <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={(row) => navigate(`/students/${row.id}?tab=grades`)} fit />
-      </div>
-      <div className="acad__cols acad__cols--even">
-        <div className="acad__stack">
-          <DataCard title={t('Кому нужна помощь')} count={data.need_help.length || undefined} empty={data.need_help.length === 0 && t('все справляются')}>
-            <Rows>
-              {data.need_help.map((row) => (
-                <Row
-                  key={row.id}
-                  avatar={row.full_name}
-                  tone="warn"
-                  title={row.full_name}
-                  note={[row.low.join(', '), row.attendance_pct !== null && row.attendance_pct < data.attendance_below ? t('посещаемость {pct} %', { pct: row.attendance_pct }) : ''].filter(Boolean).join(' · ')}
-                  to={`/students/${row.id}?tab=grades`}
-                />
-              ))}
-            </Rows>
-          </DataCard>
+      {/* один столбик с общим шагом: панель периода, числа, таблица и карточка
+          не наезжают друг на друга ни на 1440, ни на 390 */}
+      <div className="acad__stack">
+        <div className="acad__toolbar">
+          <PeriodSwitch value={data.period.code} periods={data.periods} onChange={setPeriod} />
         </div>
-        <div className="acad__stack">
-          <DataCard title={t('Журналы учителей')} count={data.journals.length}>
-            <Rows>
-              {data.journals.map((course) => (
-                <Row
-                  key={course.id}
-                  icon="book"
-                  tone={course.unmarked ? 'warn' : 'good'}
-                  title={`${course.subject.short_title} · ${course.teacher?.short ?? ''}`}
-                  note={`${course.cohort.name} · ${course.unmarked ? tn(course.unmarked, 'не отмечен {n} урок|не отмечено {n} урока|не отмечено {n} уроков') : t('всё отмечено')}`}
-                  acts={
-                    course.unmarked && course.teacher ? (
-                      <Button variant="secondary" size="sm" onClick={() => remind.mutate(course.teacher?.id ?? 0, { onSuccess: () => toast.success(t('Напоминание ушло')), onError: (e) => toast.error(e.message) })}>
-                        {t('Напомнить')}
-                      </Button>
-                    ) : undefined
-                  }
-                />
-              ))}
-            </Rows>
-          </DataCard>
+        <StatRow>
+          <Kpi label={t('Посещаемость')} value={data.kpis.attendance !== null ? `${data.kpis.attendance} %` : null} none={t('нет данных')} />
+          <Kpi label={t('Двойка в прогнозе')} value={data.kpis.risk || null} none={t('нет')} tone={data.kpis.risk ? 'bad' : undefined} note={plural(data.kpis.risk, 'ученик|ученика|учеников')} />
+          <Kpi label={t('Пропуски без причины')} value={data.kpis.absent || null} none={t('нет')} action={data.kpis.absent ? { label: t('Оформить'), to: '/attendance' } : undefined} />
+        </StatRow>
+        <div className="card">
+          <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={(row) => navigate(`/students/${row.id}?tab=grades`)} fit />
         </div>
+        <DataCard title={t('Кому нужна помощь')} count={data.need_help.length || undefined} empty={data.need_help.length === 0 && t('все справляются')}>
+          <Rows>
+            {data.need_help.map((row) => (
+              <Row
+                key={row.id}
+                avatar={row.full_name}
+                tone="warn"
+                title={row.full_name}
+                note={[row.low.join(', '), row.attendance_pct !== null && row.attendance_pct < data.attendance_below ? t('посещаемость {pct} %', { pct: row.attendance_pct }) : ''].filter(Boolean).join(' · ')}
+                to={`/students/${row.id}?tab=grades`}
+              />
+            ))}
+          </Rows>
+        </DataCard>
       </div>
       {exporting && <ExportPreview path={`/acad/grades/group/export/?group=${encodeURIComponent(picked)}&period=${encodeURIComponent(data.period.code)}`} fallback={t('успеваемость-группы.xlsx')} title={t('Выгрузка успеваемости группы')} onClose={() => setExporting(false)} />}
     </div>

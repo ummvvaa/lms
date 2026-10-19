@@ -851,7 +851,6 @@ export const en: Record<string, string> = {
   'Журналов нет': 'No gradebooks',
   'Журналы': 'Gradebooks',
   'Журналы без оценок': 'Gradebooks without marks',
-  'Журналы учителей': 'Teachers’ gradebooks',
   'Жёсткий график': 'Rigid schedule',
   'ведёт тесты': 'manages tests',
   'вернуть вход можно в «Пользователях» по одному': 'access can be restored one by one in “Users”',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Role } from '../api/types'
-import { curatorMayOpen, homeworkReviewOpen, navFor, tabsFor, usageOpen } from './nav'
+import { CURATOR_HIDDEN, curatorMayOpen, homeworkReviewOpen, navFor, tabsFor, usageOpen } from './nav'
 
 const reviewPath = '/homework-review'
 const reviewPages = [reviewPath, `${reviewPath}/42`]
@@ -16,16 +16,28 @@ describe('профтест в меню ученика', () => {
 })
 
 describe('проверка ДЗ в навигации', () => {
-  it('куратор со своими уроками видит пункт и проходит оба шлюза страницы', () => {
+  it('куратору «Проверка ДЗ» спрятана переключателем, даже со своими уроками', () => {
     const items = navFor('curator', false, { teaches: true })
-    expect(items.filter((item) => item.path === reviewPath)).toHaveLength(1)
-    // В App адрес проверяют и общий шлюз куратора, и право на проверку ДЗ.
-    for (const path of reviewPages) {
-      expect(curatorMayOpen(path)).toBe(true)
-      expect(homeworkReviewOpen('curator', true)).toBe(true)
-    }
-    // На телефоне новый пункт доступен через «Ещё», четвёрка вкладок прежняя.
+    expect(items.some((item) => item.path === reviewPath)).toBe(false)
+    expect(homeworkReviewOpen('curator', true)).toBe(false)
     expect(tabsFor('curator', items).map((item) => item.path)).toEqual(['/dashboard', '/queue', '/students', '/documents'])
+  })
+
+  it('переключатель возвращает куратору пункт и адрес, не трогая остальных', () => {
+    CURATOR_HIDDEN.homeworkReview = false
+    try {
+      const items = navFor('curator', false, { teaches: true })
+      expect(items.filter((item) => item.path === reviewPath)).toHaveLength(1)
+      for (const path of reviewPages) {
+        expect(curatorMayOpen(path)).toBe(true)
+        expect(homeworkReviewOpen('curator', true)).toBe(true)
+      }
+      expect(homeworkReviewOpen('curator', false)).toBe(false)
+    } finally {
+      CURATOR_HIDDEN.homeworkReview = true
+    }
+    expect(homeworkReviewOpen('teacher')).toBe(true)
+    expect(homeworkReviewOpen('director_behavior', true)).toBe(true)
   })
 
   it('куратор без уроков не получает пункт или доступ по прямому адресу', () => {
