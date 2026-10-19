@@ -125,9 +125,11 @@ export function homeworkReviewOpen(role: Role, teaches = false): boolean {
  * код остаётся, вернуть — поменять значение. `homeworkReview` — пункт
  * «Проверка ДЗ», «Ещё» на телефоне и адрес; `cardActions` — кнопки шапки
  * карточки ученика «Родителям», «Передать», «Отчёт родителям», «Ссылка
- * на пароль». Серверные ручки открыты: отчёт нужен экрану «Отчёты родителям».
+ * на пароль»; `lessonAttendance` — виды «День / Месяц» по отметкам учителей на
+ * «Посещаемости»: у куратора вместо них свой экран — отметка утром и аналитика.
+ * Серверные ручки открыты: отчёт нужен экрану «Отчёты родителям».
  */
-export const CURATOR_HIDDEN = { homeworkReview: true, cardActions: true }
+export const CURATOR_HIDDEN = { homeworkReview: true, cardActions: true, lessonAttendance: true }
 
 /** Аналитика использования доступна администратору и директору школы. */
 export function usageOpen(role: Role): boolean {

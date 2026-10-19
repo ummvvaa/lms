@@ -5216,10 +5216,14 @@ export function useSaveBlockRow(studentId: number | null, kind: 'attempt' | 'lin
 }
 
 /** Посещаемость: лист группы за день (фаза 66). */
+export type DayMark = 'present' | 'absent' | 'late'
+
 export interface AttendanceRow {
   student: number
   full_name: string
-  present: boolean
+  /** в школе, нет или опоздал — без минут */
+  mark: DayMark
+  /** комментарий куратора у «нет» и «опоздал» */
   reason: string
   marked: boolean
 }
@@ -5234,6 +5238,7 @@ export interface AttendanceSheet {
   late: boolean
   rows: AttendanceRow[]
   absent: number
+  late_count: number
   total: number
   written?: number
   /** отмечать может куратор своей группы и только за сегодня; остальные читают */
@@ -5270,6 +5275,58 @@ export interface AttendanceAbsences {
   rows: AbsenceRow[]
 }
 
+/** Одна отметка сразу при нажатии: строка, подпись листа и числа дня. */
+export function useMarkAttendance() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { group: number; student: number; mark: DayMark; reason?: string }) =>
+      post<{ row: AttendanceRow; noted: { by: string; at: string } | null; absent: number; late_count: number }>('/attendance/mark/', input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attendance-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['attendance-journal'] })
+    },
+  })
+}
+
+/** Аналитика по отметкам куратора за период. */
+export interface AttendanceStatsRow {
+  id: number
+  full_name: string
+  group: string
+  days: number
+  present: number
+  absent: number
+  late: number
+  percent: number | null
+  dates: { date: string; mark: DayMark; reason: string }[]
+}
+
+export interface AttendanceStats {
+  group: string
+  groups: { id: number; code: string; language: string }[]
+  period: { code: string; from: string; to: string; title: string }
+  periods: { code: string; title: string }[]
+  words: Record<DayMark, string>
+  rows: AttendanceStatsRow[]
+  totals: { days: number; absent: number; late: number; percent: number | null }
+}
+
+export const statsQuery = (params: { group: string; period: string; from?: string; to?: string }): string => {
+  const query = new URLSearchParams({ group: params.group || 'all', period: params.period })
+  if (params.period === 'custom') {
+    if (params.from) query.set('from', params.from)
+    if (params.to) query.set('to', params.to)
+  }
+  return `?${query.toString()}`
+}
+
+export const useAttendanceStats = (params: { group: string; period: string; from?: string; to?: string }) =>
+  useQuery({
+    queryKey: ['attendance-stats', params],
+    queryFn: () => get<AttendanceStats>(`/attendance/stats/${statsQuery(params)}`),
+    placeholderData: (prev) => prev,
+  })
+
 export const absencesQuery = (params: { from: string; to: string; group: string }): string => {
   const query = new URLSearchParams({ from: params.from, to: params.to })
   if (params.group) query.set('group', params.group)
@@ -5284,7 +5341,7 @@ export const useAttendanceAbsences = (params: { from: string; to: string; group:
   })
 
 /** Журнал посещаемости группы за месяц: ученики × дни. */
-export type AttendanceCell = 'present' | 'absent' | 'off' | 'unmarked'
+export type AttendanceCell = 'present' | 'absent' | 'late' | 'off' | 'unmarked'
 
 export interface AttendanceJournal {
   group: number | null

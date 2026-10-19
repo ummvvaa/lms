@@ -35,6 +35,9 @@ import { usePhone } from '../phone'
 import { ExcuseDialog } from './academics/GradesTab'
 import { absentWords, dateShort, dateWords, GroupPick, lateAsAbsentWords } from './academics/shared'
 import { formatMonthYear, formatTime } from '../lib/format'
+import { useAuth } from '../auth/AuthContext'
+import { CURATOR_HIDDEN } from '../layout/nav'
+import CuratorAttendance from './CuratorAttendance'
 import { useTrack } from '../usage/context'
 import './attendance.css'
 
@@ -89,7 +92,15 @@ const monthTitle = (month: string): string => {
   return formatMonthYear(`${year}-${String(number).padStart(2, '0')}-01`)
 }
 
-export default function Attendance() {
+/** Куратору — свой экран (решение владельца, 19.10.2026): отметка утром и аналитика;
+ *  виды по урокам у него спрятаны переключателем. Остальным — экран по урокам. */
+export default function AttendanceScreen() {
+  const { me } = useAuth()
+  if (me?.role === 'curator' && CURATOR_HIDDEN.lessonAttendance) return <CuratorAttendance />
+  return <LessonAttendance />
+}
+
+function LessonAttendance() {
   // группа, вид и день живут в адресе: из карточки ученика сюда приходят
   // ссылкой на нужный день, и «Назад» возвращает ровно туда
   const [params, setParams] = useSearchParams()
@@ -480,7 +491,7 @@ function CuratorMark({ groupId, groupCode }: { groupId: number | null; groupCode
   if (sheet.error) return <ErrorNote error={sheet.error} />
   const data = sheet.data
   if (!data) return null
-  const absent = touched ?? new Set(data.rows.filter((row) => !row.present).map((row) => row.student))
+  const absent = touched ?? new Set(data.rows.filter((row) => row.mark === 'absent').map((row) => row.student))
   const toggle = (student: number, on: boolean) => {
     const next = new Set(absent)
     if (on) next.add(student)
@@ -492,7 +503,7 @@ function CuratorMark({ groupId, groupCode }: { groupId: number | null; groupCode
       {
         group: data.group,
         date: today,
-        rows: data.rows.map((row) => ({ ...row, present: !absent.has(row.student), reason: '' })),
+        rows: data.rows.map((row) => ({ ...row, mark: absent.has(row.student) ? 'absent' : row.mark === 'late' ? 'late' : 'present', reason: '' })),
       },
       {
         onSuccess: () => {
@@ -525,7 +536,7 @@ function CuratorMark({ groupId, groupCode }: { groupId: number | null; groupCode
               avatar={row.full_name}
               title={row.full_name}
               tone={absent.has(row.student) ? 'bad' : 'good'}
-              value={data.may_mark ? undefined : absent.has(row.student) ? t('не был') : t('был')}
+              value={data.may_mark ? undefined : row.mark === 'late' ? t('опоздал') : absent.has(row.student) ? t('не был') : t('был')}
               right={
                 data.may_mark ? (
                   <Field kind="checkbox" name={`absent-${row.student}`} label={t('Нет в школе')} checked={absent.has(row.student)} onChange={(on) => toggle(row.student, on)} />
@@ -648,7 +659,7 @@ function MarkJournal({ groupId, groupCode }: { groupId: number | null; groupCode
             locked={(_row, column) => column.key !== 's-sum' && !data.days[dayIndex.get(String(column.key)) ?? -1]?.school_day}
             tone={(row, column) => {
               const cell = byId.get(Number(row.key))?.cells[dayIndex.get(String(column.key)) ?? -1]
-              return cell === 'absent' ? 'bad' : cell === 'present' ? 'good' : undefined
+              return cell === 'absent' ? 'bad' : cell === 'late' ? 'warn' : cell === 'present' ? 'good' : undefined
             }}
             cell={(row, column) => {
               const line = byId.get(Number(row.key))
@@ -656,6 +667,7 @@ function MarkJournal({ groupId, groupCode }: { groupId: number | null; groupCode
               if (column.key === 's-sum') return <b className="num">{line.summary}</b>
               const cell = line.cells[dayIndex.get(String(column.key)) ?? -1]
               if (cell === 'absent') return <b className="att__mark att__mark--absent">{t('н')}</b>
+              if (cell === 'late') return <b className="att__mark att__mark--late">{t('оп')}</b>
               if (cell === 'present') return <span className="att__dot">{'·'}</span>
               return null
             }}

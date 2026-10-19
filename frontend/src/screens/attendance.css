@@ -57,3 +57,71 @@
     width: 100%;
   }
 }
+
+/* Отметка куратора: строка — кнопка во всю ширину, нажимать пальцем удобно (390) */
+.cmark {
+  display: flex;
+  flex-direction: column;
+}
+
+.cmark__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 2) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.cmark__row:last-child {
+  border-bottom: 0;
+}
+
+.cmark__tap {
+  flex: 1 1 calc(var(--space) * 60);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 3);
+  min-height: calc(var(--space) * 11);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cmark__tap:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-row);
+}
+
+.cmark__name {
+  font-weight: 600;
+}
+
+.cmark__state {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  white-space: nowrap;
+}
+
+.cmark__saved {
+  font-size: var(--type-caps);
+}
+
+.cmark__reason {
+  flex: 1 1 calc(var(--space) * 60);
+  max-width: calc(var(--space) * 90);
+}
+
+@media (max-width: 759px) {
+  .cmark__reason {
+    max-width: none;
+    width: 100%;
+  }
+}
