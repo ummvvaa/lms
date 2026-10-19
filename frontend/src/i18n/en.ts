@@ -4075,4 +4075,9 @@ export const en: Record<string, string> = {
   'отметки за месяц': 'marks for the month',
   'отметок за этот месяц не было': 'no marks this month',
   'Отметки куратора за месяц': 'Curator\'s marks for the month',
+  'Перевести в группу': 'Move to a group',
+  'Групп той же параллели для перевода нет': 'No groups of the same parallel to move to',
+  'Куда перевести': 'Where to move',
+  'Ученик сразу попадёт в уроки новой группы; оценки и отметки остаются у него. Перевод запишется в журнал обеих групп.': 'The student joins the new group\'s lessons at once; grades and marks stay with them. The transfer is recorded in both groups\' journals.',
+  '{name} переведён в {group}': '{name} moved to {group}',
 }

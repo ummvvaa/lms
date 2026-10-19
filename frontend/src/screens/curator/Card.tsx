@@ -39,7 +39,7 @@ import { usePhone } from '../../phone'
 import GradesTab from '../academics/GradesTab'
 import StudentCareerBlock from '../career/StudentCareerBlock'
 import ContactsBlock from './ContactsBlock'
-import { CallDialog, EscalateStudentDialog } from './Dialogs'
+import { CallDialog, EscalateStudentDialog, TransferDialog } from './Dialogs'
 import { DocumentEntry, ExamsEntry, PortfolioEntry, UniversitiesEntry } from './DirectEntry'
 import DisciplineBlock from './DisciplineBlock'
 import DocumentPreview, { STATE_TITLE, STATE_TONE, type PreviewTarget } from './DocumentPreview'
@@ -515,7 +515,7 @@ export default function CuratorCard() {
   const move = useCuratorTaskStatus()
   const queryClient = useQueryClient()
   // какое из окон шапки открыто: кнопки на телефоне лежат в меню «Действия»
-  const [dialog, setDialog] = useState<'call' | 'task' | 'escalate' | 'report' | null>(null)
+  const [dialog, setDialog] = useState<'call' | 'task' | 'escalate' | 'report' | 'transfer' | null>(null)
   const passwordLink = usePasswordLink(studentId)
 
   if (isLoading) return <Loading kind="cards" />
@@ -563,6 +563,9 @@ export default function CuratorCard() {
             <Button variant="outline" size="sm" disabled={passwordLink.pending} onClick={passwordLink.open}>
               {t('Ссылка на пароль')}
             </Button>
+            <Button variant="outline" size="sm" onClick={() => setDialog('transfer')}>
+              {t('Перевести в группу')}
+            </Button>
             {/* задачи плана — у 11: у 8–10 роадмапа нет (`core/parallels.py`) */}
             {data.parallel === 11 && (
               <Button size="sm" onClick={() => setDialog('task')}>
@@ -575,6 +578,7 @@ export default function CuratorCard() {
       {passwordLink.dialog}
       {dialog === 'report' && <BuildReportDialog student={data.id} studentName={data.full_name} onClose={() => setDialog(null)} />}
       <CallDialog card={data} open={dialog === 'call'} onOpenChange={(on) => setDialog(on ? 'call' : null)} />
+      <TransferDialog card={data} open={dialog === 'transfer'} onOpenChange={(on) => setDialog(on ? 'transfer' : null)} />
       <TaskDialog
         groups={[]}
         student={data.id}

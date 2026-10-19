@@ -10,9 +10,11 @@
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useEscalateStudent, useEscalateSuggestion, useParentCall, type CuratorCard } from '../../api/hooks'
+import { useNavigate } from 'react-router'
+import { useEscalateStudent, useEscalateSuggestion, useParentCall, useTransferStudent, type CuratorCard } from '../../api/hooks'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
+import { SelectField } from '../../components/SelectField'
 import { Row, Rows } from '../../components/patterns'
 import { Chip } from '../../components/ui'
 import { Button } from '../../components/ui/button'
@@ -37,6 +39,65 @@ function useOpenState(outside: boolean | undefined, onChange?: (open: boolean) =
 export interface OwnedDialog {
   open?: boolean
   onOpenChange?: (open: boolean) => void
+}
+
+/** Перевод ученика в другую группу той же параллели (решение владельца, 19.10.2026):
+ *  без подтверждения второго куратора; ученик сразу в уроках новой группы. */
+export function TransferDialog({ card, open: outside, onOpenChange }: { card: CuratorCard } & OwnedDialog) {
+  const { open, setOpen, controlled } = useOpenState(outside, onOpenChange)
+  const navigate = useNavigate()
+  const transfer = useTransferStudent()
+  const targets = card.transfer_targets ?? []
+  const [group, setGroup] = useState('')
+  const picked = group || targets[0]?.code || ''
+  return (
+    <>
+      {!controlled && (
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+          {t('Перевести в группу')}
+        </Button>
+      )}
+      {open && (
+        <Modal title={t('Перевести в группу')} note={`${card.full_name} · ${card.group}`} onClose={() => setOpen(false)}>
+          {targets.length === 0 ? (
+            <p className="t-note">{t('Групп той же параллели для перевода нет')}</p>
+          ) : (
+            <>
+              <SelectField name="group" aria-label={t('Куда перевести')} value={picked} onChange={(event) => setGroup(event.target.value)}>
+                {targets.map((row) => (
+                  <option key={row.id} value={row.code}>
+                    {row.code}
+                  </option>
+                ))}
+              </SelectField>
+              <p className="t-note">{t('Ученик сразу попадёт в уроки новой группы; оценки и отметки остаются у него. Перевод запишется в журнал обеих групп.')}</p>
+              <div className="acad__actions">
+                <Button
+                  disabled={transfer.isPending || !picked}
+                  onClick={() =>
+                    transfer.mutate(
+                      { student: card.id, group: picked },
+                      {
+                        onSuccess: (result) => {
+                          toast.success(t('{name} переведён в {group}', { name: card.full_name, group: result.group }))
+                          setOpen(false)
+                          // ученик ушёл к другому куратору — его карточки у этого куратора больше нет
+                          if (!result.still_mine) navigate('/students')
+                        },
+                        onError: (error) => toast.error(error.message),
+                      },
+                    )
+                  }
+                >
+                  {t('Перевести')}
+                </Button>
+              </div>
+            </>
+          )}
+        </Modal>
+      )}
+    </>
+  )
 }
 
 export function CallDialog({ card, open: outside, onOpenChange }: { card: CuratorCard } & OwnedDialog) {

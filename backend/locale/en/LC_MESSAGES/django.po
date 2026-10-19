@@ -17300,3 +17300,27 @@ msgstr "the morning mark is set by the group's curator; the administrator reads 
 #: students/discipline_views.py
 msgid "отсутствующие-{since}-{until}.xlsx"
 msgstr "absent-{since}-{until}.xlsx"
+
+#: core/curator.py
+msgid "Такой учебной группы нет"
+msgstr "There is no such study group"
+
+#: core/curator.py
+msgid "Ученик уже в этой группе"
+msgstr "The student is already in this group"
+
+#: core/curator.py
+msgid "Переводить можно только в группу той же параллели ({parallel})"
+msgstr "Transfers are allowed only to a group of the same parallel ({parallel})"
+
+#: core/curator.py
+msgid "переведён из {was} в {now}"
+msgstr "moved from {was} to {now}"
+
+#: core/labels.py
+msgid "Переведён в другую группу"
+msgstr "Moved to another group"
+
+#: core/labels.py
+msgid "Перевод в группу"
+msgstr "Group transfer"

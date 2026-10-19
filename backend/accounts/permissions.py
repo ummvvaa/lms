@@ -231,6 +231,8 @@ CURATOR_WRITE_ROUTES = frozenset(
         # ссылка на пароль ученику своей группы — на экране, с записью в журнал
         "student-password-link",
         "curator-escalate",
+        # перевод ученика своей группы в другую группу той же параллели
+        "curator-transfer",
         "note-list",
         "note-detail",
         "suggestion-escalate",
@@ -401,6 +403,7 @@ ADMIN_CLOSED_ROUTES: dict[str, str] = {
     "curator-profile": CURATOR_CABINET,
     "curator-documents": CURATOR_CABINET,
     "curator-documents-export": CURATOR_CABINET,
+    "curator-transfer": CURATOR_CABINET,
     "curator-journal": CURATOR_CABINET,
     "curator-journal-export": CURATOR_CABINET,
     # кабинет ученика: то, что он видит о себе

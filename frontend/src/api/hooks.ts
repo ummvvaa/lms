@@ -5009,6 +5009,8 @@ export interface CuratorStudentRow {
 export interface CuratorCard {
   id: number
   full_name: string
+  /** группы той же параллели, куда куратор вправе перевести ученика */
+  transfer_targets: { id: number; code: string }[]
   parallel: number
   /** ведётся ли поступление: у 8–10 — нет, и вкладки поступления скрыты */
   has_admission: boolean
@@ -5624,6 +5626,20 @@ export function useParentCall() {
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['curator-notes', variables.student] })
       void queryClient.invalidateQueries({ queryKey: ['curator-card', variables.student] })
+    },
+  })
+}
+
+/** Перевести ученика своей группы в другую группу той же параллели. */
+export function useTransferStudent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ student, group }: { student: number; group: string }) =>
+      post<{ group: string; was: string; still_mine: boolean }>(`/curator/students/${student}/transfer/`, { group }),
+    onSuccess: () => {
+      for (const key of ['curator-card', 'curator-students', 'curator-overview', 'curator-profile', 'curator-journal', 'acad']) {
+        void queryClient.invalidateQueries({ queryKey: [key] })
+      }
     },
   })
 }

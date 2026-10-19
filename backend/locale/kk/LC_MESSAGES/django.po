@@ -17218,3 +17218,27 @@ msgstr "таңертеңгі белгіні өз тобының кураторы
 #: students/discipline_views.py
 msgid "отсутствующие-{since}-{until}.xlsx"
 msgstr "болмагандар-{since}-{until}.xlsx"
+
+#: core/curator.py
+msgid "Такой учебной группы нет"
+msgstr "Мұндай оқу тобы жоқ"
+
+#: core/curator.py
+msgid "Ученик уже в этой группе"
+msgstr "Оқушы қазірдің өзінде осы топта"
+
+#: core/curator.py
+msgid "Переводить можно только в группу той же параллели ({parallel})"
+msgstr "Тек сол параллельдің ({parallel}) тобына ауыстыруға болады"
+
+#: core/curator.py
+msgid "переведён из {was} в {now}"
+msgstr "{was} тобынан {now} тобына ауыстырылды"
+
+#: core/labels.py
+msgid "Переведён в другую группу"
+msgstr "Басқа топқа ауыстырылды"
+
+#: core/labels.py
+msgid "Перевод в группу"
+msgstr "Топқа ауыстыру"

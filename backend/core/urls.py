@@ -29,6 +29,7 @@ urlpatterns = [
     path("curator/documents/<int:pk>/revoke/", curator.document_revoke, name="curator-document-revoke"),
     path("curator/students/<int:pk>/call/", curator.parent_call, name="curator-call"),
     path("curator/students/<int:pk>/escalate/", curator.escalate_student, name="curator-escalate"),
+    path("curator/students/<int:pk>/transfer/", curator.transfer_student, name="curator-transfer"),
     path("curator/journal/", curator.journal, name="curator-journal"),
     path("curator/journal/export/", curator.journal_export, name="curator-journal-export"),
     path("meta/readiness/", views.readiness_config, name="readiness-config"),

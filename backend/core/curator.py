@@ -370,6 +370,18 @@ def students_export(request):
     )
 
 
+def _transfer_targets(student: Student) -> list[dict]:
+    """Группы той же параллели, куда куратор вправе перевести ученика (решение владельца, 19.10.2026)."""
+    if not student.group_id:
+        return []
+    rows = (
+        StudyGroup.objects.filter(parallel=student.group.parallel, is_active=True, archived_at__isnull=True)
+        .exclude(pk=student.group_id)
+        .order_by("code")
+    )
+    return [{"id": g.pk, "code": g.code} for g in rows]
+
+
 def _own_student(request, pk: int) -> Student:
     """Ученик своей группы или 404 — существования чужого куратор не узнаёт."""
     from core.scope import visible_students
@@ -589,6 +601,7 @@ def student_card(request, pk: int):
                 "rows": doc_cells,
             },
             "notes_total": CuratorNote.objects.filter(student=student).count(),
+            "transfer_targets": _transfer_targets(student),
             # что куратор вносит за ученика напрямую и что убирает — из реестра
             "enters": curator_entry_map(),
         }
@@ -908,6 +921,56 @@ def escalate_student(request, pk: int):
     except EscalationRefused as error:
         return Response({"detail": str(error)}, status=http.HTTP_400_BAD_REQUEST)
     return Response({"sent": sent})
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def transfer_student(request, pk: int):
+    """Перевести ученика своей группы в другую группу той же параллели.
+
+    Решение владельца, 19.10.2026: ученик перешёл — группу меняет куратор,
+    без подтверждения второго куратора и без уведомления. Составы «вся
+    группа» считаются от `Student.group`, так что уроки новой группы у
+    ученика сразу; подгруппа английского живёт в потоке параллели и
+    остаётся; отметки и оценки — у ученика. В журнале — событие со
+    снимком прежней группы (его видит прежний куратор) и правка поля
+    «группа» со снимком новой (её видит новый).
+    """
+    denied = _deny(request)
+    if denied:
+        return denied
+
+    from core.audit import ValueRejected, apply_changes, record_event
+
+    student = _own_student(request, pk)
+    code = str(request.data.get("group") or "").strip()
+    target = StudyGroup.objects.filter(code__iexact=code, is_active=True, archived_at__isnull=True).first()
+    if target is None:
+        return Response({"detail": _("Такой учебной группы нет")}, status=http.HTTP_400_BAD_REQUEST)
+    if target.pk == student.group_id:
+        return Response({"detail": _("Ученик уже в этой группе")}, status=http.HTTP_400_BAD_REQUEST)
+    if student.group_id and target.parallel != student.group.parallel:
+        return Response(
+            {
+                "detail": _("Переводить можно только в группу той же параллели ({parallel})").format(
+                    parallel=student.group.parallel
+                )
+            },
+            status=http.HTTP_400_BAD_REQUEST,
+        )
+    was = student.group.code if student.group_id else ""
+    record_event(
+        student=student,
+        code="group_transfer",
+        text=_("переведён из {was} в {now}").format(was=was, now=target.code),
+        actor=request.user,
+    )
+    try:
+        apply_changes(student, {"group": target}, actor=request.user)
+    except ValueRejected as error:
+        return Response({"detail": str(error)}, status=http.HTTP_400_BAD_REQUEST)
+    return Response({"group": target.code, "was": was, "still_mine": target.pk in curated_group_ids(request.user)})
 
 
 # --- Журнал (фаза 62) ---------------------------------------------------------------
