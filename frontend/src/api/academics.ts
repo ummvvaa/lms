@@ -1091,6 +1091,8 @@ export interface AttendanceScreen {
   view: 'day' | 'month'
   may_excuse: boolean
   may_remind: boolean
+  /** неотмеченные уроки учителей показываются Кымбат и администратору; у куратора своя отметка утром */
+  shows_unmarked: boolean
   /** порог посещаемости из настроек школы: ниже — процент выделен */
   attendance_below: number
   // день

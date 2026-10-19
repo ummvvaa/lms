@@ -1243,6 +1243,10 @@ def attendance(request):
     payload["groups"] = [{"id": g.pk, "code": g.code} for g in groups]
     payload["may_excuse"] = rights.writes_excuse(request.user.role)
     payload["may_remind"] = rights.reminds(request.user.role)
+    # неотмеченные уроки учителей — не дело куратора: у него своя отметка утром
+    payload["shows_unmarked"] = request.user.role != ROLE_CURATOR
+    if not payload["shows_unmarked"]:
+        payload["unmarked"] = []
     # ниже порога процент выделяется: порог — настройка администратора
     payload["attendance_below"] = school_rules.value(school_rules.ATTENDANCE_BELOW)
     return Response(payload)

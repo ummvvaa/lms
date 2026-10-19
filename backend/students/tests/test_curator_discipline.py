@@ -147,12 +147,11 @@ def test_discipline_is_not_in_the_curator_confirmation_queue(db, chicago, klass,
 # --- Посещаемость --------------------------------------------------------------
 
 
-def test_day_marking_is_closed_and_old_rows_stay_readable(db, chicago, klass, curator, admin):
-    """Отметка дня закрыта: посещаемость ведётся по урокам, прежние строки читаются.
+def test_curator_marks_today_and_the_old_percent_stays_archive(db, chicago, klass, curator, admin):
+    """Отметка утром — куратора своей группы (решение владельца, 19.10.2026).
 
-    Куратору и администратору маршрут закрывают шлюзы (403 с причиной), ничего не пишется.
-    Сам сервис строк дня остался: по нему читается история и считается прежний
-    процент профиля.
+    Администратору маршрут закрывает шлюз (403 с причиной). Прежний процент
+    профиля считается только до даты запуска уроков: новые отметки его не трогают.
     """
     rows = [
         {"student": klass[0].pk, "present": False, "reason": "болел"},
@@ -160,11 +159,12 @@ def test_day_marking_is_closed_and_old_rows_stay_readable(db, chicago, klass, cu
         {"student": klass[2].pk, "present": True},
     ]
     body = {"group": chicago.pk, "date": str(TODAY), "rows": rows}
-    assert login(curator).post("/api/attendance/save/", body, format="json").status_code == 403
     assert login(admin).post("/api/attendance/save/", body, format="json").status_code == 403
     assert not AttendanceDay.objects.exists()
 
-    payload = discipline.save_day(group=chicago, date=TODAY, rows=rows, actor=curator)
+    saved = login(curator).post("/api/attendance/save/", body, format="json")
+    assert saved.status_code == 200, saved.content
+    payload = saved.json()
     assert payload["written"] == 3 and payload["absent"] == 1
     klass[0].behavior.refresh_from_db()
     # прежний процент профиля считается только до даты запуска уроков
@@ -174,7 +174,7 @@ def test_day_marking_is_closed_and_old_rows_stay_readable(db, chicago, klass, cu
         assert discipline.recount_attendance(klass[0]) == 0
     sheet = login(curator).get(f"/api/attendance/?group={chicago.pk}&date={TODAY}").data
     assert sheet["saved"] is True and sheet["absent"] == 1
-    assert sheet["may_mark"] is False, "лист на чтение у всех"
+    assert sheet["may_mark"] is True, "сегодня куратор правит свой лист"
 
 
 def test_day_sheet_starts_with_everyone_present(db, chicago, klass, curator):
@@ -190,13 +190,12 @@ def test_curator_cannot_touch_another_group(db, tokyo, stranger, curator):
     """Чужая группа для куратора не существует — 404, а не «нельзя»."""
     client = login(curator)
     assert client.get(f"/api/attendance/?group={tokyo.pk}&date={TODAY}").status_code == 404
-    # отметка дня закрыта шлюзом раньше, чем дело дойдёт до группы
     saved = client.post(
         "/api/attendance/save/",
         {"group": tokyo.pk, "date": str(TODAY), "rows": [{"student": stranger.pk, "present": False}]},
         format="json",
     )
-    assert saved.status_code == 403
+    assert saved.status_code == 404
     assert not AttendanceDay.objects.filter(student=stranger).exists()
 
 
@@ -205,7 +204,7 @@ def test_saltanat_reads_any_group_but_does_not_mark(db, tokyo, stranger, saltana
     body = {"group": tokyo.pk, "date": str(TODAY), "rows": [{"student": stranger.pk, "present": False}]}
     refused = login(saltanat).post("/api/attendance/save/", body, format="json")
     assert refused.status_code == 403
-    assert "по урокам" in refused.json()["detail"]
+    assert "куратор" in refused.json()["detail"]
     assert not AttendanceDay.objects.exists()
 
     sheet = login(saltanat).get(f"/api/attendance/?group={tokyo.pk}&date={TODAY}")
@@ -218,8 +217,10 @@ def test_saltanat_reads_any_group_but_does_not_mark(db, tokyo, stranger, saltana
     assert login(saltanat).get(f"/api/attendance/?group={tokyo.pk}&date={TODAY}").data["absent"] == 1
 
 
-def test_the_day_sheet_is_read_only_for_everyone(db, chicago, klass, curator):
-    assert login(curator).get(f"/api/attendance/?group={chicago.pk}&date={TODAY}").data["may_mark"] is False
+def test_the_day_sheet_is_editable_only_today(db, chicago, klass, curator):
+    client = login(curator)
+    assert client.get(f"/api/attendance/?group={chicago.pk}&date={TODAY}").data["may_mark"] is True
+    assert client.get(f"/api/attendance/?group={chicago.pk}&date={days(-1)}").data["may_mark"] is False
 
 
 # --- Журнал посещаемости за месяц ---------------------------------------------------
@@ -352,7 +353,7 @@ def test_a_stranger_role_hears_why_day_marking_is_closed(db, chicago, klass, sal
         format="json",
     )
     assert response.status_code == 403
-    assert "по урокам" in response.data["detail"]
+    assert "куратор" in response.data["detail"]
 
 
 # --- Замечания ------------------------------------------------------------------

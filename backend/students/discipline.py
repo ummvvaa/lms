@@ -17,6 +17,14 @@
 Кто пишет: куратор — по своим группам, Салтанат — по всей школе
 (`CURATOR_RIGHTS` в реестре, право «пишет»). Границу «своя группа»
 держит общая выборка `core.scope`, второго списка групп здесь нет.
+
+Отметка куратора утром (решение владельца, 19.10.2026): через несколько
+минут после первого урока куратор отмечает по каждому ученику своих групп,
+в школе он или нет, — строка `AttendanceDay` на ученика и день, только за
+сегодня, в тот же день можно поправить. С отметками учителей она не связана:
+процент, «Риски» и отчёты родителям считают по урокам (`academics.results`),
+а старый процент профиля пересчитывается только из дат до `DAY_MARKS_UNTIL`.
+По этим строкам — отчёт «Отсутствующие» для службы безопасности (`absences`).
 """
 
 from __future__ import annotations
@@ -140,13 +148,23 @@ def day_sheet(*, group, date: dt.date) -> dict:
     сохраняли, видно по признаку `saved`.
     """
     students = list(Student.objects.filter(group=group, is_active=True).order_by("last_name", "first_name"))
-    marks = {row.student_id: row for row in AttendanceDay.objects.filter(student__in=students, date=date)}
+    marks = {
+        row.student_id: row
+        for row in AttendanceDay.objects.filter(student__in=students, date=date).select_related("noted_by")
+    }
+    # кто и когда отмечал последним — подпись листа; имя автора берётся из его записи
+    last = max(marks.values(), key=lambda row: row.updated_at, default=None)
     return {
         "group": group.pk,
         "group_code": group.code,
         "date": date,
         "saved": bool(marks),
         "late": _is_late(date),
+        "noted": (
+            {"by": (last.noted_by.full_name or last.noted_by.handle) if last.noted_by else "", "at": last.updated_at}
+            if last is not None
+            else None
+        ),
         "rows": [
             {
                 "student": s.pk,
@@ -164,8 +182,15 @@ def day_sheet(*, group, date: dt.date) -> dict:
 
 @transaction.atomic
 def save_day(*, group, date: dt.date, rows: list[dict], actor) -> dict:
-    """Сохранить лист за день. Строки не про своих учеников отбрасываются."""
+    """Сохранить лист за день. Строки не про своих учеников отбрасываются.
+
+    В журнал ученика пишется только то, что стоит слов: «не был» и
+    исправление прежней отметки (решение владельца, 19.10.2026) — строка
+    на каждого присутствующего при каждом сохранении ни о чём не говорит.
+    Кто и когда отметил, лист показывает подписью (`day_sheet` → `noted`).
+    """
     allowed = {s.pk: s for s in Student.objects.filter(group=group, is_active=True).select_related("group")}
+    before = {row.student_id: row.present for row in AttendanceDay.objects.filter(student__in=allowed, date=date)}
     saved = 0
     for row in rows:
         try:
@@ -175,14 +200,32 @@ def save_day(*, group, date: dt.date, rows: list[dict], actor) -> dict:
         student = allowed.get(student_id)
         if student is None:
             continue
+        present = bool(row.get("present", True))
         mark_day(
             student=student,
             date=date,
-            present=bool(row.get("present", True)),
+            present=present,
             reason=str(row.get("reason") or "").strip(),
             actor=actor,
         )
         saved += 1
+        was = before.get(student_id)
+        if was is None and not present:
+            record_event(
+                student=student,
+                code="attendance_day",
+                text=_("{date}: не был").format(date=f"{date:%d.%m.%Y}"),
+                actor=actor,
+            )
+        elif was is not None and was != present:
+            record_event(
+                student=student,
+                code="attendance_day",
+                text=_("{date}: {mark} (исправлено)").format(
+                    date=f"{date:%d.%m.%Y}", mark=_("был") if present else _("не был")
+                ),
+                actor=actor,
+            )
     # `written` — сколько строк записали; `saved` в листе значит другое:
     # «этот день уже отмечали». Разные вещи, разные имена
     return {"written": saved, **day_sheet(group=group, date=date)}
@@ -270,6 +313,36 @@ def month_journal(*, group, month: dt.date, absent_only: bool = False) -> dict:
         "rows": rows,
         "words": {code: _(word) for code, word in CELL_WORDS.items()},
     }
+
+
+def absences(*, groups, since: dt.date, until: dt.date) -> list[dict]:
+    """Кого не было по отметке куратора — по дням и группам, для службы безопасности.
+
+    Строка — день одной группы со списком отсутствующих; дни, когда никого
+    не отмечали или все были, в отчёт не попадают.
+    """
+    rows = (
+        AttendanceDay.objects.filter(
+            present=False, date__gte=since, date__lte=until, student__group__in=groups, student__is_active=True
+        )
+        .select_related("student", "student__group")
+        .order_by("-date", "student__group__code", "student__last_name", "student__first_name")
+    )
+    out: dict[tuple[dt.date, int], dict] = {}
+    for row in rows:
+        key = (row.date, row.student.group_id)
+        bucket = out.setdefault(
+            key,
+            {
+                "date": row.date,
+                "weekday": _(WEEKDAYS[row.date.weekday()]),
+                "group": row.student.group_id,
+                "group_code": row.student.group.code,
+                "students": [],
+            },
+        )
+        bucket["students"].append({"id": row.student_id, "full_name": row.student.full_name})
+    return [{**bucket, "count": len(bucket["students"])} for bucket in out.values()]
 
 
 def attendance_history(student: Student, *, limit: int = 60) -> list[dict]:

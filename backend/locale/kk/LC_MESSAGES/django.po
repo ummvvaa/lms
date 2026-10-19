@@ -17170,3 +17170,51 @@ msgstr "тақырып"
 #: accounts/views.py
 msgid "Логин сменился: теперь {now}, прежний {was} не действует"
 msgstr "Логин ауысты: енді {now}, бұрынғы {was} жарамсыз"
+
+#: students/discipline.py
+msgid "{date}: не был"
+msgstr "{date}: болмады"
+
+#: students/discipline.py
+msgid "{date}: {mark} (исправлено)"
+msgstr "{date}: {mark} (түзетілді)"
+
+#: students/discipline_views.py
+msgid "День"
+msgstr "Күн"
+
+#: students/discipline_views.py
+msgid "Кого не было"
+msgstr "Кім болмады"
+
+#: core/labels.py
+msgid "Отметка куратора утром"
+msgstr "Кураторның таңертеңгі белгісі"
+
+#: core/labels.py
+msgid "Отметка куратора"
+msgstr "Куратор белгісі"
+
+#: students/discipline_views.py
+msgid "Отметку утром ставит куратор своей группы"
+msgstr "Таңертеңгі белгіні өз тобының кураторы қояды"
+
+#: students/discipline_views.py
+msgid "Отмечать можно только сегодняшний день — поправить тоже сегодня"
+msgstr "Тек бүгінгі күнді белгілеуге болады — түзету де бүгін"
+
+#: students/discipline_views.py
+msgid "Отсутствующие"
+msgstr "Болмағандар"
+
+#: students/discipline_views.py
+msgid "Отчёт об отсутствующих читают куратор, директор школы и администратор"
+msgstr "Болмағандар туралы есепті куратор, мектеп директоры және әкімші оқиды"
+
+#: accounts/permissions.py
+msgid "отметку утром ставит куратор своей группы — администратор её читает в «Посещаемости»"
+msgstr "таңертеңгі белгіні өз тобының кураторы қояды — әкімші оны «Қатысу» бөлімінде оқиды"
+
+#: students/discipline_views.py
+msgid "отсутствующие-{since}-{until}.xlsx"
+msgstr "болмагандар-{since}-{until}.xlsx"

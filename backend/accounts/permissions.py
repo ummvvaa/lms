@@ -143,6 +143,8 @@ CURATOR_READ_ROUTES = frozenset(
         "attendance-day",
         "attendance-journal",
         "attendance-journal-export",
+        "attendance-absences",
+        "attendance-absences-export",
         "remarks",
         # куратор вносит за ученика теми же формами, что директор: формам
         # нужны каталог программ, справочники для списков выбора и рассказ
@@ -242,6 +244,8 @@ CURATOR_WRITE_ROUTES = frozenset(
         # он звонит, правит он сам, не дожидаясь директора школы
         "remarks",
         "remark-drop",
+        # отметка куратора утром — своя группа, только сегодня
+        "attendance-save",
         "contact-list",
         "contact-detail",
         # всё, что ученик вносит о себе, куратор вносит за него напрямую,
@@ -275,7 +279,6 @@ CURATOR_WRITE_ROUTES = frozenset(
         # проверка и отправка отчётов родителям
         "acad-excuses",
         "acad-excuse",
-        "acad-lesson-remind",
         # отметка урока, где куратор сам записан учителем (классный час);
         # чужой урок отсекает `academics.rights.marks_lesson`
         "acad-lesson-attendance",
@@ -369,7 +372,7 @@ STUDENT_ENTERS = gettext_noop(
 TEACHER_CABINET = gettext_noop("кабинет учителя — экран роли: у администратора расписание и журналы целиком")
 
 DAY_MARKING_CLOSED = gettext_noop(
-    "отметка дня закрыта — посещаемость ведётся по урокам, причину за период оформляет куратор"
+    "отметку утром ставит куратор своей группы — администратор её читает в «Посещаемости»"
 )
 
 ADMIN_CLOSED_ROUTES: dict[str, str] = {
@@ -379,7 +382,7 @@ ADMIN_CLOSED_ROUTES: dict[str, str] = {
     "acad-teacher-profile": TEACHER_CABINET,
     "acad-teacher-student": TEACHER_CABINET,
     "acad-curator-home": CURATOR_CABINET,
-    # прежняя отметка дня: строки остались на чтение, писать их больше некому
+    # отметка куратора утром — только куратор своей группы (решение владельца, 19.10.2026)
     "attendance-save": DAY_MARKING_CLOSED,
     # кабинет ученика: свои оценки и уроки на день
     "acad-my-grades": STUDENT_CABINET,

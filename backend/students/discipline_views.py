@@ -22,7 +22,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.curators import curated_group_ids
-from accounts.permissions import DAY_MARKING_CLOSED
 from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT
 from core.scope import visible_students
 from students import discipline
@@ -111,8 +110,8 @@ def attendance_day(request):
     date = _date(request.query_params.get("date")) or timezone.localdate()
     payload = discipline.day_sheet(group=group, date=date)
     payload["groups"] = _my_groups(request.user)
-    # отметка дня закрыта с переходом на посещаемость по урокам: лист на чтение у всех
-    payload["may_mark"] = False
+    # отметку утром ставит куратор своей группы и только за сегодня; остальные читают
+    payload["may_mark"] = request.user.role == ROLE_CURATOR and date == timezone.localdate()
     return Response(payload)
 
 
@@ -185,32 +184,110 @@ def attendance_journal_export(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def attendance_save(request):
-    """Отметка дня закрыта: посещаемость ведётся по урокам, прежние строки остались на чтение.
+    """Отметка куратора утром: только куратор, только своя группа, только сегодня.
 
-    Куратору и администратору маршрут закрывают шлюзы (404); остальным
-    отвечает сама вьюха, чтобы старый клиент получил слова, а не тишину.
+    С отметками учителей не связана (решение владельца, 19.10.2026).
+    Администратору маршрут закрывает шлюз с причиной; директор школы
+    лист читает.
     """
     if request.user.role == ROLE_STUDENT:
         return _forbidden()
-    return _forbidden(DAY_MARKING_CLOSED)
-
-
-def _attendance_save_legacy(request):  # pragma: no cover
-    """Прежний код сохранения дня — оставлен для чтения истории решения, не вызывается."""
+    if request.user.role != ROLE_CURATOR:
+        return _forbidden(_("Отметку утром ставит куратор своей группы"))
     group = _group_for(request.user, request.data.get("group"))
     if group is None:
         return _not_found()
     date = _date(request.data.get("date"))
     if date is None:
         return Response({"detail": _("Не указана дата")}, status=status.HTTP_400_BAD_REQUEST)
-    if date > timezone.localdate():
-        return Response({"detail": _("День ещё не наступил")}, status=status.HTTP_400_BAD_REQUEST)
+    if date != timezone.localdate():
+        return Response(
+            {"detail": _("Отмечать можно только сегодняшний день — поправить тоже сегодня")},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     rows = request.data.get("rows")
     if not isinstance(rows, list):
         return Response({"detail": _("Не переданы отметки")}, status=status.HTTP_400_BAD_REQUEST)
     payload = discipline.save_day(group=group, date=date, rows=rows, actor=request.user)
     payload["groups"] = _my_groups(request.user)
+    payload["may_mark"] = True
     return Response(payload)
+
+
+# --- Отсутствующие — отчёт для службы безопасности ---------------------------
+
+
+#: кто читает отчёт: куратор — свои группы, директор школы и администратор — все
+ABSENCE_READERS = ("director_behavior", ROLE_CURATOR, ROLE_ADMIN)
+
+
+def _period(request) -> tuple[dt.date, dt.date]:
+    """Период отчёта из `from` и `to`; без них — с начала месяца по сегодня."""
+    today = timezone.localdate()
+    since = _date(request.query_params.get("from")) or today.replace(day=1)
+    until = _date(request.query_params.get("to")) or today
+    if until < since:
+        since, until = until, since
+    return since, until
+
+
+def _absences_or_refusal(request):
+    if request.user.role == ROLE_STUDENT:
+        return None, _forbidden()
+    if request.user.role not in ABSENCE_READERS:
+        return None, _forbidden(_("Отчёт об отсутствующих читают куратор, директор школы и администратор"))
+    groups = _my_groups(request.user)
+    raw = request.query_params.get("group")
+    if raw:
+        picked = _group_for(request.user, raw)
+        if picked is None:
+            return None, _not_found()
+        chosen = [picked.pk]
+    else:
+        chosen = [g["id"] for g in groups]
+    since, until = _period(request)
+    return {
+        "from": since,
+        "to": until,
+        "group": raw or "",
+        "groups": groups,
+        "rows": discipline.absences(groups=chosen, since=since, until=until),
+    }, None
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def attendance_absences(request):
+    """Кого не было по отметке куратора: по дням и группам за период."""
+    payload, refusal = _absences_or_refusal(request)
+    return refusal if refusal is not None else Response(payload)
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def attendance_absences_export(request):
+    """Тот же отчёт книгой XLSX — для службы безопасности."""
+    from core.exports import Column, workbook_response
+
+    payload, refusal = _absences_or_refusal(request)
+    if refusal is not None:
+        return refusal
+    columns = (
+        Column(_("Дата"), lambda row: f"{row['date']:%d.%m.%Y}", 12),
+        Column(_("День"), lambda row: row["weekday"], 6),
+        Column(_("Группа"), lambda row: row["group_code"], 12),
+        Column(_("Кого не было"), lambda row: ", ".join(s["full_name"] for s in row["students"]), 60),
+        Column(_("Сколько"), lambda row: row["count"], 8),
+    )
+    return workbook_response(
+        filename=_("отсутствующие-{since}-{until}.xlsx").format(since=payload["from"], until=payload["to"]),
+        sheet=_("Отсутствующие"),
+        columns=columns,
+        rows=payload["rows"],
+        request=request,
+    )
 
 
 def _my_groups(user) -> list[dict]:

@@ -17252,3 +17252,51 @@ msgstr "topic"
 #: accounts/views.py
 msgid "Логин сменился: теперь {now}, прежний {was} не действует"
 msgstr "The login has changed: now {now}, the old {was} no longer works"
+
+#: students/discipline.py
+msgid "{date}: не был"
+msgstr "{date}: absent"
+
+#: students/discipline.py
+msgid "{date}: {mark} (исправлено)"
+msgstr "{date}: {mark} (corrected)"
+
+#: students/discipline_views.py
+msgid "День"
+msgstr "Day"
+
+#: students/discipline_views.py
+msgid "Кого не было"
+msgstr "Who was absent"
+
+#: core/labels.py
+msgid "Отметка куратора утром"
+msgstr "Curator's morning mark"
+
+#: core/labels.py
+msgid "Отметка куратора"
+msgstr "Curator's mark"
+
+#: students/discipline_views.py
+msgid "Отметку утром ставит куратор своей группы"
+msgstr "The morning mark is set by the group's curator"
+
+#: students/discipline_views.py
+msgid "Отмечать можно только сегодняшний день — поправить тоже сегодня"
+msgstr "Only today can be marked, and corrected only today"
+
+#: students/discipline_views.py
+msgid "Отсутствующие"
+msgstr "Absent"
+
+#: students/discipline_views.py
+msgid "Отчёт об отсутствующих читают куратор, директор школы и администратор"
+msgstr "The absence report is read by the curator, the school director and the administrator"
+
+#: accounts/permissions.py
+msgid "отметку утром ставит куратор своей группы — администратор её читает в «Посещаемости»"
+msgstr "the morning mark is set by the group's curator; the administrator reads it under Attendance"
+
+#: students/discipline_views.py
+msgid "отсутствующие-{since}-{until}.xlsx"
+msgstr "absent-{since}-{until}.xlsx"

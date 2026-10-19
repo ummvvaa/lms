@@ -67,6 +67,7 @@ EXTRA_TITLES: dict[str, tuple[Any, Any]] = {
         gettext_lazy("Посещаемость исправлена задним числом"),
         gettext_lazy("Правка посещаемости"),
     ),
+    "students.Student.attendance_day": (gettext_lazy("Отметка куратора утром"), gettext_lazy("Отметка куратора")),
     "students.Student.behavior_remark": (gettext_lazy("Записано замечание"), gettext_lazy("Замечание")),
     "students.Student.behavior_remark_dropped": (gettext_lazy("Замечание снято"), gettext_lazy("Замечание снято")),
     "students.Student.letter_opened": (gettext_lazy("Письмо открыто в почте"), gettext_lazy("Письмо")),

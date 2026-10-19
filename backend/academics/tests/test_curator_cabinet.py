@@ -54,14 +54,14 @@ def test_card_attendance_comes_from_lessons(curator, teacher, lesson, pupils, ca
     assert other["attendance_percent"] == 100 and other["days"] == []
 
 
-def test_day_marking_is_closed_to_the_curator(curator, boston, pupils):
-    """Отметка дня закрыта шлюзом (403), лист дня открыт на чтение без права отмечать."""
+def test_day_marking_is_only_for_today(curator, boston, pupils):
+    """Отметка куратора утром — только за сегодня: прошлый день не пишется, лист за сегодня открыт."""
     client = login(curator)
     body = {"group": boston.pk, "date": "2026-09-01", "rows": [{"student": pupils["aliya"].pk, "present": False}]}
-    assert client.post("/api/attendance/save/", body, format="json").status_code == 403
+    assert client.post("/api/attendance/save/", body, format="json").status_code == 400
     assert not AttendanceDay.objects.exists()
     sheet = client.get(f"/api/attendance/?group={boston.pk}")
-    assert sheet.status_code == 200 and sheet.json()["may_mark"] is False
+    assert sheet.status_code == 200 and sheet.json()["may_mark"] is True
 
 
 def test_worst_attendance_on_the_school_dashboard_counts_lessons(saltanat, teacher, lesson, pupils, calendar):

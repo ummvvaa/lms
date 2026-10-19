@@ -5234,11 +5234,52 @@ export interface AttendanceSheet {
   absent: number
   total: number
   written?: number
-  /** отмечает ли этот человек посещаемость: куратор и администратор — да,
-   *  директор школы лист только читает */
+  /** отмечать может куратор своей группы и только за сегодня; остальные читают */
   may_mark: boolean
+  /** кто и когда отметил последним — подпись листа */
+  noted: { by: string; at: string } | null
   groups: { id: number; code: string; language: string }[]
 }
+
+/** Лист группы за день — отметка куратора утром. */
+export const useAttendanceSheet = (group: string, date: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ['attendance', group, date],
+    queryFn: () => get<AttendanceSheet>(`/attendance/?date=${date}${group ? `&group=${encodeURIComponent(group)}` : ''}`),
+    enabled,
+    placeholderData: (prev) => prev,
+  })
+
+/** Отчёт «Отсутствующие» по отметке куратора: день одной группы со списком тех, кого не было. */
+export interface AbsenceRow {
+  date: string
+  weekday: string
+  group: number
+  group_code: string
+  students: { id: number; full_name: string }[]
+  count: number
+}
+
+export interface AttendanceAbsences {
+  from: string
+  to: string
+  group: string
+  groups: { id: number; code: string; language: string }[]
+  rows: AbsenceRow[]
+}
+
+export const absencesQuery = (params: { from: string; to: string; group: string }): string => {
+  const query = new URLSearchParams({ from: params.from, to: params.to })
+  if (params.group) query.set('group', params.group)
+  return `?${query.toString()}`
+}
+
+export const useAttendanceAbsences = (params: { from: string; to: string; group: string }) =>
+  useQuery({
+    queryKey: ['attendance-absences', params],
+    queryFn: () => get<AttendanceAbsences>(`/attendance/absences/${absencesQuery(params)}`),
+    placeholderData: (prev) => prev,
+  })
 
 /** Журнал посещаемости группы за месяц: ученики × дни. */
 export type AttendanceCell = 'present' | 'absent' | 'off' | 'unmarked'
