@@ -312,7 +312,9 @@ export const REPORT_ROLES: Role[] = ['curator', 'director_exam', 'director_behav
  * справочники, таблица, импорт, помощник — куратору не открыто ни адресом,
  * ни пунктом меню. Чужого ученика сервер отдаёт как 404.
  */
-export function curatorMayOpen(pathname: string): boolean {
+export function curatorMayOpen(pathname: string, admission: boolean | null = true): boolean {
+  // куратору без групп 11 экранов поступления нет — ни пункта, ни адреса
+  if (admission === false && CURATOR_ADMISSION_ONLY.includes(pathname)) return false
   return (
     CURATOR_ONLY.includes(pathname) ||
     CURATOR_SHARED.some((path) => pathname === path || pathname.startsWith(`${path}/`)) ||
@@ -345,6 +347,14 @@ export const CURATOR_SHARED = ['/attendance', '/schedule', '/grades', '/reports'
  * второй такой же экран им не нужен, а ученику эти адреса закрыты вовсе.
  */
 export const CURATOR_ONLY = ['/queue', '/students', '/tasks', '/my-groups', '/documents', '/journal']
+
+/**
+ * Экраны куратора, которые есть только у групп с поступлением (решение владельца,
+ * 19.10.2026): очередь — экзамены и документы, матрица документов, задачи плана.
+ * Куратору только 8–10 (`/auth/me/` → `has_admission` false) их нет ни пунктом,
+ * ни в баре, ни адресом; сервер отвечает 404 (`accounts.permissions`).
+ */
+export const CURATOR_ADMISSION_ONLY = ['/queue', '/documents', '/tasks']
 
 /**
  * Пункты нижнего бара: объявленная четвёрка, оставленная из того,
@@ -382,6 +392,8 @@ export interface NavExtras {
   teaches?: boolean
   /** ведёт тесты профориентации (`/auth/me/` → `career_tests`) */
   careerTests?: boolean
+  /** куратор: ведёт ли группу с поступлением (`/auth/me/` → `has_admission`) */
+  admission?: boolean | null
 }
 
 /**
@@ -441,6 +453,11 @@ export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = 
   }
   // у ученика — только разделы его параллели: блока «Поступление» у 8–10
   // нет вовсе, не под замком
+  // куратор только 8–10: очереди, документов и задач плана нет; бар телефона
+  // добирает четвёрку следующими пунктами — посещаемостью и расписанием
+  if (role === 'curator' && extras.admission === false) {
+    items = items.filter((item) => !CURATOR_ADMISSION_ONLY.includes(item.path))
+  }
   if (role === 'student' && extras.sections) {
     const open = extras.sections
     items = items.filter((item) => studentMayOpen(open, item.path))

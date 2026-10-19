@@ -52,6 +52,10 @@ export default function CuratorStudents() {
   if (error) return <ErrorNote error={error} />
 
   const rows = data?.results ?? []
+  // у выбранных групп без поступления нет колонок IELTS, SAT и документов
+  // и задачи плана; в смешанном списке у строк 8–10 эти ячейки пустые
+  const admission = data?.has_admission ?? true
+  const graduate = (row: CuratorStudentRow) => row.parallel === 11
 
   const setBucket = (code: string) => {
     const updated = new URLSearchParams(params)
@@ -69,11 +73,11 @@ export default function CuratorStudents() {
     return `/curator/students/export/${tail ? `?${tail}` : ''}`
   }
 
-  const columns: Column<CuratorStudentRow>[] = [
+  const allColumns: Column<CuratorStudentRow>[] = [
     { key: 'name', title: t('Ученик'), width: '26%', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
     { key: 'group', title: t('Группа'), width: '10%', cell: (row) => <Chip size="sm">{row.group}</Chip>, sortBy: (row) => row.group },
-    { key: 'ielts', title: 'IELTS', width: '14%', align: 'right', cell: (row) => <Pair current={row.ielts_current} target={row.ielts_target} />, sortBy: (row) => row.ielts_current },
-    { key: 'sat', title: 'SAT', width: '14%', align: 'right', cell: (row) => <Pair current={row.sat_current} target={row.sat_target} />, sortBy: (row) => row.sat_current },
+    { key: 'ielts', title: 'IELTS', width: '14%', align: 'right', cell: (row) => (graduate(row) ? <Pair current={row.ielts_current} target={row.ielts_target} /> : null), sortBy: (row) => row.ielts_current },
+    { key: 'sat', title: 'SAT', width: '14%', align: 'right', cell: (row) => (graduate(row) ? <Pair current={row.sat_current} target={row.sat_target} /> : null), sortBy: (row) => row.sat_current },
     {
       key: 'mock',
       title: t('Mock Test'),
@@ -92,11 +96,12 @@ export default function CuratorStudents() {
       title: t('Документы'),
       width: '10%',
       align: 'right',
-      cell: (row) => (
-        <span className={`num${row.buckets.includes('docs') ? ' cstale' : ''}`}>
-          {row.documents_collected} / {row.documents_total}
-        </span>
-      ),
+      cell: (row) =>
+        graduate(row) ? (
+          <span className={`num${row.buckets.includes('docs') ? ' cstale' : ''}`}>
+            {row.documents_collected} / {row.documents_total}
+          </span>
+        ) : null,
       sortBy: (row) => row.documents_collected,
     },
     {
@@ -107,6 +112,7 @@ export default function CuratorStudents() {
       sortBy: (row) => row.status_title,
     },
   ]
+  const columns = allColumns.filter((column) => admission || !['ielts', 'sat', 'docs'].includes(column.key))
 
   return (
     <div>
@@ -119,13 +125,15 @@ export default function CuratorStudents() {
             </Button>
             {/* кнопка отдельно от окна (фаза 75): на телефоне она уходит
                 в меню «Действия», а окно остаётся у экрана */}
-            <Button size="sm" onClick={() => setTask(true)}>
-              {t('Задача группе')}
-            </Button>
+            {admission && (
+              <Button size="sm" onClick={() => setTask(true)}>
+                {t('Задача группе')}
+              </Button>
+            )}
           </>
         }
       />
-      <TaskDialog groups={data?.groups ?? []} defaultGroup={group} open={task} onOpenChange={setTask} />
+      {admission && <TaskDialog groups={data?.groups ?? []} defaultGroup={group} open={task} onOpenChange={setTask} />}
       <GroupSwitch groups={data?.groups ?? []} value={group} onChange={setGroup} />
 
       <div className="cfilters">

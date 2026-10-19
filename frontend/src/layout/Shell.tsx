@@ -73,6 +73,7 @@ export default function Shell() {
     sections: me.sections,
     teaches: me.teaches,
     careerTests: me.career_tests,
+    admission: me.role === 'curator' ? me.has_admission : undefined,
   })
 
   const unreadLinks = (notifications.data?.rows ?? [])

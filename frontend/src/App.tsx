@@ -209,7 +209,7 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
     (DOMAIN_ONLY[location.pathname] !== undefined && me.role !== DOMAIN_ONLY[location.pathname]) ||
     (location.pathname === '/overview' && !me.can_see_whole_school) ||
     // куратору открыт короткий список экранов — тот же, что и на сервере (фаза 60)
-    (me.role === 'curator' && !curatorMayOpen(location.pathname)) ||
+    (me.role === 'curator' && !curatorMayOpen(location.pathname, me.has_admission)) ||
     // учителю — семь адресов; всё остальное для него не существует
     (me.role === 'teacher' && !teacherMayOpen(location.pathname)) ||
     // правка расписания, составы, учителя и учебный год — у Кымбат и администратора

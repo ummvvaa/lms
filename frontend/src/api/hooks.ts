@@ -4976,6 +4976,8 @@ export interface CuratorOverview {
   /** выбор группы, как его понял сервер: «all» или код своей группы */
   group: string
   students_total: number
+  /** есть ли поступление у выбранных групп: у 8–10 чисел, очереди и задач нет */
+  has_admission: boolean
   queue_total: number
   tasks_due: number
   numbers: CuratorNumber[]
@@ -5653,6 +5655,8 @@ export interface CuratorProfile {
   email: string
   role_title: string
   groups: CuratorGroup[]
+  /** ведёт ли группу с поступлением */
+  has_admission: boolean
   confirms: string[]
   reads: string[]
 }
@@ -5694,7 +5698,7 @@ export function useCuratorStudents(group: string, bucket: string, search: string
       const tail = params.toString()
       return keepGroups(
         client,
-        await get<{ results: CuratorStudentRow[]; buckets: CuratorBucket[]; groups: CuratorGroup[] }>(
+        await get<{ results: CuratorStudentRow[]; buckets: CuratorBucket[]; groups: CuratorGroup[]; has_admission: boolean }>(
           `/curator/students/${tail ? `?${tail}` : ''}`,
         ),
       )

@@ -191,27 +191,36 @@ export default function CuratorHome() {
     shown === 'all'
       ? `${counted(groups.length, 'группа|группы|групп')}, ${students}`
       : `${shown} · ${students}`
+  // у выбранных групп без поступления нет очереди, задач плана и чисел
+  // поступления: главная 8–10 — про учёбу (`core/parallels.py`)
+  const admission = data.has_admission
 
   return (
     <div>
       <ScreenHead
         title={t(data.title)}
-        subtitle={`${scope} · ${t('в очереди {count}', { count: data.queue_total })} · ${t('задач с дедлайном {count}', { count: data.tasks_due })}`}
-        actions={<TaskDialog groups={groups} defaultGroup={group} />}
+        subtitle={
+          admission
+            ? `${scope} · ${t('в очереди {count}', { count: data.queue_total })} · ${t('задач с дедлайном {count}', { count: data.tasks_due })}`
+            : scope
+        }
+        actions={admission ? <TaskDialog groups={groups} defaultGroup={group} /> : undefined}
       />
       <GroupSwitch groups={groups} value={group} onChange={setGroup} />
 
-      <StatRow>
-        {data.numbers.map((number) => (
-          <Kpi key={number.code} tone={number.tone as Tone} label={t(number.label)} value={number.value} to={number.to} />
-        ))}
-      </StatRow>
+      {data.numbers.length > 0 && (
+        <StatRow>
+          {data.numbers.map((number) => (
+            <Kpi key={number.code} tone={number.tone as Tone} label={t(number.label)} value={number.value} to={number.to} />
+          ))}
+        </StatRow>
+      )}
 
       {/* колонки собирает общая раскладка кабинетов: пустая карточка — одна строка
           внизу короткой колонки (фаза 80). Карточки перерисовываются по выбранной
           группе сами: ключ запроса — группа */}
       <CabinetBoard
-        cards={[
+        cards={([
           {
             key: 'queue',
             column: 'main',
@@ -333,7 +342,7 @@ export default function CuratorHome() {
               </DataCard>
             ),
           },
-        ]}
+        ] as BoardCard[]).filter((card) => admission || !['queue', 'tasks'].includes(card.key))}
       />
     </div>
   )
