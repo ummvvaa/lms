@@ -86,7 +86,7 @@ function MarkRow({ group, row, onSaved }: { group: number; row: AttendanceRow; o
 
   return (
     <div className={`cmark__row cmark__row--${mark}`}>
-      <button type="button" className="cmark__tap" onClick={cycle} aria-label={t('{name}: {mark}. Нажмите, чтобы сменить', { name: row.full_name, mark: t(MARK_WORDS[mark]) })}>
+      <Button variant="ghost" className="cmark__tap" onClick={cycle} aria-label={t('{name}: {mark}. Нажмите, чтобы сменить', { name: row.full_name, mark: t(MARK_WORDS[mark]) })}>
         <span className="cmark__name">{row.full_name}</span>
         <span className="cmark__state">
           {saved && !save.isPending && <span className="t-note cmark__saved">{t('сохранено')}</span>}
@@ -94,7 +94,7 @@ function MarkRow({ group, row, onSaved }: { group: number; row: AttendanceRow; o
             {t(MARK_WORDS[mark])}
           </Chip>
         </span>
-      </button>
+      </Button>
       {mark !== 'present' && (
         <Input
           className="cmark__reason"

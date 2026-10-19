@@ -77,26 +77,21 @@
   border-bottom: 0;
 }
 
-.cmark__tap {
+/* кнопка реестра, но во всю строку: имя слева, состояние справа, высота под палец */
+.cmark .cmark__tap[data-variant] {
   flex: 1 1 calc(var(--space) * 60);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: calc(var(--space) * 3);
+  width: auto;
+  height: auto;
   min-height: calc(var(--space) * 11);
   padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
   font: inherit;
+  color: var(--ink);
   text-align: left;
-  cursor: pointer;
-}
-
-.cmark__tap:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-row);
+  white-space: normal;
 }
 
 .cmark__name {
