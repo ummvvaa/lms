@@ -2,8 +2,9 @@
  * «Посещаемость» куратора (решение владельца, 19.10.2026): первым открывается
  * лист отметки за сегодня, сверху вкладки по группам, рядом — аналитика.
  *
- * Отметка — в школе, нет или опоздал, без минут. Нажатие на ученика идёт по
- * кругу и сохраняется сразу; у «нет» и «опоздал» — короткий комментарий в строке.
+ * Отметка — в школе, нет или опоздал, без минут: строка как в составе урока
+ * у учителя — ФИО и три кнопки, нажатие сохраняется сразу; у «нет» и «опоздал» —
+ * короткий комментарий в строке.
  * С отметками учителей это не связано (правило 19.10): в процент по урокам не идёт.
  * Виды по урокам у куратора спрятаны переключателем `CURATOR_HIDDEN.lessonAttendance`.
  */
@@ -38,13 +39,12 @@ import './attendance.css'
 
 type Tab = 'mark' | 'stats'
 
-/** Следующее состояние по кругу: в школе → нет → опоздал → в школе. */
-const NEXT: Record<DayMark, DayMark> = { present: 'absent', absent: 'late', late: 'present' }
 const MARK_WORDS: Record<DayMark, string> = { present: tk('в школе'), absent: tk('нет'), late: tk('опоздал') }
 const MARK_TONE: Record<DayMark, Tone> = { present: 'good', absent: 'bad', late: 'warn' }
 
 // --- Отметка -------------------------------------------------------------------------
 
+/** Строка ученика — как в составе урока у учителя: ФИО и три кнопки рядом (решение владельца, 19.10.2026). */
 function MarkRow({ group, row, onSaved }: { group: number; row: AttendanceRow; onSaved: (result: { noted: { by: string; at: string } | null; absent: number; late_count: number }) => void }) {
   const save = useMarkAttendance()
   const [mark, setMark] = useState<DayMark>(row.mark)
@@ -71,8 +71,8 @@ function MarkRow({ group, row, onSaved }: { group: number; row: AttendanceRow; o
         },
       },
     )
-  const cycle = () => {
-    const next = NEXT[mark]
+  const pick = (next: DayMark) => {
+    if (next === mark) return
     setMark(next)
     setSaved(false)
     send(next, next === 'present' ? '' : reason)
@@ -85,26 +85,35 @@ function MarkRow({ group, row, onSaved }: { group: number; row: AttendanceRow; o
   }
 
   return (
-    <div className={`cmark__row cmark__row--${mark}`}>
-      <Button variant="ghost" className="cmark__tap" onClick={cycle} aria-label={t('{name}: {mark}. Нажмите, чтобы сменить', { name: row.full_name, mark: t(MARK_WORDS[mark]) })}>
-        <span className="cmark__name">{row.full_name}</span>
-        <span className="cmark__state">
-          {saved && !save.isPending && <span className="t-note cmark__saved">{t('сохранено')}</span>}
-          <Chip tone={MARK_TONE[mark]} size="sm">
-            {t(MARK_WORDS[mark])}
-          </Chip>
-        </span>
-      </Button>
-      {mark !== 'present' && (
-        <Input
-          className="cmark__reason"
-          value={reason}
-          placeholder={t('Комментарий, если знаете причину')}
-          aria-label={t('{name}: комментарий', { name: row.full_name })}
-          maxLength={200}
-          onChange={(event) => comment(event.target.value)}
+    <div className="cmark__row">
+      <div className="cmark__who">
+        <div className="cmark__name">{row.full_name}</div>
+        {saved && !save.isPending && <div className="cmark__note">{t('сохранено')}</div>}
+      </div>
+      <div className="cmark__att">
+        <Segmented<DayMark>
+          usageFilter={false}
+          value={mark}
+          onChange={pick}
+          label={t('{name}: отметка', { name: row.full_name })}
+          items={[
+            { value: 'present', label: t(MARK_WORDS.present) },
+            { value: 'absent', label: t(MARK_WORDS.absent) },
+            { value: 'late', label: t(MARK_WORDS.late) },
+          ]}
         />
-      )}
+      </div>
+      <div className="cmark__comment">
+        {mark !== 'present' && (
+          <Input
+            value={reason}
+            placeholder={t('Комментарий, если знаете причину')}
+            aria-label={t('{name}: комментарий', { name: row.full_name })}
+            maxLength={200}
+            onChange={(event) => comment(event.target.value)}
+          />
+        )}
+      </div>
     </div>
   )
 }

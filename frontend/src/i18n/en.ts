@@ -4082,7 +4082,6 @@ export const en: Record<string, string> = {
   'сдал': 'passed',
   'не сдал': 'not passed',
   'Результаты тестов профориентации по вашим группам': 'Career test results for your groups',
-  '{name}: {mark}. Нажмите, чтобы сменить': '{name}: {mark}. Tap to change',
   '{name}: комментарий': '{name}: comment',
   'Аналитика': 'Analytics',
   'Был': 'Present',
@@ -4103,4 +4102,5 @@ export const en: Record<string, string> = {
   'нет {n}|нет {n}|нет {n}': 'absent {n}|absent {n}',
   'опоздал {n}|опоздали {n}|опоздали {n}': 'late {n}|late {n}',
   'посещаемость-куратора.xlsx': 'curator-attendance.xlsx',
+  '{name}: отметка': '{name}: mark',
 }

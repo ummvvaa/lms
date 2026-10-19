@@ -58,65 +58,72 @@
   }
 }
 
-/* Отметка куратора: строка — кнопка во всю ширину, нажимать пальцем удобно (390) */
+/* Отметка куратора — как состав урока у учителя: имя, три кнопки, комментарий.
+   На телефоне строка складывается в три яруса, кнопки — под палец. */
 .cmark {
-  display: flex;
-  flex-direction: column;
+  --cmark-cols: minmax(0, 1fr) calc(var(--space) * 66) minmax(0, 1.2fr);
 }
 
 .cmark__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(var(--space) * 2);
-  padding: calc(var(--space) * 2) 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.cmark__row:last-child {
-  border-bottom: 0;
-}
-
-/* кнопка реестра, но во всю строку: имя слева, состояние справа, высота под палец */
-.cmark .cmark__tap[data-variant] {
-  flex: 1 1 calc(var(--space) * 60);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: var(--cmark-cols);
   gap: calc(var(--space) * 3);
-  width: auto;
-  height: auto;
-  min-height: calc(var(--space) * 11);
-  padding: 0;
-  font: inherit;
-  color: var(--ink);
-  text-align: left;
-  white-space: normal;
+  align-items: center;
+  min-height: var(--row-h);
+  padding: calc(var(--space) * 2) 0;
+  border-top: 1px solid var(--line);
+}
+
+.cmark__row:first-child {
+  border-top: 0;
+}
+
+.cmark__who,
+.cmark__att,
+.cmark__comment {
+  min-width: 0;
 }
 
 .cmark__name {
   font-weight: 600;
 }
 
-.cmark__state {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space) * 2);
-  white-space: nowrap;
-}
-
-.cmark__saved {
-  font-size: var(--type-caps);
-}
-
-.cmark__reason {
-  flex: 1 1 calc(var(--space) * 60);
-  max-width: calc(var(--space) * 90);
+.cmark__note {
+  color: var(--ink-3);
+  font-size: var(--type-note);
 }
 
 @media (max-width: 759px) {
-  .cmark__reason {
-    max-width: none;
-    width: 100%;
+  .cmark__row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'who'
+      'att'
+      'comment';
+  }
+
+  .cmark__who {
+    grid-area: who;
+  }
+
+  .cmark__att {
+    grid-area: att;
+  }
+
+  .cmark__comment {
+    grid-area: comment;
+  }
+
+  .cmark__comment:empty {
+    display: none;
+  }
+
+  .cmark__att .segrow__item {
+    min-height: var(--touch);
+    flex: 1 1 0;
+  }
+
+  .cmark__comment input {
+    min-height: var(--touch);
   }
 }
