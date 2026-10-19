@@ -27,7 +27,9 @@ import { t, tk, tn } from '../../i18n'
 import { formatDate, formatDateTime } from '../../lib/format'
 import { usePhone } from '../../phone'
 import { GroupPick } from '../academics/shared'
+import { useAuth } from '../../auth/AuthContext'
 import AnalysisCard from './AnalysisCard'
+import CuratorCareer from './CuratorCareer'
 import AssignCard from './AssignCard'
 import StartAnalysisDialog from './StartAnalysisDialog'
 import TestDrawer from './TestDrawer'
@@ -347,8 +349,11 @@ function AnalysesTab({ group, manage }: { group: number | null; manage: boolean 
 // --- Экран ---------------------------------------------------------------------------
 
 export default function CareerTests() {
+  const { me } = useAuth()
   const [params, setParams] = useSearchParams()
   const groups = useCareerGroups()
+  // куратору — свой экран: вкладки по группам и результаты на чтение
+  if (me?.role === 'curator') return <CuratorCareer />
   const asked = params.get('tab') as Tab | null
   const tab: Tab = asked && TABS.includes(asked) ? asked : 'tests'
   const list = groups.data?.groups ?? []

@@ -4079,4 +4079,7 @@ export const en: Record<string, string> = {
   'Куда перевести': 'Where to move',
   'Ученик сразу попадёт в уроки новой группы; оценки и отметки остаются у него. Перевод запишется в журнал обеих групп.': 'The student joins the new group\'s lessons at once; grades and marks stay with them. The transfer is recorded in both groups\' journals.',
   '{name} переведён в {group}': '{name} moved to {group}',
+  'сдал': 'passed',
+  'не сдал': 'not passed',
+  'Результаты тестов профориентации по вашим группам': 'Career test results for your groups',
 }

@@ -306,14 +306,8 @@ CURATOR_WRITE_ROUTES = frozenset(
         "homework-file",
         "homework-check",
         "homework-local",
-        # профтест — тем, кто ведёт профориентацию при роли куратора
-        "career-tests",
-        "career-test-preview",
-        "career-test",
-        "career-test-assignments",
-        "career-attempt-retake",
-        "career-analyses",
-        "career-analysis",
+        # профтест куратор только читает (решение владельца, 19.10.2026): загрузка,
+        # включение, назначение, разбор и «пройти заново» — у учителя профориентации
     }
 )
 
