@@ -33,6 +33,29 @@ def curated_group_ids(user, on: dt.date | None = None) -> list[int]:
     return list(active_assignments(on).filter(curator=user).values_list("group_id", flat=True))
 
 
+def curated_parallels(user, group_ids: list[int] | None = None, on: dt.date | None = None) -> set[int]:
+    """Параллели групп, которые куратор ведёт сегодня; `group_ids` сужает до выбранных."""
+    rows = active_assignments(on).filter(curator=user)
+    if group_ids is not None:
+        rows = rows.filter(group_id__in=group_ids)
+    if getattr(user, "role", "") != Role.CURATOR or not user.is_active:
+        return set()
+    return {int(parallel) for parallel in rows.values_list("group__parallel", flat=True)}
+
+
+def leads_admission(user, group_ids: list[int] | None = None) -> bool:
+    """Ведёт ли куратор группу с поступлением (решение владельца, 19.10.2026).
+
+    У куратора только 8–10 нет ни документов, ни задач плана, ни очереди
+    экзаменов: разделы поступления не показываются и сервером отвечают 404
+    (`accounts.permissions.CURATOR_ADMISSION_ROUTES`). Смешанный куратор
+    видит их только по группам 11 — `group_ids` сужает до выбранных групп.
+    """
+    from core.parallels import ADMISSION_PARALLEL
+
+    return ADMISSION_PARALLEL in curated_parallels(user, group_ids)
+
+
 ALL_GROUPS = "all"
 
 

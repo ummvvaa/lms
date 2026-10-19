@@ -190,8 +190,16 @@ def quick_for(role: str, user=None) -> tuple[Quick, ...]:
 
         found = hints(user.student)
         return tuple(Quick(q.code, str(q.title), q.needs, str(found.get(q.code, q.hint))) for q in JUNIOR_STUDENT)
+    buttons = QUICK.get(role, ())
+    if role == CURATOR and user is not None:
+        from accounts.curators import leads_admission
+
+        # у куратора только 8–10 дедлайнов вузов нет: кнопка не показывается
+        # и прямым запросом не выполняется (решение владельца, 19.10.2026)
+        if not leads_admission(user):
+            buttons = tuple(q for q in buttons if q.code != "deadlines_soon")
     # подписи — ленивые строки: здесь они становятся текстом на языке запроса
-    return tuple(Quick(q.code, str(q.title), q.needs, str(q.hint)) for q in QUICK.get(role, ()))
+    return tuple(Quick(q.code, str(q.title), q.needs, str(q.hint)) for q in buttons)
 
 
 #: Сколько строк-фактов показываем рядом с ответом. Длинный список
@@ -889,7 +897,7 @@ def run_quick(code: str, *, actor, role: str, student_ids=None, text: str = "") 
     активности, изображений, операции фазы 20), идут своим путём.
     """
     junior = role == STUDENT and _junior(actor)
-    buttons = {q.code: q for q in (JUNIOR_STUDENT if junior else quick_for(role))}
+    buttons = {q.code: q for q in (JUNIOR_STUDENT if junior else quick_for(role, actor))}
     if code not in buttons:
         # у 8–10 кнопок поступления нет: вузы, готовность и задачи плана
         # не выполняются для них и прямым запросом

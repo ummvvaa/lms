@@ -27,10 +27,17 @@ from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from accounts.curators import ALL_GROUPS, curated_group_ids, picked_groups
+from accounts.curators import ALL_GROUPS, curated_group_ids, leads_admission, picked_groups
 from core import school_rules
 from core.domains import ROLE_CURATOR
-from core.parallels import admission_students, has_admission, mocks_open_for, parallel_of
+from core.parallels import (
+    ADMISSION_PARALLEL,
+    admission_students,
+    domain_parallels,
+    has_admission,
+    mocks_open_for,
+    parallel_of,
+)
 from core.purge import author_name
 from students import attention
 from students.models import DocumentType, Student, StudyGroup
@@ -60,6 +67,24 @@ def _groups(request) -> list[int]:
 def _picked(request) -> str:
     """Код выбора, как его понял сервер: «all» или код своей группы."""
     return picked_groups(request.user, request.query_params.get("group"))[1]
+
+
+def _admission(request) -> bool:
+    """Есть ли поступление у выбранных групп: у куратора только 8–10 — нет.
+
+    Смешанный куратор на «Все мои группы» видит разделы поступления, на
+    группе 8–10 — нет (решение владельца, 19.10.2026). Куратору без групп 11
+    шлюз маршрутов отвечает 404 раньше (`accounts.permissions`).
+    """
+    return leads_admission(request.user, _groups(request))
+
+
+def _buckets(students, admission: bool) -> list[dict]:
+    """Корзины по выборке; без поступления — только те, что не про экзамены и документы."""
+    rows = attention.counts(students)
+    if admission:
+        return rows
+    return [row for row in rows if row["code"] not in attention.ADMISSION_BUCKETS]
 
 
 def _file_group(request) -> str:
@@ -183,15 +208,18 @@ def overview(request):
 
     groups = _groups(request)
     students = _students(request)
+    admission = _admission(request)
     state = attention.state_of(students)
-    queue = queue_payload(ROLE_CURATOR, groups)
-    tasks = _tasks_of(students, only_open=True)
+    # очередь куратора — экзамены и документы: у выбранных групп без
+    # поступления её нет, как и задач плана (решение владельца, 19.10.2026)
+    queue = queue_payload(ROLE_CURATOR, groups) if admission else []
+    tasks = _tasks_of(students, only_open=True) if admission else []
     today = timezone.localdate()
     # «скоро срок» — настройка школы
     soon_edge = today + dt.timedelta(days=school_rules.value(school_rules.CURATOR_TASK_SOON_DAYS))
     soon = [t for t in tasks if t.effective_due_date and t.effective_due_date <= soon_edge]
     overdue = [t for t in tasks if t.is_overdue]
-    counts = attention.counts(students)
+    counts = _buckets(students, admission)
     by_code = {row["code"]: row["count"] for row in counts}
 
     return Response(
@@ -201,42 +229,48 @@ def overview(request):
             "owner": _("{name} · куратор").format(name=request.user.full_name or request.user.email),
             "groups": _group_rows(request.user),
             "group": _picked(request),
+            "has_admission": admission,
             "students_total": students.count(),
             "queue_total": len(queue),
             "tasks_due": len(soon),
             # четыре числа-кнопки, как в прототипе: очередь, без цели, документы
             # не собраны, истекает срок (фаза 62). «Пробника не было» и «просроченные
-            # задачи» остаются в корзинах и на экране задач
-            "numbers": [
-                {
-                    "code": "queue",
-                    "label": _("ждут подтверждения"),
-                    "value": len(queue),
-                    "tone": "accent",
-                    "to": "/queue",
-                },
-                {
-                    "code": "nogoal",
-                    "label": _("без цели по экзаменам"),
-                    "value": by_code.get("nogoal", 0),
-                    "tone": "warn",
-                    "to": "/students?bucket=nogoal",
-                },
-                {
-                    "code": "docs",
-                    "label": _("документы не собраны"),
-                    "value": by_code.get("docs", 0),
-                    "tone": "bad",
-                    "to": "/documents?f=missing",
-                },
-                {
-                    "code": "expiring",
-                    "label": _("истекает срок документа"),
-                    "value": sum(1 for row in state.values() if row["documents_expiring"]),
-                    "tone": "info",
-                    "to": "/documents?f=expiring",
-                },
-            ],
+            # задачи» остаются в корзинах и на экране задач. Без поступления чисел
+            # нет: главная 8–10 — про учёбу (`acad-curator-home`)
+            "numbers": (
+                []
+                if not admission
+                else [
+                    {
+                        "code": "queue",
+                        "label": _("ждут подтверждения"),
+                        "value": len(queue),
+                        "tone": "accent",
+                        "to": "/queue",
+                    },
+                    {
+                        "code": "nogoal",
+                        "label": _("без цели по экзаменам"),
+                        "value": by_code.get("nogoal", 0),
+                        "tone": "warn",
+                        "to": "/students?bucket=nogoal",
+                    },
+                    {
+                        "code": "docs",
+                        "label": _("документы не собраны"),
+                        "value": by_code.get("docs", 0),
+                        "tone": "bad",
+                        "to": "/documents?f=missing",
+                    },
+                    {
+                        "code": "expiring",
+                        "label": _("истекает срок документа"),
+                        "value": sum(1 for row in state.values() if row["documents_expiring"]),
+                        "tone": "info",
+                        "to": "/documents?f=expiring",
+                    },
+                ]
+            ),
             "tasks_overdue": len(overdue),
             "queue": queue[:HOME_QUEUE],
             "tasks": [_task_row(t) for t in sorted(tasks, key=lambda t: (t.effective_due_date or today))[:HOME_TASKS]],
@@ -265,12 +299,14 @@ def students_list(request):
 
     state = attention.state_of(students)
     rows = [_student_row(student, state[student.pk]) for student in students]
+    admission = _admission(request)
     return Response(
         {
             "results": rows,
-            "buckets": attention.counts(_students(request)),
+            "buckets": _buckets(_students(request), admission),
             "groups": _group_rows(request.user),
             "group": _picked(request),
+            "has_admission": admission,
         }
     )
 
@@ -293,8 +329,13 @@ def students_export(request):
     state = attention.state_of(students)
     rows = [_student_row(student, state[student.pk]) for student in students]
 
+    def graduate(row) -> bool:
+        return row["parallel"] == ADMISSION_PARALLEL
+
     def pair(current_key: str, target_key: str):
         def read(row):
+            if not graduate(row):
+                return ""
             current = row[current_key]
             target = row[target_key]
             shown_current = current if current is not None else "—"
@@ -303,13 +344,19 @@ def students_export(request):
 
         return read
 
+    def documents(row) -> str:
+        return f"{row['documents_collected']} / {row['documents_total']}" if graduate(row) else ""
+
+    # у выбранных групп без поступления колонок экзаменов и документов нет;
+    # в смешанной выгрузке у строк 8–10 эти ячейки пустые
+    admission = _admission(request)
     columns = (
         Column(_("Ученик"), lambda row: row["full_name"], 30),
         Column(_("Группа"), lambda row: row["group"], 12),
-        Column("IELTS", pair("ielts_current", "ielts_target"), 16),
-        Column("SAT", pair("sat_current", "sat_target"), 16),
+        *((Column("IELTS", pair("ielts_current", "ielts_target"), 16),) if admission else ()),
+        *((Column("SAT", pair("sat_current", "sat_target"), 16),) if admission else ()),
         Column(_("Последний Mock Test"), lambda row: row["last_mock_date"], 20),
-        Column(_("Документы"), lambda row: f"{row['documents_collected']} / {row['documents_total']}", 14),
+        *((Column(_("Документы"), documents, 14),) if admission else ()),
         Column(_("Статус"), lambda row: row["status_title"], 18),
     )
     stamp = timezone.localdate().strftime("%Y-%m-%d")
@@ -529,7 +576,12 @@ def student_card(request, pk: int):
                 if b.code in state["buckets"]
             ],
             "queue": mine,
-            "tasks": [_task_row(t) for t in _tasks_of(Student.objects.filter(pk=student.pk)).order_by("-created_at")],
+            # задачи плана — у 11: у 8–10 роадмапа нет (`core/parallels.py`)
+            "tasks": (
+                [_task_row(t) for t in _tasks_of(Student.objects.filter(pk=student.pk)).order_by("-created_at")]
+                if graduate
+                else []
+            ),
             "documents": {
                 "collected": doc_state["collected"],
                 "total": doc_state["total"],
@@ -555,7 +607,9 @@ def tasks(request):
     from roadmap.models import TaskStatus
     from roadmap.services import assign_to_students
 
-    students = _students(request)
+    # задачи плана — у 11: смешанный куратор ставит и видит их только по
+    # группам с поступлением (`core/parallels.py`)
+    students = admission_students(_students(request))
     if request.method == "GET":
         rows = _tasks_of(students).order_by("-created_at")
         chosen = str(request.query_params.get("filter") or "open").strip()
@@ -636,7 +690,15 @@ def profile(request):
     if denied:
         return denied
 
+    from accounts.curators import curated_parallels
     from core.domains import CURATOR_CONFIRM_DOMAINS, CURATOR_DOMAINS, CURATOR_WRITE_DOMAINS, DOMAINS
+
+    # домены, которые ведутся хоть у одной из групп куратора: у куратора
+    # только 8–10 экзаменов и документов нет (`core/parallels.py`)
+    parallels = curated_parallels(request.user)
+
+    def led(code: str) -> bool:
+        return code in DOMAINS and bool(domain_parallels(code) & parallels)
 
     return Response(
         {
@@ -644,10 +706,11 @@ def profile(request):
             "email": request.user.email,
             "role_title": _("Куратор"),
             "groups": _group_rows(request.user),
-            "confirms": [DOMAINS[code].title for code in CURATOR_CONFIRM_DOMAINS if code in DOMAINS],
+            "has_admission": ADMISSION_PARALLEL in parallels,
+            "confirms": [DOMAINS[code].title for code in CURATOR_CONFIRM_DOMAINS if led(code)],
             # дисциплину куратор ведёт сам по своим группам (фаза 66)
-            "writes": [DOMAINS[code].title for code in CURATOR_WRITE_DOMAINS if code in DOMAINS],
-            "reads": [d.title for d in DOMAINS.values() if d.code not in CURATOR_DOMAINS],
+            "writes": [DOMAINS[code].title for code in CURATOR_WRITE_DOMAINS if led(code)],
+            "reads": [d.title for d in DOMAINS.values() if d.code not in CURATOR_DOMAINS and led(d.code)],
         }
     )
 

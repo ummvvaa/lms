@@ -381,6 +381,24 @@ def document_open(student, doc_type: str) -> bool:
 
 _BY_ROUTE: dict[str, Section] = {route: section for section in SECTIONS for route in section.routes}
 
+#: Маршруты пробников — часть раздела «Портфолио» (только 11 у ученика), но
+#: пробники сотрудники ведут у всех параллелей (`MOCK_PARALLELS`): куратору
+#: без групп 11 они остаются открыты
+MOCK_ROUTES: frozenset[str] = frozenset({"attempt-list", "attempt-detail"})
+
+
+def admission_routes() -> frozenset[str]:
+    """Маршруты разделов, которые ведутся только у 11, — без маршрутов пробников.
+
+    Шлюз куратора отвечает на них 404 куратору без групп с поступлением
+    (`accounts.permissions`): цели и официальные баллы, вузы, эссе, готовность,
+    задачи плана, каталог — у 8–10 этого нет вовсе.
+    """
+    return (
+        frozenset(route for section in SECTIONS if section.parallels == ADMISSION_ONLY for route in section.routes)
+        - MOCK_ROUTES
+    )
+
 
 #: Экраны, убранные из кабинета ученика (решение владельца, 07.10.2026):
 #: «Мой путь», план поступления, стипендии, роадмап, ресурсы, избранное.

@@ -505,6 +505,43 @@ CURATOR_HIDDEN_ROUTES = frozenset(
 )
 
 
+#: Что у куратора без групп 11 не существует (решение владельца, 19.10.2026):
+#: разделы поступления ученика из реестра параллелей (`core/parallels.py`)
+#: и экраны кабинета про документы, задачи плана и очередь экзаменов —
+#: у 8–10 куратор ничего не подтверждает, очередь его пуста всегда.
+#: Смешанный куратор видит это по группам 11 — ему маршруты открыты.
+CURATOR_ADMISSION_ONLY_ROUTES = frozenset(
+    {
+        "curator-documents",
+        "curator-documents-export",
+        "curator-documents-remind",
+        "curator-document-revoke",
+        "curator-tasks",
+        "curator-task-status",
+        "suggestion-students-queue",
+        "suggestion-students-confirm",
+    }
+)
+
+
+def curator_admission_routes() -> frozenset[str]:
+    """Маршруты, закрытые куратору без групп 11: реестр параллелей плюс экраны кабинета."""
+    from core.parallels import admission_routes
+
+    return admission_routes() | CURATOR_ADMISSION_ONLY_ROUTES
+
+
+def curator_leads_admission(request) -> bool:
+    """Ведёт ли куратор группу 11 — считается раз на запрос."""
+    cached = getattr(request, "_curator_leads_admission", None)
+    if cached is None:
+        from accounts.curators import leads_admission
+
+        cached = leads_admission(request.user)
+        request._curator_leads_admission = cached
+    return cached
+
+
 #: Что открыто учителю по имени маршрута. Всё остальное для него не существует:
 #: шлюз отвечает «не найдено», а не отказом — у роли нет ни карточек учеников,
 #: ни очередей, ни справочников, и объяснять, что «раздел закрыт», незачем.
@@ -716,7 +753,9 @@ class CuratorGateMiddleware:
                 name = resolve(request.path).url_name
             except Resolver404:
                 name = None
-            if name in CURATOR_HIDDEN_ROUTES:
+            if name in CURATOR_HIDDEN_ROUTES or (
+                name in curator_admission_routes() and not curator_leads_admission(request)
+            ):
                 return JsonResponse(
                     {"detail": gettext("Не найдено")}, status=404, json_dumps_params={"ensure_ascii": False}
                 )

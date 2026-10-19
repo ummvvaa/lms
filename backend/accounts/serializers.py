@@ -35,7 +35,9 @@ class MeSerializer(serializers.ModelSerializer):
     #: адреса экранов, открытые ученику по параллели его группы
     #: (`core/parallels.py`); у сотрудника — null, его меню по роли
     sections = serializers.SerializerMethodField()
-    #: ведётся ли у ученика поступление — у сотрудника null
+    #: ведётся ли поступление у того, кого человек видит: у ученика — по
+    #: параллели его группы, у куратора — есть ли среди его групп 11
+    #: (`accounts.curators.leads_admission`); у остальных сотрудников null
     has_admission = serializers.SerializerMethodField()
     #: ведёт ли сотрудник уроки при любой роли: директору с уроками меню
     #: добавляет «Мои уроки» (`academics.teachers.teaches`)
@@ -125,6 +127,10 @@ class MeSerializer(serializers.ModelSerializer):
     def get_has_admission(self, obj: User) -> bool | None:
         from core.parallels import has_admission
 
+        if obj.role == Role.CURATOR:
+            from accounts.curators import leads_admission
+
+            return leads_admission(obj)
         student = getattr(obj, "student", None) if obj.role == "student" else None
         return has_admission(student) if student is not None else None
 
