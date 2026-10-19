@@ -182,7 +182,7 @@ def test_absences_report_by_days_and_groups(curator, other_curator, saltanat, ad
         format="json",
     )
     # вчерашняя строка — из прежней истории, в отчёт за период тоже попадает
-    AttendanceDay.objects.create(student=pupils["c"], date=timezone.localdate() - dt.timedelta(days=1), present=False)
+    AttendanceDay.objects.create(student=pupils["c"], date=timezone.localdate() - dt.timedelta(days=1), mark="absent")
 
     mine = client_of(curator).get("/api/attendance/absences/").json()
     assert [(row["group_code"], row["count"]) for row in mine["rows"]] == [("BOSTON", 2)]

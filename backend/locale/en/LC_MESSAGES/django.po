@@ -17324,3 +17324,59 @@ msgstr "Moved to another group"
 #: core/labels.py
 msgid "Перевод в группу"
 msgstr "Group transfer"
+
+#: students/discipline.py
+msgid "{date}: {mark}"
+msgstr "{date}: {mark}"
+
+#: students/discipline_views.py
+msgid "Аналитику по отметкам читают куратор, директор школы и администратор"
+msgstr "Mark analytics is read by the curator, the school director and the administrator"
+
+#: students/discipline_views.py
+msgid "Был"
+msgstr "Present"
+
+#: students/discipline_views.py
+msgid "Дней отмечено"
+msgstr "Days marked"
+
+#: students/discipline_views.py
+msgid "Кто опоздал"
+msgstr "Who was late"
+
+#: students/discipline_views.py
+msgid "Не был — даты"
+msgstr "Absent: dates"
+
+#: students/discipline_views.py
+msgid "Опоздал — даты"
+msgstr "Late: dates"
+
+#: students/discipline_views.py
+msgid "Опозданий"
+msgstr "Late arrivals"
+
+#: students/discipline_views.py
+msgid "Отметка — в школе, нет или опоздал"
+msgstr "The mark is present, absent or late"
+
+#: students/discipline_views.py
+msgid "Отметки куратора"
+msgstr "Curator's marks"
+
+#: students/discipline_views.py
+msgid "Свой"
+msgstr "Custom"
+
+#: students/models.py
+msgid "в школе"
+msgstr "present"
+
+#: students/discipline_views.py
+msgid "посещаемость-куратора-{since}-{until}.xlsx"
+msgstr "curator-attendance-{since}-{until}.xlsx"
+
+#: students/discipline_views.py
+msgid "свой период"
+msgstr "custom period"

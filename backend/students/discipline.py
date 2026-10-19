@@ -92,7 +92,7 @@ def recount_attendance(student: Student) -> int | None:
     total = days.count()
     if not total:
         return None
-    present = days.filter(present=True).count()
+    present = days.exclude(mark=AttendanceDay.Mark.ABSENT).count()
     percent = round(present * 100 / total)
     profile, _created = BehaviorProfile.objects.get_or_create(student=student)
     if profile.attendance_percent != percent:
@@ -100,20 +100,52 @@ def recount_attendance(student: Student) -> int | None:
     return percent
 
 
+MARKS = (AttendanceDay.Mark.PRESENT, AttendanceDay.Mark.ABSENT, AttendanceDay.Mark.LATE)
+
+
+#: слова журнала: «был / не был / опоздал» — на экране отметка зовётся «в школе / нет / опоздал»
+JOURNAL_WORDS = {
+    AttendanceDay.Mark.PRESENT: gettext_noop("был"),
+    AttendanceDay.Mark.ABSENT: gettext_noop("не был"),
+    AttendanceDay.Mark.LATE: gettext_noop("опоздал"),
+}
+
+
+def mark_words(mark: str) -> str:
+    """Отметка словом для журнала."""
+    return _(JOURNAL_WORDS.get(mark, JOURNAL_WORDS[AttendanceDay.Mark.PRESENT]))
+
+
+def mark_label(mark: str) -> str:
+    """Отметка словом для экрана и файла: «в школе / нет / опоздал»."""
+    return str(AttendanceDay.Mark(mark).label)
+
+
+def _mark_of(raw) -> str:
+    """Отметка из запроса: код или прежнее `present`; мусор — «в школе»."""
+    if isinstance(raw, bool):
+        return AttendanceDay.Mark.PRESENT if raw else AttendanceDay.Mark.ABSENT
+    value = str(raw or "").strip().lower()
+    return value if value in MARKS else AttendanceDay.Mark.PRESENT
+
+
 @transaction.atomic
-def mark_day(*, student: Student, date: dt.date, present: bool, reason: str = "", actor) -> AttendanceDay:
+def mark_day(*, student: Student, date: dt.date, mark: str, reason: str = "", actor) -> AttendanceDay:
     """Отметить один день. Повторная отметка того же дня — правка, не дубль."""
+    mark = _mark_of(mark)
+    # комментарий есть только у «нет» и «опоздал»
+    reason = reason[:200] if mark != AttendanceDay.Mark.PRESENT else ""
     row, created = AttendanceDay.objects.get_or_create(
         student=student,
         date=date,
-        defaults={"present": present, "reason": reason[:200], "noted_by": _actor(actor)},
+        defaults={"mark": mark, "reason": reason, "noted_by": _actor(actor)},
     )
     if not created:
-        changed = row.present != present or row.reason != reason[:200]
-        row.present = present
-        row.reason = reason[:200]
+        changed = row.mark != mark or row.reason != reason
+        row.mark = mark
+        row.reason = reason
         row.noted_by = _actor(actor)
-        row.save(update_fields=["present", "reason", "noted_by", "updated_at"])
+        row.save(update_fields=["mark", "reason", "noted_by", "updated_at"])
         if changed and _is_late(date):
             # правка задним числом — отдельной строкой журнала: по ней видно,
             # что посещаемость меняли не в тот день, когда она случилась
@@ -122,7 +154,7 @@ def mark_day(*, student: Student, date: dt.date, present: bool, reason: str = ""
                 code="attendance_late_edit",
                 text=_("{date}: {mark}{reason} (правка спустя {days} дн.)").format(
                     date=f"{date:%d.%m.%Y}",
-                    mark=_("был") if present else _("не был"),
+                    mark=mark_words(mark),
                     reason=f", {reason}" if reason else "",
                     days=(timezone.localdate() - date).days,
                 ),
@@ -140,57 +172,107 @@ def _actor(actor):
     return actor if getattr(actor, "pk", None) else None
 
 
-def day_sheet(*, group, date: dt.date) -> dict:
-    """Лист посещаемости группы за день: все присутствуют, пока не снято.
+def _journal_mark(student: Student, date: dt.date, was: str | None, now: str, actor) -> None:
+    """В журнал — только «нет», «опоздал» и исправление прежней отметки (решение владельца, 19.10.2026)."""
+    if was is None and now != AttendanceDay.Mark.PRESENT:
+        record_event(
+            student=student,
+            code="attendance_day",
+            text=_("{date}: {mark}").format(date=f"{date:%d.%m.%Y}", mark=mark_words(now)),
+            actor=actor,
+        )
+    elif was is not None and was != now:
+        record_event(
+            student=student,
+            code="attendance_day",
+            text=_("{date}: {mark} (исправлено)").format(date=f"{date:%d.%m.%Y}", mark=mark_words(now)),
+            actor=actor,
+        )
 
-    Пустой день — это «все были», а не «никого не отмечали»: учителю
-    проще снять три отметки, чем поставить двадцать. Что день ещё не
-    сохраняли, видно по признаку `saved`.
+
+def _row_dict(student: Student, row: AttendanceDay | None) -> dict:
+    return {
+        "student": student.pk,
+        "full_name": student.full_name,
+        "mark": row.mark if row else AttendanceDay.Mark.PRESENT,
+        "reason": row.reason if row else "",
+        "marked": row is not None,
+    }
+
+
+def _noted(marks: dict) -> dict | None:
+    # кто и когда отмечал последним — подпись листа; имя автора берётся из его записи
+    last = max(marks.values(), key=lambda row: row.updated_at, default=None)
+    if last is None:
+        return None
+    return {"by": (last.noted_by.full_name or last.noted_by.handle) if last.noted_by else "", "at": last.updated_at}
+
+
+def day_sheet(*, group, date: dt.date) -> dict:
+    """Лист группы за день: все в школе, пока не отмечено иное.
+
+    Пустой день — это «все в школе», а не «никого не отмечали»: куратору
+    проще нажать трёх, чем двадцать. Что день уже отмечали, видно по `saved`.
     """
     students = list(Student.objects.filter(group=group, is_active=True).order_by("last_name", "first_name"))
     marks = {
         row.student_id: row
         for row in AttendanceDay.objects.filter(student__in=students, date=date).select_related("noted_by")
     }
-    # кто и когда отмечал последним — подпись листа; имя автора берётся из его записи
-    last = max(marks.values(), key=lambda row: row.updated_at, default=None)
     return {
         "group": group.pk,
         "group_code": group.code,
         "date": date,
         "saved": bool(marks),
         "late": _is_late(date),
-        "noted": (
-            {"by": (last.noted_by.full_name or last.noted_by.handle) if last.noted_by else "", "at": last.updated_at}
-            if last is not None
-            else None
-        ),
-        "rows": [
-            {
-                "student": s.pk,
-                "full_name": s.full_name,
-                "present": marks[s.pk].present if s.pk in marks else True,
-                "reason": marks[s.pk].reason if s.pk in marks else "",
-                "marked": s.pk in marks,
-            }
-            for s in students
-        ],
-        "absent": sum(1 for row in marks.values() if not row.present),
+        "noted": _noted(marks),
+        "rows": [_row_dict(s, marks.get(s.pk)) for s in students],
+        "absent": sum(1 for row in marks.values() if row.mark == AttendanceDay.Mark.ABSENT),
+        "late_count": sum(1 for row in marks.values() if row.mark == AttendanceDay.Mark.LATE),
         "total": len(students),
     }
 
 
 @transaction.atomic
-def save_day(*, group, date: dt.date, rows: list[dict], actor) -> dict:
-    """Сохранить лист за день. Строки не про своих учеников отбрасываются.
+def open_day(*, group, date: dt.date, actor) -> dict:
+    """Открыть лист за сегодня: всем без отметки записать «в школе» (решение владельца, 19.10.2026).
 
-    В журнал ученика пишется только то, что стоит слов: «не был» и
-    исправление прежней отметки (решение владельца, 19.10.2026) — строка
-    на каждого присутствующего при каждом сохранении ни о чём не говорит.
-    Кто и когда отметил, лист показывает подписью (`day_sheet` → `noted`).
+    Так день считается отмеченным и без нажатий, а подпись «отметил … в …»
+    появляется сразу; дальше куратор нажимает только тех, кого нет или кто опоздал.
     """
+    students = Student.objects.filter(group=group, is_active=True)
+    marked = set(AttendanceDay.objects.filter(student__in=students, date=date).values_list("student_id", flat=True))
+    AttendanceDay.objects.bulk_create(
+        [
+            AttendanceDay(student=s, date=date, mark=AttendanceDay.Mark.PRESENT, noted_by=_actor(actor))
+            for s in students
+            if s.pk not in marked
+        ]
+    )
+    return day_sheet(group=group, date=date)
+
+
+@transaction.atomic
+def mark_one(*, group, student: Student, date: dt.date, mark: str, reason: str, actor) -> dict:
+    """Одна отметка — сразу при нажатии; возвращает строку и подпись листа."""
+    before = AttendanceDay.objects.filter(student=student, date=date).first()
+    was = before.mark if before else None
+    row = mark_day(student=student, date=date, mark=mark, reason=reason, actor=actor)
+    _journal_mark(student, date, was, row.mark, actor)
+    sheet = day_sheet(group=group, date=date)
+    return {
+        "row": _row_dict(student, row),
+        "noted": sheet["noted"],
+        "absent": sheet["absent"],
+        "late_count": sheet["late_count"],
+    }
+
+
+@transaction.atomic
+def save_day(*, group, date: dt.date, rows: list[dict], actor) -> dict:
+    """Сохранить лист за день целиком. Строки не про своих учеников отбрасываются."""
     allowed = {s.pk: s for s in Student.objects.filter(group=group, is_active=True).select_related("group")}
-    before = {row.student_id: row.present for row in AttendanceDay.objects.filter(student__in=allowed, date=date)}
+    before = {row.student_id: row.mark for row in AttendanceDay.objects.filter(student__in=allowed, date=date)}
     saved = 0
     for row in rows:
         try:
@@ -200,32 +282,12 @@ def save_day(*, group, date: dt.date, rows: list[dict], actor) -> dict:
         student = allowed.get(student_id)
         if student is None:
             continue
-        present = bool(row.get("present", True))
-        mark_day(
-            student=student,
-            date=date,
-            present=present,
-            reason=str(row.get("reason") or "").strip(),
-            actor=actor,
+        mark = _mark_of(row["mark"] if "mark" in row else row.get("present", True))
+        written = mark_day(
+            student=student, date=date, mark=mark, reason=str(row.get("reason") or "").strip(), actor=actor
         )
         saved += 1
-        was = before.get(student_id)
-        if was is None and not present:
-            record_event(
-                student=student,
-                code="attendance_day",
-                text=_("{date}: не был").format(date=f"{date:%d.%m.%Y}"),
-                actor=actor,
-            )
-        elif was is not None and was != present:
-            record_event(
-                student=student,
-                code="attendance_day",
-                text=_("{date}: {mark} (исправлено)").format(
-                    date=f"{date:%d.%m.%Y}", mark=_("был") if present else _("не был")
-                ),
-                actor=actor,
-            )
+        _journal_mark(student, date, before.get(student_id), written.mark, actor)
     # `written` — сколько строк записали; `saved` в листе значит другое:
     # «этот день уже отмечали». Разные вещи, разные имена
     return {"written": saved, **day_sheet(group=group, date=date)}
@@ -246,6 +308,7 @@ WEEKDAYS = (
 CELL_WORDS = {
     "present": gettext_noop("был"),
     "absent": gettext_noop("не был"),
+    "late": gettext_noop("опоздал"),
     "off": gettext_noop("выходной"),
     "unmarked": "—",
 }
@@ -283,8 +346,8 @@ def month_journal(*, group, month: dt.date, absent_only: bool = False) -> dict:
                 cells.append("unmarked")
             else:
                 marked += 1
-                absent += 0 if mark.present else 1
-                cells.append("present" if mark.present else "absent")
+                absent += 1 if mark.mark == AttendanceDay.Mark.ABSENT else 0
+                cells.append(mark.mark)
         if absent_only and absent == 0:
             continue
         rows.append(
@@ -316,17 +379,18 @@ def month_journal(*, group, month: dt.date, absent_only: bool = False) -> dict:
 
 
 def absences(*, groups, since: dt.date, until: dt.date) -> list[dict]:
-    """Кого не было по отметке куратора — по дням и группам, для службы безопасности.
+    """Кого не было и кто опоздал по отметке куратора — по дням и группам, для службы безопасности.
 
-    Строка — день одной группы со списком отсутствующих; дни, когда никого
-    не отмечали или все были, в отчёт не попадают.
+    Строка — день одной группы; дни, когда никого не отмечали или все были
+    в школе, в отчёт не попадают. У каждого — отметка и комментарий куратора.
     """
     rows = (
         AttendanceDay.objects.filter(
-            present=False, date__gte=since, date__lte=until, student__group__in=groups, student__is_active=True
+            date__gte=since, date__lte=until, student__group__in=groups, student__is_active=True
         )
+        .exclude(mark=AttendanceDay.Mark.PRESENT)
         .select_related("student", "student__group")
-        .order_by("-date", "student__group__code", "student__last_name", "student__first_name")
+        .order_by("-date", "student__group__code", "mark", "student__last_name", "student__first_name")
     )
     out: dict[tuple[dt.date, int], dict] = {}
     for row in rows:
@@ -341,14 +405,91 @@ def absences(*, groups, since: dt.date, until: dt.date) -> list[dict]:
                 "students": [],
             },
         )
-        bucket["students"].append({"id": row.student_id, "full_name": row.student.full_name})
-    return [{**bucket, "count": len(bucket["students"])} for bucket in out.values()]
+        bucket["students"].append(
+            {"id": row.student_id, "full_name": row.student.full_name, "mark": row.mark, "reason": row.reason}
+        )
+    return [
+        {
+            **bucket,
+            "count": sum(1 for s in bucket["students"] if s["mark"] == AttendanceDay.Mark.ABSENT),
+            "late_count": sum(1 for s in bucket["students"] if s["mark"] == AttendanceDay.Mark.LATE),
+        }
+        for bucket in out.values()
+    ]
+
+
+def stats(*, groups, since: dt.date, until: dt.date) -> dict:
+    """Аналитика по отметкам куратора за период: по ученикам и итого.
+
+    День группы считается отмеченным, если в нём есть хоть одна строка
+    (открытый лист пишет «в школе» всем). У ученика: дней — отмеченные дни
+    его группы, не был и опоздал — его строки, был — остальное; процент —
+    доля дней «был» и «опоздал» от отмеченных. Даты с комментарием — только
+    у «нет» и «опоздал».
+    """
+    rows = list(
+        AttendanceDay.objects.filter(
+            date__gte=since, date__lte=until, student__group__in=groups, student__is_active=True
+        )
+        .select_related("student", "student__group")
+        .order_by("date")
+    )
+    days_of_group: dict[int, set[dt.date]] = {}
+    for row in rows:
+        days_of_group.setdefault(row.student.group_id, set()).add(row.date)
+    students = list(
+        Student.objects.filter(group__in=groups, is_active=True)
+        .select_related("group")
+        .order_by("group__code", "last_name", "first_name")
+    )
+    by_student: dict[int, list[AttendanceDay]] = {}
+    for row in rows:
+        by_student.setdefault(row.student_id, []).append(row)
+    out = []
+    sum_days = sum_present = total_absent = total_late = 0
+    for student in students:
+        days = len(days_of_group.get(student.group_id, ()))
+        mine = by_student.get(student.pk, [])
+        absent = sum(1 for r in mine if r.mark == AttendanceDay.Mark.ABSENT)
+        late = sum(1 for r in mine if r.mark == AttendanceDay.Mark.LATE)
+        present = max(days - absent, 0)
+        sum_days += days
+        sum_present += present
+        total_absent += absent
+        total_late += late
+        out.append(
+            {
+                "id": student.pk,
+                "full_name": student.full_name,
+                "group": student.group.code if student.group_id else "",
+                "days": days,
+                "present": present - late if present >= late else 0,
+                "absent": absent,
+                "late": late,
+                "percent": round(present * 100 / days) if days else None,
+                "dates": [
+                    {"date": r.date, "mark": r.mark, "reason": r.reason}
+                    for r in mine
+                    if r.mark != AttendanceDay.Mark.PRESENT
+                ],
+            }
+        )
+    all_days = set().union(*days_of_group.values()) if days_of_group else set()
+    return {
+        "rows": out,
+        "totals": {
+            "days": len(all_days),
+            "absent": total_absent,
+            "late": total_late,
+            "percent": round(sum_present * 100 / sum_days) if sum_days else None,
+        },
+    }
 
 
 def attendance_history(student: Student, *, limit: int = 60) -> list[dict]:
     """Последние дни ученика — для карточки: когда именно не был."""
     return [
-        {"date": row.date, "present": row.present, "reason": row.reason}
+        {"date": row.date, "mark": row.mark, "reason": row.reason}
         for row in AttendanceDay.objects.filter(student=student).order_by("-date")[:limit]
     ]
 

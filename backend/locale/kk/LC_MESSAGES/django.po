@@ -17242,3 +17242,59 @@ msgstr "Басқа топқа ауыстырылды"
 #: core/labels.py
 msgid "Перевод в группу"
 msgstr "Топқа ауыстыру"
+
+#: students/discipline.py
+msgid "{date}: {mark}"
+msgstr "{date}: {mark}"
+
+#: students/discipline_views.py
+msgid "Аналитику по отметкам читают куратор, директор школы и администратор"
+msgstr "Белгілер бойынша талдауды куратор, мектеп директоры және әкімші оқиды"
+
+#: students/discipline_views.py
+msgid "Был"
+msgstr "Болды"
+
+#: students/discipline_views.py
+msgid "Дней отмечено"
+msgstr "Белгіленген күндер"
+
+#: students/discipline_views.py
+msgid "Кто опоздал"
+msgstr "Кім кешікті"
+
+#: students/discipline_views.py
+msgid "Не был — даты"
+msgstr "Болмады — күндер"
+
+#: students/discipline_views.py
+msgid "Опоздал — даты"
+msgstr "Кешікті — күндер"
+
+#: students/discipline_views.py
+msgid "Опозданий"
+msgstr "Кешігулер"
+
+#: students/discipline_views.py
+msgid "Отметка — в школе, нет или опоздал"
+msgstr "Белгі — мектепте, жоқ немесе кешікті"
+
+#: students/discipline_views.py
+msgid "Отметки куратора"
+msgstr "Куратор белгілері"
+
+#: students/discipline_views.py
+msgid "Свой"
+msgstr "Өз кезеңі"
+
+#: students/models.py
+msgid "в школе"
+msgstr "мектепте"
+
+#: students/discipline_views.py
+msgid "посещаемость-куратора-{since}-{until}.xlsx"
+msgstr "куратор-катысуы-{since}-{until}.xlsx"
+
+#: students/discipline_views.py
+msgid "свой период"
+msgstr "өз кезеңі"

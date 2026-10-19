@@ -108,10 +108,16 @@ def attendance_day(request):
             }
         )
     date = _date(request.query_params.get("date")) or timezone.localdate()
-    payload = discipline.day_sheet(group=group, date=date)
+    # отметку утром ставит куратор своей группы и только за сегодня; остальные читают.
+    # Открытый куратором лист за сегодня записывает «в школе» всем без отметки
+    # (решение владельца, 19.10.2026): день отмечен и без нажатий
+    may_mark = request.user.role == ROLE_CURATOR and date == timezone.localdate()
+    if may_mark:
+        payload = discipline.open_day(group=group, date=date, actor=request.user)
+    else:
+        payload = discipline.day_sheet(group=group, date=date)
     payload["groups"] = _my_groups(request.user)
-    # отметку утром ставит куратор своей группы и только за сегодня; остальные читают
-    payload["may_mark"] = request.user.role == ROLE_CURATOR and date == timezone.localdate()
+    payload["may_mark"] = may_mark
     return Response(payload)
 
 
@@ -214,6 +220,53 @@ def attendance_save(request):
     return Response(payload)
 
 
+def _today_group_or_refusal(request):
+    """Группа и сегодняшняя дата для записи куратора; иначе — ответ с отказом."""
+    if request.user.role == ROLE_STUDENT:
+        return None, None, _forbidden()
+    if request.user.role != ROLE_CURATOR:
+        return None, None, _forbidden(_("Отметку утром ставит куратор своей группы"))
+    group = _group_for(request.user, request.data.get("group"))
+    if group is None:
+        return None, None, _not_found()
+    date = _date(request.data.get("date")) or timezone.localdate()
+    if date != timezone.localdate():
+        return (
+            None,
+            None,
+            Response(
+                {"detail": _("Отмечать можно только сегодняшний день — поправить тоже сегодня")},
+                status=status.HTTP_400_BAD_REQUEST,
+            ),
+        )
+    return group, date, None
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def attendance_mark(request):
+    """Одна отметка сразу при нажатии: в школе, нет или опоздал, с комментарием у двух последних."""
+    group, date, refusal = _today_group_or_refusal(request)
+    if refusal is not None:
+        return refusal
+    student = Student.objects.filter(pk=request.data.get("student"), group=group, is_active=True).first()
+    if student is None:
+        return _not_found()
+    mark = str(request.data.get("mark") or "").strip().lower()
+    if mark not in discipline.MARKS:
+        return Response({"detail": _("Отметка — в школе, нет или опоздал")}, status=status.HTTP_400_BAD_REQUEST)
+    payload = discipline.mark_one(
+        group=group,
+        student=student,
+        date=date,
+        mark=mark,
+        reason=str(request.data.get("reason") or "").strip(),
+        actor=request.user,
+    )
+    return Response(payload)
+
+
 # --- Отсутствующие — отчёт для службы безопасности ---------------------------
 
 
@@ -274,12 +327,25 @@ def attendance_absences_export(request):
     payload, refusal = _absences_or_refusal(request)
     if refusal is not None:
         return refusal
+
+    def names(mark: str):
+        def read(row):
+            return "; ".join(
+                f"{s['full_name']} ({s['reason']})" if s["reason"] else s["full_name"]
+                for s in row["students"]
+                if s["mark"] == mark
+            )
+
+        return read
+
     columns = (
         Column(_("Дата"), lambda row: f"{row['date']:%d.%m.%Y}", 12),
         Column(_("День"), lambda row: row["weekday"], 6),
         Column(_("Группа"), lambda row: row["group_code"], 12),
-        Column(_("Кого не было"), lambda row: ", ".join(s["full_name"] for s in row["students"]), 60),
+        Column(_("Кого не было"), names("absent"), 60),
         Column(_("Сколько"), lambda row: row["count"], 8),
+        Column(_("Кто опоздал"), names("late"), 40),
+        Column(_("Опозданий"), lambda row: row["late_count"], 10),
     )
     return workbook_response(
         filename=_("отсутствующие-{since}-{until}.xlsx").format(since=payload["from"], until=payload["to"]),
@@ -297,6 +363,100 @@ def _my_groups(user) -> list[dict]:
     if role == ROLE_CURATOR:
         query = query.filter(pk__in=curated_group_ids(user))
     return [{"id": g.pk, "code": g.code, "language": g.language} for g in query.order_by("code")]
+
+
+# --- Аналитика по отметкам куратора --------------------------------------------
+
+
+def _stats_or_refusal(request):
+    """Период и группы аналитики: период — код из календаря школы или свои даты."""
+    from academics import calendar as school_calendar
+
+    if request.user.role == ROLE_STUDENT:
+        return None, _forbidden()
+    if request.user.role not in ABSENCE_READERS:
+        return None, _forbidden(_("Аналитику по отметкам читают куратор, директор школы и администратор"))
+    groups = _my_groups(request.user)
+    raw = request.query_params.get("group")
+    if raw and raw != "all":
+        picked = _group_for(request.user, raw)
+        if picked is None:
+            return None, _not_found()
+        chosen = [picked.pk]
+    else:
+        chosen = [g["id"] for g in groups]
+    calendar = school_calendar.load()
+    code = str(request.query_params.get("period") or "").strip()
+    custom_from = _date(request.query_params.get("from"))
+    custom_to = _date(request.query_params.get("to"))
+    if code == "custom" or (not code and custom_from and custom_to):
+        since, until = custom_from or timezone.localdate().replace(day=1), custom_to or timezone.localdate()
+        if until < since:
+            since, until = until, since
+        code, title = "custom", _("свой период")
+    else:
+        since, until, title = school_calendar.period_bounds(calendar, code or "week")
+        code = code or "week"
+    report = discipline.stats(groups=chosen, since=since, until=until)
+    return {
+        "group": raw if raw and raw != "all" else "all",
+        "groups": groups,
+        "period": {"code": code, "from": since, "to": until, "title": title},
+        "periods": [*school_calendar.period_choices(calendar), {"code": "custom", "title": _("Свой")}],
+        "words": {mark: discipline.mark_label(mark) for mark in discipline.MARKS},
+        **report,
+    }, None
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def attendance_stats(request):
+    """Аналитика по отметкам куратора: по ученикам и итого за период."""
+    payload, refusal = _stats_or_refusal(request)
+    return refusal if refusal is not None else Response(payload)
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def attendance_stats_export(request):
+    """Та же таблица книгой XLSX; даты «нет» и «опоздал» — с комментарием куратора."""
+    from core.exports import Column, workbook_response
+
+    payload, refusal = _stats_or_refusal(request)
+    if refusal is not None:
+        return refusal
+
+    def dates(mark: str):
+        def read(row):
+            return "; ".join(
+                f"{d['date']:%d.%m}" + (f" ({d['reason']})" if d["reason"] else "")
+                for d in row["dates"]
+                if d["mark"] == mark
+            )
+
+        return read
+
+    columns = (
+        Column(_("Ученик"), lambda row: row["full_name"], 30),
+        Column(_("Группа"), lambda row: row["group"], 12),
+        Column(_("Дней отмечено"), lambda row: row["days"], 12),
+        Column(_("Был"), lambda row: row["present"], 8),
+        Column(_("Не был"), lambda row: row["absent"], 8),
+        Column(_("Опоздал"), lambda row: row["late"], 10),
+        Column(_("Процент"), lambda row: row["percent"], 10),
+        Column(_("Не был — даты"), dates("absent"), 40),
+        Column(_("Опоздал — даты"), dates("late"), 40),
+    )
+    period = payload["period"]
+    return workbook_response(
+        filename=_("посещаемость-куратора-{since}-{until}.xlsx").format(since=period["from"], until=period["to"]),
+        sheet=_("Отметки куратора"),
+        columns=columns,
+        rows=payload["rows"],
+        request=request,
+    )
 
 
 # --- Замечания ---------------------------------------------------------------

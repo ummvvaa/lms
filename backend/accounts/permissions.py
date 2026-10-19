@@ -145,6 +145,8 @@ CURATOR_READ_ROUTES = frozenset(
         "attendance-journal-export",
         "attendance-absences",
         "attendance-absences-export",
+        "attendance-stats",
+        "attendance-stats-export",
         "remarks",
         # куратор вносит за ученика теми же формами, что директор: формам
         # нужны каталог программ, справочники для списков выбора и рассказ
@@ -248,6 +250,7 @@ CURATOR_WRITE_ROUTES = frozenset(
         "remark-drop",
         # отметка куратора утром — своя группа, только сегодня
         "attendance-save",
+        "attendance-mark",
         "contact-list",
         "contact-detail",
         # всё, что ученик вносит о себе, куратор вносит за него напрямую,
@@ -380,6 +383,7 @@ ADMIN_CLOSED_ROUTES: dict[str, str] = {
     "acad-curator-home": CURATOR_CABINET,
     # отметка куратора утром — только куратор своей группы (решение владельца, 19.10.2026)
     "attendance-save": DAY_MARKING_CLOSED,
+    "attendance-mark": DAY_MARKING_CLOSED,
     # кабинет ученика: свои оценки и уроки на день
     "acad-my-grades": STUDENT_CABINET,
     "acad-my-lessons": STUDENT_CABINET,

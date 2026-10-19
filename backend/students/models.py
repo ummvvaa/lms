@@ -186,12 +186,18 @@ class AttendanceDay(models.Model):
     у ученика появляется хоть один день, процент считается по дням.
     """
 
+    class Mark(models.TextChoices):
+        PRESENT = "present", gettext_lazy("в школе")
+        ABSENT = "absent", gettext_lazy("нет")
+        LATE = "late", gettext_lazy("опоздал")
+
     student = models.ForeignKey(
         Student, verbose_name=gettext_lazy("Ученик"), related_name="attendance", on_delete=models.CASCADE
     )
     date = models.DateField(gettext_lazy("Дата"))
-    present = models.BooleanField(gettext_lazy("Присутствовал"), default=True)
-    #: причина отсутствия — по желанию: «болел», «на олимпиаде»
+    #: в школе, нет или опоздал — без минут (решение владельца, 19.10.2026)
+    mark = models.CharField(gettext_lazy("Отметка"), max_length=8, choices=Mark.choices, default=Mark.PRESENT)
+    #: комментарий куратора у «нет» и «опоздал» — по желанию: «болел», «на олимпиаде»
     reason = models.CharField(gettext_lazy("Причина"), max_length=200, blank=True)
     noted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -212,7 +218,7 @@ class AttendanceDay(models.Model):
         indexes = [models.Index(fields=("student", "-date"))]
 
     def __str__(self) -> str:
-        return f"{self.student} · {self.date} · {gettext('был') if self.present else gettext('не был')}"
+        return f"{self.student} · {self.date} · {self.get_mark_display()}"
 
 
 class BehaviorRemark(Archivable):

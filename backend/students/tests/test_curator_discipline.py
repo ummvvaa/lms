@@ -179,11 +179,12 @@ def test_curator_marks_today_and_the_old_percent_stays_archive(db, chicago, klas
 
 def test_day_sheet_starts_with_everyone_present(db, chicago, klass, curator):
     """Пустой день — «все были»: снять три отметки проще, чем поставить двадцать."""
+    # куратор открыл лист за сегодня — всем записано «в школе» (решение владельца, 19.10.2026)
     payload = login(curator).get(f"/api/attendance/?group={chicago.pk}&date={TODAY}").data
-    assert payload["saved"] is False
+    assert payload["saved"] is True
     assert payload["total"] == 3
-    assert all(row["present"] for row in payload["rows"])
-    assert all(not row["marked"] for row in payload["rows"])
+    assert all(row["mark"] == "present" and row["marked"] for row in payload["rows"])
+    assert AttendanceDay.objects.filter(date=TODAY).count() == 3
 
 
 def test_curator_cannot_touch_another_group(db, tokyo, stranger, curator):
@@ -227,7 +228,7 @@ def test_the_day_sheet_is_editable_only_today(db, chicago, klass, curator):
 
 
 def _mark(student, day: dt.date, present: bool):
-    AttendanceDay.objects.create(student=student, date=day, present=present)
+    AttendanceDay.objects.create(student=student, date=day, mark="present" if present else "absent")
 
 
 def test_the_month_journal_counts_absences_over_the_days_that_were_marked(db, chicago, klass, curator, saltanat):
@@ -310,10 +311,10 @@ def test_student_cannot_read_or_write_attendance(db, chicago, klass, curator):
 def test_editing_an_old_day_leaves_its_own_journal_line(db, chicago, klass, curator):
     """Правка задним числом видна отдельно: меняли не в тот день, когда случилось."""
     old = days(-30)
-    discipline.mark_day(student=klass[0], date=old, present=True, actor=curator)
+    discipline.mark_day(student=klass[0], date=old, mark="present", actor=curator)
     before = AuditLog.objects.filter(field_name="attendance_late_edit").count()
 
-    discipline.mark_day(student=klass[0], date=old, present=False, reason="болел", actor=curator)
+    discipline.mark_day(student=klass[0], date=old, mark="absent", reason="болел", actor=curator)
 
     assert AuditLog.objects.filter(field_name="attendance_late_edit").count() == before + 1
     entry = AuditLog.objects.filter(field_name="attendance_late_edit").latest("id")
@@ -322,15 +323,15 @@ def test_editing_an_old_day_leaves_its_own_journal_line(db, chicago, klass, cura
 
 def test_recent_day_edit_writes_no_extra_line(db, chicago, klass, curator):
     """Правка сегодняшнего дня — обычная работа, а не событие."""
-    discipline.mark_day(student=klass[0], date=TODAY, present=True, actor=curator)
+    discipline.mark_day(student=klass[0], date=TODAY, mark="present", actor=curator)
     before = AuditLog.objects.filter(field_name="attendance_late_edit").count()
-    discipline.mark_day(student=klass[0], date=TODAY, present=False, actor=curator)
+    discipline.mark_day(student=klass[0], date=TODAY, mark="absent", actor=curator)
     assert AuditLog.objects.filter(field_name="attendance_late_edit").count() == before
 
 
 def test_marking_the_same_day_twice_is_an_edit_not_a_duplicate(db, klass, curator):
-    discipline.mark_day(student=klass[0], date=TODAY, present=False, actor=curator)
-    discipline.mark_day(student=klass[0], date=TODAY, present=True, actor=curator)
+    discipline.mark_day(student=klass[0], date=TODAY, mark="absent", actor=curator)
+    discipline.mark_day(student=klass[0], date=TODAY, mark="present", actor=curator)
     assert AttendanceDay.objects.filter(student=klass[0], date=TODAY).count() == 1
 
 

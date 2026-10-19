@@ -196,7 +196,7 @@ def test_preview_numbers_match_what_is_really_erased(learner, admin, group):
     """
     apply_changes(learner.exam, {"ielts_current": "7.0"}, actor=admin)
     StudentCredential.objects.create(student=learner, kind="email", ciphertext="x")
-    AttendanceDay.objects.create(student=learner, date="2026-09-01", present=False)
+    AttendanceDay.objects.create(student=learner, date="2026-09-01", mark="absent")
     BehaviorRemark.objects.create(student=learner, date="2026-09-01", text="Опоздал")
     CuratorNote.objects.create(student=learner, author=admin, author_role="curator", text="Заметка")
 
@@ -366,7 +366,7 @@ def test_erasure_itself_is_recorded_forever(admin, make_user):
 def test_student_data_is_gone_physically(learner, admin):
     """У ученика удаляется всё: карточка, пароли, посещаемость, замечания."""
     StudentCredential.objects.create(student=learner, kind="email", ciphertext="x")
-    AttendanceDay.objects.create(student=learner, date="2026-09-02", present=False)
+    AttendanceDay.objects.create(student=learner, date="2026-09-02", mark="absent")
     BehaviorRemark.objects.create(student=learner, date="2026-09-02", text="Замечание")
 
     entry = archive(learner, actor=admin)
