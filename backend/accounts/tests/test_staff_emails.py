@@ -16,6 +16,7 @@ from accounts.logins import address_of, find_user
 from accounts.mailing import _skip_reason
 from accounts.models import Role, User
 from core.models import AuditLog
+from students.models import Student
 
 pytestmark = pytest.mark.django_db
 
@@ -194,3 +195,14 @@ def test_students_are_never_candidates(tmp_path, student):
     student.save(update_fields=["last_name", "first_name"])
     result = staff_emails.plan(staff_emails.read(book(tmp_path, [("Жумабаева Гульнара", "g@bhs.kz")]))[0])
     assert len(result.create) == 1 and not result.fill
+
+
+def test_student_card_without_email_does_not_break_the_plan(tmp_path, student):
+    """На проде у карточки ученика почта None, а не пустая строка: план не падает, почта вписывается."""
+    Student.objects.filter(pk=student.pk).update(email=None)
+    User.objects.filter(role=Role.STUDENT).update(email=None)
+    user = staff("Жумабаева Гульнара", login="gulnara.zhumabaeva")
+
+    result = staff_emails.plan(staff_emails.read(book(tmp_path, [("Жумабаева Гульнара", "g.zhumabaeva@bhs.kz")]))[0])
+
+    assert [item.user for item in result.fill] == [user] and not result.unsure

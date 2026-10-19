@@ -161,10 +161,9 @@ def plan(rows: list[Row]) -> Plan:
     result = Plan()
     people = [p for p in User.objects.exclude(role=Role.STUDENT).order_by("pk") if not p.is_probe]
     by_email = {p.email.lower(): p for p in people if p.email}
-    student_emails = {e.lower() for e in Student.all_objects.exclude(email="").values_list("email", flat=True)}
-    student_emails |= {
-        e.lower() for e in User.objects.filter(role=Role.STUDENT, email__isnull=False).values_list("email", flat=True)
-    }
+    # почта карточки и учётки ученика бывает и пустой строкой, и None — пропускаются обе
+    student_emails = {e.lower() for e in Student.all_objects.values_list("email", flat=True) if e}
+    student_emails |= {e.lower() for e in User.objects.filter(role=Role.STUDENT).values_list("email", flat=True) if e}
     seen_emails: set[str] = set()
     picked: set[int] = set()
 
