@@ -23,10 +23,29 @@ STYLES = ROOT / "frontend" / "src" / "styles"
 #: Потолок фазы 32 для перехода и появления.
 MAX_MS = 320
 
-#: Единственная анимация длиннее потолка — затухание подсветки строки.
-#: Это угасание цвета, а не движение: за 320 мс человек не успевает
-#: заметить, какая из сорока строк изменилась.
-SLOW_ALLOWED = {"--dur-flash"}
+#: Длиннее потолка — только названное: затухание подсветки строки (за 320 мс
+#: не заметить, какая из сорока строк изменилась) и коралловый язык
+#: (решение владельца, 22.10.2026) — окно и шторка, появление и заполнение
+#: один раз при открытии экрана и циклы фона, которые ничего не ждут от человека.
+#: Отклик — наведение, нажатие, меню — по-прежнему в потолке.
+SLOW_ALLOWED = {
+    "--dur-flash",
+    "--dur-modal",
+    "--dur-drawer",
+    "--dur-rise",
+    "--dur-fill",
+    "--dur-ring",
+    "--dur-spark",
+    "--dur-grow",
+    "--dur-shimmer",
+    "--dur-beam",
+    "--dur-pulse",
+    "--dur-orb",
+    "--dur-orb-b",
+    "--dur-orb-c",
+    "--dur-skel",
+    "--dur-toast",
+}
 
 
 def read(name: str) -> str:
@@ -94,9 +113,9 @@ def test_density_is_not_chosen_by_role():
 
 
 def test_motion_stays_under_the_cap():
-    """Ничего длиннее 320 мс, кроме названного по имени затухания."""
+    """Ничего длиннее 320 мс, кроме названного по имени."""
     text = read("motion.css")
-    slow = {name: int(ms) for name, ms in re.findall(r"(--dur-[a-z]+):\s*(\d+)ms", text) if int(ms) > MAX_MS}
+    slow = {name: int(ms) for name, ms in re.findall(r"(--dur-[a-z-]+):\s*(\d+)ms", text) if int(ms) > MAX_MS}
     assert set(slow) <= SLOW_ALLOWED, f"движение длиннее {MAX_MS} мс: {slow}"
     assert "--dur-slow" in text and int(re.search(r"--dur-slow:\s*(\d+)ms", text).group(1)) <= MAX_MS
 

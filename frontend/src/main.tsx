@@ -4,11 +4,11 @@ import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import { deviceLanguage, loadLanguage, setLanguage } from './i18n'
 import { readText, writeText } from './lib/storage'
-import { applyTheme } from './theme'
+import { applyTheme, storedTheme } from './theme'
 import './styles/base.css'
 
-// до загрузки профиля тема — как в системе; после входа применится выбор
-applyTheme('system')
+// до загрузки профиля — выбор, запомненный в этом браузере; после входа применится выбор из профиля
+applyTheme(storedTheme())
 
 // После выката старые куски сборки исчезают с сервера: открытая вкладка,
 // переходя на экран, просила бы файл, которого уже нет. Перезагрузка берёт

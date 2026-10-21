@@ -122,10 +122,11 @@ def test_one_size_scale_for_every_role():
         assert found, f"в наборе нет {name}"
         return float(found.group(1))
 
-    assert value("--type-screen") == 30 and value("--type-figure") == 32
-    assert value("--type-body") == 13.5 and value("--type-caps") == 10.5
+    # коралловый язык (22.10.2026): заголовок 32, число 30, текст 14, подписи 12
+    assert value("--type-screen") == 32 and value("--type-figure") == 30
+    assert value("--type-body") == 14 and value("--type-caps") == 12
     assert value("--type-note") >= 12
-    assert value("--pad-card") in (18, 20) and value("--gap-block") in (14, 16)
+    assert value("--pad-card") == 20 and value("--gap-block") == 20
 
 
 def test_student_menu_is_split_into_three_groups():

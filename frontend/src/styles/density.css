@@ -14,37 +14,82 @@
      заголовок экрана (один на экран), число-показатель, число в строке,
      название блока, основной текст и кнопка, подпись под значением,
      подпись над числом и шапка таблицы (капителью с разрядкой) */
-  --type-screen: 30px;
-  --type-figure: 32px;
-  --type-value: 17px;
-  --type-card: 15px;
-  --type-body: 13.5px;
+  --type-screen: 32px;
+  --type-figure: 30px;
+  --type-value: 20px;
+  --type-card: 17px;
+  --type-body: 14px;
   --type-note: 12px;
-  --type-caps: 10.5px;
-  --caps-spacing: 0.1em;
+  --type-caps: 12px;
+  --caps-spacing: 0.01em;
+  /* подпись нижнего бара телефона: одно слово под иконкой */
+  --type-tab: 11px;
+  /* пункт меню */
+  --type-nav: 13.5px;
+  /* подпись группы в меню — капителью с разрядкой */
+  --type-group: 11px;
+  --group-spacing: 0.08em;
+  /* заголовок окна */
+  --type-dialog: 22px;
 
   --leading-screen: 1.15;
   --leading-body: 1.35;
 
   /* --- сетка: шаг 4 ---
      поле карточки, разрыв между блоками, поле основной области экрана */
-  --pad-card: 18px;
-  --gap-block: 14px;
+  --pad-card: 20px;
+  --pad-card-x: 24px;
+  --gap-block: 20px;
+  --gap-kpi: 16px;
   --pad-screen: 28px;
+  --pad-screen-x: 40px;
+  /* поле показателя и вложенного блока */
+  --pad-kpi: 20px;
+  --pad-inner: 16px;
+  /* поле окна и шторки */
+  --pad-dialog: 28px;
 
   /* --- высоты ---
      главная кнопка и поле; кнопка в строке; строка списка; строка
      таблицы; свёрнутый блок; заголовок таблицы */
   --control-h: 40px;
-  --control-pad-x: 14px;
+  --control-pad-x: 16px;
+  --field-h: 44px;
+  --field-pad-x: 14px;
   --btn-row-h: 32px;
+  /* всплывающее меню: поле, высота пункта, скругление */
+  --pad-pop: 6px;
+  --pop-item-h: 38px;
+  --radius-pop: 16px;
   --row-list-h: 52px;
-  --row-h: 56px;
+  --row-h: 48px;
   --fold-h: 52px;
   --row-pad-x: 16px;
 
   /* цель касания на телефоне */
   --touch: 44px;
+
+  /* меню: ширина полосы, высота пункта; аватар и плитка-буква */
+  --side-w: 248px;
+  --side-collapsed-w: 72px;
+  /* поле меню по бокам; полоса активного пункта: толщина и отступ сверху и снизу */
+  --side-pad: 14px;
+  --side-bar-w: 3px;
+  --side-bar-inset: 10px;
+  /* клавиша в подсказке */
+  --radius-kbd: 6px;
+  /* размытие под стеклом карточки и меню; поле дорожки переключателя */
+  --glass-blur: 18px;
+  --side-blur: 20px;
+  --seg-pad: 3px;
+  /* толщина бегущего света по рамке */
+  --beam-w: 1.5px;
+  --side-item-h: 36px;
+  --avatar: 34px;
+  --avatar-sm: 28px;
+  /* иконка в плитке пустого состояния и в строке */
+  --icon-tile: 56px;
+  --icon-tile-sm: 36px;
 
   /* --- ширины панелей и окон: одна переменная на вид, а не на место ---
      окно; широкое окно (предпросмотр выгрузки); поле окна от края экрана;
@@ -72,6 +117,9 @@
   :root {
     --type-screen: 26px;
     --type-figure: 26px;
+    --pad-screen-x: 16px;
+    --pad-card-x: 16px;
+    --field-h: 44px;
     --control-h: 44px;
     --btn-row-h: 36px;
     --row-list-h: 48px;

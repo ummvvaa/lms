@@ -1,124 +1,213 @@
-/* Дизайн-токены нового языка. Единственное место, где живут цвета, шрифт,
+/* Дизайн-токены кораллового языка. Единственное место, где живут цвета, шрифты,
    скругления и тени — компоненты берут их отсюда. Значения — из
-   `docs/ui/LANGUAGE.md`.
+   `docs/design-ref/coral-admin/coral.css`, правила — `docs/ui/LANGUAGE.md`.
 
-   Устройство файла: токены светлой темы, затем их тёмные двойники.
-   Прежних имён (`--brand`, `--milk`, `--ok` и других) больше нет: стили
-   зовут токены языка напрямую. */
+   Устройство файла: шрифты, токены светлой темы, затем их тёмные двойники.
+   Имена прежние (`--canvas`, `--surface`, `--accent`, `--menu-*`): экраны,
+   которые в этом заходе не переделывались, получают новую гамму через те же
+   ссылки и не ломаются. Новое — стекло, градиент акцента, сферы фона. */
 
-/* Golos Text — из статики, по четыре начертания (лицензия OFL рядом
-   с файлами в `public/fonts/`). `font-display: swap`: текст показывается
-   сразу системным, шрифт подменяется, как только подгрузится. */
+/* Шрифты — из статики, переменные (одно начертание на весь ряд весов),
+   по наборам знаков: браузер грузит только тот, чьи буквы есть на странице.
+   Inter — текст; Sora — заголовки и крупные числа; у Sora нет кириллицы,
+   поэтому русские и казахские буквы заголовков рисует Manrope (стек
+   `--font-head`). Казахские Ә Ғ Қ Ң Ө Ү Һ лежат в расширенной кириллице.
+   Лицензии OFL — рядом с файлами в `public/fonts/`. `font-display: swap`:
+   текст показывается сразу системным, шрифт подменяется, как только приедет. */
 @font-face {
-  font-family: 'Golos Text';
+  font-family: 'Inter';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 400 700;
   font-display: swap;
-  src: url('/fonts/GolosText-Regular.woff2') format('woff2');
+  src: url('/fonts/inter-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
-  font-family: 'Golos Text';
+  font-family: 'Inter';
   font-style: normal;
-  font-weight: 500;
+  font-weight: 400 700;
   font-display: swap;
-  src: url('/fonts/GolosText-Medium.woff2') format('woff2');
+  src: url('/fonts/inter-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 @font-face {
-  font-family: 'Golos Text';
+  font-family: 'Inter';
   font-style: normal;
-  font-weight: 600;
+  font-weight: 400 700;
   font-display: swap;
-  src: url('/fonts/GolosText-SemiBold.woff2') format('woff2');
+  src: url('/fonts/inter-cyrillic-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 
 @font-face {
-  font-family: 'Golos Text';
+  font-family: 'Inter';
   font-style: normal;
-  font-weight: 700;
+  font-weight: 400 700;
   font-display: swap;
-  src: url('/fonts/GolosText-Bold.woff2') format('woff2');
+  src: url('/fonts/inter-cyrillic-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+
+@font-face {
+  font-family: 'Sora';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('/fonts/sora-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Sora';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('/fonts/sora-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('/fonts/manrope-cyrillic-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('/fonts/manrope-cyrillic-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
 }
 
 :root {
   /* Светлая тема — она же значение по умолчанию.
      `color-scheme` говорит браузеру, в какой гамме рисовать своё:
-     галочки, выпадающие списки, полосы прокрутки и подстановку
-     пароля. Без него в тёмной теме они оставались светлыми. */
+     галочки, выпадающие списки, полосы прокрутки и подстановку пароля. */
   color-scheme: light;
   accent-color: var(--accent);
 
   /* текст: основной, вторичный, подписи над числом, слово «нет» на месте числа */
-  --ink: #14130f;
-  --ink-2: #55504a;
-  --ink-3: #8a8379;
-  --ink-4: #c9c2b9;
+  --ink: #191a15;
+  --ink-2: #5d5e55;
+  --ink-3: #74756b;
+  --ink-4: #c4bfb7;
 
-  /* поверхности: полотно страницы, карточка, вложенная строка и поле */
-  --canvas: #f6f3ee;
+  /* поверхности: полотно страницы и его второй тон, сплошная карточка
+     (окно, меню, шторка), вложенная строка и поле */
+  --canvas: #faf6f2;
+  --canvas-2: #f3ece5;
   --surface: #ffffff;
-  --surface-2: #faf8f4;
+  --surface-2: #fcf9f6;
+
+  /* стекло: карточка на полотне, вложенный блок, светлая кромка, поле */
+  --glass: rgba(255, 255, 255, 0.66);
+  --glass-in: rgba(255, 255, 255, 0.72);
+  --glass-line: rgba(255, 255, 255, 0.85);
+  --glass-line-hot: rgba(255, 255, 255, 0.85);
+  --field: rgba(255, 255, 255, 0.8);
 
   /* линии: разделитель внутри карточки; граница полей и вторичных кнопок */
-  --line: #f0ebe3;
-  --line-2: #e6e0d6;
+  --line: rgba(25, 26, 21, 0.08);
+  --line-2: rgba(25, 26, 21, 0.14);
 
-  /* акцент: кнопка действия и активный пункт меню; ссылка и текст кнопки
-     в строке; подложка кнопки в строке */
-  --accent: #e2622f;
-  --accent-ink: #b8491b;
-  --accent-bg: #fcefe7;
+  /* акцент: кнопка действия и активный пункт меню; второй тон градиента;
+     ссылка и текст кнопки в строке; мягкая подложка; блик; тень под акцентом */
+  --accent: #e5482a;
+  --accent-2: #ff7a45;
+  --accent-ink: #b4361c;
+  --accent-bg: rgba(229, 72, 42, 0.1);
+  --glint: #ffd6bf;
+  --accent-shadow: rgba(229, 72, 42, 0.38);
+  --accent-grad: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
 
-  /* состояния: подтверждено и норма; ждёт и внимание; отклонено
-     и просрочено; нейтральная пометка. Обычный красный не используем:
-     рядом с оранжевым он не читается как тревога */
-  --good: #1f7a4d;
-  --good-bg: #e8f4ed;
-  --warn: #b26a00;
-  --warn-bg: #fbf0dc;
-  --bad: #a32e21;
-  --bad-bg: #fbeae7;
+  /* Состояния по смыслу: зелёный — хорошо, янтарный — внимание,
+     красный — срочно; нейтральная пометка — синяя. */
+  --good: #1d7a4e;
+  --good-bg: rgba(29, 122, 78, 0.11);
+  --warn: #9a5b00;
+  --warn-bg: rgba(214, 140, 20, 0.14);
+  --bad: #b42a1e;
+  --bad-bg: rgba(200, 45, 30, 0.1);
   --info: #2b5fd9;
   --info-bg: #eaf0fe;
 
   /* аватар, чип, значок действия */
-  --neutral-bg: #efece6;
+  --neutral-bg: rgba(25, 26, 21, 0.06);
 
-  /* Тёмное меню: фон, пункт, текст на тёмном, карточка пользователя
-     внизу, аватар в ней. Активный пункт — `--accent` с белым текстом. */
-  --menu-bg: #14130f;
-  --menu-item: #a29a90;
-  --menu-text: #f5f1ea;
-  --menu-user: #201e19;
-  --menu-avatar: #3a352c;
-  --menu-hover: rgba(255, 255, 255, 0.04);
-  --menu-count: rgba(255, 255, 255, 0.08);
+  /* Меню — светлое стекло на полотне: фон, пункт, текст, карточка
+     пользователя внизу, аватар в ней. Активный пункт — мягкая подложка
+     акцента с полосой градиента слева. */
+  --menu-bg: rgba(255, 255, 255, 0.55);
+  --menu-item: #5d5e55;
+  --menu-text: #191a15;
+  --menu-user: rgba(255, 255, 255, 0.72);
+  --menu-avatar: rgba(229, 72, 42, 0.1);
+  --menu-hover: rgba(25, 26, 21, 0.08);
+  --menu-count: rgba(25, 26, 21, 0.08);
 
-  /* текст на акценте и на графите */
+  /* текст на акценте; текст на графите (выбранная пилюля) */
   --on-accent: #ffffff;
+  --on-graphite: #faf6f2;
 
   /* затемнение под окном; дорожка прогресса */
-  --backdrop: rgba(20, 19, 15, 0.42);
-  --track: #efece6;
+  --backdrop: rgba(12, 8, 7, 0.32);
+  --track: rgba(25, 26, 21, 0.08);
 
-  /* Скругления: карточка, показатель, строка и поле, кнопка,
-     кнопка в строке, пилюля */
-  --radius-card: 14px;
-  --radius-kpi: 13px;
-  --radius-row: 10px;
-  --radius-btn: 10px;
-  --radius-inrow: 8px;
+  /* Фон: три размытые сферы и точечная сетка */
+  --orb-a: rgba(255, 122, 69, 0.42);
+  --orb-b: rgba(255, 214, 191, 0.9);
+  --orb-c: rgba(229, 72, 42, 0.22);
+  --dot: rgba(25, 26, 21, 0.13);
+
+  /* Уведомление внизу экрана — тёмное на светлом и наоборот */
+  --toast-bg: #191a15;
+  --toast-ink: #f2f1ee;
+
+  /* Скругления: карточка, показатель, вложенный блок, строка и поле,
+     кнопка, кнопка в строке, окно, пилюля */
+  --radius-card: 20px;
+  --radius-kpi: 20px;
+  --radius-inner: 14px;
+  --radius-row: 12px;
+  --radius-btn: 12px;
+  --radius-inrow: 10px;
+  --radius-dialog: 24px;
   --radius-pill: 999px;
 
-  /* Тени. У карточки тени нет — она отличается от полотна только цветом.
-     Тень остаётся у всплывающего меню, окна и выдвижной панели. */
-  --shadow-card: none;
-  --shadow-raised: 0 12px 36px rgba(20, 19, 15, 0.2), 0 0 0 1px var(--line-2);
-  --shadow-drawer: -20px 0 60px -30px rgba(20, 19, 15, 0.35);
+  /* Тени: карточка, карточка под курсором, всплывающее меню, окно и шторка,
+     уведомление, свечение под акцентом */
+  --shadow-card: 0 1px 2px rgba(60, 30, 20, 0.04), 0 12px 32px -12px rgba(120, 50, 30, 0.16);
+  --shadow-hi: 0 2px 4px rgba(60, 30, 20, 0.05), 0 22px 44px -16px rgba(150, 55, 30, 0.26);
+  --shadow-raised: 0 2px 4px rgba(60, 30, 20, 0.05), 0 22px 44px -16px rgba(150, 55, 30, 0.26),
+    0 30px 60px -30px rgba(0, 0, 0, 0.35);
+  --shadow-dialog: 0 40px 80px -30px rgba(0, 0, 0, 0.45);
+  --shadow-drawer: 0 40px 80px -30px rgba(0, 0, 0, 0.45);
+  --shadow-toast: 0 20px 40px -16px rgba(0, 0, 0, 0.5);
+  --shadow-acc: 0 10px 24px -10px var(--accent-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  --shadow-acc-hi: 0 14px 30px -10px var(--accent-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  --shadow-beam: var(--shadow-card);
+  /* выбранное значение в ряду переключателя */
+  --shadow-seg: 0 1px 3px rgba(0, 0, 0, 0.12);
+  /* свечение полосы прогресса и дуги кольца */
+  --shadow-glow: 0 0 12px -2px var(--accent-shadow);
+  --shadow-ring-glow: 0 0 6px var(--accent-shadow);
+  /* плитка-буква школы в меню */
+  --shadow-mark: 0 8px 18px -8px var(--accent-shadow);
 
-  /* шрифт и шаг сетки */
-  --font-sans: 'Golos Text', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Шрифты: текст и заголовки с крупными числами; шаг сетки */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-head: 'Sora', 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --space: 4px;
 
   /* Нижний бар телефона: высота и запас под ним.
@@ -142,57 +231,79 @@
   --chart-5: var(--ink-3);
 }
 
-/* Тёмная тема. Та же тёплая гамма, что в светлой: графит `--ink` стал
-   полотном, кремовый текст — из `--menu-text`, оттенки акцента и состояний
-   те же, только светлее — чтобы держать контраст на тёмном (основной текст
-   не ниже 4,5 : 1, подписи и чипы не ниже 3 : 1; считает
-   `core/tests/test_theme_contrast.py`). Меню на тон глубже полотна, чтобы
-   оставаться отличимым. Атрибут ставит `theme.ts`: «как в системе» он
-   разрешает сам, поэтому медиазапроса здесь нет. */
+/* Тёмная тема — почти чёрное тёплое полотно и угольное стекло, акцент
+   тот же, текст ссылок и состояния светлее — чтобы держать контраст
+   (основной текст не ниже 4,5 : 1, подписи и чипы не ниже 3 : 1; считает
+   `core/tests/test_theme_contrast.py`). Атрибут ставит `theme.ts`:
+   «Системная» он разрешает сам, поэтому медиазапроса здесь нет. */
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --ink: #ece7e1;
-  --ink-2: #b3a99e;
-  --ink-3: #8a8177;
-  --ink-4: #514940;
+  --ink: #f2f1ee;
+  --ink-2: #a3a29c;
+  --ink-3: #8c8b85;
+  --ink-4: #4a4542;
 
-  --canvas: #1f1b17;
-  --surface: #29241f;
-  --surface-2: #322c26;
+  --canvas: #0c0807;
+  --canvas-2: #120b09;
+  --surface: #140d0b;
+  --surface-2: #1a120f;
 
-  --line: #3a332c;
-  --line-2: #453d35;
+  --glass: rgba(26, 16, 13, 0.62);
+  --glass-in: rgba(20, 13, 11, 0.9);
+  --glass-line: rgba(255, 255, 255, 0.06);
+  --glass-line-hot: rgba(255, 122, 69, 0.3);
+  --field: rgba(20, 13, 11, 0.9);
 
-  --accent: #e2622f;
-  --accent-ink: #f28c5e;
-  --accent-bg: #3d2519;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-2: rgba(255, 255, 255, 0.12);
 
-  --good: #5cc48e;
-  --good-bg: #203629;
-  --warn: #e8ab45;
-  --warn-bg: #3d3016;
-  --bad: #f08a7c;
-  --bad-bg: #402320;
+  --accent: #e5482a;
+  --accent-2: #ff7a45;
+  --accent-ink: #ffa27a;
+  --accent-bg: rgba(255, 107, 61, 0.13);
+  --glint: #ffd6bf;
+  --accent-shadow: rgba(255, 107, 61, 0.55);
+  --accent-grad: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+
+  --good: #5bd69a;
+  --good-bg: rgba(91, 214, 154, 0.12);
+  --warn: #f5b94a;
+  --warn-bg: rgba(245, 185, 74, 0.13);
+  --bad: #f26d6d;
+  --bad-bg: rgba(242, 109, 109, 0.13);
   --info: #93acf2;
-  --info-bg: #242e48;
+  --info-bg: #1c2438;
 
-  --neutral-bg: #352e27;
+  --neutral-bg: rgba(255, 255, 255, 0.07);
 
-  --menu-bg: #0a0806;
-  --menu-item: #a89e93;
-  --menu-text: #f0ebe4;
-  --menu-user: #1a1613;
-  --menu-avatar: #3a342c;
-  --menu-hover: rgba(255, 255, 255, 0.05);
+  --menu-bg: rgba(20, 13, 11, 0.7);
+  --menu-item: #a3a29c;
+  --menu-text: #f2f1ee;
+  --menu-user: rgba(20, 13, 11, 0.9);
+  --menu-avatar: rgba(255, 162, 122, 0.2);
+  --menu-hover: rgba(255, 255, 255, 0.07);
   --menu-count: rgba(255, 255, 255, 0.09);
 
   --on-accent: #ffffff;
+  --on-graphite: #0c0807;
 
-  --backdrop: rgba(0, 0, 0, 0.6);
-  --track: #3a332c;
+  --backdrop: rgba(0, 0, 0, 0.55);
+  --track: rgba(255, 255, 255, 0.07);
 
-  --shadow-card: none;
-  --shadow-raised: 0 12px 36px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--line-2);
-  --shadow-drawer: -20px 0 60px -30px rgba(0, 0, 0, 0.8);
+  --orb-a: rgba(255, 107, 61, 0.3);
+  --orb-b: rgba(229, 72, 42, 0.2);
+  --orb-c: rgba(255, 162, 122, 0.12);
+  --dot: rgba(255, 255, 255, 0.09);
+
+  --toast-bg: #f2f1ee;
+  --toast-ink: #191a15;
+
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 18px 40px -18px rgba(0, 0, 0, 0.8);
+  --shadow-hi: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 24px 60px -20px rgba(255, 107, 61, 0.28);
+  --shadow-raised: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 24px 60px -20px rgba(0, 0, 0, 0.7);
+  --shadow-dialog: 0 40px 80px -30px rgba(0, 0, 0, 0.8);
+  --shadow-drawer: 0 40px 80px -30px rgba(0, 0, 0, 0.8);
+  --shadow-toast: 0 20px 40px -16px rgba(0, 0, 0, 0.7);
+  --shadow-beam: var(--shadow-card), 0 0 60px -20px rgba(255, 107, 61, 0.55);
 }

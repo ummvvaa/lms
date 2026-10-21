@@ -7,9 +7,8 @@
  * Язык и тема сохраняются в профиле на сервере и переживают смену
  * устройства.
  *
- * Это `DropdownMenu` из shadcn, а выбор языка и темы — пункты с галочкой,
- * а не плашки-переключатели: набор из трёх взаимоисключающих значений
- * и есть меню, и с клавиатуры оно работает само.
+ * Это `DropdownMenu` из shadcn; язык и тема — ряды из трёх кнопок
+ * (`.segmented`): выбранное видно сразу, а не по галочке в списке.
  *
  * Список уведомлений живёт здесь же: его открывает пункт меню, а не
  * отдельный колокольчик. Непрочитанное видно и при закрытом меню —
@@ -24,9 +23,9 @@ import { deviceLanguage, t, tk } from '../i18n'
 import { applyTheme, type ThemePref } from '../theme'
 import type { Me } from '../api/types'
 import Notifications from './Notifications'
+import { Segmented } from './patterns'
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -74,9 +73,9 @@ export function offeredLanguage(me: Pick<Me, 'language' | 'languages'> | null | 
 }
 
 export const THEMES: { value: ThemePref; label: string }[] = [
+  { value: 'system', label: tk('Системная') },
   { value: 'light', label: tk('Светлая') },
   { value: 'dark', label: tk('Тёмная') },
-  { value: 'system', label: tk('Как в системе') },
 ]
 
 export default function ProfileMenu({
@@ -185,17 +184,15 @@ export default function ProfileMenu({
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="pmenu__grouptitle">{t('Язык')}</DropdownMenuLabel>
-                {languages.map((item) => (
-                  <DropdownMenuCheckboxItem
-                    key={item.value}
-                    className="pmenu__item"
-                    checked={offeredLanguage(me) === item.value}
-                    closeOnClick={false}
-                    onClick={() => prefs.mutate({ language: item.value })}
-                  >
-                    {item.label}
-                  </DropdownMenuCheckboxItem>
-                ))}
+                <div className="pmenu__seg">
+                  <Segmented
+                    value={offeredLanguage(me)}
+                    onChange={(value) => prefs.mutate({ language: value })}
+                    items={languages.map((item) => ({ value: item.value, label: item.label }))}
+                    label={t('Язык')}
+                    usageFilter={false}
+                  />
+                </div>
               </DropdownMenuGroup>
             </>
           )}
@@ -203,17 +200,15 @@ export default function ProfileMenu({
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuLabel className="pmenu__grouptitle">{t('Тема')}</DropdownMenuLabel>
-            {THEMES.map((item) => (
-              <DropdownMenuCheckboxItem
-                key={item.value}
-                className="pmenu__item"
-                checked={me.theme === item.value}
-                closeOnClick={false}
-                onClick={() => setTheme(item.value)}
-              >
-                {t(item.label)}
-              </DropdownMenuCheckboxItem>
-            ))}
+            <div className="pmenu__seg">
+              <Segmented
+                value={me.theme}
+                onChange={setTheme}
+                items={THEMES.map((item) => ({ value: item.value, label: t(item.label) }))}
+                label={t('Тема')}
+                usageFilter={false}
+              />
+            </div>
           </DropdownMenuGroup>
 
           <DropdownMenuSeparator />

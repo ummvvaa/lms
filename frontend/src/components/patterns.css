@@ -122,9 +122,9 @@
   display: inline-flex;
   flex-wrap: wrap;
   gap: 2px;
-  padding: 2px;
+  padding: var(--seg-pad);
   border-radius: var(--radius-row);
-  background: var(--neutral-bg);
+  background: var(--line);
   margin-bottom: var(--gap-block);
 }
 
@@ -132,15 +132,15 @@
   display: inline-flex;
   align-items: center;
   gap: calc(var(--space) * 1);
-  height: var(--btn-row-h);
+  height: calc(var(--btn-row-h) - 2px);
   padding: 0 calc(var(--space) * 3);
   border: 0;
-  border-radius: var(--radius-inrow);
+  border-radius: calc(var(--radius-row) - var(--seg-pad));
   background: transparent;
   color: var(--ink-2);
   font: inherit;
   font-size: var(--type-note);
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
   transition:
@@ -155,7 +155,7 @@
 .segrow__item--on {
   background: var(--surface);
   color: var(--ink);
-  box-shadow: 0 0 0 1px var(--line-2);
+  box-shadow: var(--shadow-seg);
 }
 
 /* --- строка данных ---------------------------------------------------------
