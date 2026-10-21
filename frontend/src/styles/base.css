@@ -692,6 +692,12 @@ a:where(.navlink, [data-slot]) {
   animation: none;
 }
 
+/* число-чип внутри главной кнопки (выбранный фильтр) — светлое на градиенте */
+[data-variant='default'][data-size] [data-slot='badge'] {
+  background: color-mix(in srgb, var(--on-accent) 24%, transparent);
+  color: var(--on-accent);
+}
+
 /* Вторичная: светлая с тонкой рамкой, под курсором рамка акцентная */
 [data-variant='outline'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']) {
   background: var(--glass-in);

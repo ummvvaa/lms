@@ -12,3 +12,8 @@
 .toolbar__spacer {
   flex: 1;
 }
+
+/* ряд действий под карточкой — с разрывом, как между блоками */
+.card + .toolbar {
+  margin-top: var(--gap-block);
+}
