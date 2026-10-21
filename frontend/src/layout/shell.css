@@ -394,10 +394,6 @@
 
 .shell__screen {
   padding: var(--pad-screen);
-  /* внизу оставляем место под плавающую кнопку помощника: без запаса она
-     навсегда накрывала действие последней строки — на «Моём пути» это была
-     кнопка «Открыть» пятого шага */
-  padding-bottom: calc(var(--pad-screen) + var(--fab-clear));
   min-width: 0;
 }
 
@@ -691,11 +687,6 @@
     background: var(--menu-hover);
   }
 
-  .shell__assistbtn img {
-    width: calc(var(--space) * 7);
-    height: auto;
-  }
-
   /* Раскрытый поиск занимает строку целиком: остаётся только он
      и кнопка, которая его закрывает. «Ctrl+K» не показывается:
      клавиатуры нет */
@@ -706,7 +697,6 @@
 
   .shell__top--search .shell__menubtn,
   .shell__top--search .shell__title,
-  .shell__top--search .shell__assistbtn,
   .shell__top--search .pmenu__user--avatar {
     display: none;
   }

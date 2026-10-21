@@ -275,7 +275,7 @@ body {
    Компоненты shadcn исключены по `data-slot`: они верстают свои
    отступы утилитами, и наши здесь только мешали бы. Исключение
    завёрнуто в `:where()` намеренно: без него `:not([data-slot])`
-   весил бы как класс и перебивал бы `.rows__list` и `.digest`,
+   весил бы как класс и перебивал бы `.rows__list` и другие списки,
    которым маркеры как раз не нужны.
    --------------------------------------------------------------------------- */
 
@@ -651,30 +651,6 @@ a:where(.navlink, [data-slot]) {
   display: flex;
   gap: calc(var(--space) * 2);
   margin-top: calc(var(--space) * 2);
-}
-
-/* Сводка дайджеста: короткие строки готовым текстом с сервера */
-.digest {
-  margin: calc(var(--space) * 2) 0 0;
-  padding: 0;
-  list-style: none;
-}
-.digest li {
-  position: relative;
-  padding: calc(var(--space) * 1) 0 calc(var(--space) * 1) calc(var(--space) * 4);
-  font-size: var(--type-body);
-  line-height: 1.45;
-  color: var(--ink);
-}
-.digest li::before {
-  content: '';
-  position: absolute;
-  left: 2px;
-  top: calc(var(--space) * 3);
-  width: calc(var(--space) * 2);
-  height: calc(var(--space) * 2);
-  border-radius: 50%;
-  background: var(--accent);
 }
 
 @media (prefers-reduced-motion: reduce) {

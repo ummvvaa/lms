@@ -120,19 +120,15 @@ def test_bar_is_not_in_the_markup_above_the_phone_width():
 def test_screen_keeps_room_for_the_bar():
     """Под баром не остаётся содержимого, до которого не дотянуться.
 
-    Запас считается из тех же токенов, что и высота бара с кнопкой
-    помощника: два набора чисел разошлись бы при первой правке.
+    Запас считается из тех же токенов, что и высота бара: два набора чисел
+    разошлись бы при первой правке.
     """
     tokens = read("styles", "tokens.css")
     assert "--tabbar-h:" in tokens and "--tabbar-clear:" in tokens
     assert "env(safe-area-inset-bottom" in tokens, "полоса жеста домой не учтена"
     css = read("layout", "shell.css")
     pad = re.search(r"\.shell__screen \{[^}]*\}", css.split("@media (max-width: 759px) {")[1])
-    # с фазы 76 плавающей кнопки на телефоне нет — запас только под бар
     assert pad and "var(--tabbar-clear)" in pad.group(0)
-    assert "var(--fab-clear)" not in pad.group(0)
-    fab = read("components", "assistant-widget.css")
-    assert "var(--tabbar-clear)" in fab, "кнопка помощника садится на бар"
 
 
 def test_calendar_mode_is_remembered_per_role():

@@ -31,7 +31,6 @@ import { NativeSelectOption } from '../components/ui/native-select'
 import { SelectField } from '../components/SelectField'
 import './card.css'
 import { t } from '../i18n'
-import { PublishStudents } from '../assistant/context'
 import { Button } from '../components/ui/button'
 import { formatDateTime } from '../lib/format'
 
@@ -146,7 +145,6 @@ function DirectorStudentCard() {
 
   return (
     <div>
-      <PublishStudents ids={[card.id]} />
       <div className="toolbar">
         <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
           {t('← Назад')}

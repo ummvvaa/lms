@@ -80,9 +80,7 @@ const Onboarding = lazy(() => import('./screens/Onboarding'))
 const Prep = lazy(() => import('./screens/Prep'))
 const Roadmap = lazy(() => import('./screens/Roadmap'))
 const Essays = lazy(() => import('./screens/Essays'))
-const Assistant = lazy(() => import('./screens/Assistant'))
 const Suggestions = lazy(() => import('./screens/Suggestions'))
-const Digest = lazy(() => import('./screens/Digest'))
 const Subjects = lazy(() => import('./screens/Subjects'))
 const SportTypes = lazy(() => import('./screens/SportTypes'))
 const Materials = lazy(() => import('./screens/Materials'))
@@ -310,10 +308,8 @@ function Routing() {
         <Route path="/table" element={<TableScreen />} />
         <Route path="/students/:id" element={<StudentRoute />} />
         <Route path="/import" element={<ImportScreen />} />
-        <Route path="/assistant" element={<Assistant />} />
         <Route path="/suggestions" element={<Suggestions />} />
         <Route path="/suggestions/:id" element={<Suggestions />} />
-        <Route path="/digest" element={<Digest />} />
         <Route path="/users" element={<Users />} />
         <Route path="/usage" element={<Usage />} />
 

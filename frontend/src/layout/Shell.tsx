@@ -2,14 +2,12 @@
 import { Suspense, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { useLocks, useMaterialsState, useNotifications, useUpdatePreferences } from '../api/hooks'
-import { AssistantScreenProvider } from '../assistant/context'
-import AssistantWidget from '../components/AssistantWidget'
 import JobsPanel from '../components/JobsPanel'
 import LockedScreen from '../components/LockedScreen'
 import { Loading } from '../components/ui'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { useAuth } from '../auth/AuthContext'
-import { LOGO, SCHOOL_MARK, SCHOOL_SHORT_NAME } from '../branding'
+import { SCHOOL_MARK, SCHOOL_SHORT_NAME } from '../branding'
 import Icon from './icons'
 import MobileNav from './MobileNav'
 import { NAV_GROUPS, navFor, tabsFor } from './nav'
@@ -46,11 +44,7 @@ export default function Shell() {
   // поиск: на ноутбуке — окно, которое открывают иконка в строке логотипа
   // и Ctrl+K; на телефоне поле раскрывается в самой полосе сверху
   const [searchOpen, setSearchOpen] = useState(false)
-  // помощник: на телефоне плавающей кнопки нет — она накрывала правые
-  // кнопки строк в любом месте прокрутки; герб живёт в полосе сверху,
-  // а окно то же самое
   const phone = usePhone()
-  const [assistantOpen, setAssistantOpen] = useState(false)
   // шторка со всеми разделами на телефоне: её открывают «Меню» сверху и «Ещё» снизу
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -105,8 +99,7 @@ export default function Shell() {
   const user = { name: me.full_name || me.email || me.login || '', role: me.role_title }
 
   return (
-    <AssistantScreenProvider>
-      <div className={`shell${collapsed ? ' shell--collapsed' : ''}`}>
+    <div className={`shell${collapsed ? ' shell--collapsed' : ''}`}>
         {/* Тёмная полоса меню тянется во всю высоту экрана, а список внутри
             прокручивается сам: иначе на длинной странице колонка меню
             обрывалась, а карточка пользователя уезжала за нижний край */}
@@ -212,16 +205,6 @@ export default function Shell() {
                 <SearchBox focused onDone={() => setSearchOpen(false)} />
               </div>
             )}
-            {/* помощник у всех ролей: на телефоне плавающей кнопки нет, открывает эта */}
-            <button
-              type="button"
-              className="shell__topbtn shell__assistbtn"
-              aria-label={t('Открыть помощника')}
-              aria-expanded={assistantOpen}
-              onClick={() => setAssistantOpen((open) => !open)}
-            >
-              <img src={LOGO.assistant} alt="" />
-            </button>
             <button
               type="button"
               className="shell__topbtn shell__searchbtn"
@@ -296,12 +279,9 @@ export default function Shell() {
           </Dialog>
         )}
 
-        {/* помощник у всех ролей; у куратора кнопки и ученики — только его групп */}
-        <AssistantWidget open={assistantOpen} onOpenChange={setAssistantOpen} fab={!phone} />
         {/* одна плашка на все долгие операции: у подбора была своя,
             у разбора файла не было никакой */}
         <JobsPanel />
-      </div>
-    </AssistantScreenProvider>
+    </div>
   )
 }

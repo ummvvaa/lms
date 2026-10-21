@@ -29,6 +29,4 @@ export const LOGO = {
   sidebar: '/brand/logo-96.png',
   /** шапка */
   header: '/brand/logo-56.png',
-  /** ИИ-виджет */
-  assistant: '/brand/logo-ai-96.png',
 } as const

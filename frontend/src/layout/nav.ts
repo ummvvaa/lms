@@ -54,9 +54,7 @@ export interface NavItem {
 const DIRECTOR_COMMON: NavItem[] = [
   { path: '/dashboard', label: tk('Дашборд'), icon: 'home', group: 'work' },
   { path: '/table', label: tk('Таблица'), icon: 'table', group: 'work' },
-  { path: '/assistant', label: tk('Помощник'), icon: 'sparkle', group: 'work' },
   { path: '/suggestions', label: tk('Предложения'), icon: 'bulb', group: 'work' },
-  { path: '/digest', label: tk('Дайджест'), icon: 'news', group: 'work' },
 ]
 
 /**
@@ -528,9 +526,7 @@ export const STAFF_ONLY = [
   '/archive',
   '/table',
   '/import',
-  '/assistant',
   '/suggestions',
-  '/digest',
   '/groups',
   '/contacts',
   '/task-templates',

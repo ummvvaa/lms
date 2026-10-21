@@ -35,7 +35,6 @@ import { Chip, counted, ErrorNote, Loading, ScreenHead, type Tone } from '../com
 import { useRowMotion } from '../motion'
 import './table.css'
 import { t, tk, tn } from '../i18n'
-import { PublishStudents } from '../assistant/context'
 import { SelectField } from '../components/SelectField'
 import { PARALLELS, parallelTitle } from '../lib/parallels'
 import { Input } from '../components/ui/input'
@@ -660,7 +659,6 @@ export default function TableScreen() {
 
   return (
     <div>
-      <PublishStudents ids={rows.map((s) => s.id)} />
       <ScreenHead
         title={t('Таблица')}
         subtitle={
