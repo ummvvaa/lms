@@ -42,7 +42,6 @@
 
 .schol__factlabel {
   font-size: calc(var(--type-note) - 1px);
-  text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 

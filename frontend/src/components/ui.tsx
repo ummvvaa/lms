@@ -532,16 +532,21 @@ export function DataCard({
   )
 }
 
-export function Bar({ percent, color = 'var(--accent)' }: { percent: number; color?: string }) {
+/** Полоса прогресса. Без цвета — градиент акцента со свечением; тон — ровным цветом. */
+export function Bar({ percent, color }: { percent: number; color?: string }) {
   const width = Math.max(0, Math.min(100, percent))
+  const accent = color === undefined || color === 'var(--accent)'
   return (
-    <div className="bar">
-      <i style={{ width: `${width}%`, background: color }} />
+    <div className={`bar${accent ? ' bar--accent' : ''}`}>
+      <i style={{ width: `${width}%`, background: accent ? 'var(--accent-grad)' : color }} />
     </div>
   )
 }
 
-/** Кольцо готовности. */
+/**
+ * Кольцо готовности. Дуга размечена в сотых (`pathLength`), поэтому
+ * заполнение от нуля при появлении — одна анимация смещения на весь ряд колец.
+ */
 export function Ring({
   percent,
   size = 104,
@@ -554,13 +559,13 @@ export function Ring({
   children?: ReactNode
 }) {
   const r = size / 2 - 8
-  const c = 2 * Math.PI * r
-  const filled = (Math.max(0, Math.min(100, percent)) / 100) * c
+  const filled = Math.max(0, Math.min(100, percent))
   return (
-    <div className="ring" style={{ width: size, height: size }}>
+    <div className={`ring${color === 'var(--accent)' ? ' ring--accent' : ''}`} style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <circle className="ring__track" cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth="9" />
         <circle
+          className="ring__value"
           cx={size / 2}
           cy={size / 2}
           r={r}
@@ -568,7 +573,9 @@ export function Ring({
           stroke={color}
           strokeWidth="9"
           strokeLinecap="round"
-          strokeDasharray={`${filled} ${c - filled}`}
+          pathLength={100}
+          strokeDasharray="100 100"
+          strokeDashoffset={100 - filled}
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </svg>

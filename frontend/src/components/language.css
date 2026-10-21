@@ -15,8 +15,8 @@
 :root {
   /* ячейка месяца: высота как в Calendar.html */
   --cal-cell-h: 92px;
-  /* панель правки справа: ширина как в Directory.html */
-  --drawer-w: 350px;
+  /* шторка правки справа: ширина как в макете кораллового языка */
+  --drawer-w: 460px;
   /* клетка матрицы: ширина и высота как у журнала референса (`.gb td`) */
   --cell-w: 32px;
   --cell-h: 40px;
@@ -59,11 +59,11 @@
 }
 
 .field__control :where([data-slot='input'], [data-slot='textarea'], [data-slot='native-select']) {
-  min-height: var(--control-h);
-  padding-inline: var(--control-pad-x);
+  min-height: var(--field-h);
+  padding-inline: var(--field-pad-x);
   border-radius: var(--radius-row);
   border-color: var(--line-2);
-  background: var(--surface-2);
+  background: var(--field);
   color: var(--ink);
   font-size: var(--type-body);
   transition:
@@ -72,7 +72,7 @@
 }
 
 .field__control :where([data-slot='input'], [data-slot='native-select']) {
-  height: var(--control-h);
+  height: var(--field-h);
 }
 
 /* место под стрелку списка */
@@ -93,8 +93,8 @@
 .field__control
   :where([data-slot='input'], [data-slot='textarea'], [data-slot='native-select']):focus-visible {
   outline: 0;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 4px var(--accent-bg);
 }
 
 .field--invalid
@@ -106,7 +106,7 @@
 .field--invalid
   .field__control
   :where([data-slot='input'], [data-slot='textarea'], [data-slot='native-select']):focus-visible {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 16%, transparent);
+  box-shadow: 0 0 0 4px var(--bad-bg);
 }
 
 /* поле пароля: глазок справа внутри поля, цель касания 44 */
@@ -491,7 +491,7 @@ button.calcell.calcell--full:hover {
    --------------------------------------------------------------------------- */
 [data-slot='sheet-content'].drawer {
   width: var(--drawer-w);
-  max-width: 100%;
+  max-width: calc(100% - calc(var(--space) * 6));
   gap: 0;
   padding: 0;
   background: var(--surface);
@@ -503,11 +503,15 @@ button.calcell.calcell--full:hover {
 .drawer__head {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--pad-card) 48px 0 var(--pad-card);
+  gap: calc(var(--space) * 1);
+  padding: var(--pad-dialog) 56px 0 var(--pad-dialog);
 }
 
 .drawer__title {
+  font-family: var(--font-head);
+  font-size: var(--type-dialog);
+  font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--ink);
 }
 
@@ -521,7 +525,7 @@ button.calcell.calcell--full:hover {
   flex: 1 1 auto;
   gap: var(--gap-block);
   min-height: 0;
-  padding: var(--gap-block) var(--pad-card);
+  padding: var(--gap-block) var(--pad-dialog);
   overflow-y: auto;
 }
 
@@ -530,8 +534,8 @@ button.calcell.calcell--full:hover {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8px;
-  padding: 0 var(--pad-card) var(--pad-card);
+  gap: calc(var(--space) * 2.5);
+  padding: 0 var(--pad-dialog) var(--pad-dialog);
 }
 
 .drawer__foot > [data-slot='button']:first-child {
@@ -558,6 +562,7 @@ button.calcell.calcell--full:hover {
 @media (max-width: 759px) {
   [data-slot='sheet-content'].drawer {
     width: 100%;
+    max-width: 100%;
     max-height: 92vh;
     border-top-left-radius: var(--radius-card);
     border-top-right-radius: var(--radius-card);

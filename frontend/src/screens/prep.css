@@ -164,7 +164,6 @@
   font-size: calc(var(--type-note) - 1px);
   font-weight: 700;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--info);
   margin-bottom: calc(var(--space) * 3);
 }

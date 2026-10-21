@@ -24,30 +24,31 @@ def read(*parts: str) -> str:
 # --- Каркас ----------------------------------------------------------------
 
 
-def test_sidebar_is_dark_in_both_themes():
-    """Меню тёмное в обеих темах: фон — графит текста, активный пункт — акцент.
+def test_sidebar_is_glass_in_both_themes():
+    """Меню — стекло на полотне в обеих темах: полупрозрачный фон с размытием
+    и линией справа (коралловый язык, 22.10.2026).
 
-    Светлое меню с плитками (решение от 2026-09-01) отменено новым языком:
-    тёмная полоса меню отделяет навигацию от содержимого. Цвет живёт
-    токенами `--menu-*` — зашитый в компоненте цвет обошёл бы тему.
+    Тёмная полоса меню прошлого языка отменена: навигацию от содержимого
+    отделяют размытие и линия. Цвет живёт токенами `--menu-*` — зашитый
+    в компоненте цвет обошёл бы тему.
     """
     tokens = read("styles", "tokens.css")
     light, dark = tokens.split(":root[data-theme='dark']")
-    assert "--menu-bg: #14130f;" in light, "фон меню — графит текста"
-    assert "--menu-item: #a29a90;" in light and "--menu-user: #201e19;" in light
+    assert "--menu-bg: rgba(255, 255, 255, 0.55);" in light, "фон меню — светлое стекло"
     assert "--menu-bg:" in dark and "--menu-item:" in dark, "у меню обязан быть тёмный двойник"
-    assert "--nav-bg: #ffffff" not in tokens, "белого меню больше нет"
+    nav = read("layout", "shell.css").split(".shell__nav {")[1].split("}")[0]
+    assert "backdrop-filter" in nav and "border-right: 1px solid var(--line)" in nav
 
 
-def test_active_menu_item_is_filled_with_the_accent():
-    """Активный пункт залит акцентом целиком, плиток под иконками нет.
-
-    Плитка под иконкой была приёмом светлого меню: на тёмной полосе
-    «где я» держит сама заливка пункта, а второй слой только шумит.
+def test_active_menu_item_is_marked_with_the_accent():
+    """Активный пункт — мягкая подложка акцента и полоса градиента у края,
+    плиток под иконками нет: «где я» держат подложка и полоса.
     """
     shell = read("layout", "shell.css")
-    active = shell.split(".navlink--active {")[1].split("}")[0]
-    assert "background: var(--accent)" in active and "color: var(--on-accent)" in active
+    active = shell.split(".navlink--active:hover {")[1].split("}")[0]
+    assert "background: var(--accent-bg)" in active and "color: var(--accent-ink)" in active
+    bar = shell.split(".navlink--active::before {")[1].split("}")[0]
+    assert "background: var(--accent-grad)" in bar
     assert "--nav-tile" not in shell, "плиток под иконками больше нет"
     assert "navlink__icon" not in read("layout", "Shell.tsx")
 
@@ -135,7 +136,7 @@ def test_portfolio_is_two_columns_with_forms_in_place():
 
 
 def test_portfolio_pairs_have_a_quiet_label_and_a_plain_value():
-    """Подпись — мелкой капителью, значение — обычным весом.
+    """Подпись — мелкая и тихая, строчными (коралловый язык), значение — обычным весом.
 
     Крупными и жирными остаются только числа в плитках: до фазы 49
     жирным было всё подряд, и значения наезжали друг на друга.
@@ -144,7 +145,7 @@ def test_portfolio_pairs_have_a_quiet_label_and_a_plain_value():
     # пары берут и общие формы карточки — их подпись и ширина живут в общем CSS
     shared = read("components", "ui.css")
     label = shared.split(".portfolio__k {")[1].split("}")[0]
-    assert "text-transform: uppercase" in label and "var(--ink-3)" in label
+    assert "text-transform: uppercase" not in label and "var(--ink-3)" in label
     value = css.split(".portfolio__v {")[1].split("}")[0]
     assert "font-weight: 500" in value
     # длинное значение занимает всю ширину карточки, а не лезет на соседа

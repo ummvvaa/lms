@@ -21,6 +21,7 @@
 @import './tokens.css';
 @import './density.css';
 @import './motion.css';
+@import './coral.css';
 @import '../components/language.css';
 
 /* ---------------------------------------------------------------------------
@@ -157,9 +158,8 @@
   --default-transition-duration: var(--dur-fast);
   --default-transition-timing-function: var(--ease-out);
 
-  /* `font-heading` есть в разметке shadcn, но своего шрифта у нас нет:
-     заголовки идут тем же семейством, что и остальной текст */
-  --font-heading: var(--font-sans);
+  /* `font-heading` в разметке shadcn — шрифт заголовков языка */
+  --font-heading: var(--font-head);
 }
 
 @layer base {
@@ -217,21 +217,25 @@ body {
    --------------------------------------------------------------------------- */
 
 .t-screen {
+  font-family: var(--font-head);
   font-size: var(--type-screen);
   line-height: var(--leading-screen);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 
 .t-card {
+  font-family: var(--font-head);
   font-size: var(--type-card);
-  line-height: 1.25;
-  font-weight: 700;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .t-figure {
+  font-family: var(--font-head);
   font-size: var(--type-figure);
-  line-height: 1.05;
+  line-height: 1.1;
   font-weight: 700;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums lining-nums;
@@ -239,9 +243,11 @@ body {
 
 /* число в строке: крупнее текста, но не показатель */
 .t-value {
+  font-family: var(--font-head);
   font-size: var(--type-value);
   line-height: 1.2;
   font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .t-body {
@@ -254,13 +260,13 @@ body {
   line-height: 1.4;
 }
 
-/* подпись над числом и шапка таблицы: капителью с разрядкой */
+/* подпись над числом и шапка таблицы: мелкая и тихая, строчными —
+   капитель осталась только у подписей групп в меню */
 .t-caps {
   font-size: var(--type-caps);
   line-height: 1.3;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
   color: var(--ink-3);
 }
 
@@ -286,8 +292,15 @@ h4,
 h5,
 h6 {
   font-size: inherit;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* заголовки экрана и блока — шрифтом заголовков языка */
+h1,
+h2,
+h3 {
+  font-family: var(--font-head);
 }
 
 [data-slot]:where(h1, h2, h3, h4, h5, h6) {
@@ -347,6 +360,10 @@ a {
   text-underline-offset: 2px;
 }
 
+a:hover {
+  color: var(--accent);
+}
+
 a:where(.navlink, [data-slot]) {
   text-decoration: none;
 }
@@ -383,38 +400,51 @@ a:where(.navlink, [data-slot]) {
 
 /* --- поверхности --- */
 
-/* Карточка «Панели»: белая на тёплом фоне, мягкая тень, умеренное
-   скругление. Сверху — тонкая цветная полоса по смыслу содержимого:
-   бирюза у языка, индиго у стандартных тестов, зелёно-бирюзовый
-   у хорошего, винный у риска. Полоса рисуется псевдоэлементом, а не
-   рамкой: рамка съела бы скругление в верхних углах. */
+/* Карточка — стекло: полупрозрачная подложка над сферами фона, размытие
+   того, что под ней, светлая кромка, мягкая тёплая тень и крупное
+   скругление. Вложенный блок внутри карточки (`.inner`) — сплошнее
+   и с тонкой линией, без второго размытия: стекло на стекле только мутнеет. */
 .card {
   position: relative;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: var(--glass);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  border: 1px solid var(--glass-line);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
 }
 
-.card-pad {
-  padding: var(--pad-card);
+.card .card {
+  background: var(--glass-in);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: var(--line);
+  border-radius: var(--radius-inner);
+  box-shadow: none;
 }
 
-/* Подпись секции внутри карточки: мелкая капитель, без плашки.
-   До фазы 33 это была плашка-пилюля с рамкой — она спорила с кнопками
-   и метками статусов и мешала читать карточку как «подпись → число». */
+.card-pad {
+  padding: var(--pad-card) var(--pad-card-x);
+}
+
+.inner {
+  background: var(--glass-in);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-inner);
+}
+
+/* Подпись секции внутри карточки: мелкая и тихая, без плашки. */
 .eyebrow {
   display: block;
   margin-bottom: calc(var(--space) * 3);
-  font-size: calc(var(--type-note) - 1px);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--ink-2);
+  font-size: var(--type-note);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--ink-3);
 }
 
 :where(a, button, select, input, textarea):focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-2);
   outline-offset: 2px;
 }
 
@@ -469,145 +499,278 @@ a:where(.navlink, [data-slot]) {
 .tabs__list {
   position: relative;
   height: auto;
-  padding: calc(var(--space) * 1);
-  border-radius: var(--radius-row);
-  background: var(--surface-2);
+  padding: 0;
+  gap: calc(var(--space) * 1);
+  justify-content: flex-start;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--line);
 }
 
 .tabs__tab {
   position: relative;
   z-index: 1;
-  height: auto;
-  padding: calc(var(--space) * 2) calc(var(--space) * 4);
-  border-radius: var(--radius-inrow);
-  font-size: var(--type-note);
-  font-weight: 650;
+  flex: 0 0 auto;
+  height: var(--control-h);
+  padding: 0 calc(var(--space) * 4);
+  border: 0;
+  border-radius: 0;
+  font-size: var(--type-body);
+  font-weight: 500;
+  color: var(--ink-2);
   background: transparent;
+  box-shadow: none;
 }
 
-/* Подложка активной вкладки. Едет к новому месту, а не гаснет
-   на старом и загорается на новом: движение говорит «ты перешёл сюда»,
-   мигание — «экран перерисовался». Положение и ширину Base UI пишет
-   в переменные `--active-tab-*` прямо на элементе. */
+.tabs__tab:hover,
+.tabs__tab[data-selected],
+.tabs__tab[aria-selected='true'] {
+  color: var(--ink);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Полоса под выбранной вкладкой — градиент акцента. Едет к новому месту,
+   а не гаснет на старом и загорается на новом: движение говорит «ты перешёл
+   сюда». Положение и ширину Base UI пишет в переменные `--active-tab-*`. */
 .tabs__indicator {
   position: absolute;
-  top: calc(var(--space) * 1);
-  left: 0;
+  bottom: -1px;
+  left: calc(var(--space) * 2);
   z-index: 0;
-  width: var(--active-tab-width);
-  height: calc(100% - calc(var(--space) * 2));
+  width: calc(var(--active-tab-width) - calc(var(--space) * 4));
+  height: 2px;
   transform: translateX(var(--active-tab-left));
-  border-radius: var(--radius-inrow);
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
+  border-radius: 2px;
+  background: var(--accent-grad);
+  box-shadow: none;
   transition:
     transform var(--dur-base) var(--ease-out),
     width var(--dur-base) var(--ease-out);
+  animation: tab-grow var(--dur-grow) var(--ease-soft) both;
 }
 
-/* Ряд взаимоисключающих значений: язык, тема на экране «Профиль». */
+/* Ряд взаимоисключающих значений: язык, тема, вид. Утопленная дорожка,
+   выбранное значение — светлая плашка с тенью поверх неё. */
 .segmented {
-  display: flex;
-  gap: calc(var(--space) * 1);
+  display: inline-flex;
   flex-wrap: wrap;
+  gap: 2px;
+  padding: var(--seg-pad);
+  border-radius: var(--radius-row);
+  background: var(--line);
 }
 
 .segmented__option {
-  border: 1px solid var(--line);
+  min-height: calc(var(--btn-row-h) - 2px);
+  padding: 0 calc(var(--space) * 3);
+  border: 0;
+  border-radius: calc(var(--radius-row) - var(--seg-pad));
   background: transparent;
   color: var(--ink-2);
-  border-radius: var(--radius-pill);
-  padding: calc(var(--space) * 1) calc(var(--space) * 3);
   font-size: var(--type-note);
-  font-weight: 650;
+  font-weight: 500;
   cursor: pointer;
   transition:
     background var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out);
+    box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .segmented__option:hover {
   color: var(--ink);
-  background: var(--surface-2);
 }
 
-.segmented__option--active {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--surface);
+.segmented__option--active,
+.segmented__option--active:hover {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-seg);
 }
 
-/* Кнопка и метка из реестра. Высота и поля — из набора плотности:
-   у ученика кнопка просторнее, чем у директора, а компонент реестра
-   задаёт `h-8` числом. Правила лежат вне слоёв и перебивают утилиты. */
-[data-slot='button'] {
+/* Кнопка и метка из реестра. Высота и поля — из набора плотности,
+   компонент реестра задаёт `h-8` числом. Правила лежат вне слоёв
+   и перебивают утилиты. Кнопка, которую рисует триггер меню или подсказки,
+   теряет `data-slot`, поэтому правила вариантов держатся за пару
+   `data-variant` + `data-size`.
+
+   Главная кнопка — градиент акцента с тёплой тенью и бликом, который
+   проходит раз в четыре секунды; вторичная — светлая с тонкой рамкой,
+   рамка под курсором акцентная; мягкая — подложка акцента; текстовая —
+   только слово. Под курсором кнопка приподнимается на пиксель. */
+[data-slot='button'],
+[data-variant][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']) {
   height: var(--control-h);
   min-height: var(--control-h);
   padding-inline: var(--control-pad-x);
-  border-radius: var(--radius-row);
-  font-size: var(--type-note);
-  font-weight: 650;
+  border-radius: var(--radius-btn);
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
+  font-weight: 600;
   gap: calc(var(--space) * 2);
   transition:
     background var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
-    transform var(--dur-fast) var(--ease-out);
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-soft);
 }
 
-[data-slot='button'][data-size='sm'] {
-  height: calc(var(--control-h) - calc(var(--space) * 2));
-  min-height: calc(var(--control-h) - calc(var(--space) * 2));
-  padding-inline: calc(var(--control-pad-x) - calc(var(--space) * 1));
-  font-size: calc(var(--type-note) - 1px);
+:where([data-slot='button'], [data-variant][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch'])):hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+[data-slot='button'][data-size='sm'],
+[data-variant][data-size='sm']:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']) {
+  height: var(--btn-row-h);
+  min-height: var(--btn-row-h);
+  padding-inline: calc(var(--space) * 2.5);
+  font-size: var(--type-note);
   border-radius: var(--radius-inrow);
 }
 
+[data-slot='button'][data-size='lg'],
+[data-variant][data-size='lg']:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']) {
+  height: calc(var(--control-h) + calc(var(--space) * 2));
+  min-height: calc(var(--control-h) + calc(var(--space) * 2));
+  padding-inline: calc(var(--space) * 6);
+  border-radius: var(--radius-inner);
+}
+
 [data-slot='button'][data-size='icon'],
-[data-slot='button'][data-size='icon-sm'] {
-  width: calc(var(--control-h) - calc(var(--space) * 1));
-  height: calc(var(--control-h) - calc(var(--space) * 1));
+[data-slot='button'][data-size='icon-sm'],
+[data-variant][data-size='icon']:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']),
+[data-variant][data-size='icon-sm']:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']) {
+  width: var(--control-h);
+  height: var(--control-h);
   min-height: 0;
   padding: 0;
 }
 
-/* Отклик на нажатие: на пиксель вниз — чувствуется, не видится */
-[data-slot='button']:active:not(:disabled) {
-  transform: translateY(1px);
+[data-slot='button'][data-size='icon-sm'],
+[data-variant][data-size='icon-sm']:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']) {
+  width: var(--btn-row-h);
+  height: var(--btn-row-h);
+  border-radius: var(--radius-inrow);
 }
 
-/* Вторичная кнопка: белая с тонкой рамкой, при наведении рамка темнеет.
-   Так была устроена `.btn-ghost`, и вид сохраняем */
-[data-slot='button'][data-variant='outline'] {
-  background: var(--surface);
-  border-color: var(--line);
+/* Отклик на нажатие: на место и чуть меньше — чувствуется, не видится */
+:where([data-slot='button'], [data-variant][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch'])):active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Главная: градиент, тень под цветом, блик по кругу */
+[data-variant='default'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']) {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--accent-grad);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-acc);
+}
+
+[data-variant='default'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']):hover:not(:disabled) {
+  background: var(--accent-grad);
+  box-shadow: var(--shadow-acc-hi);
+}
+
+[data-variant='default'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch'])::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  z-index: -1;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--on-accent) 45%, transparent), transparent);
+  transform: skewX(-18deg);
+  animation: shimmer var(--dur-shimmer) ease-in-out infinite;
+  pointer-events: none;
+}
+
+[data-variant='default'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']):disabled::after {
+  animation: none;
+}
+
+/* Вторичная: светлая с тонкой рамкой, под курсором рамка акцентная */
+[data-variant='outline'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']) {
+  background: var(--glass-in);
+  border-color: var(--line-2);
   color: var(--ink);
 }
 
-[data-slot='button'][data-variant='outline']:hover {
-  background: var(--surface);
-  border-color: var(--ink-3);
+[data-variant='outline'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']):hover {
+  background: var(--glass-in);
+  border-color: var(--accent-2);
+  color: var(--ink);
 }
 
-/* Опасное действие: винная кнопка с белым текстом, как была `.btn-danger` */
-[data-slot='button'][data-variant='destructive'] {
+/* Мягкая: подложка акцента */
+[data-variant='secondary'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']) {
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+}
+
+[data-variant='secondary'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']):hover {
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+}
+
+/* Тихая кнопка без подложки: иконка в строке, «Отмена» */
+[data-variant='ghost'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']) {
+  color: var(--ink-2);
+}
+
+[data-variant='ghost'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']):hover {
+  background: var(--line);
+  color: var(--ink);
+}
+
+/* Текстовая: слово акцентом */
+[data-variant='link'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']) {
+  height: auto;
+  min-height: 0;
+  padding-inline: calc(var(--space) * 1);
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+
+[data-variant='link'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']):hover {
+  color: var(--accent);
+  transform: none;
+}
+
+/* Опасное действие: красная заливка с белым текстом */
+[data-variant='destructive'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']) {
   background: var(--bad);
   color: var(--on-accent);
 }
 
-[data-slot='button'][data-variant='destructive']:hover {
+[data-variant='destructive'][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch']):hover {
   background: var(--bad);
+  color: var(--on-accent);
+}
+
+:where([data-slot='button'], [data-variant][data-size]:not([data-slot='badge'], [data-slot='native-select'], [data-slot='switch'])):disabled {
+  opacity: 0.45;
+  box-shadow: none;
 }
 
 [data-slot='badge'] {
   height: auto;
-  padding: calc(var(--space) * 1) calc(var(--space) * 2);
+  min-height: calc(var(--space) * 6);
+  padding: 0 calc(var(--space) * 3);
+  gap: calc(var(--space) * 1.5);
   font-size: var(--type-note);
-  font-weight: 650;
+  font-weight: 500;
   line-height: 1.3;
   border-radius: var(--radius-pill);
   white-space: nowrap;
+}
+
+[data-slot='badge'][data-size='sm'] {
+  min-height: calc(var(--space) * 5);
+  padding: 0 calc(var(--space) * 2);
 }
 
 /* --- экран падения --- */

@@ -1,11 +1,10 @@
 /* Раскладка каркаса. Цвета и радиусы — только из токенов.
 
-   Меню тёмное: полоса в 228 пикселей на `--menu-bg` слева, во всю высоту.
-   Сверху плитка-буква школы и короткое имя, справа от них иконка поиска;
-   ниже разделы капителью и пункты; внизу карточка пользователя, которая
-   открывает меню профиля. Активный пункт залит акцентом целиком —
-   плиток под иконками нет: на тёмной полосе «где я» держит сама заливка,
-   а второй слой только шумит.
+   Меню — светлое стекло слева во всю высоту (`--side-w`): сверху плитка-буква
+   школы градиентом акцента и имя, под ними кнопка поиска; ниже разделы
+   капителью и пункты; внизу карточка пользователя, которая открывает меню
+   профиля. Активный пункт — мягкая подложка акцента и полоса градиента
+   у левого края. Под меню и экраном — фон со сферами и точечной сеткой.
 
    Меню стоит на месте: прокручивается только правая часть, а если пунктов
    больше, чем влезает, прокручивается список внутри самого меню.
@@ -18,15 +17,21 @@
   /* minmax(0, 1fr), а не 1fr: иначе минимальная ширина колонки равна
      min-content её содержимого, и широкая таблица распирает страницу
      вбок вместо того, чтобы прокручиваться внутри */
-  grid-template-columns: calc(var(--space) * 57) minmax(0, 1fr);
+  grid-template-columns: var(--side-w) minmax(0, 1fr);
   min-height: 100vh;
+  position: relative;
   background: var(--canvas);
   /* сворачивание меню едет, а не прыгает */
   transition: grid-template-columns var(--dur-base) var(--ease-out);
 }
 
 .shell__nav {
+  position: relative;
+  z-index: 2;
   background: var(--menu-bg);
+  backdrop-filter: blur(var(--side-blur));
+  -webkit-backdrop-filter: blur(var(--side-blur));
+  border-right: 1px solid var(--line);
   color: var(--menu-text);
   min-width: 0;
   /* подпись пункта уезжает за край при сворачивании, а не мигает */
@@ -40,10 +45,10 @@
    высоту экрана и прокручивает свой список внутри себя. */
 .shell__navinner {
   height: 100%;
-  padding: var(--pad-card) calc(var(--space) * 3);
+  padding: calc(var(--space) * 5) var(--side-pad);
   display: flex;
   flex-direction: column;
-  gap: var(--gap-block);
+  gap: calc(var(--space) * 2);
   min-width: 0;
 }
 
@@ -54,6 +59,8 @@
   }
   .shell__main {
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-2) transparent;
   }
 }
 
@@ -61,19 +68,21 @@
 .shell__brand {
   display: flex;
   align-items: center;
-  gap: calc(var(--space) * 2);
-  padding: 0 calc(var(--space) * 2);
+  gap: calc(var(--space) * 2.5);
+  padding: calc(var(--space) * 1) calc(var(--space) * 2) calc(var(--space) * 2);
   white-space: nowrap;
 }
 
 .shell__mark {
-  width: calc(var(--space) * 7);
-  height: calc(var(--space) * 7);
+  width: var(--avatar);
+  height: var(--avatar);
   flex: 0 0 auto;
   border-radius: var(--radius-inrow);
-  background: var(--accent);
+  background: var(--accent-grad);
   color: var(--on-accent);
-  font-size: var(--type-note);
+  box-shadow: var(--shadow-mark);
+  font-family: var(--font-head);
+  font-size: var(--type-body);
   font-weight: 700;
   display: grid;
   place-items: center;
@@ -82,11 +91,68 @@
 .shell__brandname {
   flex: 1;
   min-width: 0;
+  display: grid;
   overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: var(--type-card);
+  font-family: var(--font-head);
+  font-size: var(--type-body);
   font-weight: 700;
   color: var(--menu-text);
+}
+
+.shell__brandname > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shell__brandfull {
+  font-family: var(--font-sans);
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+/* Кнопка поиска во всю ширину меню: открывает окно поиска, как Ctrl+K */
+.shell__searchbtn {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 2.5);
+  width: 100%;
+  height: calc(var(--control-h) - 2px);
+  padding: 0 calc(var(--space) * 3);
+  margin-bottom: calc(var(--space) * 1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-row);
+  background: var(--glass-in);
+  color: var(--ink-3);
+  font: inherit;
+  font-size: var(--type-note);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.shell__searchbtn:hover {
+  border-color: var(--accent-2);
+  color: var(--ink-2);
+}
+
+.shell__searchlabel {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kbd {
+  padding: 1px calc(var(--space) * 1.5);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-kbd);
+  font-size: calc(var(--type-note) - 1px);
+  font-weight: 500;
+  color: var(--ink-3);
 }
 
 .shell__iconbtn {
@@ -107,13 +173,23 @@
 }
 
 .shell__iconbtn:hover {
-  color: var(--menu-text);
+  color: var(--accent-ink);
   background: var(--menu-hover);
 }
 
 /* --- Свёрнутое меню: плитка и иконки, подписи — в подсказках --- */
 .shell--collapsed {
-  grid-template-columns: calc(var(--space) * 18) minmax(0, 1fr);
+  grid-template-columns: var(--side-collapsed-w) minmax(0, 1fr);
+}
+
+.shell--collapsed .shell__searchlabel,
+.shell--collapsed .shell__searchbtn .kbd {
+  display: none;
+}
+
+.shell--collapsed .shell__searchbtn {
+  justify-content: center;
+  padding: 0;
 }
 
 .shell--collapsed .shell__brand {
@@ -156,11 +232,7 @@
   padding: 0;
   font-size: 0;
   border-radius: 50%;
-  background: var(--accent);
-}
-
-.shell--collapsed .navlink--active .navlink__count {
-  background: var(--on-accent);
+  background: var(--accent-grad);
 }
 
 .shell--collapsed .pmenu__usertext,
@@ -181,11 +253,14 @@
 .shell__menu {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space) * 3);
+  gap: 0;
   flex: 1 1 auto;
   min-height: 0;
+  /* полоса активного пункта стоит на краю меню, за полем списка */
+  margin: 0 calc(var(--side-pad) * -1);
+  padding: 0 var(--side-pad);
   overflow-y: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
 }
 
 .navgroup {
@@ -194,9 +269,14 @@
   gap: 2px;
 }
 
-/* Подпись группы — капитель `.t-caps`: она делит список, а не спорит с пунктами */
+/* Подпись группы — капитель с разрядкой: она делит список, а не спорит с пунктами */
 .navgroup__label {
-  padding: 0 calc(var(--space) * 3) calc(var(--space) * 1);
+  padding: calc(var(--space) * 3) calc(var(--space) * 3) calc(var(--space) * 1);
+  font-size: var(--type-group);
+  font-weight: 600;
+  letter-spacing: var(--group-spacing);
+  text-transform: uppercase;
+  color: var(--ink-3);
   white-space: nowrap;
   overflow: hidden;
   transition: opacity var(--dur-fast) var(--ease-out);
@@ -208,9 +288,10 @@
   align-items: center;
   gap: calc(var(--space) * 3);
   padding: calc(var(--space) * 2) calc(var(--space) * 3);
-  min-height: var(--control-h);
+  min-height: var(--side-item-h);
   border-radius: var(--radius-row);
-  font-size: var(--type-body);
+  font-size: var(--type-nav);
+  font-weight: 500;
   color: var(--menu-item);
   text-decoration: none;
   white-space: nowrap;
@@ -228,17 +309,23 @@
   background: var(--menu-hover);
 }
 
-/* Активный пункт залит акцентом целиком, подпись белая и полужирная:
-   «где я» видно раньше, чем прочитано слово. */
-.navlink--active {
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 600;
+/* Активный пункт — мягкая подложка акцента, текст акцентом и полоса
+   градиента у левого края меню: «где я» видно раньше, чем прочитано слово. */
+.navlink--active,
+.navlink--active:hover {
+  background: var(--accent-bg);
+  color: var(--accent-ink);
 }
 
-.navlink--active:hover {
-  background: var(--accent);
-  color: var(--on-accent);
+.navlink--active::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--side-pad) * -1);
+  top: var(--side-bar-inset);
+  bottom: var(--side-bar-inset);
+  width: var(--side-bar-w);
+  border-radius: 0 var(--side-bar-w) var(--side-bar-w) 0;
+  background: var(--accent-grad);
 }
 
 /* название пункта целиком: рядом со счётчиком оно переносится, а не режется */
@@ -255,18 +342,16 @@
   margin-left: auto;
   flex: 0 0 auto;
   min-width: calc(var(--space) * 5);
-  padding: 1px calc(var(--space) * 2);
+  height: calc(var(--space) * 5);
+  padding: 0 calc(var(--space) * 1.5);
   border-radius: var(--radius-pill);
-  background: var(--menu-count);
-  color: var(--menu-text);
+  background: var(--accent-grad);
+  color: var(--on-accent);
   font-size: calc(var(--type-note) - 1px);
-  font-weight: 700;
-  line-height: 1.4;
-  text-align: center;
-}
-
-.navlink--active .navlink__count {
-  background: color-mix(in srgb, var(--on-accent) 22%, transparent);
+  font-weight: 600;
+  line-height: 1;
+  display: inline-grid;
+  place-items: center;
 }
 
 /* Стрелка у раздела со своими внутренними экранами. */
@@ -293,6 +378,7 @@
 /* --- Карточка пользователя внизу меню: она же кнопка меню профиля --- */
 .shell__user {
   min-width: 0;
+  padding-top: calc(var(--space) * 2);
 }
 
 .pmenu__user {
@@ -300,19 +386,19 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: calc(var(--space) * 2);
-  padding: calc(var(--space) * 2);
-  border: 0;
-  border-radius: var(--radius-row);
+  gap: calc(var(--space) * 2.5);
+  padding: calc(var(--space) * 2.5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-inner);
   background: var(--menu-user);
   color: var(--menu-text);
   cursor: pointer;
   text-align: left;
-  transition: background var(--dur-fast) var(--ease-out);
+  transition: border-color var(--dur-fast) var(--ease-out);
 }
 
 .pmenu__user:hover {
-  background: color-mix(in srgb, var(--menu-user) 90%, var(--menu-text));
+  border-color: var(--accent-2);
 }
 
 .pmenu__user > svg {
@@ -322,17 +408,22 @@
 
 .pmenu__avatar {
   position: relative;
-  width: calc(var(--space) * 8);
-  height: calc(var(--space) * 8);
+  width: var(--avatar);
+  height: var(--avatar);
   flex: 0 0 auto;
-  border-radius: var(--radius-inrow);
-  background: var(--menu-avatar);
-  color: var(--menu-text);
-  font-size: calc(var(--type-note) - 1px);
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--glint), var(--menu-avatar));
+  color: var(--accent-ink);
+  font-family: var(--font-head);
+  font-size: var(--type-note);
+  font-weight: 600;
   display: grid;
   place-items: center;
+}
+
+:root[data-theme='dark'] .pmenu__avatar,
+:root[data-theme='dark'] .pmenu__headavatar {
+  background: linear-gradient(135deg, var(--menu-avatar), var(--accent-bg));
 }
 
 /* непрочитанные уведомления — точка в углу аватара: меню закрыто, а видно */
@@ -343,7 +434,8 @@
   width: calc(var(--space) * 2);
   height: calc(var(--space) * 2);
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-2);
+  box-shadow: 0 0 0 2px var(--surface);
 }
 
 .pmenu__usertext {
@@ -361,13 +453,13 @@
 }
 
 .pmenu__username {
-  font-size: var(--type-note);
+  font-size: calc(var(--type-body) - 1px);
   font-weight: 600;
   color: var(--menu-text);
 }
 
 .pmenu__userrole {
-  font-size: calc(var(--type-note) - 1px);
+  font-size: var(--type-note);
   color: var(--ink-3);
 }
 
@@ -380,20 +472,26 @@
   background: transparent;
 }
 
+.pmenu__user--avatar {
+  border: 0;
+}
+
 .pmenu__user--avatar .pmenu__avatar {
-  width: calc(var(--space) * 8);
+  width: var(--btn-row-h);
   height: var(--btn-row-h);
 }
 
 /* --- Область экрана --- */
 .shell__main {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
 .shell__screen {
-  padding: var(--pad-screen);
+  padding: var(--pad-screen) var(--pad-screen-x) calc(var(--space) * 10);
   min-width: 0;
 }
 
@@ -583,12 +681,26 @@
   font-weight: 700;
 }
 
+/* язык и тема — ряд из трёх кнопок во всю ширину меню */
+.pmenu__seg {
+  padding: calc(var(--space) * 1) calc(var(--space) * 2) calc(var(--space) * 1.5);
+}
+
+.pmenu__seg .segrow {
+  display: flex;
+  margin-bottom: 0;
+}
+
+.pmenu__seg .segrow__item {
+  flex: 1 1 0;
+  justify-content: center;
+  min-width: 0;
+}
+
 .pmenu__grouptitle {
-  padding: calc(var(--space) * 1) calc(var(--space) * 2) 2px;
-  font-size: var(--type-caps);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--caps-spacing);
+  padding: calc(var(--space) * 1.5) calc(var(--space) * 3) calc(var(--space) * 1);
+  font-size: var(--type-note);
+  font-weight: 500;
   color: var(--ink-3);
 }
 
@@ -656,6 +768,9 @@
     height: var(--row-h);
     padding: 0 calc(var(--space) * 2);
     background: var(--menu-bg);
+    backdrop-filter: blur(var(--side-blur));
+    -webkit-backdrop-filter: blur(var(--side-blur));
+    border-bottom: 1px solid var(--line);
     color: var(--menu-text);
   }
 
@@ -719,8 +834,10 @@
     align-items: stretch;
     height: var(--tabbar-clear);
     padding: calc(var(--space) * 1) calc(var(--space) * 1) env(safe-area-inset-bottom, 0px);
-    background: var(--surface);
-    border-top: 1px solid var(--line-2);
+    background: var(--menu-bg);
+    backdrop-filter: blur(var(--side-blur));
+    -webkit-backdrop-filter: blur(var(--side-blur));
+    border-top: 1px solid var(--line);
   }
 
   .tabbar__item {
@@ -739,7 +856,7 @@
     border-radius: var(--radius-row);
     background: none;
     color: var(--ink-3);
-    font-size: var(--type-caps);
+    font-size: var(--type-tab);
     font-weight: 600;
     line-height: 1.1;
     text-decoration: none;
@@ -748,7 +865,7 @@
 
   /* Активный раздел — цветом акцента: «где я» видно раньше, чем прочитано слово */
   .tabbar__item--on {
-    color: var(--accent);
+    color: var(--accent-ink);
   }
 
   .tabbar__icon {
@@ -767,9 +884,9 @@
     height: calc(var(--space) * 4);
     padding: 0 calc(var(--space) * 1);
     border-radius: var(--radius-pill);
-    background: var(--accent);
+    background: var(--accent-grad);
     color: var(--on-accent);
-    font-size: var(--type-caps);
+    font-size: var(--type-tab);
     font-weight: 700;
     line-height: 1;
     display: grid;
@@ -868,7 +985,7 @@
 }
 
 .moresheet__link--on .moresheet__icon {
-  background: var(--accent);
+  background: var(--accent-grad);
   color: var(--on-accent);
 }
 

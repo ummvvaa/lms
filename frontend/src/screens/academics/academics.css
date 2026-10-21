@@ -614,6 +614,11 @@ body [data-slot='button'][data-variant].acad__heatcell {
   align-items: flex-start;
 }
 
+/* колонки под карточкой во всю ширину — с тем же разрывом, что между блоками */
+.datacard + .acad__cols {
+  margin-top: var(--gap-block);
+}
+
 .acad__cols > * {
   flex: 1 1 0;
   min-width: 0;

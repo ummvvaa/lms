@@ -97,7 +97,6 @@
   font-size: var(--type-caps);
   font-weight: 700;
   letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
   color: var(--ink-3);
   margin-bottom: calc(var(--space) * 1);
 }
@@ -162,7 +161,6 @@
   .calfeed__month {
     font-size: var(--type-note);
     font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: var(--caps-spacing);
     color: var(--ink-3);
     padding: calc(var(--space) * 1) 0;

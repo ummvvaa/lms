@@ -1,0 +1,532 @@
+/* Коралловый язык: фон, стекло, эффекты и общие части реестра.
+
+   Образец — `docs/design-ref/coral-admin/coral.css`; значения цветов и теней
+   берутся токенами из `tokens.css`, размеры — из `density.css`, время —
+   из `motion.css`. Здесь только устройство эффектов.
+
+   Правило одного «вау» на карточку: у карточки либо бегущий свет по рамке,
+   либо кольцо, либо растущие столбики — не два сразу. Бегущий свет — у одной
+   главной карточки экрана (`.card--beam`), его ставит экран.
+
+   При системной настройке «уменьшить движение» всё движение снимает правило
+   в конце `base.css`: сферы стоят, перелива и бега света нет, карточки
+   появляются сразу, полосы и кольца уже заполнены. */
+
+@property --beam-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* ---------------------------------------------------------------------------
+   Фон оболочки: три размытые сферы и точечная сетка под содержимым.
+   Слой неподвижен и не ловит мышь; содержимое лежит над ним.
+   --------------------------------------------------------------------------- */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.backdrop__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.9;
+  animation: orb-float var(--dur-orb) ease-in-out infinite alternate;
+}
+
+.backdrop__orb--a {
+  width: 520px;
+  height: 520px;
+  top: -220px;
+  right: 6%;
+  background: var(--orb-a);
+}
+
+.backdrop__orb--b {
+  width: 420px;
+  height: 420px;
+  top: -160px;
+  left: 22%;
+  background: var(--orb-b);
+  animation-duration: var(--dur-orb-b);
+  animation-delay: -6s;
+}
+
+.backdrop__orb--c {
+  width: 360px;
+  height: 360px;
+  bottom: -160px;
+  right: 28%;
+  background: var(--orb-c);
+  animation-duration: var(--dur-orb-c);
+  animation-delay: -12s;
+}
+
+@keyframes orb-float {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-30px, 24px, 0) scale(1.06);
+  }
+  100% {
+    transform: translate3d(24px, -12px, 0) scale(0.97);
+  }
+}
+
+.backdrop__dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse 70% 55% at 60% 0%, var(--ink) 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 55% at 60% 0%, var(--ink) 0%, transparent 75%);
+}
+
+/* ---------------------------------------------------------------------------
+   Появление: карточки встают снизу из лёгкой дымки ступенькой по 80 мс.
+   Ступенька считается по порядку среди соседей-карточек, поэтому экрану
+   не нужно расставлять номера руками; первые десять — дальше одной.
+   --------------------------------------------------------------------------- */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+:where(.shell__screen) :where(.card, .kpi, .head) {
+  animation: rise var(--dur-rise) var(--ease-soft) both;
+  animation-delay: calc(var(--i, 0) * var(--rise-step));
+}
+
+:where(.shell__screen) :where(.card, .kpi):nth-child(2 of .card, .kpi) {
+  --i: 1;
+}
+:where(.shell__screen) :where(.card, .kpi):nth-child(3 of .card, .kpi) {
+  --i: 2;
+}
+:where(.shell__screen) :where(.card, .kpi):nth-child(4 of .card, .kpi) {
+  --i: 3;
+}
+:where(.shell__screen) :where(.card, .kpi):nth-child(5 of .card, .kpi) {
+  --i: 4;
+}
+:where(.shell__screen) :where(.card, .kpi):nth-child(6 of .card, .kpi) {
+  --i: 5;
+}
+:where(.shell__screen) :where(.card, .kpi):nth-child(7 of .card, .kpi) {
+  --i: 6;
+}
+:where(.shell__screen) :where(.card, .kpi):nth-child(8 of .card, .kpi) {
+  --i: 7;
+}
+:where(.shell__screen) :where(.card, .kpi):nth-child(9 of .card, .kpi) {
+  --i: 8;
+}
+:where(.shell__screen) :where(.card, .kpi):nth-child(n + 10 of .card, .kpi) {
+  --i: 9;
+}
+
+/* Подъём под курсором: карточка-ссылка и показатель-кнопка */
+.lift,
+.kpi--link {
+  transition:
+    transform var(--dur-lift) var(--ease-soft),
+    box-shadow var(--dur-lift) var(--ease-soft),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.lift:hover,
+.kpi--link:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hi);
+}
+
+/* ---------------------------------------------------------------------------
+   Бегущий свет по рамке — только у одной главной карточки экрана.
+   Конический градиент крутится по углу и вырезан маской в кольцо толщиной
+   полтора пикселя. Рамка карточки в тёмной теме под ним светится акцентом.
+   --------------------------------------------------------------------------- */
+.card--beam {
+  isolation: isolate;
+  border-color: var(--glass-line-hot);
+  box-shadow: var(--shadow-beam);
+}
+
+.card--beam::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: 2;
+  border-radius: inherit;
+  padding: var(--beam-w);
+  background: conic-gradient(
+    from var(--beam-angle),
+    transparent 0deg,
+    transparent 250deg,
+    var(--glint) 300deg,
+    var(--accent-2) 330deg,
+    var(--accent) 350deg,
+    transparent 360deg
+  );
+  mask:
+    linear-gradient(var(--ink) 0 0) content-box,
+    linear-gradient(var(--ink) 0 0);
+  -webkit-mask:
+    linear-gradient(var(--ink) 0 0) content-box,
+    linear-gradient(var(--ink) 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  animation: beam-spin var(--dur-beam) linear infinite;
+  pointer-events: none;
+}
+
+@keyframes beam-spin {
+  to {
+    --beam-angle: 360deg;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Перелив главной кнопки: блик проходит слева направо раз в четыре секунды.
+   --------------------------------------------------------------------------- */
+@keyframes shimmer {
+  0%,
+  55% {
+    left: -60%;
+  }
+  100% {
+    left: 130%;
+  }
+}
+
+/* Пульс «живой» точки рядом с подписью: идёт урок, ждут решения */
+.live-dot {
+  width: calc(var(--space) * 2);
+  height: calc(var(--space) * 2);
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent-2);
+  animation: live-pulse var(--dur-pulse) ease-out infinite;
+}
+
+@keyframes live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--accent-shadow);
+  }
+  100% {
+    box-shadow: 0 0 0 9px transparent;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Заполнение от нуля: полоса, кольцо, столбики. Один раз при появлении.
+   --------------------------------------------------------------------------- */
+@keyframes fill-from-zero {
+  from {
+    width: 0;
+  }
+}
+
+@keyframes ring-from-zero {
+  from {
+    stroke-dashoffset: 100;
+  }
+}
+
+@keyframes spark-up {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes tab-grow {
+  from {
+    transform: scaleX(0.3);
+    opacity: 0;
+  }
+}
+
+/* Столбики-искра в показателе: растут снизу ступенькой */
+.spark {
+  display: flex;
+  align-items: flex-end;
+  gap: calc(var(--space) * 1);
+  height: calc(var(--space) * 7);
+}
+
+.spark > i {
+  flex: 1;
+  border-radius: 4px 4px 2px 2px;
+  background: var(--accent-grad);
+  opacity: 0.85;
+  transform-origin: bottom;
+  animation: spark-up var(--dur-spark) var(--ease-soft) both;
+}
+
+.spark > i:nth-child(2) {
+  animation-delay: 50ms;
+}
+.spark > i:nth-child(3) {
+  animation-delay: 100ms;
+}
+.spark > i:nth-child(4) {
+  animation-delay: 150ms;
+}
+.spark > i:nth-child(n + 5) {
+  animation-delay: 200ms;
+}
+
+/* ---------------------------------------------------------------------------
+   Окно, шторка справа, выпадающее меню, подсказка, уведомление.
+   Положение и клавиатуру держат компоненты реестра; здесь — вид и вход.
+   --------------------------------------------------------------------------- */
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(4%) scale(0.96);
+    filter: blur(4px);
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+[data-slot='dialog-overlay'],
+[data-slot='sheet-overlay'] {
+  background: var(--backdrop);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+[data-slot='dialog-overlay'][data-open] {
+  animation: fade-in var(--dur-fade) ease both;
+}
+
+[data-slot='dialog-content'] {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-dialog);
+  box-shadow: var(--shadow-dialog);
+  --tw-ring-color: transparent;
+}
+
+[data-slot='dialog-content'][data-open] {
+  animation: modal-in var(--dur-modal) var(--ease-soft) both;
+}
+
+/* шторка справа: отступ от краёв экрана и скругление, как у окна */
+[data-slot='sheet-content'][data-side='right'] {
+  top: calc(var(--space) * 3);
+  right: calc(var(--space) * 3);
+  bottom: calc(var(--space) * 3);
+  height: auto;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-dialog);
+  background: var(--surface);
+  box-shadow: var(--shadow-drawer);
+}
+
+[data-slot='sheet-content'][data-side='right']:not([data-starting-style], [data-ending-style]) {
+  animation: drawer-in var(--dur-drawer) var(--ease-soft) both;
+}
+
+[data-slot='sheet-content'][data-side='bottom'] {
+  background: var(--surface);
+  border-color: var(--line-2);
+}
+
+[data-slot='dropdown-menu-content'],
+[data-slot='dropdown-menu-sub-content'] {
+  padding: var(--pad-pop);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-pop);
+  background: var(--surface);
+  box-shadow: var(--shadow-raised);
+  --tw-ring-color: transparent;
+}
+
+[data-slot='dropdown-menu-content'][data-open],
+[data-slot='dropdown-menu-sub-content'][data-open] {
+  animation: pop-in var(--dur-pop) var(--ease-soft) both;
+}
+
+:where([data-slot='dropdown-menu-item'], [data-slot='dropdown-menu-checkbox-item'], [data-slot='dropdown-menu-radio-item']) {
+  min-height: var(--pop-item-h);
+  border-radius: var(--radius-inrow);
+  font-size: var(--type-body);
+  font-weight: 500;
+}
+
+:where([data-slot='dropdown-menu-item'], [data-slot='dropdown-menu-checkbox-item'], [data-slot='dropdown-menu-radio-item'])[data-highlighted] {
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+}
+
+[data-slot='dropdown-menu-separator'] {
+  margin: var(--pad-pop) calc(var(--space) * 1);
+  background: var(--line);
+}
+
+/* уведомление sonner: тёмная плашка снизу по центру, в тёмной теме — светлая */
+[data-sonner-toast][data-styled='true'].cn-toast {
+  background: var(--toast-bg);
+  color: var(--toast-ink);
+  border: 0;
+  border-radius: var(--radius-inner);
+  box-shadow: var(--shadow-toast);
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
+  font-weight: 500;
+}
+
+[data-sonner-toast][data-styled='true'].cn-toast [data-description] {
+  color: var(--toast-ink);
+  opacity: 0.75;
+}
+
+[data-sonner-toast][data-styled='true'].cn-toast [data-icon] {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  color: var(--on-accent);
+  display: grid;
+  place-items: center;
+}
+
+/* ---------------------------------------------------------------------------
+   Поля, переключатель, флажок, заглушка загрузки.
+   --------------------------------------------------------------------------- */
+:where([data-slot='input'], [data-slot='textarea'], [data-slot='native-select']) {
+  border-color: var(--line-2);
+  border-radius: var(--radius-row);
+  background: var(--field);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+/* высоту 44 получают поля форм (`.field__control`), поле в строке таблицы
+   остаётся высотой реестра */
+:where([data-slot='input'], [data-slot='native-select']) {
+  padding-inline: var(--field-pad-x);
+}
+
+:where([data-slot='textarea']) {
+  padding: calc(var(--space) * 3) var(--field-pad-x);
+  line-height: 1.5;
+}
+
+:where([data-slot='input'], [data-slot='textarea'], [data-slot='native-select']):focus-visible {
+  outline: 0;
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 4px var(--accent-bg);
+}
+
+[data-slot='input-group'] {
+  border-color: var(--line-2);
+  border-radius: var(--radius-row);
+  background: var(--field);
+}
+
+[data-slot='input-group']:focus-within {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 4px var(--accent-bg);
+}
+
+[data-slot='switch'] {
+  width: 40px;
+  height: 24px;
+  border: 0;
+  background: var(--line-2);
+  transition: background var(--dur-base) var(--ease-out);
+}
+
+[data-slot='switch'][data-size='sm'] {
+  width: 32px;
+  height: 20px;
+}
+
+[data-slot='switch'][data-checked] {
+  background: var(--accent-grad);
+}
+
+[data-slot='switch-thumb'] {
+  width: 18px;
+  height: 18px;
+  margin-left: var(--seg-pad);
+  background: var(--surface);
+  box-shadow: 0 1px 3px var(--line-2);
+  transition: transform var(--dur-lift) var(--ease-soft);
+}
+
+[data-slot='switch'][data-size='sm'] [data-slot='switch-thumb'] {
+  width: 14px;
+  height: 14px;
+}
+
+[data-slot='switch'] [data-slot='switch-thumb'][data-checked] {
+  transform: translateX(16px);
+  background: var(--on-accent);
+}
+
+[data-slot='switch'][data-size='sm'] [data-slot='switch-thumb'][data-checked] {
+  transform: translateX(12px);
+}
+
+[data-slot='checkbox'] {
+  border-radius: 6px;
+  border: 1.5px solid var(--line-2);
+  background: var(--glass-in);
+}
+
+[data-slot='checkbox'][data-checked] {
+  border-color: transparent;
+  background: var(--accent-grad);
+  color: var(--on-accent);
+}
+
+[data-slot='skeleton'] {
+  border-radius: var(--radius-inrow);
+  background: linear-gradient(90deg, var(--line) 0%, var(--line-2) 50%, var(--line) 100%);
+  background-size: 200% 100%;
+  animation: skel-run var(--dur-skel) linear infinite;
+}
+
+@keyframes skel-run {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}

@@ -1,4 +1,4 @@
-/** Каркас: тёмное меню по роли на ноутбуке, тёмная полоса и нижний бар на телефоне, область экрана. */
+/** Каркас: стеклянное меню по роли на ноутбуке, полоса сверху и нижний бар на телефоне, фон со сферами, область экрана. */
 import { Suspense, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { useLocks, useMaterialsState, useNotifications, useUpdatePreferences } from '../api/hooks'
@@ -7,7 +7,7 @@ import LockedScreen from '../components/LockedScreen'
 import { Loading } from '../components/ui'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { useAuth } from '../auth/AuthContext'
-import { SCHOOL_MARK, SCHOOL_SHORT_NAME } from '../branding'
+import { SCHOOL_MARK, SCHOOL_NAME, SCHOOL_SHORT_NAME } from '../branding'
 import Icon from './icons'
 import MobileNav from './MobileNav'
 import { NAV_GROUPS, navFor, tabsFor } from './nav'
@@ -100,7 +100,15 @@ export default function Shell() {
 
   return (
     <div className={`shell${collapsed ? ' shell--collapsed' : ''}`}>
-        {/* Тёмная полоса меню тянется во всю высоту экрана, а список внутри
+        {/* Фон под меню и экраном: три размытые сферы и точечная сетка.
+            Неподвижен, мышь не ловит; при «уменьшить движение» сферы стоят */}
+        <div className="backdrop" aria-hidden="true">
+          <div className="backdrop__orb backdrop__orb--a" />
+          <div className="backdrop__orb backdrop__orb--b" />
+          <div className="backdrop__orb backdrop__orb--c" />
+          <div className="backdrop__dots" />
+        </div>
+        {/* Полоса меню тянется во всю высоту экрана, а список внутри
             прокручивается сам: иначе на длинной странице колонка меню
             обрывалась, а карточка пользователя уезжала за нижний край */}
         <aside className="shell__nav">
@@ -109,16 +117,10 @@ export default function Shell() {
               <span className="shell__mark" aria-hidden="true">
                 {SCHOOL_MARK}
               </span>
-              <span className="shell__brandname">{SCHOOL_SHORT_NAME}</span>
-              <button
-                type="button"
-                className="shell__iconbtn shell__navsearch"
-                aria-label={t('Поиск')}
-                title={`${t('Поиск')} (Ctrl+K)`}
-                onClick={() => setSearchOpen(true)}
-              >
-                <Icon name="search" size={17} />
-              </button>
+              <span className="shell__brandname">
+                <span>{SCHOOL_SHORT_NAME}</span>
+                {SCHOOL_NAME !== SCHOOL_SHORT_NAME && <span className="shell__brandfull">{SCHOOL_NAME}</span>}
+              </span>
               <button
                 type="button"
                 className="shell__iconbtn shell__collapse"
@@ -129,6 +131,18 @@ export default function Shell() {
                 <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={15} />
               </button>
             </div>
+            {/* Поиск по системе: та же кнопка, что Ctrl+K */}
+            <button
+              type="button"
+              className="shell__searchbtn"
+              aria-label={t('Поиск')}
+              title={`${t('Поиск')} (Ctrl+K)`}
+              onClick={() => setSearchOpen(true)}
+            >
+              <Icon name="search" size={16} />
+              <span className="shell__searchlabel">{t('Поиск')}</span>
+              <span className="kbd">Ctrl K</span>
+            </button>
             <nav className="shell__menu">
               {groups.map((group) => (
                 <div key={group.key} className="navgroup">

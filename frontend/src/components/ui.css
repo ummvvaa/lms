@@ -37,17 +37,18 @@
 }
 
 .head__title {
+  font-family: var(--font-head);
   font-size: var(--type-screen);
   line-height: var(--leading-screen);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   margin: 0;
   text-wrap: balance;
 }
 
 .head__sub {
-  font-size: var(--type-note);
-  line-height: 1.4;
+  font-size: var(--type-body);
+  line-height: 1.45;
   color: var(--ink-2);
   margin: 0;
   /* одна строка описания: длиннее — в подсказку */
@@ -87,7 +88,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .head__pill--on {
   background: var(--ink);
-  color: var(--menu-text);
+  color: var(--on-graphite);
   font-weight: 600;
 }
 
@@ -122,7 +123,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .grid {
   display: grid;
-  gap: calc(var(--space) * 3);
+  gap: var(--gap-kpi);
 }
 
 .grid--two {
@@ -136,20 +137,24 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 /* --- Показатель ------------------------------------------------------------
-   Подпись капителью → число → подпись под ним. Белый на полотне, без рамки
-   и тени; тон красит число, полос над карточкой нет. Действие справа
-   от числа — текстом цвета ссылки. Ряд собирает `.statrow`. */
+   Подпись → крупное число шрифтом заголовков → подпись под ним. Стеклянная
+   плитка, как карточка; тон красит число, полос над плиткой нет. Действие
+   справа от числа — текстом цвета ссылки; плитка-ссылка поднимается под
+   курсором. Ряд собирает `.statrow`. */
 .kpi {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: calc(var(--space) * 1);
+  gap: calc(var(--space) * 1.5);
   min-width: 0;
-  padding: calc(var(--space) * 4) var(--pad-card);
-  border: 0;
+  padding: var(--pad-kpi);
+  border: 1px solid var(--glass-line);
   border-radius: var(--radius-kpi);
-  background: var(--surface);
-  box-shadow: none;
+  background: var(--glass);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  box-shadow: var(--shadow-card);
   color: var(--ink);
   font: inherit;
   text-align: left;
@@ -158,11 +163,6 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .kpi--link {
   cursor: pointer;
-  transition: box-shadow var(--dur-fast) var(--ease-out);
-}
-
-.kpi--link:hover {
-  box-shadow: inset 0 0 0 1px var(--line-2);
 }
 
 .kpi__label {
@@ -180,8 +180,9 @@ button.head__pill:hover:not(.head__pill--on) {
 }
 
 .kpi__value {
+  font-family: var(--font-head);
   font-size: var(--type-figure);
-  line-height: 1.05;
+  line-height: 1.1;
   font-weight: 700;
   letter-spacing: -0.03em;
   min-width: 0;
@@ -232,11 +233,17 @@ button.head__pill:hover:not(.head__pill--on) {
   color: var(--ink-2);
 }
 
-/* Внутри карточки показатель — просто подпись и число: белое на белом
+/* Внутри карточки показатель — просто подпись и число: стекло на стекле
    отдельной плиткой не читается, а поле удвоило бы отступ */
 .card .kpi {
   padding: 0;
+  border: 0;
   border-radius: 0;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  animation: none;
 }
 
 .card > .statrow:last-child {
@@ -249,6 +256,8 @@ button.head__pill:hover:not(.head__pill--on) {
   }
 }
 
+/* Полоса прогресса: заполняется от нуля при появлении; акцентная —
+   градиентом со свечением, тоновая — ровным цветом */
 .bar {
   height: calc(var(--space) * 2);
   border-radius: var(--radius-pill);
@@ -260,6 +269,12 @@ button.head__pill:hover:not(.head__pill--on) {
   display: block;
   height: 100%;
   border-radius: var(--radius-pill);
+  animation: fill-from-zero var(--dur-fill) var(--ease-soft) both;
+  animation-delay: 350ms;
+}
+
+.bar--accent > i {
+  box-shadow: var(--shadow-glow);
 }
 
 .ring {
@@ -280,6 +295,16 @@ button.head__pill:hover:not(.head__pill--on) {
 
 .ring__track {
   stroke: var(--track);
+}
+
+/* дуга кольца заполняется от нуля и чуть светится */
+.ring__value {
+  animation: ring-from-zero var(--dur-ring) var(--ease-soft) both;
+  animation-delay: 400ms;
+}
+
+.ring--accent .ring__value {
+  filter: drop-shadow(var(--shadow-ring-glow));
 }
 
 .ring__inner {
@@ -1328,7 +1353,6 @@ body [data-slot='button'][data-variant].notif__all {
   font-size: calc(var(--type-note) - 1px);
   font-weight: 700;
   letter-spacing: 0.05em;
-  text-transform: uppercase;
   color: var(--ink-2);
 }
 
@@ -1358,19 +1382,14 @@ body [data-slot='button'][data-variant].notif__all {
 }
 
 /* --- Карточка блока данных ---------------------------------------------
-   Белая на полотне, без рамки и тени: от полотна её отличает только цвет.
+   Стекло, как любая карточка (`.card`): подложка, кромка и тень оттуда.
    Заказчик читает экран числами, а не абзацами: у каждого блока свой
    заголовок, счётчик чипом и действие справа, длинное пояснение
-   прячется в подсказку по наведению. Специфичность в два класса —
-   чтобы перебить общую `.card` с рамкой, которая грузится позже. */
+   прячется в подсказку по наведению. */
 .card.datacard {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space) * 1);
-  border: 0;
-  border-radius: var(--radius-card);
-  background: var(--surface);
-  box-shadow: none;
 }
 
 .datacard__head {
@@ -1382,9 +1401,11 @@ body [data-slot='button'][data-variant].notif__all {
 }
 
 .datacard__title {
+  font-family: var(--font-head);
   font-size: var(--type-card);
-  line-height: 1.25;
-  font-weight: 700;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   flex: 1 1 auto;
   min-width: 0;
   display: inline-flex;
@@ -1410,6 +1431,7 @@ body [data-slot='button'][data-variant].notif__all {
 
 .datacard--folded .datacard__title {
   flex: 0 1 auto;
+  font-family: var(--font-sans);
   font-size: var(--type-body);
   font-weight: 600;
 }
@@ -1797,11 +1819,14 @@ body [data-slot='button'][data-variant].notif__all {
   height: calc(var(--row-h) - calc(var(--space) * 3));
   font-size: var(--type-caps);
   line-height: 1.3;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
   color: var(--ink-3);
-  background: var(--surface);
+  /* шапка прозрачная, как стекло карточки: строки под липкой шапкой
+     при прокрутке размываются, а не просвечивают */
+  background: transparent;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
@@ -1828,7 +1853,7 @@ body [data-slot='button'][data-variant].notif__all {
 
 .tbl--wide tbody tr:hover td:first-child,
 .tbl--wide tbody tr.tbl__row--selected td:first-child {
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
 }
 
 /* Строка из подписей и кнопок в клетке, которая переносится, а не
@@ -1881,11 +1906,11 @@ body [data-slot='button'][data-variant].notif__all {
 }
 
 .tbl tbody tr:hover td {
-  background: var(--surface-2);
+  background: var(--accent-bg);
 }
 
 .tbl tbody tr.tbl__row--selected td {
-  background: var(--surface-2);
+  background: var(--accent-bg);
 }
 
 /* Таблица в ширину карточки (`fit`): прокрутки вбок нет, поэтому клетка
@@ -2021,9 +2046,12 @@ body [data-slot='button'][data-variant].notif__all {
   line-height: 1.3;
   font-weight: 600;
   letter-spacing: var(--caps-spacing);
-  text-transform: uppercase;
   color: var(--ink-3);
-  background: var(--surface);
+  /* шапка прозрачная, как стекло карточки: строки под липкой шапкой
+     при прокрутке размываются, а не просвечивают */
+  background: transparent;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
@@ -2918,7 +2946,6 @@ body [data-slot='button'][data-variant].notice__more {
 .fold__label {
   font-size: var(--type-note);
   font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--ink-2);
 }
@@ -3055,10 +3082,9 @@ body [data-slot='button'][data-variant].notice__more {
 
 .portfolio__k {
   display: block;
-  font-size: calc(var(--type-note) - 1px);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: var(--type-note);
+  font-weight: 500;
+  letter-spacing: 0.01em;
   color: var(--ink-3);
   margin-bottom: calc(var(--space) * 1);
 }

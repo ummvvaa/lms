@@ -48,6 +48,7 @@ HOME = frozenset(
         "styles/density.css",
         "styles/motion.css",
         "components/language.css",
+        "styles/coral.css",
     }
 )
 
