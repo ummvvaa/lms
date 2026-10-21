@@ -1756,9 +1756,10 @@ body [data-slot='button'][data-variant].notif__all {
 }
 
 .modal__title {
-  font-size: var(--type-card);
-  font-weight: 750;
-  letter-spacing: -0.015em;
+  font-family: var(--font-head);
+  font-size: var(--type-dialog);
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .modal__note {

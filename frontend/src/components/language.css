@@ -529,6 +529,12 @@ button.calcell.calcell--full:hover {
   overflow-y: auto;
 }
 
+/* форма строки в шторке — две колонки во всю ширину шторки, а не узкие поля по 160 */
+.drawer .rowform {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 0;
+}
+
 /* подвал: первая кнопка — главная, она растягивается, как в Directory.html */
 .drawer__foot {
   display: flex;

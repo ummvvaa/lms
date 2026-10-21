@@ -112,7 +112,7 @@
 }
 
 /* Кнопка поиска во всю ширину меню: открывает окно поиска, как Ctrl+K */
-.shell__searchbtn {
+.shell__find {
   display: flex;
   align-items: center;
   gap: calc(var(--space) * 2.5);
@@ -132,7 +132,7 @@
     color var(--dur-fast) var(--ease-out);
 }
 
-.shell__searchbtn:hover {
+.shell__find:hover {
   border-color: var(--accent-2);
   color: var(--ink-2);
 }
@@ -183,11 +183,11 @@
 }
 
 .shell--collapsed .shell__searchlabel,
-.shell--collapsed .shell__searchbtn .kbd {
+.shell--collapsed .shell__find .kbd {
   display: none;
 }
 
-.shell--collapsed .shell__searchbtn {
+.shell--collapsed .shell__find {
   justify-content: center;
   padding: 0;
 }

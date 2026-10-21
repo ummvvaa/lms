@@ -17,6 +17,7 @@ import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../api/client'
 import { LOGO, SCHOOL_NAME } from '../branding'
+import Backdrop from '../components/Backdrop'
 import Field from '../components/Field'
 import { Chip } from '../components/ui'
 import { deviceLanguage, rememberLanguage, t, type Lang } from '../i18n'
@@ -73,6 +74,7 @@ export default function Login() {
 
   return (
     <div className="login">
+      <Backdrop />
       <div className="login__langs" role="group" aria-label={t('Язык')}>
         {LANGS.map((lang, index) => (
           <span key={lang} className="login__langitem">
@@ -96,7 +98,7 @@ export default function Login() {
         <h1 className="login__title">{SCHOOL_NAME}</h1>
       </div>
 
-      <div className="card card-pad login__card">
+      <div className="card card-pad card--beam login__card">
         {mode !== 'password' && (
           <p className="t-note login__sub">
             {mode === 'reset'

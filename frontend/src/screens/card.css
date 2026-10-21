@@ -2,8 +2,28 @@
 .card__hero {
   display: flex;
   align-items: center;
-  gap: calc(var(--space) * 4);
+  gap: calc(var(--space) * 5);
   margin: calc(var(--space) * 4) 0;
+  padding: calc(var(--space) * 6) var(--pad-dialog);
+}
+
+/* инициалы ученика в круге — тёплый градиент, как аватар в меню */
+.card__avatar {
+  width: calc(var(--avatar) * 2);
+  height: calc(var(--avatar) * 2);
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--glint), var(--accent-bg));
+  color: var(--accent-ink);
+  font-family: var(--font-head);
+  font-size: var(--type-dialog);
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+}
+
+:root[data-theme='dark'] .card__avatar {
+  background: linear-gradient(135deg, var(--menu-avatar), var(--accent-bg));
 }
 
 .card__who {
@@ -12,8 +32,10 @@
 }
 
 .card__name {
+  font-family: var(--font-head);
   font-size: var(--type-screen);
-  font-weight: 800;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .card__meta {

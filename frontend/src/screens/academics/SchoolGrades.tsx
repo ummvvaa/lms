@@ -95,6 +95,7 @@ export default function SchoolGrades() {
         <Kpi label={t('Итоги четверти')} value={data.kpis.finals || null} none={t('нет')} note={data.kpis.quarter_ends ? t('выставляют до {date}', { date: dateWords(data.kpis.quarter_ends) }) : ''} />
       </StatRow>
       <DataCard
+        className="card--beam"
         title={t('Группы и предметы')}
         right={
           <span className="acad__chips">

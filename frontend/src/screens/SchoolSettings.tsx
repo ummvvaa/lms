@@ -304,7 +304,7 @@ function SectionRules({ data, code, phone = false }: { data: SchoolRulesScreen; 
           ))}
         </DataCard>
       )}
-      <DataCard title={t('История изменений')} count={history.length || undefined} empty={history.length === 0 && t('в этом разделе правила ещё не меняли')}>
+      <DataCard className="card--beam" title={t('История изменений')} count={history.length || undefined} empty={history.length === 0 && t('в этом разделе правила ещё не меняли')}>
         <Rows>
           {history.map((row) => (
             <Row key={row.id} title={t(row.title)} note={row.actor || t('система')} value={`${logged(row.old_value)} → ${logged(row.new_value)}`} when={whenAt(row.created_at)} />

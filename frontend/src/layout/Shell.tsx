@@ -5,6 +5,7 @@ import { useLocks, useMaterialsState, useNotifications, useUpdatePreferences } f
 import JobsPanel from '../components/JobsPanel'
 import LockedScreen from '../components/LockedScreen'
 import { Loading } from '../components/ui'
+import Backdrop from '../components/Backdrop'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { useAuth } from '../auth/AuthContext'
 import { SCHOOL_MARK, SCHOOL_NAME, SCHOOL_SHORT_NAME } from '../branding'
@@ -102,12 +103,7 @@ export default function Shell() {
     <div className={`shell${collapsed ? ' shell--collapsed' : ''}`}>
         {/* Фон под меню и экраном: три размытые сферы и точечная сетка.
             Неподвижен, мышь не ловит; при «уменьшить движение» сферы стоят */}
-        <div className="backdrop" aria-hidden="true">
-          <div className="backdrop__orb backdrop__orb--a" />
-          <div className="backdrop__orb backdrop__orb--b" />
-          <div className="backdrop__orb backdrop__orb--c" />
-          <div className="backdrop__dots" />
-        </div>
+        <Backdrop />
         {/* Полоса меню тянется во всю высоту экрана, а список внутри
             прокручивается сам: иначе на длинной странице колонка меню
             обрывалась, а карточка пользователя уезжала за нижний край */}
@@ -134,7 +130,7 @@ export default function Shell() {
             {/* Поиск по системе: та же кнопка, что Ctrl+K */}
             <button
               type="button"
-              className="shell__searchbtn"
+              className="shell__find"
               aria-label={t('Поиск')}
               title={`${t('Поиск')} (Ctrl+K)`}
               onClick={() => setSearchOpen(true)}

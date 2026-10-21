@@ -186,7 +186,9 @@ export default function AdminDashboard() {
         aside={
           <>
             {academics?.node}
+            {/* главная карточка экрана — с бегущим светом по рамке */}
             <DataCard
+              className="card--beam"
               title={t('Требует ваших действий')}
               count={cabinet.actions.length}
             >

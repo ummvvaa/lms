@@ -26,6 +26,7 @@ import GradesTab from './academics/GradesTab'
 import StudentCareerBlock from './career/StudentCareerBlock'
 import DataTable from '../components/DataTable'
 import { Chip, DataCard, ErrorNote, Hint, Loading, Ring, ScreenTabs } from '../components/ui'
+import { initials } from '../components/patterns'
 import { Input } from '../components/ui/input'
 import { NativeSelectOption } from '../components/ui/native-select'
 import { SelectField } from '../components/SelectField'
@@ -158,7 +159,10 @@ function DirectorStudentCard() {
       </div>
       {reporting && <BuildReportDialog student={card.id} studentName={card.full_name} onClose={() => setReporting(false)} />}
 
-      <div className="card card-pad card__hero">
+      <div className="card card-pad card--beam card__hero">
+        <span className="card__avatar" aria-hidden="true">
+          {initials(card.full_name)}
+        </span>
         <div className="card__who">
           <h1 className="card__name">{card.full_name}</h1>
           <p className="muted card__meta">

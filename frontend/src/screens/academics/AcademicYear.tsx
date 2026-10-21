@@ -482,7 +482,7 @@ export default function AcademicYear() {
       />
       <div className="acad__cols acad__cols--even year__cols">
         <div className="acad__stack">
-          <DataCard title={t('Четверти')} right={<Button variant="link" size="sm" onClick={() => setDialog('quarters')}>{t('Изменить')}</Button>}>
+          <DataCard className="card--beam" title={t('Четверти')} right={<Button variant="link" size="sm" onClick={() => setDialog('quarters')}>{t('Изменить')}</Button>}>
             <Rows>
               {data.quarters.map((q) => (
                 <Row

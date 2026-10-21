@@ -56,6 +56,7 @@ export default function LoginLocks() {
 
   return (
     <DataCard
+      className="card--beam"
       title={t('Блокировки входа')}
       note={
         data
