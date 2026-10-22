@@ -9,7 +9,7 @@
  * Все числа считает сервер (`students.attention`, `academics`): главная,
  * чипы над таблицей и карточка обязаны показывать одно и то же.
  */
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { useCuratorHome } from '../../api/academics'
 import { useHomeworkOverview } from '../../api/homework'
 import { useCuratorOverview } from '../../api/hooks'
@@ -25,11 +25,13 @@ import TaskDialog from './TaskDialog'
 import { useGroup } from './state'
 import { formatDate, formatDateTime } from '../../lib/format'
 import './curator.css'
+import './curator-layout.css'
 
 const dateOf = (value: string) => formatDate(value)
 
-/** Блоки учёбы на главной: сегодня по группам, кого дёргать по учёбе, отчёты. */
-function useAcademicsCards(group: string): BoardCard[] {
+/** Блоки учёбы на главной: сегодня по группам, кого дёргать по учёбе, отчёты.
+ *  `lead` — «Сегодня в группах» главная карточка экрана: у 8–10 очереди нет. */
+function useAcademicsCards(group: string, lead: boolean): BoardCard[] {
   const navigate = useNavigate()
   const { data } = useCuratorHome(group)
   // кто не сдаёт ДЗ вовремя — из сдач в LMS, только чтение (30.09.2026)
@@ -46,34 +48,49 @@ function useAcademicsCards(group: string): BoardCard[] {
   return [
     {
       key: 'today',
-      column: 'aside',
-      rows: Math.max(1, today.length),
+      column: 'main',
+      // плитки по две в ряд: строка плиток — примерно полторы строки списка
+      rows: Math.max(1, Math.ceil(today.length / 2) * 1.5),
       folded: lessons === 0,
       node: (
         <DataCard
+          className={lead ? 'card--beam' : undefined}
           title={t('Сегодня в группах')}
-          note={data.now_slot ? t('идёт {slot} урок', { slot: data.now_slot }) : undefined}
           empty={lessons === 0 && t('уроков сегодня нет')}
           right={
-            <Button variant="link" size="sm" onClick={() => navigate('/schedule')}>
-              {t('Расписание')}
-            </Button>
+            <>
+              {data.now_slot && (
+                <Chip tone="accent" size="sm" className="chome__live">
+                  <span className="live-dot" aria-hidden="true" />
+                  {t('идёт {slot} урок', { slot: data.now_slot })}
+                </Chip>
+              )}
+              <Button variant="link" size="sm" onClick={() => navigate('/schedule')}>
+                {t('Расписание')}
+              </Button>
+            </>
           }
         >
-          <Rows>
+          <div className="chome__groups">
             {today.map((row) => (
-              <Row
-                key={row.group}
-                icon="calendar"
-                tone={row.unmarked ? 'warn' : 'accent'}
-                title={`${row.group} · ${counted(row.lessons, 'урок|урока|уроков')}`}
-                note={[row.now ? t('сейчас {subject}, {room}', { subject: row.now.subject.short_title, room: row.now.room }) : '', row.absent.length ? absentWords(row.absent) : t('все были')].filter(Boolean).join(' · ')}
-                right={row.unmarked ? <Chip tone="warn" size="sm">{t('не отмечено {count}', { count: row.unmarked })}</Chip> : undefined}
-                onOpen={() => navigate(`/attendance?group=${encodeURIComponent(row.group)}`)}
-                openLabel={t('Открыть посещаемость')}
-              />
+              <Link key={row.group} className="chome__group" to={`/attendance?group=${encodeURIComponent(row.group)}`} aria-label={`${row.group}: ${t('Открыть посещаемость')}`}>
+                <span className="chome__mono" aria-hidden="true">
+                  {row.group.slice(0, 2)}
+                </span>
+                <span className="chome__gtext">
+                  <b>{`${row.group} · ${counted(row.lessons, 'урок|урока|уроков')}`}</b>
+                  <span>{row.now ? t('сейчас {subject}, {room}', { subject: row.now.subject.short_title, room: row.now.room }) : row.absent.length ? absentWords(row.absent) : t('все были')}</span>
+                </span>
+                {row.unmarked ? (
+                  <Chip tone="warn" size="sm">{t('не отмечено {count}', { count: row.unmarked })}</Chip>
+                ) : row.absent.length ? (
+                  <Chip size="sm">{t('нет {count}', { count: row.absent.length })}</Chip>
+                ) : (
+                  <Chip tone="good" size="sm">{t('все были')}</Chip>
+                )}
+              </Link>
             ))}
-          </Rows>
+          </div>
         </DataCard>
       ),
     },
@@ -177,7 +194,8 @@ export default function CuratorHome() {
   const [group, setGroup] = useGroup()
   const navigate = useNavigate()
   const { data, isLoading, error } = useCuratorOverview(group)
-  const academics = useAcademicsCards(group)
+  // свет — у очереди; у 8–10 и при пустой очереди — у «Сегодня в группах»
+  const academics = useAcademicsCards(group, data?.has_admission === false || data?.queue.length === 0)
 
   if (isLoading) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
@@ -196,7 +214,7 @@ export default function CuratorHome() {
   const admission = data.has_admission
 
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t(data.title)}
         subtitle={
@@ -229,6 +247,7 @@ export default function CuratorHome() {
             folded: data.queue.length === 0,
             node: (
               <DataCard
+                className={data.queue.length ? 'card--beam' : undefined}
                 title={t('Очередь подтверждений')}
                 count={data.queue_total}
                 empty={data.queue.length === 0 && t('всё подтверждено')}
@@ -238,13 +257,53 @@ export default function CuratorHome() {
                   </Button>
                 }
               >
-                {data.queue.map((row) => (
-                  <QueueRow key={row.id} row={row} />
-                ))}
+                <div className="cqueue">
+                  {data.queue.map((row) => (
+                    <QueueRow key={row.id} row={row} person />
+                  ))}
+                </div>
               </DataCard>
             ),
           },
           ...academics.filter((card) => card.key === 'today'),
+          {
+            key: 'tasks',
+            column: 'aside',
+            rows: data.tasks.length,
+            folded: data.tasks.length === 0,
+            narrow: true,
+            node: (
+              <DataCard
+                title={t('Задачи на сегодня')}
+                empty={data.tasks.length === 0 && t('открытых задач нет')}
+                right={
+                  <Button variant="outline" size="sm" onClick={() => navigate('/tasks')}>
+                    {t('Все задачи')}
+                  </Button>
+                }
+              >
+                {/* узкая колонка: название сверху, ученик и срок строкой под ним — как в макете;
+                    чип справа от названия рвал его по буквам */}
+                <div className="chome__tasks">
+                  <ShowAll to="/tasks">
+                    {data.tasks.map((task) => (
+                      <Link key={task.id} className="chome__task" to={`/students/${task.student}?tab=tasks`}>
+                        <b>{task.title}</b>
+                        <span className="chome__taskline">
+                          <span>{`${task.student_name} · ${task.group}`}</span>
+                          {task.due_date && (
+                            <Chip tone={task.is_overdue ? 'bad' : 'neutral'} size="sm">
+                              {task.is_overdue ? t('просрочена') : t('до')} {dateOf(task.due_date)}
+                            </Chip>
+                          )}
+                        </span>
+                      </Link>
+                    ))}
+                  </ShowAll>
+                </div>
+              </DataCard>
+            ),
+          },
           {
             key: 'buckets',
             column: 'aside',
@@ -270,47 +329,9 @@ export default function CuratorHome() {
           },
           ...academics.filter((card) => card.key !== 'today'),
           {
-            key: 'tasks',
-            column: 'main',
-            rows: data.tasks.length,
-            folded: data.tasks.length === 0,
-            narrow: true,
-            node: (
-              <DataCard
-                title={t('Задачи на сегодня')}
-                empty={data.tasks.length === 0 && t('открытых задач нет')}
-                right={
-                  <Button variant="outline" size="sm" onClick={() => navigate('/tasks')}>
-                    {t('Все задачи')}
-                  </Button>
-                }
-              >
-                <Rows>
-                  {data.tasks.map((task) => (
-                    <Row
-                      key={task.id}
-                      icon="checklist"
-                      tone={task.is_overdue ? 'bad' : 'neutral'}
-                      title={task.title}
-                      note={`${task.student_name} · ${task.group}`}
-                      right={
-                        task.due_date ? (
-                          <Chip tone={task.is_overdue ? 'bad' : 'neutral'} size="sm">
-                            {task.is_overdue ? t('просрочена') : t('до')} {dateOf(task.due_date)}
-                          </Chip>
-                        ) : undefined
-                      }
-                      onOpen={() => navigate(`/students/${task.student}?tab=tasks`)}
-                      openLabel={t('Открыть ученика')}
-                    />
-                  ))}
-                </Rows>
-              </DataCard>
-            ),
-          },
-          {
             key: 'journal',
-            column: 'aside',
+            // у 8–10 нет очереди и задач: широкая колонка короче — журнал встаёт в неё
+            column: admission ? 'aside' : 'main',
             rows: data.journal.length * 1.5,
             folded: data.journal.length === 0,
             node: (

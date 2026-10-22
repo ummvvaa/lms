@@ -15,15 +15,16 @@ import { useCuratorStudents, type CuratorStudentRow } from '../../api/hooks'
 import DataTable, { type Column } from '../../components/DataTable'
 import { ExportPreview } from '../../components/ExportPreview'
 import Field from '../../components/Field'
-import { Segmented } from '../../components/patterns'
-import { Chip, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { Avatar, Segmented } from '../../components/patterns'
+import { Chip, counted, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import GroupSwitch from './GroupSwitch'
 import TaskDialog from './TaskDialog'
-import { useGroup } from './state'
+import { STATUS_TONE, useGroup } from './state'
 import { formatDate } from '../../lib/format'
 import './curator.css'
+import './curator-layout.css'
 
 const dateOf = (value: string | null) => (value ? formatDate(value) : null)
 
@@ -74,7 +75,18 @@ export default function CuratorStudents() {
   }
 
   const allColumns: Column<CuratorStudentRow>[] = [
-    { key: 'name', title: t('Ученик'), width: '26%', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
+    {
+      key: 'name',
+      title: t('Ученик'),
+      width: '24%',
+      cell: (row) => (
+        <span className="personcell">
+          <Avatar name={row.full_name} size={30} />
+          <b>{row.full_name}</b>
+        </span>
+      ),
+      sortBy: (row) => row.full_name,
+    },
     { key: 'group', title: t('Группа'), width: '10%', cell: (row) => <Chip size="sm">{row.group}</Chip>, sortBy: (row) => row.group },
     { key: 'ielts', title: 'IELTS', width: '14%', align: 'right', cell: (row) => (graduate(row) ? <Pair current={row.ielts_current} target={row.ielts_target} /> : null), sortBy: (row) => row.ielts_current },
     { key: 'sat', title: 'SAT', width: '14%', align: 'right', cell: (row) => (graduate(row) ? <Pair current={row.sat_current} target={row.sat_target} /> : null), sortBy: (row) => row.sat_current },
@@ -94,12 +106,18 @@ export default function CuratorStudents() {
     {
       key: 'docs',
       title: t('Документы'),
-      width: '10%',
+      width: '12%',
       align: 'right',
       cell: (row) =>
         graduate(row) ? (
-          <span className={`num${row.buckets.includes('docs') ? ' cstale' : ''}`}>
-            {row.documents_collected} / {row.documents_total}
+          <span className="cstudents__docs">
+            <span className={`num${row.buckets.includes('docs') ? ' cstale' : ''}`}>
+              {row.documents_collected} / {row.documents_total}
+            </span>
+            {/* полоса из тех же двух чисел */}
+            <span className="cstudents__bar" aria-hidden="true">
+              <i style={{ width: `${row.documents_total ? Math.round((row.documents_collected / row.documents_total) * 100) : 0}%` }} />
+            </span>
           </span>
         ) : null,
       sortBy: (row) => row.documents_collected,
@@ -108,16 +126,32 @@ export default function CuratorStudents() {
       key: 'status',
       title: t('Статус'),
       width: '14%',
-      cell: (row) => (row.status_title ? <Chip size="sm">{row.status_title}</Chip> : <span className="t-note">{t('нет')}</span>),
+      cell: (row) =>
+        row.status_title ? (
+          <Chip tone={STATUS_TONE[row.status] ?? 'neutral'} size="sm">
+            {row.status_title}
+          </Chip>
+        ) : (
+          <span className="t-note">{t('нет')}</span>
+        ),
       sortBy: (row) => row.status_title,
     },
   ]
   const columns = allColumns.filter((column) => admission || !['ielts', 'sat', 'docs'].includes(column.key))
 
+  const groups = data?.groups ?? []
+  const shownGroups = group === 'all' ? groups : groups.filter((item) => item.code === group)
+  const total = shownGroups.reduce((sum, item) => sum + item.students, 0)
+
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Ученики')}
+        subtitle={
+          shownGroups.length > 1
+            ? t('{students} в {groups}', { students: counted(total, 'ученик|ученика|учеников'), groups: counted(shownGroups.length, 'группе|группах|группах') })
+            : counted(total, 'ученик|ученика|учеников')
+        }
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => setExporting(true)}>
@@ -136,27 +170,32 @@ export default function CuratorStudents() {
       {admission && <TaskDialog groups={data?.groups ?? []} defaultGroup={group} open={task} onOpenChange={setTask} />}
       <GroupSwitch groups={data?.groups ?? []} value={group} onChange={setGroup} />
 
-      <div className="cfilters">
+      {/* корзины — фильтрами со счётчиком в одну строку; поиск — в шапке таблицы, как в макете */}
+      <div className="filters cstudents__buckets">
         <Segmented
           value={bucket}
           onChange={setBucket}
           label={t('Кого показать')}
           items={[
-            { value: '', label: t('Все') },
+            { value: '', label: <>{t('Все')}<span className="tabs__n num">{total}</span></> },
             ...(data?.buckets ?? []).map((row) => ({
               value: row.code,
               label: (
                 <>
-                  {t(row.title)} <span className="gswitch__note num">{row.count}</span>
+                  {t(row.title)}
+                  <span className="tabs__n num">{row.count}</span>
                 </>
               ),
             })),
           ]}
         />
-        <Field usageFilter kind="text" name="search" label={t('Фильтр по имени')} value={search} onChange={setSearch} placeholder={t('Фамилия или имя')} className="cfilters__search" />
       </div>
 
-      <div className="card">
+      <section className="card card-pad cstudents">
+        <div className="cstudents__head">
+          <Field usageFilter kind="text" name="search" label={t('Фильтр по имени')} value={search} onChange={setSearch} placeholder={t('Фильтр по имени')} className="filters__search" />
+          <span className="t-note">{t('показано {count}', { count: rows.length })}</span>
+        </div>
         <DataTable
           columns={columns}
           rows={rows}
@@ -165,7 +204,7 @@ export default function CuratorStudents() {
           empty={<span className="t-note">{t('Никого с таким фильтром')}</span>}
           foot={<span className="t-note">{t('Статус — внутренняя метка школы. Ученик её не видит ни на одном экране.')}</span>}
         />
-      </div>
+      </section>
 
       {exporting && (
         <ExportPreview

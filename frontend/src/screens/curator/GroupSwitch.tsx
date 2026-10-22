@@ -40,7 +40,18 @@ export default function GroupSwitch({
         onChange={onChange}
         label={t('Мои группы')}
         items={[
-          ...(single ? [] : [{ value: ALL, label: t('Все мои группы') }]),
+          ...(single
+            ? []
+            : [
+                {
+                  value: ALL,
+                  label: (
+                    <>
+                      {t('Все мои группы')} <span className="gswitch__note num">{groups.reduce((sum, group) => sum + group.students, 0)}</span>
+                    </>
+                  ),
+                },
+              ]),
           ...groups.map((group) => ({
             value: group.code,
             label: (

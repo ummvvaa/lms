@@ -16,7 +16,7 @@ import { useAssignTask, useCuratorDocuments, useRemindDocuments, type DocumentCe
 import DataTable, { type Column } from '../../components/DataTable'
 import { ExportPreview } from '../../components/ExportPreview'
 import Modal from '../../components/Modal'
-import { Segmented, StatRow } from '../../components/patterns'
+import { Avatar, Segmented, StatRow } from '../../components/patterns'
 import { ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tk, tn } from '../../i18n'
@@ -25,6 +25,7 @@ import DocumentPreview, { STATE_TITLE, type PreviewTarget } from './DocumentPrev
 import GroupSwitch from './GroupSwitch'
 import { useGroup } from './state'
 import './curator.css'
+import './curator-layout.css'
 
 const FILTERS: { code: string; label: string }[] = [
   { code: '', label: tk('Все') },
@@ -117,12 +118,26 @@ export default function CuratorDocuments() {
   const scopeWords = group === 'all' ? t('по всем вашим группам') : t('по группе {group}', { group })
 
   const columns: Column<DocumentsMatrixRow>[] = [
-    { key: 'name', title: t('Ученик'), width: '26%', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
-    { key: 'group', title: t('Группа'), width: '10%', cell: (row) => row.group, sortBy: (row) => row.group },
+    {
+      key: 'name',
+      title: t('Ученик'),
+      width: '30%',
+      // группа — подписью под именем, как в макете: отдельная колонка отнимала место у типов
+      cell: (row) => (
+        <span className="personcell">
+          <Avatar name={row.full_name} size={30} />
+          <span className="personcell__text">
+            <b>{row.full_name}</b>
+            <span className="t-note">{row.group}</span>
+          </span>
+        </span>
+      ),
+      sortBy: (row) => row.full_name,
+    },
     ...data.types.map((type, index) => ({
       key: type.code,
       title: t(type.title),
-      width: `${Math.floor(54 / Math.max(1, data.types.length))}%`,
+      width: `${Math.floor(56 / Math.max(1, data.types.length))}%`,
       cell: (row: DocumentsMatrixRow) => {
         const cell = row.cells[index]
         if (!cell) return null
@@ -143,13 +158,30 @@ export default function CuratorDocuments() {
         )
       },
     })),
-    { key: 'sum', title: t('Собрано'), width: '10%', align: 'right', cell: (row) => <span className="num">{row.collected} / {row.total}</span>, sortBy: (row) => row.collected },
+    {
+      key: 'sum',
+      title: t('Собрано'),
+      width: '14%',
+      align: 'right',
+      cell: (row) => (
+        <span className="cstudents__docs">
+          <span className="num">
+            {row.collected} / {row.total}
+          </span>
+          <span className="cstudents__bar" aria-hidden="true">
+            <i style={{ width: `${row.total ? Math.round((row.collected / row.total) * 100) : 0}%` }} />
+          </span>
+        </span>
+      ),
+      sortBy: (row) => row.collected,
+    },
   ]
 
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Документы')}
+        subtitle={t('Что собрано по каждому ученику ваших групп')}
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => setExporting(true)}>
@@ -167,7 +199,7 @@ export default function CuratorDocuments() {
         {data.counts.map((count) => (
           <Kpi
             key={count.code}
-            tone={count.collected === count.total ? 'good' : 'accent'}
+            tone={count.collected === count.total ? 'good' : undefined}
             label={t(count.title)}
             value={`${count.collected} / ${count.total}`}
             onClick={() => { if (filter !== 'missing') trackFilter(); setFilter('missing') }}
@@ -175,35 +207,36 @@ export default function CuratorDocuments() {
         ))}
       </StatRow>
 
-      <div className="cfilters">
-        <Segmented
-          value={filter}
-          onChange={setFilter}
-          label={t('Какие документы')}
-          items={FILTERS.map((item) => ({
-            value: item.code,
-            label: item.code ? (
-              <>
-                {t(item.label)} <span className="gswitch__note num">{data.filters[item.code as keyof typeof data.filters]}</span>
-              </>
-            ) : (
-              t(item.label)
-            ),
-          }))}
-        />
-        <span className="t-note cdocs__legend">
-          {Object.entries(MARK).map(([state, mark]) => (
-            <span key={state} className="cdocs__key">
-              <span className={`cdocs__cell cdocs__cell--${state} cdocs__cell--key`}>{mark}</span> {t(STATE_TITLE[state])}
+      {/* фильтры со счётчиками и ключ клеток — в шапке таблицы, как в макете */}
+      <section className="card card-pad cdocs">
+        <div className="cdocs__head">
+          <Segmented
+            value={filter}
+            onChange={setFilter}
+            label={t('Какие документы')}
+            items={FILTERS.map((item) => ({
+              value: item.code,
+              label: item.code ? (
+                <>
+                  {t(item.label)}
+                  <span className="tabs__n num">{data.filters[item.code as keyof typeof data.filters]}</span>
+                </>
+              ) : (
+                t(item.label)
+              ),
+            }))}
+          />
+          <span className="t-note cdocs__legend">
+            {Object.entries(MARK).map(([state, mark]) => (
+              <span key={state} className="cdocs__key">
+                <span className={`cdocs__cell cdocs__cell--${state} cdocs__cell--key`}>{mark}</span> {t(STATE_TITLE[state])}
+              </span>
+            ))}
+            <span className="cdocs__key">
+              <span className="cdocs__cell cdocs__cell--confirmed cdocs__cell--key">{LINK_MARK}</span> {t('внешняя ссылка')}
             </span>
-          ))}
-          <span className="cdocs__key">
-            <span className="cdocs__cell cdocs__cell--confirmed cdocs__cell--key">{LINK_MARK}</span> {t('внешняя ссылка')}
           </span>
-        </span>
-      </div>
-
-      <div className="card">
+        </div>
         <DataTable
           columns={columns}
           rows={data.results}
@@ -211,7 +244,7 @@ export default function CuratorDocuments() {
           onRowClick={(row) => navigate(`/students/${row.id}?tab=documents`)}
           empty={<span className="t-note">{t('По этому фильтру никого')}</span>}
         />
-      </div>
+      </section>
 
       {preview && <DocumentPreview target={preview} onClose={() => setPreview(null)} />}
 

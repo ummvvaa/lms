@@ -27,7 +27,8 @@ import AdmissionBlock from '../../components/AdmissionBlock'
 import MockAttempts from '../MockAttempts'
 import Field from '../../components/Field'
 import Notice from '../../components/Notice'
-import { Row, Rows, StatRow } from '../../components/patterns'
+import RowMenu, { RowMenuItem } from '../../components/RowMenu'
+import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { QueueRow } from '../../components/StudentQueue'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs, type Tone } from '../../components/ui'
 import { usePasswordLink } from '../../components/usePasswordLink'
@@ -45,8 +46,10 @@ import { DocumentEntry, ExamsEntry, PortfolioEntry, UniversitiesEntry } from './
 import DisciplineBlock from './DisciplineBlock'
 import DocumentPreview, { STATE_TITLE, STATE_TONE, type PreviewTarget } from './DocumentPreview'
 import TaskDialog from './TaskDialog'
+import { STATUS_TONE } from './state'
 import { formatDate, formatDateTime } from '../../lib/format'
 import './curator.css'
+import './curator-layout.css'
 
 /** Корзины, о которых уже говорят плитки «Пробники» и «Документы». */
 const TILE_BUCKETS = ['nomock', 'docs']
@@ -63,7 +66,7 @@ const TABS: { value: Tab; label: string }[] = [
   { value: 'exams', label: tk('Экзамены') },
   { value: 'mocks', label: tk('Mock Test') },
   { value: 'grades', label: tk('Успеваемость') },
-  // профтест: сданные тесты с баллами и разборы — куратору своих групп (08.10.2026)
+  // профтест: сданные тесты с баллами и разборы — спрятан переключателем `CURATOR_HIDDEN.career`
   { value: 'career', label: tk('Профтест') },
   { value: 'documents', label: tk('Документы') },
   { value: 'unis', label: tk('Вузы') },
@@ -461,11 +464,36 @@ function SectionsBlock({ card }: { card: Card }) {
 export function TaskLine({
   task,
   onStatus,
+  narrow = false,
 }: {
   task: Card['tasks'][number]
   onStatus?: (status: 'done' | 'cancelled' | 'todo') => void
+  /** узкая колонка «Обзора»: название сверху, срок и действия строкой под ним */
+  narrow?: boolean
 }) {
   const closed = task.status === 'done' || task.status === 'cancelled'
+  if (narrow)
+    return (
+      <div className="ctask">
+        <b>{task.title}</b>
+        <div className="ctask__line">
+          <span className="t-note">{task.due_date ? t('срок {date}', { date: dateOf(task.due_date) }) : t('без срока')}</span>
+          <Chip tone={task.is_overdue ? 'bad' : 'warn'} size="sm">
+            {task.is_overdue ? t('просрочена') : task.status_title}
+          </Chip>
+          {onStatus && (
+            <span className="ctask__acts">
+              <Button variant="outline" size="sm" onClick={() => onStatus('done')}>
+                {t('Сделано')}
+              </Button>
+              <RowMenu>
+                <RowMenuItem onClick={() => onStatus('cancelled')}>{t('Отменить')}</RowMenuItem>
+              </RowMenu>
+            </span>
+          )}
+        </div>
+      </div>
+    )
   return (
     <Row
       icon="checklist"
@@ -486,14 +514,15 @@ export function TaskLine({
       }
       acts={
         <>
+          {/* на виду одно действие — «Сделано», отмена — в «…» */}
           {onStatus && !closed && (
             <>
               <Button variant="outline" size="sm" onClick={() => onStatus('done')}>
                 {t('Сделано')}
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => onStatus('cancelled')}>
-                {t('Отменить')}
-              </Button>
+              <RowMenu>
+                <RowMenuItem onClick={() => onStatus('cancelled')}>{t('Отменить')}</RowMenuItem>
+              </RowMenu>
             </>
           )}
           {onStatus && closed && (
@@ -523,7 +552,7 @@ export default function CuratorCard() {
   if (error) return <ErrorNote error={error} />
   if (!data) return null
 
-  const tab = (params.get('tab') as Tab) || 'overview'
+  const asked = (params.get('tab') as Tab) || 'overview'
   const setTab = (next: Tab) => {
     const updated = new URLSearchParams(params)
     updated.set('tab', next)
@@ -534,20 +563,27 @@ export default function CuratorCard() {
   // у 8–10 поступления нет: ни экзаменов, ни документов, ни вузов, ни плана
   // с задачами — эти вкладки и плитки им не показываются (`core/parallels.py`)
   const junior = !data.has_admission
-  const tabs = TABS.filter((item) => !(junior ? ADMISSION_TABS : JUNIOR_TABS).includes(item.value))
+  const tabs = TABS.filter((item) => !(junior ? ADMISSION_TABS : JUNIOR_TABS).includes(item.value)).filter(
+    (item) => item.value !== 'career' || !CURATOR_HIDDEN.career,
+  )
+  // вкладки, которой у ученика нет (старая ссылка `?tab=career`), — открывается «Обзор»
+  const tab = tabs.some((item) => item.value === asked) ? asked : 'overview'
   // корзины, которых нет в плитках: пробники и документы показаны числами рядом
   const attention = data.buckets.filter((bucket) => !TILE_BUCKETS.includes(bucket.code))
   const openTasks = data.tasks.filter((task) => task.status !== 'done' && task.status !== 'cancelled')
   // процент — жирным внутри фразы: порядок слов у каждого языка свой
   const [filledBefore, filledAfter = ''] = t('Заполнено на {percent}').split('{percent}')
 
+  // главная карточка «Обзора» со светом: очередь, а без неё — «Что требует внимания»
+  const beamQueue = data.queue.length > 0
+
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={data.full_name}
         crumb={{ label: t('Ученики'), to: `/students?group=${encodeURIComponent(data.group)}` }}
         subtitle={t('группа {group} · куратор {curator}', { group: data.group, curator: data.curator })}
-        pills={data.status_title ? [{ label: data.status_title }] : undefined}
+        pills={data.status_title ? [{ label: data.status_title, tone: STATUS_TONE[data.status] ?? 'neutral' }] : undefined}
         actions={
           <>
             {/* кнопки отдельно от окон (фаза 75): на телефоне они уходят
@@ -604,76 +640,60 @@ export default function CuratorCard() {
         items={tabs.map((item) => ({ ...item, label: t(item.label) }))}
       />
 
+      {tab === 'overview' && !junior && (
+        <StatRow>
+          <Kpi
+            label="IELTS"
+            value={exams.ielts_current}
+            note={exams.ielts_target ? t('цель {score}', { score: exams.ielts_target }) : undefined}
+          />
+          <Kpi
+            label="SAT"
+            value={exams.sat_current}
+            note={exams.sat_target ? t('цель {score}', { score: exams.sat_target }) : undefined}
+          />
+          <Kpi
+            label={t('Mock Test')}
+            value={exams.mocks_total}
+            note={exams.last_mock_date ? t('последний {date}', { date: dateOf(exams.last_mock_date) }) : t('не было')}
+          />
+          <Kpi
+            tone={data.documents.missing.length ? 'bad' : 'good'}
+            label={t('Документы')}
+            value={`${data.documents.collected} / ${data.documents.total}`}
+            note={data.documents.missing.length ? t('есть недостающие') : t('собраны')}
+            onClick={() => setTab('documents')}
+          />
+        </StatRow>
+      )}
+
       {tab === 'overview' && (
-        <div className="cgrid">
-          <div className="cgrid__main">
+        <div className="lay-main">
+          <div className="lay-stack">
             {data.queue.length > 0 && (
-              <DataCard title={t('Ждёт вашего подтверждения')}>
-                {data.queue.map((row) => (
-                  <QueueRow key={row.id} row={row} />
-                ))}
+              <DataCard className="card--beam" title={t('Ждёт вашего подтверждения')} count={data.queue.length}>
+                <div className="cqueue">
+                  {data.queue.map((row) => (
+                    <QueueRow key={row.id} row={row} person />
+                  ))}
+                </div>
               </DataCard>
-            )}
-
-            {!junior && (
-            <StatRow>
-              <Kpi
-                label="IELTS"
-                value={exams.ielts_current}
-                note={exams.ielts_target ? t('цель {score}', { score: exams.ielts_target }) : undefined}
-              />
-              <Kpi
-                label="SAT"
-                value={exams.sat_current}
-                note={exams.sat_target ? t('цель {score}', { score: exams.sat_target }) : undefined}
-              />
-              <Kpi
-                label={t('Mock Test')}
-                value={exams.mocks_total}
-                note={
-                  exams.last_mock_date ? t('последний {date}', { date: dateOf(exams.last_mock_date) }) : t('не было')
-                }
-              />
-              <Kpi
-                tone={data.documents.missing.length ? 'bad' : 'good'}
-                label={t('Документы')}
-                value={`${data.documents.collected} / ${data.documents.total}`}
-                note={data.documents.missing.length ? t('есть недостающие') : t('собраны')}
-                onClick={() => setTab('documents')}
-              />
-            </StatRow>
-            )}
-
-            {!junior && (
-            <DataCard
-              title={t('Открытые задачи')}
-              right={<TaskDialog groups={[]} student={data.id} studentName={data.full_name} />}
-              empty={openTasks.length === 0 && t('открытых задач нет')}
-              emptyAction={<TaskDialog groups={[]} student={data.id} studentName={data.full_name} />}
-            >
-              <Rows>
-                {openTasks.map((task) => (
-                  <TaskLine
-                    key={task.id}
-                    task={task}
-                    onStatus={(status) => move.mutate({ id: task.id, status })}
-                  />
-                ))}
-              </Rows>
-            </DataCard>
             )}
 
             {/* «Поступление» — семнадцать строк с телефоном, почтой и паролем:
                 в боковой трети они не читались (фаза 77). На ноутбуке блок
-                стоит в широкой колонке, на телефоне — на прежнем месте
-                в боковой, чтобы порядок карточек не менялся */}
-            {!phone && !junior && <AdmissionBlock block={data.admission} studentId={data.id} />}
+                стоит в широкой колонке сеткой в две плитки, как в макете; на телефоне —
+                на прежнем месте в боковой, чтобы порядок карточек не менялся */}
+            {!phone && !junior && <AdmissionBlock block={data.admission} studentId={data.id} className="cadm-tiles" />}
+
+            {/* у 8–10 поступления нет: широкая колонка — дисциплина с пропусками */}
+            {junior && <DisciplineBlock card={data} />}
           </div>
 
-          <div className="cgrid__side">
-            {/* Плитки слева уже говорят, что пробников нет и документы не собраны:
+          <div className="lay-stack">
+            {/* Плитки сверху уже говорят, что пробников нет и документы не собраны:
                 те же слова здесь были бы вторым разом */}
-            <DataCard title={t('Что требует внимания')} empty={attention.length === 0 && t('всё в порядке')}>
+            <DataCard className={!beamQueue && attention.length ? 'card--beam' : undefined} title={t('Что требует внимания')} empty={attention.length === 0 && t('всё в порядке')}>
               <Rows>
                 {attention.map((bucket) => (
                   <Row key={bucket.code} icon="alert" tone={bucket.tone as Tone} title={t(bucket.title)} />
@@ -681,9 +701,29 @@ export default function CuratorCard() {
               </Rows>
             </DataCard>
 
+            {!junior && (
+              <DataCard
+                title={t('Открытые задачи')}
+                right={
+                  <Button variant="link" size="sm" onClick={() => setTab('tasks')}>
+                    {t('Все')}
+                  </Button>
+                }
+                empty={openTasks.length === 0 && t('открытых задач нет')}
+              >
+                <div className="chome__tasks">
+                  <ShowAll>
+                    {openTasks.map((task) => (
+                      <TaskLine key={task.id} task={task} narrow onStatus={(status) => move.mutate({ id: task.id, status })} />
+                    ))}
+                  </ShowAll>
+                </div>
+              </DataCard>
+            )}
+
             {phone && !junior && <AdmissionBlock block={data.admission} studentId={data.id} />}
 
-            <DisciplineBlock card={data} />
+            {!junior && <DisciplineBlock card={data} />}
 
             <ContactsBlock card={data} />
           </div>
@@ -691,36 +731,27 @@ export default function CuratorCard() {
       )}
 
       {tab === 'exams' && !junior && (
-        <div className="cgrid">
-          <div className="cgrid__main">
-            <Notice className="cnote">
-              {t(
-                'Два пути: ученик вносит балл — вы подтверждаете; или вносите сами — значение сразу настоящее. Mock Test тоже можно внести руками; Mock Test из файла Кымбат руками не правится.',
-              )}
-            </Notice>
-
-            <ExamCard
-              title="IELTS"
-              score={exams.ielts_current}
-              target={exams.ielts_target}
-              date={exams.ielts_exam_date}
-            />
-            <ExamCard
-              title="SAT"
-              score={exams.sat_current}
-              target={exams.sat_target}
-              date={exams.sat_exam_date}
-            />
-
-            <ExamsEntry card={data} />
-
-            <SectionsBlock card={data} />
+        <>
+          <div className="lay-2">
+            <ExamCard title="IELTS" score={exams.ielts_current} target={exams.ielts_target} date={exams.ielts_exam_date} />
+            <ExamCard title="SAT" score={exams.sat_current} target={exams.sat_target} date={exams.sat_exam_date} />
           </div>
-
-          <div className="cgrid__side">
-            <MockHistory card={data} />
+          <div className="lay-main">
+            <div className="lay-stack">
+              <Notice className="cnote">
+                {t(
+                  'Два пути: ученик вносит балл — вы подтверждаете; или вносите сами — значение сразу настоящее. Mock Test тоже можно внести руками; Mock Test из файла Кымбат руками не правится.',
+                )}
+              </Notice>
+              <ExamsEntry card={data} />
+            </div>
+            {/* секции последнего пробника в узкой колонке — плитками два на два */}
+            <div className="lay-stack ccard__narrow">
+              <MockHistory card={data} />
+              <SectionsBlock card={data} />
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* 8–10: пробники ведут сотрудники у всех параллелей, а целей, официальных
@@ -745,7 +776,7 @@ export default function CuratorCard() {
       )}
 
       {tab === 'grades' && <GradesTab studentId={data.id} />}
-      {tab === 'career' && <StudentCareerBlock studentId={data.id} />}
+      {tab === 'career' && !CURATOR_HIDDEN.career && <StudentCareerBlock studentId={data.id} />}
 
       {tab === 'documents' && !junior && <DocumentsTab card={data} />}
       {tab === 'notes' && <NotesTab card={data} />}
@@ -789,9 +820,7 @@ export default function CuratorCard() {
         <DataCard
           title={t('Задачи ученику')}
           count={data.tasks.length || undefined}
-          right={<TaskDialog groups={[]} student={data.id} studentName={data.full_name} />}
           empty={data.tasks.length === 0 && t('задач ещё не было')}
-          emptyAction={<TaskDialog groups={[]} student={data.id} studentName={data.full_name} />}
         >
           <Rows>
             {data.tasks.map((task) => (

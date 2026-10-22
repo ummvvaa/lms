@@ -2776,6 +2776,58 @@ body [data-slot='button'][data-variant].notif__all {
   }
 }
 
+/* «Поступление» плитками в две колонки (карточка куратора, коралловый макет,
+   22.10.2026): название сверху, значение под ним, значки справа. Строка правки
+   занимает обе колонки — полю пароля нужна ширина. Телефон не задет. */
+
+@media (min-width: 760px) {
+  .cadm-tiles .cadm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: calc(var(--space) * 2);
+  }
+
+  .cadm-tiles .cadm__pair,
+  .cadm-tiles .cadm__pair--edit {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'k acts'
+      'v acts';
+    align-items: center;
+    gap: 0 calc(var(--space) * 2);
+    min-height: 0;
+    padding: calc(var(--space) * 2) calc(var(--space) * 2) calc(var(--space) * 2) calc(var(--space) * 4);
+    border-radius: var(--radius-row);
+    background: var(--surface-2);
+  }
+
+  .cadm-tiles .cadm__pair--edit {
+    grid-column: 1 / -1;
+  }
+
+  .cadm-tiles .cadm__k,
+  .cadm-tiles .cadm__v,
+  .cadm-tiles .cadm__acts {
+    min-height: 0;
+  }
+
+  .cadm-tiles .cadm__k {
+    grid-area: k;
+    color: var(--ink-3);
+  }
+
+  .cadm-tiles .cadm__v {
+    grid-area: v;
+  }
+
+  .cadm-tiles .cadm__acts {
+    grid-area: acts;
+  }
+}
+
+.cqueue .squeue__when {
+  white-space: nowrap;
+}
+
 /* --- Пояснительная плашка (фаза 75) -----------------------------------
    На ноутбуке — абзац на серой подложке, тот же, что был `.cnote`
    у куратора. На телефоне — одна строка с «подробнее». */

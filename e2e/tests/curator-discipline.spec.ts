@@ -111,8 +111,9 @@ test("карточка: замечание словами и правка кон
     .filter({ hasText: "Контакты" })
     .first();
   const phone = `+7701555${String(Date.now()).slice(-4)}`;
-  // кнопка называется «Изменить» с фазы 70: рядом с ней появилась «Убрать»
-  await contacts.getByRole("button", { name: "Изменить" }).first().click();
+  // «Изменить» и «Убрать» — в меню «…» строки: колонка узкая, на виду одно действие
+  await contacts.getByRole("button", { name: "Ещё действия" }).first().click();
+  await page.getByRole("menuitem", { name: "Изменить" }).click();
   await contacts
     .getByLabel(/Телефон/)
     .first()

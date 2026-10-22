@@ -249,10 +249,6 @@ body .cdocs__cell[data-slot='button'][data-variant]:hover {
 }
 
 /* переданные владельцу строки — блок под очередью */
-.cescalated {
-  margin-top: var(--gap-block);
-}
-
 /* секции IELTS в карточке: четыре плитки с полосой до цели */
 .csec {
   display: grid;

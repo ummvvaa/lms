@@ -14,6 +14,7 @@
  */
 import './screens/academics/academics.css'
 import './screens/curator/curator.css'
+import './screens/curator/curator-layout.css'
 import './screens/academics/homework-review.css'
 import './screens/attendance.css'
 import './screens/mocks/mocks.css'

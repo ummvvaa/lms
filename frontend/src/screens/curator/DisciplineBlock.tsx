@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useAddRemark, useDropRemark, type CuratorCard as Card } from '../../api/hooks'
 import Field from '../../components/Field'
-import { Row, Rows } from '../../components/patterns'
+import { Row, Rows, ShowAll } from '../../components/patterns'
 import { Chip, DataCard } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
@@ -60,18 +60,23 @@ export default function DisciplineBlock({ card }: { card: Card }) {
     <DataCard
       title={t('Дисциплина')}
       right={
-        <>
-          <Chip tone={attendanceTone} className="num">
-            {block.attendance_percent === null ? t('уроков с отметкой не было') : `${block.attendance_percent} %`}
-          </Chip>
-          {card.group && (
-            <Button size="sm" variant="outline" onClick={() => navigate(`/attendance?group=${encodeURIComponent(card.group)}`)}>
-              {t('Открыть посещаемость')}
-            </Button>
-          )}
-        </>
+        card.group ? (
+          <Button size="sm" variant="link" onClick={() => navigate(`/attendance?group=${encodeURIComponent(card.group)}`)}>
+            {t('Посещаемость')}
+          </Button>
+        ) : undefined
       }
     >
+      {/* процент за месяц — крупным числом цветом текста, ниже нормы — янтарный чип;
+          под ним строка пропусков и опозданий, как в макете */}
+      <div className="cdisc__sum">
+        <span className="cdisc__pct t-value num">{block.attendance_percent === null ? t('нет') : `${block.attendance_percent} %`}</span>
+        {attendanceTone === 'warn' && (
+          <Chip tone="warn" size="sm">
+            {t('ниже {pct} %', { pct: block.attendance_below })}
+          </Chip>
+        )}
+      </div>
       {/* Блок молчит целиком — одна строка; поле замечания ниже остаётся:
           замечание записывают прямо здесь */}
       {!silent && (
@@ -92,7 +97,8 @@ export default function DisciplineBlock({ card }: { card: Card }) {
       )}
       {missed.length > 0 && (
         <Rows>
-          {missed.slice(0, 8).map((day) => (
+          <ShowAll>
+          {missed.map((day) => (
             <Row
               key={day.date}
               icon="calendar"
@@ -115,6 +121,7 @@ export default function DisciplineBlock({ card }: { card: Card }) {
               }
             />
           ))}
+          </ShowAll>
         </Rows>
       )}
 
@@ -150,10 +157,11 @@ export default function DisciplineBlock({ card }: { card: Card }) {
       </Rows>
 
       {block.may_write && (
-        <div className="cnotes__form">
+        <div className="cdisc__form">
           <Field kind="text" name="remark" label={t('Замечание')} value={text} onChange={setText} placeholder={t('Замечание словами — за что именно')} />
-          <div className="acad__actions">
+          <div className="cdisc__send">
             <Button
+              variant="outline"
               size="sm"
               disabled={add.isPending || !text.trim()}
               onClick={() =>

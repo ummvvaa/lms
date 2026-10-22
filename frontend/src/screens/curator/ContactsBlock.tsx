@@ -19,6 +19,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
 import { Row, Rows } from '../../components/patterns'
+import RowMenu, { RowMenuItem } from '../../components/RowMenu'
 import { RELATION_OPTIONS } from '../../components/StudentRows'
 import { DataCard, EmptyNote } from '../../components/ui'
 import { Button } from '../../components/ui/button'
@@ -42,7 +43,7 @@ export default function ContactsBlock({ card }: { card: Card }) {
     <DataCard
       title={t('Контакты')}
       right={
-        <Button size="sm" onClick={() => setAdding(true)}>
+        <Button size="sm" variant="secondary" onClick={() => setAdding(true)}>
           {t('Добавить контакт')}
         </Button>
       }
@@ -90,11 +91,10 @@ export default function ContactsBlock({ card }: { card: Card }) {
               icon="person"
               title={contact.full_name}
               note={`${contact.relation_title} · ${contact.phone || contact.email || t('контакта нет')}`}
+              // узкая колонка: оба действия — в «…», имя и телефон не сжимаются
               acts={
-                <>
-                  <Button
-                    size="sm"
-                    variant="ghost"
+                <RowMenu>
+                  <RowMenuItem
                     onClick={() => {
                       setEditing(contact.id)
                       setPhone(contact.phone)
@@ -102,15 +102,11 @@ export default function ContactsBlock({ card }: { card: Card }) {
                     }}
                   >
                     {t('Изменить')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setDropping({ id: contact.id, name: contact.full_name })}
-                  >
+                  </RowMenuItem>
+                  <RowMenuItem risk keepOpen onClick={() => setDropping({ id: contact.id, name: contact.full_name })}>
                     {t('Убрать')}
-                  </Button>
-                </>
+                  </RowMenuItem>
+                </RowMenu>
               }
             />
           ),

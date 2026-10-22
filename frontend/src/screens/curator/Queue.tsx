@@ -20,7 +20,6 @@ import {
   useStudentQueue,
   type StudentQueueRow,
 } from '../../api/hooks'
-import Notice from '../../components/Notice'
 import { Row, Rows, Segmented } from '../../components/patterns'
 import { QueueRow } from '../../components/StudentQueue'
 import { DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../../components/ui'
@@ -31,6 +30,7 @@ import DocumentPreview, { type PreviewTarget } from './DocumentPreview'
 import GroupSwitch from './GroupSwitch'
 import { useGroup } from './state'
 import './curator.css'
+import './curator-layout.css'
 
 /** Четыре частые причины отказа — подставляются в поле одним нажатием. */
 const REASONS = [
@@ -101,45 +101,61 @@ export default function CuratorQueue() {
       onError: (error) => toast.error(error.message),
     })
 
+  const counted = (label: string, count: number) => (
+    <>
+      {label}
+      <span className="tabs__n num">{count}</span>
+    </>
+  )
+
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Очередь подтверждений')}
+        subtitle={t('Ученик внёс — вы подтверждаете. Отклонение всегда с причиной, ученик её увидит')}
       />
       <GroupSwitch groups={overview.data?.groups ?? []} value={group} onChange={setGroup} />
 
-      <Notice className="cnote">
-        {t(
-          'Ту же очередь по всей школе видит владелец домена. Кто первый нажал, того и запись в журнале: второму система скажет, кем и когда это уже решено.',
-        )}
-      </Notice>
-
-      <div className="card card-pad">
-        <div className="cqueue__head">
-          <Segmented<Tab>
-            value={tab}
-            onChange={setTab}
-            label={t('Домен')}
+      {/* вкладки по домену и порядок — одной строкой над очередью, как в макете */}
+      <div className="filters">
+        <Segmented<Tab>
+          value={tab}
+          onChange={setTab}
+          label={t('Домен')}
+          items={[
+            { value: 'all', label: counted(t('Все'), all.length) },
+            { value: 'exam', label: counted(t('Экзамены'), exams.length) },
+            { value: 'documents', label: counted(t('Документы'), docs.length) },
+          ]}
+        />
+        <div className="filters__end cqueue__sort">
+          <span className="t-note">{t('Порядок')}</span>
+          <Segmented<Sort>
+            value={sort}
+            onChange={setSort}
+            label={t('Порядок')}
             items={[
-              { value: 'all', label: t('Все {count}', { count: all.length }) },
-              { value: 'exam', label: t('Экзамены {count}', { count: exams.length }) },
-              { value: 'documents', label: t('Документы {count}', { count: docs.length }) },
+              { value: 'diff', label: t('по расхождению') },
+              { value: 'date', label: t('по времени') },
             ]}
           />
-          <div className="cqueue__sort">
-            <span className="t-note">{t('Порядок')}</span>
-            <Segmented<Sort>
-              value={sort}
-              onChange={setSort}
-              label={t('Порядок')}
-              items={[
-                { value: 'diff', label: t('по расхождению') },
-                { value: 'date', label: t('по времени') },
-              ]}
-            />
-          </div>
         </div>
+      </div>
 
+      {/* отмеченные: полоса со светом над очередью — главное действие экрана */}
+      {checked.length > 0 && (
+        <div className="card card--beam cqueue__bulk">
+          <b>{t('Выбрано: {count}', { count: checked.length })}</b>
+          <Button variant="outline" size="sm" onClick={() => setChecked([])}>
+            {t('Снять отметки')}
+          </Button>
+          <Button size="sm" disabled={confirmMany.isPending} onClick={confirmChecked}>
+            {t('Подтвердить отмеченные ({count})', { count: checked.length })}
+          </Button>
+        </div>
+      )}
+
+      <section className="card card-pad cqueue">
         {shown.length === 0 && (
           <EmptyNote what={tk('строк пока нет')} who={tk('появятся, когда ученики внесут данные о себе')} />
         )}
@@ -148,6 +164,7 @@ export default function CuratorQueue() {
           <QueueRow
             key={row.id}
             row={row}
+            person
             reasons={REASONS.map((reason) => t(reason))}
             onPreview={openDocument}
             escalate={(item) => <EscalateRowDialog id={item.id} domain={item.domain} />}
@@ -157,22 +174,11 @@ export default function CuratorQueue() {
             }
           />
         ))}
-
-        {checked.length > 0 && (
-          <div className="squeue__bulk">
-            <Button size="sm" disabled={confirmMany.isPending} onClick={confirmChecked}>
-              {t('Подтвердить отмеченные ({count})', { count: checked.length })}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setChecked([])}>
-              {t('Снять отметки')}
-            </Button>
-          </div>
-        )}
-      </div>
+      </section>
 
       {/* переданное владельцу домена: ушло из очереди, но видно, и можно вернуть, пока не решено */}
       {escalated.length > 0 && (
-        <div className="cescalated">
+        <div>
           <DataCard
             title={t('Передано владельцу')}
             count={escalated.length}

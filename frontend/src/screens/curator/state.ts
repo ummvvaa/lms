@@ -22,6 +22,9 @@ import { useAuth } from '../../auth/AuthContext'
 
 const KEY = 'curator-group'
 
+/** Тон метки дисциплины: работает сам — зелёный, нужен контроль — янтарный, ежедневный — красный. */
+export const STATUS_TONE: Record<string, 'good' | 'warn' | 'bad'> = { can_execute: 'good', needs_supervision: 'warn', critical: 'bad' }
+
 /** Все мои группы. Отдельным значением, а не пустой строкой: пустое читается как «не выбрано». */
 export const ALL = 'all'
 

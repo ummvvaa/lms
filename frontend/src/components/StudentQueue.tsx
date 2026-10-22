@@ -19,6 +19,7 @@ import { Button } from './ui/button'
 import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
 import { Chip } from './ui'
+import { Avatar } from './patterns'
 import { formatDate, formatDateTime } from '../lib/format'
 
 export function QueueRow({
@@ -28,6 +29,7 @@ export function QueueRow({
   reasons = [],
   onPreview,
   escalate,
+  person = false,
 }: {
   row: StudentQueueRow
   checked?: boolean
@@ -42,6 +44,8 @@ export function QueueRow({
   onPreview?: (row: StudentQueueRow) => void
   /** передать владельцу домена — действие куратора (фаза 62) */
   escalate?: (row: StudentQueueRow) => ReactNode
+  /** кабинет куратора: аватар ученика и вид строки чипом — «балл» или «документ» */
+  person?: boolean
 }) {
   const { review } = useReviewSuggestion()
   const [mode, setMode] = useState<'view' | 'edit' | 'decline'>('view')
@@ -75,6 +79,7 @@ export function QueueRow({
           aria-label={`${t('Отметить')}: ${row.student_name}`}
         />
       )}
+      {person && <Avatar name={row.student_name} size={34} />}
       <div className="squeue__body">
         <div className="squeue__what">
           <b>{row.student_name}</b>
@@ -87,6 +92,7 @@ export function QueueRow({
               «резкий скачок» обязан значить одно и то же (фаза 61) */}
           {row.sharp_jump && <Chip tone="bad">{t('резкий скачок')}</Chip>}
           {row.document && <Chip tone="neutral">{t('документ')}</Chip>}
+          {person && !row.document && <Chip tone="accent">{t('балл')}</Chip>}
           {/* переданное куратором — у владельца домена сверху, с его именем и словами (фаза 62) */}
           {row.escalated && (
             <Chip tone="neutral">
