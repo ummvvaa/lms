@@ -30,7 +30,7 @@ import {
 import Field from '../../components/Field'
 import Matrix, { type MatrixCell, type MatrixColumn, type MatrixRow, type MatrixTone } from '../../components/Matrix'
 import Modal from '../../components/Modal'
-import { Row, Rows, Segmented } from '../../components/patterns'
+import { Row, Rows, Segmented, ShowAll } from '../../components/patterns'
 import { ApiError } from '../../api/client'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
@@ -702,16 +702,18 @@ export default function Journal() {
       {phone ? (
         <DataCard title={t('Уроки')} count={data.all_lessons.length}>
           <Rows>
-            {data.all_lessons.map((lesson) => (
-              <Row
-                key={lesson.id}
-                lead={<b className="num">{Number(lesson.date.slice(8))}</b>}
-                title={`${lesson.kind_label} · ${lesson.weekday}, ${dateWords(lesson.date)}`}
-                note={lesson.topic || t('тема не записана')}
-                right={lesson.state !== 'future' && !lesson.marked ? <Chip tone="warn">{t('не отмечен')}</Chip> : undefined}
-                to={`/lessons/${lesson.id}`}
-              />
-            ))}
+            <ShowAll>
+              {data.all_lessons.map((lesson) => (
+                <Row
+                  key={lesson.id}
+                  lead={<b className="num">{Number(lesson.date.slice(8))}</b>}
+                  title={`${lesson.kind_label} · ${lesson.weekday}, ${dateWords(lesson.date)}`}
+                  note={lesson.topic || t('тема не записана')}
+                  right={lesson.state !== 'future' && !lesson.marked ? <Chip tone="warn">{t('не отмечен')}</Chip> : undefined}
+                  to={`/lessons/${lesson.id}`}
+                />
+              ))}
+            </ShowAll>
           </Rows>
         </DataCard>
       ) : data.rows.length === 0 ? (
