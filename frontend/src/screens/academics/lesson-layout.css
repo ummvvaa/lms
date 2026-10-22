@@ -1,0 +1,61 @@
+/* Урок учителя по макету: состав во всю ширину, строка ученика с аватаром;
+   ниже тема и ДЗ на две трети, справа «Кто получит» и «Урок». На телефоне —
+   по карточке на ученика и «Сохранить отметки» внизу у края экрана. */
+
+@media (min-width: 760px) {
+  .lesson__grid {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+}
+
+.roster__who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 3);
+}
+
+.roster__whotext {
+  flex: 1;
+  min-width: 0;
+}
+
+/* «Изменить время прихода» и поле прихода — строкой под именем */
+.roster__who > :not(.ava, .roster__whotext) {
+  flex-basis: 100%;
+}
+
+/* значения «Урока» — текстом строки, а не крупным числом */
+.lesson__rest .rowline__value,
+.lesson__rest .rowline__none {
+  font-size: var(--type-body);
+  font-weight: 600;
+}
+
+@media (max-width: 759px) {
+  .roster {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space) * 2);
+  }
+
+  .roster__row,
+  .roster__head + .roster__row {
+    padding: calc(var(--space) * 3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-inner);
+    background: var(--glass-in);
+  }
+
+  .lesson__save {
+    position: sticky;
+    bottom: calc(var(--tabbar-clear) + var(--space) * 2);
+    z-index: 3;
+    margin-top: calc(var(--space) * 3);
+  }
+
+  .lesson__save > [data-slot='button'] {
+    width: 100%;
+    min-height: var(--touch);
+  }
+}

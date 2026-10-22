@@ -11,7 +11,7 @@ import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { useAcadMeta, useLessonDetail, useRemindLesson, useSaveAttendance, type RosterRow } from '../../api/academics'
 import { useAuth } from '../../auth/AuthContext'
-import { Row, Rows, Segmented, StatRow } from '../../components/patterns'
+import { Avatar, Row, Rows, Segmented } from '../../components/patterns'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Textarea } from '../../components/ui/textarea'
@@ -24,6 +24,7 @@ import LessonHomeworkCards from './LessonHomework'
 import { homeworkReviewOpen } from '../../layout/nav'
 import { LessonHomeworkRow } from '../homework/LessonHomeworkRow'
 import { formatDateTime } from '../../lib/format'
+import { usePhone } from '../../phone'
 
 /** Отметка на чтение: слово отметки, у неотмеченного урока — «не отмечен». */
 function MarkCell({ row, words }: { row: RosterRow; words: Record<string, string> }) {
@@ -72,6 +73,8 @@ function RosterLine({
   return (
     <div className="roster__row">
       <div className="roster__who">
+        <Avatar name={row.full_name} size={32} />
+        <div className="roster__whotext">
         <div className="roster__name">{row.full_name}</div>
         <div className="roster__note">
           {[
@@ -83,6 +86,7 @@ function RosterLine({
           ]
             .filter(Boolean)
             .join(' · ')}
+        </div>
         </div>
         {row.mark === 'late' && !disabled && !askLate && (
           <Button variant="link" size="sm" onClick={() => setAskLate(true)}>
@@ -212,6 +216,7 @@ export default function LessonScreen() {
   const remind = useRemindLesson()
   const [asking, setAsking] = useState(false)
   const [editing, setEditing] = useState(false)
+  const phone = usePhone()
 
   if (detail.isLoading) return <Loading kind="cards" />
   if (detail.error) return <ErrorNote error={detail.error} />
@@ -240,6 +245,17 @@ export default function LessonScreen() {
   ) : (
     <Chip tone="warn">{t('не отмечен')}</Chip>
   )
+  const saveMarks = () =>
+    attendance.mutate(
+      { lesson: lesson.id, rows: [] },
+      {
+        onSuccess: () => {
+          toast.success(lesson.marked ? t('Готово') : t('Урок отмечен'))
+          navigate(back.to)
+        },
+        onError: fail,
+      },
+    )
   const back = me?.role === 'teacher' ? (data.course ? { label: t('Журнал'), to: `/journals/${data.course.id}` } : { label: t('Сегодня'), to: '/dashboard' }) : { label: t('Расписание'), to: '/schedule' }
 
   // предмет «только расписание»: урок есть в неделе, а журнала, оценок и ДЗ в LMS нет
@@ -272,7 +288,7 @@ export default function LessonScreen() {
     )
 
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={lesson.subject.title}
         crumb={back}
@@ -289,39 +305,40 @@ export default function LessonScreen() {
         actions={
           <>
             {mayMark && (
-              <Button variant="outline" size="sm" onClick={() => attendance.mutate({ lesson: lesson.id, all_present: true }, { onSuccess: () => toast.success(t('Урок отмечен: все были')), onError: fail })}>
+              <Button variant="outline" onClick={() => attendance.mutate({ lesson: lesson.id, all_present: true }, { onSuccess: () => toast.success(t('Урок отмечен: все были')), onError: fail })}>
                 {t('Все присутствуют')}
               </Button>
             )}
             {data.may_request && (
-              <Button variant="outline" size="sm" onClick={() => setAsking(true)}>
+              <Button variant="outline" onClick={() => setAsking(true)}>
                 {t('Попросить перенос')}
               </Button>
             )}
             {data.may_remind && (
-              <Button variant="outline" size="sm" onClick={() => remind.mutate(lesson.id, { onSuccess: (r) => toast.success(`${t('Напоминание ушло:')} ${r.reminded}`), onError: fail })}>
+              <Button variant="outline" onClick={() => remind.mutate(lesson.id, { onSuccess: (r) => toast.success(`${t('Напоминание ушло:')} ${r.reminded}`), onError: fail })}>
                 {t('Напомнить учителю')}
               </Button>
             )}
             {data.may_edit && (
-              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+              <Button variant="outline" onClick={() => setEditing(true)}>
                 {t('Изменить урок')}
               </Button>
             )}
-            {mayMark && (
-              <Button size="sm" onClick={() => attendance.mutate({ lesson: lesson.id, rows: [] }, { onSuccess: () => { toast.success(lesson.marked ? t('Готово') : t('Урок отмечен')); navigate(back.to) }, onError: fail })}>
+            {/* на телефоне «Сохранить отметки» — внизу под составом, у большого пальца */}
+            {mayMark && !phone && (
+              <Button onClick={saveMarks} disabled={attendance.isPending}>
                 {lesson.marked ? t('Готово') : t('Сохранить отметки')}
               </Button>
             )}
           </>
         }
       />
-      <StatRow>
+      <div className="lay-4">
         <Kpi label={t('Состояние')} value={statusChip} />
         <Kpi label={t('Были')} value={lesson.marked ? t('{done} из {total}', { done: roster.length - (data.absent?.length ?? 0), total: roster.length }) : null} none={future ? t('урок впереди') : t('не отмечен')} note={data.absent?.length ? absentWords(data.absent) : lesson.marked ? t('все на месте') : t('отметьте тех, кого нет')} tone={data.absent?.length ? 'bad' : lesson.marked ? 'good' : undefined} />
         <Kpi label={t('Опоздали')} value={data.late?.length || null} none={t('нет')} note={data.late?.join(', ') ?? ''} tone={data.late?.length ? 'warn' : undefined} />
         <Kpi label={t('Оценок')} value={graded.length || null} none={passOnly ? t('без оценок: сдан или не сдан по профтесту') : lesson.kind === 'fo' ? t('ФО ставится не всем') : t('нет')} note={graded.length ? t('средняя {value}', { value: (graded.reduce((s, r) => s + (r.grade ?? 0), 0) / graded.length).toFixed(1) }) : ''} />
-      </StatRow>
+      </div>
       {!lesson.is_live && (
         <Chip tone="warn">
           {`${lesson.status_title}${lesson.reason ? `: ${lesson.reason}` : ''}`}
@@ -343,6 +360,13 @@ export default function LessonScreen() {
                   </div>
                 )}
               </DataCard>
+              {mayMark && phone && roster.length > 0 && (
+                <div className="lesson__save">
+                  <Button onClick={saveMarks} disabled={attendance.isPending}>
+                    {lesson.marked ? t('Готово') : t('Сохранить отметки')}
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="lesson__topic">{topic}</div>
             <div className="lesson__rest acad__stack">
@@ -358,15 +382,10 @@ export default function LessonScreen() {
                     note={lesson.marked_at ? formatDateTime(lesson.marked_at) : undefined}
                   />
                   {lesson.reason && <Row title={t('Причина')} value={lesson.reason} />}
+                  {/* журнал — последней строкой «Урока», как в макете, а не отдельной карточкой */}
+                  {data.course && me?.role === 'teacher' && <Row icon="book" tone="accent" title={t('Журнал')} note={data.course.title} to={`/journals/${data.course.id}`} />}
                 </Rows>
               </DataCard>
-              {data.course && me?.role === 'teacher' && (
-                <DataCard title={t('Журнал')}>
-                  <Rows>
-                    <Row icon="book" tone="accent" title={data.course.title} to={`/journals/${data.course.id}`} />
-                  </Rows>
-                </DataCard>
-              )}
             </div>
           </div>
         )}
