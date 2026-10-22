@@ -6,16 +6,19 @@
  * и на доску, и закрыть её он может сам. Здесь — фильтры и действия
  * куратора: закрыть, отменить, вернуть.
  */
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { useCuratorOverview, useCuratorTaskStatus, useCuratorTasks } from '../../api/hooks'
-import { Rows, Segmented } from '../../components/patterns'
-import { DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import RowMenu, { RowMenuItem } from '../../components/RowMenu'
+import { Segmented, ShowAll } from '../../components/patterns'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { Button } from '../../components/ui/button'
 import { t, tk } from '../../i18n'
-import { TaskLine } from './Card'
 import GroupSwitch from './GroupSwitch'
 import TaskDialog from './TaskDialog'
 import { useGroup } from './state'
 import './curator.css'
+import './curator-layout.css'
+import { formatDate } from '../../lib/format'
 
 const FILTERS: { code: string; label: string }[] = [
   { code: 'open', label: tk('Открытые') },
@@ -46,16 +49,17 @@ export default function CuratorTasks() {
   const rows = data?.results ?? []
 
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Задачи ученикам')}
+        subtitle={t('Что поставили вы и что пришло от школы')}
         actions={
           <TaskDialog groups={overview.data?.groups ?? []} defaultGroup={group} label={t('Новая задача')} />
         }
       />
       <GroupSwitch groups={overview.data?.groups ?? []} value={group} onChange={setGroup} />
 
-      <div className="cfilters">
+      <div className="filters">
         <Segmented
           value={filter}
           onChange={setFilter}
@@ -64,19 +68,66 @@ export default function CuratorTasks() {
             value: item.code,
             label: (
               <>
-                {t(item.label)} <span className="gswitch__note num">{data?.counts[item.code] ?? 0}</span>
+                {t(item.label)}
+                <span className="tabs__n num">{data?.counts[item.code] ?? 0}</span>
               </>
             ),
           }))}
         />
       </div>
 
-      <DataCard title={t(FILTERS.find((item) => item.code === filter)?.label ?? 'Задачи')} count={rows.length || undefined} empty={rows.length === 0 && t('с таким фильтром ничего нет')}>
-        <Rows>
-          {rows.map((task) => (
-            <TaskLine key={task.id} task={task} onStatus={(status) => move.mutate({ id: task.id, status })} />
-          ))}
-        </Rows>
+      <DataCard
+        className={rows.length ? 'card--beam' : undefined}
+        title={t(FILTERS.find((item) => item.code === filter)?.label ?? 'Задачи')}
+        count={rows.length || undefined}
+        empty={rows.length === 0 && t('с таким фильтром ничего нет')}
+      >
+        <div className="ctasks">
+          <ShowAll limit={20}>
+            {rows.map((task) => {
+              const closed = task.status === 'done' || task.status === 'cancelled'
+              return (
+                <div key={task.id} className="ctasks__row">
+                  <span className="ctasks__what">
+                    <b>{task.title}</b>
+                    <span className="t-note">{task.origin_title}</span>
+                  </span>
+                  <Link className="ctasks__who" to={`/students/${task.student}?tab=tasks`}>
+                    {`${task.student_name} · ${task.group}`}
+                  </Link>
+                  <Chip tone={task.is_overdue ? 'bad' : closed ? 'neutral' : 'warn'} size="sm">
+                    {task.status === 'done'
+                      ? t('сделано')
+                      : task.status === 'cancelled'
+                        ? t('отменена')
+                        : task.is_overdue
+                          ? t('просрочена')
+                          : task.due_date
+                            ? t('до {date}', { date: formatDate(task.due_date) })
+                            : t('без срока')}
+                  </Chip>
+                  {/* на виду одно действие: «Сделано» у открытой, «Вернуть» у закрытой; отмена — в «…» */}
+                  <span className="ctasks__acts">
+                    {closed ? (
+                      <Button variant="ghost" size="sm" onClick={() => move.mutate({ id: task.id, status: 'todo' })}>
+                        {t('Вернуть')}
+                      </Button>
+                    ) : (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => move.mutate({ id: task.id, status: 'done' })}>
+                          {t('Сделано')}
+                        </Button>
+                        <RowMenu>
+                          <RowMenuItem onClick={() => move.mutate({ id: task.id, status: 'cancelled' })}>{t('Отменить')}</RowMenuItem>
+                        </RowMenu>
+                      </>
+                    )}
+                  </span>
+                </div>
+              )
+            })}
+          </ShowAll>
+        </div>
       </DataCard>
     </div>
   )

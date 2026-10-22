@@ -9,17 +9,21 @@ import { useNavigate } from 'react-router'
 import { useCuratorJournal, type JournalRow } from '../../api/hooks'
 import DataTable, { type Column } from '../../components/DataTable'
 import { ExportPreview } from '../../components/ExportPreview'
-import { ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { ShowAll } from '../../components/patterns'
+import { DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { useAuth } from '../../auth/AuthContext'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import GroupSwitch from './GroupSwitch'
 import { useGroup } from './state'
 import { formatDateTime } from '../../lib/format'
 import './curator.css'
+import './curator-layout.css'
 
 export default function CuratorJournal() {
   const navigate = useNavigate()
   const [group, setGroup] = useGroup()
+  const { me } = useAuth()
   const { data, isLoading, error } = useCuratorJournal(group)
   const [exporting, setExporting] = useState(false)
 
@@ -30,11 +34,11 @@ export default function CuratorJournal() {
   const exportPath = `/curator/journal/export/${group !== 'all' ? `?group=${encodeURIComponent(group)}` : ''}`
 
   const columns: Column<JournalRow>[] = [
-    { key: 'at', title: t('Когда'), width: '14%', cell: (row) => <span className="squeue__when num">{formatDateTime(row.at)}</span>, sortBy: (row) => row.at },
+    { key: 'at', title: t('Когда'), width: '20%', cell: (row) => <span className="squeue__when num">{formatDateTime(row.at)}</span>, sortBy: (row) => row.at },
     {
       key: 'who',
       title: t('Кто'),
-      width: '16%',
+      width: '15%',
       cell: (row) => (
         <>
           {row.who}
@@ -61,11 +65,11 @@ export default function CuratorJournal() {
       ),
       sortBy: (row) => row.student,
     },
-    { key: 'what', title: t('Что'), width: '22%', cell: (row) => row.what },
+    { key: 'what', title: t('Что'), width: '20%', cell: (row) => row.what },
     {
       key: 'now',
       title: t('Стало'),
-      width: '28%',
+      width: '25%',
       cell: (row) => (
         <>
           {row.was && <span className="t-note">{row.was} → </span>}
@@ -75,10 +79,17 @@ export default function CuratorJournal() {
     },
   ]
 
+  // сводка справа — из тех же строк, что в таблице: сколько записей, сколько ваших, кто менял
+  const rows = data.results
+  const mine = me ? rows.filter((row) => row.who === me.full_name).length : 0
+  const byWho = [...rows.reduce((map, row) => map.set(row.who, (map.get(row.who) ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])
+  const top = byWho[0]?.[1] ?? 0
+
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Журнал изменений')}
+        subtitle={t('Кто, когда и что поменял по ученикам ваших групп')}
         actions={
           <Button variant="outline" size="sm" onClick={() => setExporting(true)}>
             {t('Выгрузить')}
@@ -87,8 +98,36 @@ export default function CuratorJournal() {
       />
       <GroupSwitch groups={data.groups} value={group} onChange={setGroup} />
 
-      <div className="card">
-        <DataTable columns={columns} rows={data.results} rowKey={(row) => row.id} limit={50} empty={<span className="t-note">{t('Пока ничего не менялось')}</span>} />
+      <div className="lay-main">
+        <section className="card card-pad">
+          <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} limit={50} empty={<span className="t-note">{t('Пока ничего не менялось')}</span>} />
+        </section>
+        <DataCard className={rows.length ? 'card--beam' : undefined} title={t('Сводка')} empty={rows.length === 0 && t('пока ничего не менялось')}>
+          <div className="lay-2 clog__nums">
+            <div className="clog__num">
+              <span className="t-caps">{t('Записей')}</span>
+              <b className="t-value num">{rows.length}</b>
+            </div>
+            <div className="clog__num">
+              <span className="t-caps">{t('Ваших')}</span>
+              <b className="t-value num">{mine}</b>
+            </div>
+          </div>
+          <span className="t-caps clog__label">{t('Кто менял')}</span>
+          <div className="clog__who">
+            <ShowAll>
+              {byWho.map(([who, count]) => (
+                <div key={who} className="clog__whorow">
+                  <span className="clog__whoname">{who}</span>
+                  <span className="num t-note">{count}</span>
+                  <span className="cstudents__bar" aria-hidden="true">
+                    <i style={{ width: `${top ? Math.round((count / top) * 100) : 0}%` }} />
+                  </span>
+                </div>
+              ))}
+            </ShowAll>
+          </div>
+        </DataCard>
       </div>
 
       {exporting && (
