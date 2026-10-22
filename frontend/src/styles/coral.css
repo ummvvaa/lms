@@ -530,3 +530,271 @@
     background-position: -100% 0;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Раскладка экранов по макету: ряды карточек и колонки «две трети — треть».
+   Карточки одного ряда тянутся на его высоту; на телефоне — всё столбиком.
+   --------------------------------------------------------------------------- */
+.lay-2,
+.lay-3,
+.lay-4 {
+  display: grid;
+  gap: var(--gap-block);
+  align-items: stretch;
+  min-width: 0;
+}
+
+.lay-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.lay-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.lay-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* широкая колонка и узкая: вторая колонка — стопка карточек */
+.lay-main {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--gap-block);
+  align-items: start;
+  min-width: 0;
+}
+
+.lay-span2 {
+  grid-column: span 2;
+}
+
+.lay-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-block);
+  min-width: 0;
+}
+
+/* блоки экрана друг под другом с одним разрывом */
+.lay-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-block);
+  min-width: 0;
+}
+
+.lay-screen > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+@media (max-width: 1279px) {
+  .lay-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .lay-3,
+  .lay-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lay-span2 {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 759px) {
+  .lay-2,
+  .lay-4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* показатели на телефоне — два на два: столбиком четыре числа занимали экран */
+  .lay-4:has(> .kpi) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: calc(var(--space) * 3);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Аватар с инициалами: кружок с тёплым градиентом, как `.c-ava` макета.
+   --------------------------------------------------------------------------- */
+.ava {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: var(--ava-size, 28px);
+  height: var(--ava-size, 28px);
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--glint), var(--accent-bg));
+  color: var(--accent-ink);
+  font-family: var(--font-head);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+:root[data-theme='dark'] .ava {
+  background: linear-gradient(135deg, var(--accent-bg), var(--neutral-bg));
+}
+
+/* имя с аватаром в клетке таблицы; `.person` занят строкой человека в оболочке */
+.personcell {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 3);
+  min-width: 0;
+}
+
+.personcell__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Ряд фильтров: поиск, списки и галочки в одну строку. Подписи полей есть
+   для читалки, на экране их нет — фильтр говорит выбранным значением.
+   Переносится целиком только на узком окне.
+   --------------------------------------------------------------------------- */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  min-width: 0;
+}
+
+.filters .field {
+  flex: 0 0 auto;
+  gap: 0;
+}
+
+.filters .field__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.filters .field__control :where([data-slot='input'], [data-slot='native-select']) {
+  height: var(--control-h);
+  min-height: var(--control-h);
+}
+
+.filters .filters__search {
+  flex: 0 1 var(--filter-search-w);
+  min-width: var(--filter-search-w);
+}
+
+/* список по ширине выбранного значения, но не шире своей доли ряда */
+.filters .field:not(.filters__search, .field--check) {
+  max-width: var(--filter-select-w);
+}
+
+.filters .field--check {
+  white-space: nowrap;
+}
+
+/* сегменты в ряду фильтров стоят на одной линии с полями: свой нижний разрыв им не нужен */
+.filters .segrow {
+  margin-bottom: 0;
+}
+
+.filters__end {
+  margin-left: auto;
+}
+
+@media (max-width: 759px) {
+  .filters .field,
+  .filters .filters__search {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .filters__end {
+    margin-left: 0;
+  }
+}
+
+/* счётчик на вкладке и на фильтре */
+.tabs__n {
+  margin-left: calc(var(--space) * 2);
+  padding: 1px calc(var(--space) * 2);
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tabs__tab[data-active] .tabs__n,
+.tabs__tab[aria-selected='true'] .tabs__n {
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+}
+
+/* ---------------------------------------------------------------------------
+   Тихая строка предупреждения: янтарным, без карточки и заливки.
+   --------------------------------------------------------------------------- */
+.warnline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: calc(var(--space) * 2);
+  font-size: var(--type-note);
+  color: var(--ink-2);
+}
+
+.warnline__what {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+/* полоса долей: несколько отрезков подряд одной дорожкой */
+.shares {
+  display: flex;
+  gap: 2px;
+  height: calc(var(--space) * 3);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--line);
+}
+
+.shares > i {
+  display: block;
+  min-width: 0;
+  animation: fill-from-zero var(--dur-fill) var(--ease-soft) both;
+}
+
+.shares__legend {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 1.5);
+  font-size: var(--type-note);
+}
+
+.shares__legend > div {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+}
+
+.shares__dot {
+  width: calc(var(--space) * 2);
+  height: calc(var(--space) * 2);
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.shares__legend .num {
+  margin-left: auto;
+  font-weight: 600;
+}

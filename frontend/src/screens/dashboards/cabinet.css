@@ -182,3 +182,31 @@
 .cabinet__barrow--click:hover .cabinet__barhead {
   color: var(--accent-ink);
 }
+
+/* Список в узкой колонке: название и подпись в одну строку с многоточием,
+   иначе имя файла и «за домен…» ломались на три строки. */
+.cabinet__oneline .rowline__title,
+.cabinet__oneline .rowline__note {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* код группы не ломается посреди слова, почта режется многоточием */
+.cabinet__nowrap {
+  white-space: nowrap;
+}
+
+.cabinet__ellipsis {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* в один столбец действия встают над реестром: реестр целиком — в «Таблице» */
+@media (max-width: 1100px) {
+  .cabinet__first {
+    order: -1;
+  }
+}

@@ -8,21 +8,22 @@
  */
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
-import { useBulkUsers, useCabinet, useInviteUsers, useUnlockLogin } from '../../api/hooks'
+import { useBulkUsers, useCabinet, useInviteUsers, useUnlockLogin, type CabinetStat } from '../../api/hooks'
 import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboard'
 import GettingStarted from '../../components/GettingStarted'
 import DataTable from '../../components/DataTable'
-import { Row, Rows } from '../../components/patterns'
-import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
+import { Avatar, LIST_LIMIT, Row, Rows } from '../../components/patterns'
+import { usePhone } from '../../phone'
+import { Chip, DataCard, EmptyNote, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tk, tn } from '../../i18n'
-import { CabinetColumns, CabinetStats } from './cabinet'
+import './cabinet.css'
 import { useAcademicsCard } from '../academics/AcademicsBlock'
 
 interface AdminCabinet {
   title: string
   owner: string
-  stats: Parameters<typeof CabinetStats>[0]['stats']
+  stats: CabinetStat[]
   registry: {
     id: number
     student: string
@@ -56,6 +57,9 @@ interface AdminCabinet {
 
 type RegistryRow = AdminCabinet['registry'][number]
 
+/** Сколько учеников реестра на дашборде: таблица кончается вровень с правой колонкой. */
+const REGISTRY_ROWS = 14
+
 const STATUS_TONE: Record<string, Tone> = {
   ok: 'good',
   never: 'warn',
@@ -75,6 +79,7 @@ export default function AdminDashboard() {
   // блок «Учёба»: то же, что у Кымбат — расписание, не отмечено, отчёты
   const academics = useAcademicsCard()
   const navigate = useNavigate()
+  const phone = usePhone()
   const { data, isLoading, error, refetch } = useCabinet()
   const schoolIsEmpty = useSchoolIsEmpty()
   const invite = useInviteUsers()
@@ -133,8 +138,22 @@ export default function AdminDashboard() {
       )
   }
 
+  // показатель ведёт туда, где с ним работают; состояние — чипом под числом
+  const STAT_LINK: Record<string, string> = {
+    students: '/table',
+    never: '/users?never_logged_in=true',
+    spend: '/spend',
+    locks: '/users',
+  }
+  const statChip = (stat: AdminCabinet['stats'][number]): { label: string; tone: Tone } | undefined => {
+    const value = Number(stat.value ?? 0)
+    if (stat.code === 'never') return value > 0 ? { label: t('выдать пароли'), tone: 'warn' } : { label: t('все вошли'), tone: 'good' }
+    if (stat.code === 'locks') return value > 0 ? { label: t('снять блокировку'), tone: 'bad' } : { label: t('всё спокойно'), tone: 'good' }
+    return undefined
+  }
+
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t(cabinet.title)}
         subtitle={t(cabinet.owner)}
@@ -154,66 +173,88 @@ export default function AdminDashboard() {
       />
 
       <GettingStarted />
-      <CabinetStats stats={cabinet.stats} />
+      <div className="lay-4">
+        {cabinet.stats.map((stat) => (
+          <Kpi
+            key={stat.code}
+            label={t(stat.label)}
+            value={stat.value}
+            note={stat.note ? t(stat.note) : undefined}
+            chip={statChip(stat)}
+            to={STAT_LINK[stat.code]}
+          />
+        ))}
+      </div>
 
-      <CabinetColumns
-        main={
+      <div className="lay-main">
+        <DataCard
+          title={t('Реестр школы')}
+          right={
+            <Button variant="link" size="sm" onClick={() => navigate('/table')}>
+              {t('Открыть таблицу')}
+            </Button>
+          }
+        >
+          {cabinet.registry.length === 0 && (
+            <EmptyNote what={tk('учеников пока нет')} who={tk('заводит администратор списком')} />
+          )}
+          {cabinet.registry.length > 0 && (
+            <DataTable
+              columns={[
+                {
+                  key: 'student',
+                  title: t('Ученик'),
+                  width: '32%',
+                  phone: 'head',
+                  cell: (row: RegistryRow) => (
+                    <span className="personcell">
+                      <Avatar name={row.student} />
+                      <b>{row.student}</b>
+                    </span>
+                  ),
+                  sortBy: (row: RegistryRow) => row.student,
+                },
+                { key: 'group', title: t('Группа'), width: '18%', cell: (row: RegistryRow) => (row.group ? <span className="cabinet__nowrap">{row.group}</span> : <span className="t-note">{t('без группы')}</span>), sortBy: (row: RegistryRow) => row.group },
+                { key: 'email', title: t('Почта'), width: '30%', cell: (row: RegistryRow) => <span className="t-note cabinet__ellipsis" title={row.email}>{row.email}</span> },
+                { key: 'status', title: t('Статус'), width: '20%', cell: (row: RegistryRow) => <Chip tone={STATUS_TONE[row.status.code] ?? 'neutral'} size="sm">{t(row.status.title)}</Chip>, sortBy: (row: RegistryRow) => row.status.code },
+              ]}
+              rows={cabinet.registry.slice(0, phone ? LIST_LIMIT : REGISTRY_ROWS)}
+              rowKey={(row) => row.id}
+            />
+          )}
+        </DataCard>
+
+        <div className="lay-stack cabinet__first">
+          {/* главная карточка экрана — с бегущим светом по рамке */}
+          <DataCard className="card--beam" title={t('Требует ваших действий')} count={cabinet.actions.length}>
+            {cabinet.actions.length === 0 && <EmptyNote what={tk('ничего не требует вмешательства')} />}
+            {cabinet.actions.map((row, index) => (
+              <div key={`${row.code}-${index}`} className="cabinet__row">
+                <span className="cabinet__rowtext">
+                  <b>{t(row.title)}</b>
+                  <span className="muted">{row.note}</span>
+                </span>
+                <Button size="sm" disabled={invite.isPending || bulk.isPending || unlock.isPending} onClick={() => run(row)}>
+                  {t(row.action)}
+                </Button>
+              </div>
+            ))}
+          </DataCard>
+
+          {academics?.node}
+
           <DataCard
-            title={t('Реестр школы')}
+            title={t('Последние загрузки')}
             right={
-              <Button variant="outline" size="sm" onClick={() => navigate('/table')}>
-                {t('Открыть таблицу')}
-              </Button>
+              cabinet.uploads.length > 0 ? (
+                <Button variant="link" size="sm" onClick={() => navigate('/import')}>
+                  {t('Все')}
+                </Button>
+              ) : undefined
             }
           >
-            {cabinet.registry.length === 0 && (
-              <EmptyNote what={tk('учеников пока нет')} who={tk('заводит администратор списком')} />
-            )}
-            {cabinet.registry.length > 0 && (
-              <DataTable
-                columns={[
-                  { key: 'student', title: t('Ученик'), width: '34%', cell: (row: RegistryRow) => <b>{row.student}</b>, sortBy: (row: RegistryRow) => row.student },
-                  { key: 'group', title: t('Группа'), width: '14%', cell: (row: RegistryRow) => row.group || <span className="t-note">{t('без группы')}</span>, sortBy: (row: RegistryRow) => row.group },
-                  { key: 'email', title: t('Почта'), width: '32%', cell: (row: RegistryRow) => row.email },
-                  { key: 'status', title: t('Статус'), width: '20%', cell: (row: RegistryRow) => <Chip tone={STATUS_TONE[row.status.code] ?? 'neutral'} size="sm">{t(row.status.title)}</Chip>, sortBy: (row: RegistryRow) => row.status.code },
-                ]}
-                rows={cabinet.registry.slice(0, 12)}
-                rowKey={(row) => row.id}
-              />
-            )}
-          </DataCard>
-        }
-        aside={
-          <>
-            {academics?.node}
-            {/* главная карточка экрана — с бегущим светом по рамке */}
-            <DataCard
-              className="card--beam"
-              title={t('Требует ваших действий')}
-              count={cabinet.actions.length}
-            >
-              {cabinet.actions.length === 0 && <EmptyNote what={tk('ничего не требует вмешательства')} />}
-              {cabinet.actions.map((row, index) => (
-                <div key={`${row.code}-${index}`} className="cabinet__row">
-                  <span className="cabinet__rowtext">
-                    <b>{t(row.title)}</b>
-                    <span className="muted">{row.note}</span>
-                  </span>
-                  <Button
-                    size="sm"
-                    disabled={invite.isPending || bulk.isPending || unlock.isPending}
-                    onClick={() => run(row)}
-                  >
-                    {t(row.action)}
-                  </Button>
-                </div>
-              ))}
-            </DataCard>
-
-            <DataCard
-              title={t('Последние загрузки')}
-            >
-              {cabinet.uploads.length === 0 && <EmptyNote what={tk('загрузок пока не было')} />}
+            {cabinet.uploads.length === 0 && <EmptyNote what={tk('загрузок пока не было')} />}
+            <div className="cabinet__oneline">
               <Rows>
                 {cabinet.uploads.map((row) => (
                   <Row
@@ -225,19 +266,17 @@ export default function AdminDashboard() {
                       { domain: t(DOMAIN_TITLE[row.domain_code] ?? row.domain_code) },
                     )}
                     right={
-                      <Chip tone={row.status === 'applied' ? 'good' : 'neutral'}>
+                      <Chip tone={row.status === 'applied' ? 'good' : 'neutral'} size="sm">
                         {row.status === 'applied' ? t('Применена') : t('Отменена')}
                       </Chip>
                     }
-                    onOpen={() => navigate('/import')}
-                    openLabel={t('Открыть историю')}
                   />
                 ))}
               </Rows>
-            </DataCard>
-          </>
-        }
-      />
+            </div>
+          </DataCard>
+        </div>
+      </div>
     </div>
   )
 }

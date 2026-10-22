@@ -237,5 +237,8 @@ def test_cabinets_never_leave_the_right_third_empty():
     ):
         # с фазы 80 три дашборда собирает `CabinetBoard`: те же две колонки, но пустая
         # карточка — одна строка, и колонка без живых карточек не остаётся
+        # администратор с 22.10.2026 стоит по своему макету: та же сетка «две трети —
+        # треть» общим классом раскладки `lay-main` из coral.css
         source = read("screens", "dashboards", screen)
-        assert "CabinetColumns" in source or "CabinetBoard" in source, screen
+        assert "CabinetColumns" in source or "CabinetBoard" in source or 'className="lay-main"' in source, screen
+    assert "minmax(0, 2fr) minmax(0, 1fr)" in read("styles", "coral.css")

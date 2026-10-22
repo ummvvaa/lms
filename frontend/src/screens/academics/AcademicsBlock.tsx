@@ -5,7 +5,7 @@
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useAcadDashboard, useRemindAllTeachers } from '../../api/academics'
-import { Row, Rows } from '../../components/patterns'
+import { namesLine, Row, Rows } from '../../components/patterns'
 import { counted, DataCard } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tn } from '../../i18n'
@@ -35,7 +35,7 @@ export function useAcademicsCard() {
             icon="alert"
             tone={data.unmarked ? 'warn' : 'good'}
             title={data.unmarked ? tn(data.unmarked, 'Не отмечен {n} урок|Не отмечено {n} урока|Не отмечено {n} уроков') : t('Все уроки недели отмечены')}
-            note={data.unmarked ? (data.unmarked_teachers ?? []).join(', ') : t('учителя отмечают вовремя')}
+            note={data.unmarked ? namesLine(data.unmarked_teachers ?? []) : t('учителя отмечают вовремя')}
             acts={data.unmarked ? <Button variant="secondary" size="sm" onClick={() => remind.mutate(undefined, { onSuccess: (r) => toast.success(tn(r.teachers, 'Напоминания ушли: {n} учитель|Напоминания ушли: {n} учителя|Напоминания ушли: {n} учителей')), onError: (e) => toast.error(e.message) })}>{t('Напомнить')}</Button> : undefined}
           />
           <Row icon="refresh" tone="info" title={`${t('Замены и отмены:')} ${data.changes ?? 0}`} note={t('на этой неделе')} to="/schedule" />

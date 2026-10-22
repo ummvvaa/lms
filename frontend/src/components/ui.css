@@ -138,7 +138,7 @@ button.head__pill:hover:not(.head__pill--on) {
 
 /* --- Показатель ------------------------------------------------------------
    Подпись → крупное число шрифтом заголовков → подпись под ним. Стеклянная
-   плитка, как карточка; тон красит число, полос над плиткой нет. Действие
+   плитка, как карточка; число цветом текста, состояние — чипом под ним. Действие
    справа от числа — текстом цвета ссылки; плитка-ссылка поднимается под
    курсором. Ряд собирает `.statrow`. */
 .kpi {
@@ -194,20 +194,10 @@ button.head__pill:hover:not(.head__pill--on) {
   color: var(--ink-3);
 }
 
-.kpi--good .kpi__value {
-  color: var(--good);
-}
-.kpi--warn .kpi__value {
-  color: var(--warn);
-}
-.kpi--bad .kpi__value {
-  color: var(--bad);
-}
-.kpi--info .kpi__value {
-  color: var(--info);
-}
-.kpi--accent .kpi__value {
-  color: var(--accent-ink);
+/* чип состояния под числом: прижат влево, подпись не переносится */
+.kpi__chip {
+  align-self: flex-start;
+  white-space: nowrap;
 }
 
 .kpi__action {

@@ -11,7 +11,7 @@
  * и одна фигура из палитры раздела. Никаких изображений: рисунок
  * векторный, перекрашивается вместе с темой и обрезается краем карточки.
  */
-import { Children, useState, type ReactNode } from 'react'
+import { Children, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import Icon, { type IconName } from '../layout/icons'
 import { Button } from './ui/button'
@@ -213,6 +213,24 @@ export function initials(name: string): string {
     .slice(0, 2)
     .map((word) => word.charAt(0).toUpperCase())
     .join('')
+}
+
+/** Аватар с инициалами: кружок с тёплым градиентом. Размер — `size` в пикселях. */
+export function Avatar({ name, size }: { name: string; size?: number }) {
+  return (
+    <span className="ava" aria-hidden="true" style={size ? ({ '--ava-size': `${size}px` } as CSSProperties) : undefined}>
+      {initials(name)}
+    </span>
+  )
+}
+
+/**
+ * Имена одной строкой: первые `limit` через запятую и «и ещё N».
+ * Двадцать имён столбиком вытягивали карточку на пол-экрана.
+ */
+export function namesLine(names: string[], limit = 2): string {
+  if (names.length <= limit) return names.join(', ')
+  return t('{names} и ещё {n}', { names: names.slice(0, limit).join(', '), n: names.length - limit })
 }
 
 /** Значения нет: null, пусто и прочерк из старых ответов — всё одно. */

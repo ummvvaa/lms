@@ -333,7 +333,9 @@ function isEmptyValue(value: ReactNode): boolean {
  * ним мелко. Один разбор на все ряды чисел — дашборды, карточка ученика,
  * профиль подбора.
  *
- * Тон красит само число: цветных полос над карточкой нет. Пустое
+ * Число всегда цветом текста: разноцветные числа в одном ряду читались
+ * как разные шкалы. Состояние говорит чип под числом — `chip` или подпись
+ * `note` при тоне «хорошо / внимание / срочно». Пустое
  * значение — слово «нет» серым, а не прочерк: прочерк читается как
  * поломка, слово — как факт. Действие стоит справа от числа текстом
  * или делает показатель кнопкой целиком (`to`, `onClick`); то и другое
@@ -344,6 +346,7 @@ export function Kpi({
   label,
   note,
   tone,
+  chip,
   none,
   action,
   to,
@@ -353,7 +356,10 @@ export function Kpi({
   label: string
   /** одна короткая строка под числом */
   note?: string
+  /** тон «хорошо / внимание / срочно» делает подпись чипом */
   tone?: Tone
+  /** чип состояния под числом: «выдать пароли», «всё спокойно» */
+  chip?: { label: string; tone: Tone }
   /** слово вместо пустого значения: «не сдавал»; по умолчанию «нет» */
   none?: string
   /** действие текстом справа от числа */
@@ -363,6 +369,7 @@ export function Kpi({
   onClick?: () => void
 }) {
   const colour = tone ? toneOf(tone) : 'neutral'
+  const status = colour === 'good' || colour === 'warn' || colour === 'bad'
   const empty = isEmptyValue(value)
   const inner = (
     <>
@@ -386,11 +393,21 @@ export function Kpi({
             </button>
           ))}
       </span>
-      {note && <span className="kpi__note">{note}</span>}
+      {note && !(status && !chip) && <span className="kpi__note">{note}</span>}
+      {note && status && !chip && (
+        <Chip tone={colour} size="sm" className="kpi__chip">
+          {note}
+        </Chip>
+      )}
+      {chip && (
+        <Chip tone={chip.tone} size="sm" className="kpi__chip">
+          {chip.label}
+        </Chip>
+      )}
     </>
   )
   // `stat` — прежнее имя, на него смотрят браузерные сценарии
-  const className = `kpi stat${colour === 'neutral' ? '' : ` kpi--${colour}`}`
+  const className = 'kpi stat'
   if (!action && to)
     return (
       <Link className={`${className} kpi--link`} to={to}>
