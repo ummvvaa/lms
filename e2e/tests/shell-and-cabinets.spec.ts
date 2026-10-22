@@ -37,25 +37,64 @@ async function boxes(page: Page, selector: string) {
 
 // --- Каркас -----------------------------------------------------------------
 
-test("сайдбар тёмный, активный пункт залит акцентом, меню не уезжает при прокрутке", async ({
+test("сайдбар — светлое стекло, активный пункт с подложкой и полосой акцента, меню не уезжает при прокрутке", async ({
   browser,
 }) => {
   const page = await as(browser, "director_behavior");
   await page.goto("/table");
 
-  const nav = page.locator(".shell__nav");
-  const background = await nav.evaluate(
-    (node) => getComputedStyle(node).backgroundColor,
-  );
-  expect(background, "меню тёмное: графит текста").toBe("rgb(20, 19, 15)");
+  /** Цвет-токен, приведённый браузером к тому же виду, что у вычисленного стиля. */
+  const token = (name: string) =>
+    page.evaluate((name) => {
+      const probe = document.createElement("div");
+      probe.style.backgroundColor = `var(${name})`;
+      document.body.append(probe);
+      const value = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return value;
+    }, name);
+  const raw = (name: string) =>
+    page.evaluate(
+      (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
+      name,
+    );
+  /** Прозрачность цвета `rgb(...)`/`rgba(...)`: у непрозрачного — 1. */
+  const alphaOf = (color: string) => {
+    const parts = color.match(/[\d.]+/g) ?? [];
+    return parts.length > 3 ? Number(parts[3]) : 1;
+  };
 
-  // активный пункт залит акцентом целиком, плиток под иконками нет
+  const nav = page.locator(".shell__nav");
+  const look = await nav.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return {
+      background: style.backgroundColor,
+      filter: style.backdropFilter || style.getPropertyValue("-webkit-backdrop-filter"),
+      width: node.getBoundingClientRect().width,
+    };
+  });
+  const menuBg = await token("--menu-bg");
+  expect(look.background, "фон меню — токен --menu-bg").toBe(menuBg);
+  expect(alphaOf(look.background), "меню полупрозрачное: под ним видно полотно").toBeLessThan(1);
+  const blur = await raw("--side-blur");
+  expect(blur, "размытие стекла задано токеном").toBe("20px");
+  expect(look.filter, "под меню размытие стекла").toContain(`blur(${blur})`);
+  const sideWidth = await raw("--side-w");
+  expect(sideWidth, "ширина меню задана токеном").toBe("248px");
+  expect(Math.round(look.width), "меню во всю ширину токена").toBe(248);
+
+  // активный пункт — мягкая подложка акцента и полоса градиента у левого края;
+  // плиток под иконками нет
   const active = page.locator(".navlink--active").first();
   await expect(active).toBeVisible();
-  const activeBg = await active.evaluate(
-    (node) => getComputedStyle(node).backgroundColor,
+  const activeLook = await active.evaluate((node) => ({
+    background: getComputedStyle(node).backgroundColor,
+    bar: getComputedStyle(node, "::before").backgroundImage,
+  }));
+  expect(activeLook.background, "подложка активного пункта — токен --accent-bg").toBe(
+    await token("--accent-bg"),
   );
-  expect(activeBg, "активный пункт залит акцентом").toBe("rgb(226, 98, 47)");
+  expect(activeLook.bar, "полоса у края — градиент акцента").toContain("linear-gradient");
   await expect(page.locator(".navlink__icon")).toHaveCount(0);
 
   // прокручиваем страницу — блок пользователя остаётся на виду
@@ -83,11 +122,13 @@ test("подсказки «Что закрыть» собираются из н�
   const first = await as(browser, "student");
   await first.goto("/dashboard");
   const mine = (await (await first.request.get("/api/home/cues/")).json()) as {
-    cues: { code: string; eyebrow: string }[];
+    cues: { code: string; eyebrow: string; title: string }[];
   };
   expect(mine.cues.length, "у ученика есть что закрывать").toBeGreaterThan(0);
+  // сюжет в карточке — плашка с заголовком и одной кнопкой, по одной на место
   const closing = first.locator(".datacard", { hasText: "Что закрыть" }).first();
-  await expect(closing.locator(".rowline")).toHaveCount(mine.cues.length);
+  await expect(closing.locator(".stuhome__cue")).toHaveCount(mine.cues.length);
+  await expect(closing.locator(".stuhome__cue").first()).toContainText(mine.cues[0].title);
   // сюжет говорит словами справочника и живым числом
   expect(mine.cues[0].eyebrow.length).toBeGreaterThan(3);
   await first.close();
@@ -129,7 +170,7 @@ test("незакрытых мест нет — карточка сворачив
   await student.goto("/dashboard");
   const folded = student.locator(".datacard", { hasText: "Что закрыть" }).first();
   await expect(folded).toContainText("незакрытых мест нет");
-  await expect(folded.locator(".rowline")).toHaveCount(0);
+  await expect(folded.locator(".stuhome__cue")).toHaveCount(0);
   await student.close();
 
   // возвращаем как было: правила школы прогон за собой убирает
@@ -137,7 +178,7 @@ test("незакрытых мест нет — карточка сворачив
     await apiPatch(admin, `/api/home-cues/${row.id}/`, { is_active: true });
   const back = await as(browser, "student");
   await back.goto("/dashboard");
-  await expect(back.locator(".datacard", { hasText: "Что закрыть" }).first().locator(".rowline").first()).toBeVisible();
+  await expect(back.locator(".datacard", { hasText: "Что закрыть" }).first().locator(".stuhome__cue").first()).toBeVisible();
   await back.close();
   await admin.close();
 });
@@ -332,7 +373,9 @@ test("правая треть не пустует ни на одном каби�
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/dashboard");
     await page.waitForTimeout(600);
-    const aside = page.locator(".cabinet__aside").first();
+    // у директоров — колонка кабинета, у администратора — вторая колонка
+    // раскладки «две трети — треть» по макету
+    const aside = page.locator(".cabinet__aside, .lay-main > :nth-child(2)").first();
     await expect(aside, `${role}: нет вспомогательной колонки`).toBeVisible();
     const box = await aside.boundingBox();
     expect(

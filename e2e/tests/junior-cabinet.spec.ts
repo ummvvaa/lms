@@ -44,10 +44,13 @@ test("вход логином: меню 8–10 без поступления, г
   for (const item of ["Поступление", ...ADMISSION])
     await expect(menu, `пункт поступления «${item}»`).not.toContainText(item);
 
-  await expect(page.locator("h1")).toContainText("Главная");
+  // заголовок главной — приветствие по имени, а не название раздела
+  await expect(page.locator("h1")).toHaveText(/^Привет, \S/);
   for (const title of ["Средний балл", "Посещаемость", "Ближайший СОР", "Достижения"])
     await expect(page.locator("main"), `число «${title}»`).toContainText(title);
-  for (const card of ["Уроки сегодня", "Скоро", "Последние оценки"])
+  // уроки дня — главная карточка «следующий урок», а не карточка-список
+  await expect(page.locator("main section.card.stuhome__next"), "уроки сегодня").toBeVisible();
+  for (const card of ["Скоро", "Последние оценки"])
     await expect(page.locator(".datacard", { hasText: card }).first()).toBeVisible();
   const text = (await page.locator("main").innerText()).toLowerCase();
   for (const word of ["ielts", "sat", "вуз", "готовность"]) expect(text, `«${word}» на главной 8–10`).not.toContain(word);

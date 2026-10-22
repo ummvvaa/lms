@@ -41,11 +41,20 @@ test("оценки: по предметам, последние оценки, б
   const diag = watch(student);
   await student.goto("/grades");
   await expect(student.locator("h1")).toContainText("Оценки");
-  await expect(student.locator(".statrow .stat").first()).toBeVisible();
   await expect(student.locator(".datacard", { hasText: "По предметам" })).toBeVisible();
+  const body = (await (await student.request.get("/api/acad/me/grades/")).json()) as Record<string, unknown> & {
+    attendance: { pct: number | null };
+  };
+  // показатели стоят только со значением: посещаемость посчитана — её плитка на месте
+  const kpis = student.locator(".stugr__kpis .stat");
+  if (body.attendance.pct !== null) {
+    await expect(kpis.first()).toBeVisible();
+    await expect(kpis.filter({ hasText: "Посещаемость" }), "показатель «Посещаемость»").toHaveCount(1);
+  } else {
+    await expect(kpis.filter({ hasText: "Посещаемость" }), "посещаемости нет — нет и плитки").toHaveCount(0);
+  }
   const text = (await student.locator("main").innerText()).toLowerCase();
   for (const word of INTERNAL) expect(text, `ярлык «${word}» на экране ученика`).not.toContain(word);
-  const body = (await (await student.request.get("/api/acad/me/grades/")).json()) as Record<string, unknown>;
   const raw = JSON.stringify(body).toLowerCase();
   for (const word of ["critical", "needs_supervision", "group_avg", "average"])
     expect(raw, `ярлык «${word}» в ответе ученику`).not.toContain(word);
@@ -68,8 +77,9 @@ test("телефон: главная, расписание, оценки и ДЗ
     );
     expect(small, `${path}: кнопки ниже цели касания`).toBeLessThanOrEqual(2);
   }
-  // нижний бар ученика: главная, расписание, ДЗ и вузы (у 8–10 вместо вузов — оценки)
-  await expect(student.locator(".tabbar")).toContainText("Расписание");
+  // нижний бар ученика: главная, уроки (расписание коротким словом), ДЗ и вузы
+  // (у 8–10 вместо вузов — оценки)
+  await expect(student.locator(".tabbar")).toContainText("Уроки");
   await expect(student.locator(".tabbar")).toContainText("ДЗ");
   await student.context().close();
 });

@@ -139,6 +139,9 @@ test.describe("движение", () => {
     await page.goto(`/students/${first.results[0].id}`);
     const indicator = page.locator(".tabs__indicator");
     await expect(indicator).toBeVisible();
+    // подложка въезжает и при открытии экрана: ждём, пока это движение
+    // закончится, иначе первый кадр ловит её на полпути
+    await indicator.evaluate((e) => Promise.all(e.getAnimations().map((a) => a.finished)));
     // вкладок у роли две или три: щёлкаем последнюю, не третью
     const frames = await framesAfterClick(page, page.locator(".tabs__tab").last(), "tabs");
     expect(frames[frames.length - 1]).not.toEqual(frames[0]);
@@ -185,12 +188,10 @@ test.describe("движение", () => {
     // отпускаем в стороне: иначе это клик, и откроется диалог
     await page.mouse.move(box.x - 40, box.y + 80);
     await page.mouse.up();
-    // сдвиг на пиксель вниз; кадр может попасть на середину перехода,
-    // поэтому сравниваем не с точкой, а с направлением
-    const dy = Number(
-      pressed.match(/matrix\((?:[^,]+,\s*){5}([^)]+)\)/)?.[1] ?? 0,
-    );
-    expect(dy, pressed).toBeGreaterThan(0.5);
+    // кнопка чуть уменьшается на месте; кадр может попасть на середину
+    // перехода, поэтому сравниваем не с точкой, а с направлением
+    const scale = Number(pressed.match(/matrix\(\s*([^,]+),/)?.[1] ?? 1);
+    expect(scale, `кнопка уменьшается при нажатии: ${pressed}`).toBeLessThan(0.995);
 
     const row = page.locator(".tbl tbody tr").first();
     const cell = row.locator("td").first();
@@ -253,7 +254,7 @@ test.describe("движение", () => {
       await skeletons
         .first()
         .evaluate((e) => getComputedStyle(e).animationName),
-    ).toBe("pulse");
+    ).toBe("skel-run");
     await page.unroute("**/api/task-templates/**");
   });
 

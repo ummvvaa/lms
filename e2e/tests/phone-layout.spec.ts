@@ -11,6 +11,7 @@
  * настоящего сравнения с эталоном на этой ширине нет.
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { almatyDay } from "../helpers/academics";
 import { statePath } from "../helpers/auth-state";
 
 test.describe.configure({ mode: "serial", timeout: 240_000 });
@@ -67,13 +68,17 @@ const PHONE_SHOTS: Record<string, string[]> = {
 test.describe("телефон 390×844", () => {
   /** Разделы бара у каждой роли — те же четвёрки, что в `nav.ts`. */
   const TABS: Record<string, string[]> = {
-    student: ["Главная", "Расписание", "ДЗ", "Вузы"],
+    // подписи бара — короткие имена пунктов (`short` в `nav.ts`)
+    student: ["Главная", "Уроки", "ДЗ", "Вузы"],
     director_behavior: ["Дашборд", "Посещаемость", "Риски", "Предложения"],
     director_admission: ["Дашборд", "Таблица", "Предложения", "Справочник"],
     director_exam: ["Дашборд", "Таблица", "Предложения", "Mock Test"],
     director_talent: ["Дашборд", "Таблица", "Предложения", "Олимпиада"],
     director_sport: ["Дашборд", "Таблица", "Предложения", "Соревнования"],
     admin: ["Дашборд", "Пользователи", "Таблица", "Предложения"],
+    // куратор групп 11: очередь есть только у групп с поступлением
+    curator: ["Главная", "Очередь", "Ученики", "Посещ."],
+    teacher: ["Сегодня", "Уроки", "Журналы", "Проверка"],
   };
 
   test("нижний бар: четыре раздела роли, «Ещё» и запас под баром", async ({
@@ -81,6 +86,14 @@ test.describe("телефон 390×844", () => {
   }) => {
     for (const [role, labels] of Object.entries(TABS)) {
       const page = await as(browser, role, PHONE);
+      if (role === "curator") {
+        // без групп 11 у куратора нет «Очереди» ни в меню, ни в баре —
+        // группы прогона ему назначает посев (`seed.spec.ts`)
+        const me = (await (await page.request.get("/api/auth/me/")).json()) as {
+          has_admission?: boolean | null;
+        };
+        expect(me.has_admission, "куратор прогона ведёт группы 11 (посев)").toBe(true);
+      }
       await page.goto("/dashboard");
       await settle(page);
 
@@ -106,6 +119,8 @@ test.describe("телефон 390×844", () => {
           barTop: nav.getBoundingClientRect().top,
           barBottom: nav.getBoundingClientRect().bottom,
           viewport: window.innerHeight,
+          // бар парит над краем окна на отступ из токенов
+          gap: parseFloat(getComputedStyle(nav).bottom),
           padBottom: parseFloat(getComputedStyle(screen).paddingBottom),
           barHeight: nav.getBoundingClientRect().height,
           // самое нижнее содержимое экрана: оно не должно уходить под бар
@@ -114,12 +129,14 @@ test.describe("телефон 390×844", () => {
         };
       });
 
-      expect(measured.labels).toEqual([...labels, "Ещё"]);
+      expect(measured.labels, `${role}: разделы бара`).toEqual([...labels, "Ещё"]);
       for (const height of measured.heights)
         expect(height).toBeGreaterThanOrEqual(44);
-      // бар стоит у нижнего края окна, а не посреди страницы
+      // бар стоит у нижнего края окна, а не посреди страницы: между ним
+      // и краем только отступ `--tabbar-gap`
+      expect(measured.gap, `${role}: отступ бара от края`).toBeLessThanOrEqual(16);
       expect(
-        Math.abs(measured.barBottom - measured.viewport),
+        Math.abs(measured.barBottom + measured.gap - measured.viewport),
       ).toBeLessThanOrEqual(1);
       // запас снизу больше высоты бара: под ним не остаётся ничего,
       // до чего нельзя дотянуться
@@ -262,11 +279,8 @@ test.describe("телефон 390×844", () => {
     const csrf =
       (await director.context().cookies()).find((c) => c.name === "csrftoken")
         ?.value ?? "";
-    const shift = (days: number) => {
-      const date = new Date();
-      date.setDate(date.getDate() + days);
-      return date.toISOString().slice(0, 10);
-    };
+    // сроки — дни по Алматы: по UTC ночью «через два дня» сдвигалось на день
+    const shift = (days: number) => almatyDay(days);
     const created: number[] = [];
     for (const days of [2, 5, 9, 14, 40, 70]) {
       const made = await director.request.post("/api/tasks/", {

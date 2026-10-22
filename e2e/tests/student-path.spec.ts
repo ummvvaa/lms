@@ -132,15 +132,34 @@ test("сквозной путь ученика: от временного пар
   if (await firstRun.count()) await firstRun.click();
 
   // --- 3. Главная: задачи полным списком, убранные разделы ведут на главную ---
+  // карточка «Задачи» есть, пока есть открытые задачи; без них её нет вовсе —
+  // сверяем с тем же списком, что читает главная
+  const myTasks = (await (await learner.request.get("/api/tasks/my/")).json()) as {
+    status: string;
+  }[];
+  const openTasks = myTasks.filter((task) => task.status !== "done").length;
+  // главная читает задачи своим запросом: ждём его ответа, иначе «карточки нет»
+  // прошло бы ещё до загрузки
+  const tasksLoaded = learner.waitForResponse(
+    (response) => response.url().includes("/api/tasks/my/") && response.ok(),
+  );
   await learner.goto("/dashboard");
-  await expect(
-    learner.locator(".datacard", { hasText: "Задачи" }).first(),
-  ).toBeVisible();
+  await tasksLoaded;
+  await expect(learner.getByRole("heading", { level: 1 })).toContainText("Привет");
+  const tasksCard = learner.locator(".datacard").filter({
+    has: learner.locator(".datacard__title", { hasText: /^Задачи$/ }),
+  });
+  if (openTasks > 0) {
+    await expect(tasksCard.first(), "открытые задачи — карточка «Задачи» на главной").toBeVisible();
+    await expect(tasksCard.first().locator(".datacard__head .num")).toHaveText(String(openTasks));
+  } else {
+    await expect(tasksCard, "открытых задач нет — карточки «Задачи» нет").toHaveCount(0);
+  }
   for (const hidden of ["/journey", "/plan", "/roadmap"]) {
     await learner.goto(hidden);
     await expect(learner, `${hidden} уводит на главную`).toHaveURL(/\/dashboard/);
   }
-  step("главная с задачами");
+  step(openTasks > 0 ? "главная с задачами" : "главная без открытых задач");
 
   // --- 4. Анкета первого входа ------------------------------------------
   await learner.goto("/onboarding");
