@@ -140,7 +140,8 @@ export const NAV: Record<Role, NavItem[]> = {
     // --- основное: он сам и его путь ---
     { path: '/dashboard', label: tk('Главная'), icon: 'home', group: 'main' },
     // учебная часть: своя неделя уроков и свои оценки по предметам
-    { path: '/schedule', label: tk('Расписание'), icon: 'schedule', group: 'main' },
+    // в баре телефона — «Уроки», как в макете: «Расписание» не помещалось рядом с «Главной»
+    { path: '/schedule', label: tk('Расписание'), icon: 'schedule', group: 'main', short: tk('Уроки') },
     { path: '/grades', label: tk('Оценки'), icon: 'book', group: 'main' },
     // сдача ДЗ в LMS: к сдаче, на проверке, проверено — у всех параллелей
     { path: '/homework', label: tk('Домашние задания'), icon: 'homework', group: 'main', short: tk('ДЗ') },

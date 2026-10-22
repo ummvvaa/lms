@@ -212,8 +212,10 @@
 
   /* Нижний бар телефона: высота и запас под ним.
      `env(safe-area-inset-bottom)` — полоса жеста домой на телефонах без кнопки. */
-  --tabbar-h: 58px;
-  --tabbar-clear: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  --tabbar-h: 68px;
+  /* бар висит над краем экрана стеклянной плашкой: высота, нижний зазор и вырез телефона */
+  --tabbar-gap: 12px;
+  --tabbar-clear: calc(var(--tabbar-h) + var(--tabbar-gap) + env(safe-area-inset-bottom, 0px));
 
   /* Цвет домена — каждый директор узнаёт свой раздел по акценту.
      Цвета только из набора выше: своих у графиков и доменов нет. */
