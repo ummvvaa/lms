@@ -34,23 +34,16 @@ import DataTable, { type Column } from '../../components/DataTable'
 import EditDrawer from '../../components/EditDrawer'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
-import { Row, Rows, StatRow } from '../../components/patterns'
+import { Avatar, LIST_LIMIT, namesLine, Row, Rows, Segmented, ShowAll, StatRow } from '../../components/patterns'
 import Progress from '../../components/Progress'
-import {
-  Chip,
-  counted,
-  DataCard,
-  ErrorNote,
-  Kpi,
-  Loading,
-  ScreenHead,
-  ScreenTabs,
-} from '../../components/ui'
+import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tn } from '../../i18n'
 import { usePhone } from '../../phone'
 import { todayAlmaty } from '../../lib/dates'
 import { dateShort, dateWords } from './shared'
+import Icon from '../../layout/icons'
+import './teachers-layout.css'
 
 type Filter = 'all' | 'unmarked' | 'free'
 type Tab = 'lms' | 'schedule'
@@ -128,7 +121,15 @@ function ReassignDialog({
  * нет — заводится пустой, уроки придут с расписанием; журнал без учителя —
  * назначается; журнал другого учителя — передаётся с даты, как «Сменить учителя».
  */
-function AddGroupDialog({ teacher, subject, onClose }: { teacher: number; subject: AcadSubject; onClose: () => void }) {
+function AddGroupDialog({
+  teacher,
+  subject,
+  onClose,
+}: {
+  teacher: number
+  subject: AcadSubject
+  onClose: () => void
+}) {
   const options = useTeacherCourseOptions(teacher, subject.id)
   const add = useAddTeacherCourse()
   const [group, setGroup] = useState('')
@@ -143,7 +144,11 @@ function AddGroupDialog({ teacher, subject, onClose }: { teacher: number; subjec
   const transfer = Boolean(existing?.teacher && !existing.mine)
   const cohortTitle = (c: (typeof cohorts)[number]) =>
     c.course?.teacher
-      ? t('{name} · {students} · ведёт {teacher}', { name: c.name, students: counted(c.students, 'ученик|ученика|учеников'), teacher: c.course.teacher })
+      ? t('{name} · {students} · ведёт {teacher}', {
+          name: c.name,
+          students: counted(c.students, 'ученик|ученика|учеников'),
+          teacher: c.course.teacher,
+        })
       : t('{name} · {students}', { name: c.name, students: counted(c.students, 'ученик|ученика|учеников') })
   const submit = () =>
     chosen &&
@@ -206,7 +211,9 @@ function AddGroupDialog({ teacher, subject, onClose }: { teacher: number; subjec
                 : t('Журнал заведётся пустым: уроки появятся, когда предмет встанет в расписание группы')}
             </p>
           )}
-          {transfer && <Field kind="date" name="since" label={t('С даты')} value={since} onChange={setSince} />}
+          {transfer && (
+            <Field kind="date" name="since" label={t('С даты')} value={since} onChange={setSince} />
+          )}
           {error && <Chip tone="bad">{error}</Chip>}
           <div className="acad__actions">
             <Button onClick={submit} disabled={!chosen || Boolean(existing?.mine) || add.isPending}>
@@ -589,6 +596,8 @@ export default function Teachers() {
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [opened, setOpened] = useState<number | null>(null)
+  // на телефоне строка — карточкой: семьдесят карточек подряд — первые пять и «Показать все»
+  const phone = usePhone()
   if (isLoading) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
@@ -608,20 +617,22 @@ export default function Teachers() {
       title: t('Учитель'),
       width: 'auto',
       cell: (row) => (
-        <span>
-          <b>{row.full_name}</b>
-          <br />
-          {/* число журналов — здесь, а не колонкой: в таблице шириной в карточку
+        <span className="personcell">
+          <Avatar name={row.full_name} />
+          <span className="personcell__text">
+            <b>{row.full_name}</b>
+            {/* число журналов — здесь, а не колонкой: в таблице шириной в карточку
               колонка «Журналов» отнимала место у имени */}
-          <span className="t-note">
-            {[
-              row.subject_titles || t('предметы не назначены'),
-              row.journals
-                ? tn(row.journals, '{n} журнал|{n} журнала|{n} журналов').replace(' ', '\u00a0')
-                : '',
-            ]
-              .filter(Boolean)
-              .join(' · ')}
+            <span className="t-note">
+              {[
+                row.subject_titles || t('предметы не назначены'),
+                row.journals
+                  ? tn(row.journals, '{n} журнал|{n} журнала|{n} журналов').replace(' ', '\u00a0')
+                  : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
           </span>
         </span>
       ),
@@ -631,7 +642,7 @@ export default function Teachers() {
       key: 'hours',
       title: t('Уроков'),
       hint: t('Уроков в неделю'),
-      width: '112px',
+      width: '72px',
       align: 'right',
       cell: (row) =>
         row.hours ? <b className="num">{row.hours}</b> : <span className="t-note">{t('нет')}</span>,
@@ -641,7 +652,7 @@ export default function Teachers() {
       key: 'fill',
       title: t('Отмечено'),
       hint: t('Отмечено за неделю'),
-      width: '176px',
+      width: '152px',
       cell: (row) =>
         row.fill === null ? (
           <span className="t-note">{t('уроков не было')}</span>
@@ -661,10 +672,10 @@ export default function Teachers() {
       key: 'last',
       title: t('Последняя'),
       hint: t('Последняя отметка'),
-      width: '136px',
+      width: '120px',
       cell: (row) =>
         row.last_marked ? (
-          `${dateShort(row.last_marked.date)}, ${t('{slot} урок', { slot: row.last_marked.slot })}`
+          <span className="tch__nowrap">{`${dateShort(row.last_marked.date)}, ${t('{slot} урок', { slot: row.last_marked.slot })}`}</span>
         ) : (
           <span className="t-note">{t('не было')}</span>
         ),
@@ -672,7 +683,7 @@ export default function Teachers() {
     {
       key: 'act',
       title: '',
-      width: '112px',
+      width: '104px',
       actions: true,
       cell: (row) => (
         <Button variant="secondary" size="sm" onClick={() => setOpened(row.id)}>
@@ -682,7 +693,7 @@ export default function Teachers() {
     },
   ]
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Учителя')}
         actions={
@@ -701,12 +712,14 @@ export default function Teachers() {
                   })
                 }
               >
+                <Icon name="bell" size={14} />
                 {t('Напомнить всем, кто не отметил')}
               </Button>
             )}
             {data.may_create && (
               // заведение — на «Пользователях» с ролью «учитель»: одно место о человеке
               <Button size="sm" onClick={() => navigate('/users?new=teacher')}>
+                <Icon name="plus" size={14} />
                 {t('Завести учителя')}
               </Button>
             )}
@@ -717,14 +730,30 @@ export default function Teachers() {
         value={tab}
         onChange={setTab}
         items={[
-          { value: 'lms', label: t('Ведут в LMS {n}', { n: data.rows.length }) },
-          { value: 'schedule', label: t('Только расписание {n}', { n: data.schedule_only.length }) },
+          {
+            value: 'lms',
+            label: (
+              <>
+                {t('Ведут в LMS')}
+                <span className="tabs__n num">{data.rows.length}</span>
+              </>
+            ),
+          },
+          {
+            value: 'schedule',
+            label: (
+              <>
+                {t('Только расписание')}
+                <span className="tabs__n num">{data.schedule_only.length}</span>
+              </>
+            ),
+          },
         ]}
       />
       {tab === 'schedule' && <ScheduleOnlyTab rows={data.schedule_only} mayClose={data.may_close} />}
       {tab === 'lms' && (
         <>
-          <StatRow>
+          <div className="lay-4">
             <Kpi
               label={t('Учителей')}
               value={data.kpis.teachers}
@@ -744,74 +773,92 @@ export default function Teachers() {
               note={t('за эту неделю')}
             />
             <Kpi label={t('Замены на неделе')} value={data.kpis.substitutions || null} none={t('нет')} />
-          </StatRow>
-          <div className="acad__toolbar">
-            <div className="acad__chips">
-              {(
-                [
-                  ['all', t('Все'), data.rows.length],
-                  ['unmarked', t('Не отметили'), unmarkedAll.length],
-                  ['free', t('Без уроков'), data.rows.filter((row) => !row.hours).length],
-                ] as [Filter, string, number][]
-              ).map(([value, label, count]) => (
-                <Button
-                  key={value}
-                  variant={filter === value ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => {
+          </div>
+          {/* таблица на две трети, справа — главная карточка: кто не отметил */}
+          <div className="lay-3 tch__cols">
+            <section className="card card-pad lay-span2 tch__main">
+              <div className="filters">
+                <Segmented<Filter>
+                  value={filter}
+                  onChange={(value) => {
                     if (value !== filter) trackFilter()
                     setFilter(value)
                   }}
-                >
-                  {label} <Chip size="sm">{count}</Chip>
-                </Button>
-              ))}
-            </div>
-            <Field
-              usageFilter
-              kind="text"
-              name="search"
-              label={t('Найти учителя')}
-              value={search}
-              onChange={setSearch}
-            />
-          </div>
-          <div className="acad__stack">
-            <div className="card">
+                  usageFilter={false}
+                  label={t('Кого показать')}
+                  items={(
+                    [
+                      ['all', t('Все'), data.rows.length],
+                      ['unmarked', t('Не отметили'), unmarkedAll.length],
+                      ['free', t('Без уроков'), data.rows.filter((row) => !row.hours).length],
+                    ] as [Filter, string, number][]
+                  ).map(([value, label, count]) => ({
+                    value,
+                    label: (
+                      <>
+                        {label}
+                        <span className="tabs__n num">{count}</span>
+                      </>
+                    ),
+                  }))}
+                />
+                <Field
+                  usageFilter
+                  className="filters__search filters__end"
+                  kind="text"
+                  name="search"
+                  label={t('Найти учителя')}
+                  placeholder={t('Найти учителя')}
+                  value={search}
+                  onChange={setSearch}
+                />
+              </div>
               <DataTable
                 columns={columns}
                 rows={rows}
                 rowKey={(row) => row.id}
                 empty={t('никого не нашлось')}
                 onRowClick={(row) => setOpened(row.id)}
+                limit={phone ? LIST_LIMIT : undefined}
                 fit
               />
-            </div>
-            {unmarkedAll.length > 0 && (
-              <DataCard title={t('Не отмечено за неделю')} count={unmarkedAll.length}>
-                <Rows>
-                  {unmarkedAll.slice(0, 6).map((row) => (
-                    <Row
-                      key={row.id}
-                      avatar={row.full_name}
-                      tone="warn"
-                      title={row.short}
-                      note={row.unmarked
-                        .map(
-                          (lesson) =>
-                            `${lesson.subject.short_title.toLowerCase()} ${lesson.cohort.short_name} ${dateShort(lesson.date)}`,
-                        )
-                        .join('; ')}
-                      acts={
-                        <Button variant="secondary" size="sm" onClick={() => setOpened(row.id)}>
-                          {t('Открыть')}
-                        </Button>
-                      }
-                    />
+            </section>
+            <DataCard
+              className="card--beam tch__side"
+              title={t('Не отмечено за неделю')}
+              right={unmarkedAll.length ? <Chip tone="warn">{String(unmarkedAll.length)}</Chip> : undefined}
+              empty={unmarkedAll.length === 0 && t('всё отмечено')}
+            >
+              {/* учитель — плиткой, как в макете: имя и число уроков, ниже что не
+                  отмечено одной строкой, под ней действие во всю ширину */}
+              <div className="tch__unlist">
+                <ShowAll>
+                  {unmarkedAll.map((row) => (
+                    <div key={row.id} className="inner tch__un">
+                      <div className="tch__unhead">
+                        <Avatar name={row.full_name} />
+                        <b className="tch__unname">{row.short}</b>
+                        <Chip tone="warn" size="sm">
+                          {tn(row.unmarked.length, '{n} ур.|{n} ур.|{n} ур.')}
+                        </Chip>
+                      </div>
+                      <span className="t-note tch__unwhat">
+                        {namesLine(
+                          row.unmarked.map(
+                            (lesson) =>
+                              `${lesson.subject.short_title.toLowerCase()} ${lesson.cohort.short_name} ${dateShort(lesson.date)}`,
+                          ),
+                          1,
+                        )}
+                      </span>
+                      <Button variant="secondary" size="sm" onClick={() => setOpened(row.id)}>
+                        {t('Открыть')}
+                      </Button>
+                    </div>
                   ))}
-                </Rows>
-              </DataCard>
-            )}
+                </ShowAll>
+              </div>
+            </DataCard>
           </div>
         </>
       )}

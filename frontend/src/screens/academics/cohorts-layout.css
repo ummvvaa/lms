@@ -1,0 +1,96 @@
+/* Подгруппы и потоки по макету: группы и потоки — две колонки рядом,
+   подгруппы — чипами, поток — строкой списка. */
+.coh__cols {
+  align-items: start;
+}
+
+.coh__cols > .datacard {
+  margin: 0;
+}
+
+.coh__code {
+  white-space: nowrap;
+}
+
+.coh__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space) * 1);
+  min-width: 0;
+}
+
+.coh__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 1.5);
+}
+
+/* чип подгруппы — кнопка в виде чипа акцентом, как `.c-chip.acc` макета */
+body [data-slot='button'][data-variant][data-size].coh__chip {
+  height: calc(var(--space) * 6);
+  min-height: calc(var(--space) * 6);
+  padding: 0 calc(var(--space) * 2);
+  border-radius: var(--radius-pill);
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+  font-size: var(--type-note);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+body [data-slot='button'][data-variant][data-size].coh__chip:hover {
+  background: var(--glint);
+}
+
+.coh__streams {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: calc(var(--space) * 1);
+}
+
+@media (max-width: 759px) {
+  .datacard__head .filters {
+    flex: 1 1 100%;
+  }
+
+  /* на телефоне в чип должен попадать палец */
+  body [data-slot='button'][data-variant][data-size].coh__chip {
+    height: var(--touch);
+    min-height: var(--touch);
+  }
+}
+
+/* список потоков — в той же высоте, что таблица групп (`.tblwrap`), прокрутка внутри */
+.coh__scroll {
+  max-height: 68vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 759px) {
+  .coh__scroll {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* таблица групп в половину ширины: поля клеток уже, чтобы два чипа подгрупп
+   стояли в ряд, и выше — чтобы чипы не липли к линиям. Только на ноутбуке:
+   на телефоне строка таблицы — карточкой */
+@media (min-width: 760px) {
+  .coh__cols .tbl th,
+  .coh__cols .tbl td {
+    padding-inline: calc(var(--space) * 2);
+  }
+
+  .coh__cols .tbl th:first-child,
+  .coh__cols .tbl td:first-child {
+    padding-left: calc(var(--space) * 4);
+  }
+
+  .coh__cols .tbl td {
+    padding-block: calc(var(--space) * 2);
+  }
+}

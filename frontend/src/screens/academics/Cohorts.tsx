@@ -30,7 +30,8 @@ import { useStudents } from '../../api/hooks'
 import EditDrawer from '../../components/EditDrawer'
 import Field from '../../components/Field'
 import RowMenu, { RowMenuItem } from '../../components/RowMenu'
-import { Segmented, StatRow } from '../../components/patterns'
+import { LIST_LIMIT, Row, Rows, Segmented, ShowAll } from '../../components/patterns'
+import { usePhone } from '../../phone'
 import DataTable, { type Column } from '../../components/DataTable'
 import WizardSteps from '../../components/WizardSteps'
 import SubgroupMembersImport from './SubgroupMembersImport'
@@ -38,6 +39,7 @@ import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '..
 import { Button } from '../../components/ui/button'
 import { t, tk } from '../../i18n'
 import { todayAlmaty } from '../../lib/dates'
+import './cohorts-layout.css'
 
 /** Как поделили — сервер хранит строку как есть: уходит русский исходник,
  *  переводится при показе. Переведённое слово записалось бы в базу на языке
@@ -49,7 +51,15 @@ export const IMPORTED_RULE = tk('по файлу школы')
 type GroupRow = CohortsScreen['groups'][number]
 
 /** Список учеников с галочками — в форме деления и правки состава. */
-function Checklist({ rows, picked, onChange }: { rows: AcadStudent[]; picked: Set<number>; onChange: (next: Set<number>) => void }) {
+function Checklist({
+  rows,
+  picked,
+  onChange,
+}: {
+  rows: AcadStudent[]
+  picked: Set<number>
+  onChange: (next: Set<number>) => void
+}) {
   return (
     <div className="acad__checklist">
       {rows.map((row) => (
@@ -72,7 +82,23 @@ function Checklist({ rows, picked, onChange }: { rows: AcadStudent[]; picked: Se
 }
 
 /** Кнопки «Назад» и «Дальше» под шагом панели. */
-function StepActions({ step, last, onBack, onNext, onDone, busy, doneLabel }: { step: number; last: number; onBack: () => void; onNext: () => void; onDone: () => void; busy: boolean; doneLabel: string }) {
+function StepActions({
+  step,
+  last,
+  onBack,
+  onNext,
+  onDone,
+  busy,
+  doneLabel,
+}: {
+  step: number
+  last: number
+  onBack: () => void
+  onNext: () => void
+  onDone: () => void
+  busy: boolean
+  doneLabel: string
+}) {
   return (
     <>
       {step < last ? (
@@ -92,7 +118,17 @@ function StepActions({ step, last, onBack, onNext, onDone, busy, doneLabel }: { 
 }
 
 /** Разделить группу: шаг 1 — группа и предмет, шаг 2 — на сколько и как, шаг 3 — кто куда. */
-function SplitDrawer({ groups, subjects, initial, onClose }: { groups: GroupRow[]; subjects: { id: number; title: string }[]; initial: string; onClose: () => void }) {
+function SplitDrawer({
+  groups,
+  subjects,
+  initial,
+  onClose,
+}: {
+  groups: GroupRow[]
+  subjects: { id: number; title: string }[]
+  initial: string
+  onClose: () => void
+}) {
   const split = useSplitGroup()
   const [step, setStep] = useState(1)
   const [group, setGroup] = useState(initial || groups[0]?.code || '')
@@ -105,13 +141,21 @@ function SplitDrawer({ groups, subjects, initial, onClose }: { groups: GroupRow[
   const found = groups.find((g) => g.code === group)
   const students = useStudents({ group: found ? String(found.id) : '', page_size: 200 })
   const rows: AcadStudent[] = useMemo(
-    () => (students.data?.results ?? []).map((s) => ({ id: s.id, full_name: s.full_name, short: s.full_name, group: s.group_code ?? '' })),
+    () =>
+      (students.data?.results ?? []).map((s) => ({
+        id: s.id,
+        full_name: s.full_name,
+        short: s.full_name,
+        group: s.group_code ?? '',
+      })),
     [students.data],
   )
   // раскладка по умолчанию: по списку — подряд равными частями
   useEffect(() => {
     const size = Math.ceil(rows.length / parts)
-    setAssign(new Map(rows.map((row, index) => [row.id, Math.min(parts, Math.floor(index / Math.max(1, size)) + 1)])))
+    setAssign(
+      new Map(rows.map((row, index) => [row.id, Math.min(parts, Math.floor(index / Math.max(1, size)) + 1)])),
+    )
   }, [rows, parts, rule])
   const already = found?.subgroups.some((c) => String(c.subject?.id) === subject)
   const submit = () => {
@@ -125,35 +169,96 @@ function SplitDrawer({ groups, subjects, initial, onClose }: { groups: GroupRow[
       { group, subject: Number(subject), parts: lists, since, rule: RULE_TITLE[rule] },
       {
         onSuccess: () => {
-          toast.success(t('{group} разделена: {parts}', { group, parts: lists.map((list) => list.length).join(' / ') }))
+          toast.success(
+            t('{group} разделена: {parts}', { group, parts: lists.map((list) => list.length).join(' / ') }),
+          )
           onClose()
         },
         onError: (e) => setError(e.message),
       },
     )
   }
-  const counts = Array.from({ length: parts }, (_, i) => rows.filter((row) => (assign.get(row.id) ?? 1) === i + 1).length)
+  const counts = Array.from(
+    { length: parts },
+    (_, i) => rows.filter((row) => (assign.get(row.id) ?? 1) === i + 1).length,
+  )
   return (
     <EditDrawer
       open
       onClose={onClose}
       title={t('Разделить группу')}
       sub={found ? `${found.code} · ${counted(found.students, 'ученик|ученика|учеников')}` : undefined}
-      footer={<StepActions step={step} last={3} onBack={() => setStep(step - 1)} onNext={() => setStep(step + 1)} onDone={submit} busy={split.isPending} doneLabel={t('Разделить')} />}
+      footer={
+        <StepActions
+          step={step}
+          last={3}
+          onBack={() => setStep(step - 1)}
+          onNext={() => setStep(step + 1)}
+          onDone={submit}
+          busy={split.isPending}
+          doneLabel={t('Разделить')}
+        />
+      }
     >
       <WizardSteps steps={[t('Что делим'), t('На сколько'), t('Кто куда')]} current={step} />
       {step === 1 && (
         <div className="acad__form">
-          <Field kind="select" name="group" label={t('Группа')} value={group} onChange={setGroup} options={groups.map((g) => ({ value: g.code, title: `${g.code} · ${counted(g.students, 'ученик|ученика|учеников')}` }))} />
-          <Field kind="select" name="subject" label={t('Предмет')} value={subject} onChange={setSubject} options={subjects.map((s) => ({ value: String(s.id), title: s.title }))} />
-          {already && <Chip tone="warn">{t('Подгруппы по этому предмету уже есть: новое деление заменит их с выбранной даты')}</Chip>}
+          <Field
+            kind="select"
+            name="group"
+            label={t('Группа')}
+            value={group}
+            onChange={setGroup}
+            options={groups.map((g) => ({
+              value: g.code,
+              title: `${g.code} · ${counted(g.students, 'ученик|ученика|учеников')}`,
+            }))}
+          />
+          <Field
+            kind="select"
+            name="subject"
+            label={t('Предмет')}
+            value={subject}
+            onChange={setSubject}
+            options={subjects.map((s) => ({ value: String(s.id), title: s.title }))}
+          />
+          {already && (
+            <Chip tone="warn">
+              {t('Подгруппы по этому предмету уже есть: новое деление заменит их с выбранной даты')}
+            </Chip>
+          )}
         </div>
       )}
       {step === 2 && (
         <div className="acad__form">
-          <Segmented<'2' | '3'> usageFilter={false} value={String(parts) as '2' | '3'} onChange={(value) => setParts(Number(value) as 2 | 3)} label={t('Подгрупп')} items={[{ value: '2', label: t('Две') }, { value: '3', label: t('Три') }]} />
-          <Segmented usageFilter={false} value={rule} onChange={setRule} label={t('Как делить')} items={[{ value: 'alpha', label: t('По списку') }, { value: 'level', label: t('По уровню английского') }, { value: 'hand', label: t('Вручную') }]} />
-          <Field kind="date" name="since" label={t('Деление действует с')} value={since} onChange={setSince} />
+          <Segmented<'2' | '3'>
+            usageFilter={false}
+            value={String(parts) as '2' | '3'}
+            onChange={(value) => setParts(Number(value) as 2 | 3)}
+            label={t('Подгрупп')}
+            items={[
+              { value: '2', label: t('Две') },
+              { value: '3', label: t('Три') },
+            ]}
+          />
+          <Segmented
+            usageFilter={false}
+            value={rule}
+            onChange={setRule}
+            label={t('Как делить')}
+            items={[
+              { value: 'alpha', label: t('По списку') },
+              { value: 'level', label: t('По уровню английского') },
+              { value: 'hand', label: t('Вручную') },
+            ]}
+          />
+          <Field
+            kind="date"
+            name="since"
+            label={t('Деление действует с')}
+            value={since}
+            onChange={setSince}
+          />
         </div>
       )}
       {step === 3 &&
@@ -161,7 +266,9 @@ function SplitDrawer({ groups, subjects, initial, onClose }: { groups: GroupRow[
           <Loading />
         ) : (
           <div className="acad__form">
-            <span className="t-caps">{counts.map((n, i) => `${t('Подгруппа {number}', { number: i + 1 })} — ${n}`).join(' · ')}</span>
+            <span className="t-caps">
+              {counts.map((n, i) => `${t('Подгруппа {number}', { number: i + 1 })} — ${n}`).join(' · ')}
+            </span>
             <div className="acad__checklist">
               {rows.map((row) => (
                 <Field
@@ -171,7 +278,10 @@ function SplitDrawer({ groups, subjects, initial, onClose }: { groups: GroupRow[
                   label={row.full_name}
                   value={String(assign.get(row.id) ?? 1)}
                   onChange={(value) => setAssign((old) => new Map(old).set(row.id, Number(value)))}
-                  options={Array.from({ length: parts }, (_, i) => ({ value: String(i + 1), title: t('Подгруппа {number}', { number: i + 1 }) }))}
+                  options={Array.from({ length: parts }, (_, i) => ({
+                    value: String(i + 1),
+                    title: t('Подгруппа {number}', { number: i + 1 }),
+                  }))}
                 />
               ))}
             </div>
@@ -206,7 +316,11 @@ function StreamDrawer({ stream, onClose }: { stream?: AcadCohort; onClose: () =>
       toast.success(stream ? t('Поток сохранён') : t('Поток собран'))
       onClose()
     }
-    if (stream) update.mutate({ id: stream.id, name, parts: [...picked] }, { onSuccess: done, onError: (e) => setError(e.message) })
+    if (stream)
+      update.mutate(
+        { id: stream.id, name, parts: [...picked] },
+        { onSuccess: done, onError: (e) => setError(e.message) },
+      )
     else make.mutate({ name, parts: [...picked] }, { onSuccess: done, onError: (e) => setError(e.message) })
   }
   return (
@@ -214,12 +328,31 @@ function StreamDrawer({ stream, onClose }: { stream?: AcadCohort; onClose: () =>
       open
       onClose={onClose}
       title={stream ? stream.name : t('Собрать поток')}
-      footer={<StepActions step={step} last={2} onBack={() => setStep(1)} onNext={() => setStep(2)} onDone={submit} busy={make.isPending || update.isPending} doneLabel={stream ? t('Сохранить') : t('Собрать')} />}
+      footer={
+        <StepActions
+          step={step}
+          last={2}
+          onBack={() => setStep(1)}
+          onNext={() => setStep(2)}
+          onDone={submit}
+          busy={make.isPending || update.isPending}
+          doneLabel={stream ? t('Сохранить') : t('Собрать')}
+        />
+      }
     >
       <WizardSteps steps={[t('Название'), t('Кто входит')]} current={step} />
       {step === 1 && (
         <div className="acad__form">
-          <Field kind="text" name="name" label={t('Название')} value={name} onChange={setName} placeholder={t('Например: IELTS · BOSTON + CHICAGO')} autoFocus error={error || undefined} />
+          <Field
+            kind="text"
+            name="name"
+            label={t('Название')}
+            value={name}
+            onChange={setName}
+            placeholder={t('Например: IELTS · BOSTON + CHICAGO')}
+            autoFocus
+            error={error || undefined}
+          />
         </div>
       )}
       {step === 2 &&
@@ -268,7 +401,11 @@ function SubgroupDrawer({ id, onClose }: { id: number; onClose: () => void }) {
       open
       onClose={onClose}
       title={data?.name ?? t('Подгруппа')}
-      sub={data ? `${data.subject?.title ?? ''}${data.rule ? ` · ${t(data.rule)}` : ''}${used.length ? ` · ${t('в расписании:')} ${used.map((c) => c.title).join('; ')}` : ''}` : undefined}
+      sub={
+        data
+          ? `${data.subject?.title ?? ''}${data.rule ? ` · ${t(data.rule)}` : ''}${used.length ? ` · ${t('в расписании:')} ${used.map((c) => c.title).join('; ')}` : ''}`
+          : undefined
+      }
       footer={
         <>
           <Button
@@ -312,36 +449,40 @@ function SubgroupDrawer({ id, onClose }: { id: number; onClose: () => void }) {
         <div className="acad__form">
           <span className="t-caps">{`${t('Состав')} · ${counted(picked.size, 'ученик|ученика|учеников')}`}</span>
           <Checklist rows={data.candidates ?? []} picked={picked} onChange={setPicked} />
-          <Field kind="date" name="since" label={t('Перевод действует с')} value={since} onChange={setSince} />
+          <Field
+            kind="date"
+            name="since"
+            label={t('Перевод действует с')}
+            value={since}
+            onChange={setSince}
+          />
         </div>
       )}
     </EditDrawer>
   )
 }
 
-/** «Английский: 1 — 24, 2 — 24; Информатика: 1 — 12, 2 — 12» кнопками по подгруппам. */
+/** Подгруппы строки чипами, как в макете: «Английский язык 1 · 8 уч.», по предметам
+ *  подряд; чип открывает подгруппу. Переносится между чипами, не посреди. */
 function SubgroupsLine({ rows, onOpen }: { rows: AcadCohort[]; onOpen: (id: number) => void }) {
-  const bySubject = new Map<string, AcadCohort[]>()
-  for (const cohort of rows) {
-    const key = cohort.subject?.title ?? ''
-    bySubject.set(key, [...(bySubject.get(key) ?? []), cohort])
-  }
+  const sorted = [...rows].sort(
+    (a, b) =>
+      (a.subject?.title ?? '').localeCompare(b.subject?.title ?? '') || (a.number ?? 0) - (b.number ?? 0),
+  )
   return (
-    <span className="acad__wrapline">
-      {/* предмет с подгруппами переносится между подгруппами: две-три кнопки
-          в ряд шире колонки и уезжали за её край */}
-      {[...bySubject.entries()].map(([subject, cohorts]) => (
-        <span key={subject} className="acad__wrapline">
-          <span className="t-note">{subject}:</span>
-          {cohorts
-            .sort((a, b) => (a.number ?? 0) - (b.number ?? 0))
-            .map((cohort) => (
-              // ссылка без размера `sm`: с ним пять подгрупп занимали пять строк высотой кнопки
-              <Button key={cohort.id} variant="link" className="cohorts__link num" onClick={() => onOpen(cohort.id)}>
-                {`${t('подгр. {number}', { number: cohort.number ?? '' })} · ${t('{count} уч.', { count: cohort.students })}`}
-              </Button>
-            ))}
-        </span>
+    <span className="coh__chips">
+      {sorted.map((cohort) => (
+        <Button
+          key={cohort.id}
+          variant="ghost"
+          size="sm"
+          className="coh__chip num"
+          title={`${cohort.subject?.title ?? ''} · ${t('{count} уч.', { count: cohort.students })}`}
+          aria-label={`${cohort.subject?.title ?? ''} ${cohort.number ?? ''} · ${t('{count} уч.', { count: cohort.students })}`}
+          onClick={() => onOpen(cohort.id)}
+        >
+          {`${cohort.subject?.short_title ?? ''} ${cohort.number ?? ''} · ${cohort.students}`}
+        </Button>
       ))}
     </span>
   )
@@ -383,28 +524,62 @@ export default function Cohorts() {
   const { data, isLoading, error } = useCohorts()
   const remove = useDeleteCohort()
   const [search, setSearch] = useState('')
-  const [dialog, setDialog] = useState<{ kind: 'split'; group: string } | { kind: 'stream'; stream?: AcadCohort } | { kind: 'sub'; id: number } | { kind: 'members' } | null>(null)
+  const [dialog, setDialog] = useState<
+    | { kind: 'split'; group: string }
+    | { kind: 'stream'; stream?: AcadCohort }
+    | { kind: 'sub'; id: number }
+    | { kind: 'members' }
+    | null
+  >(null)
+  // на телефоне строка группы — карточкой: первые пять и «Показать все»
+  const phone = usePhone()
   if (isLoading) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
   const groups = data.groups.filter((g) => !search || g.code.toLowerCase().includes(search.toLowerCase()))
+  // группы — в половину ширины, как в макете: группа, ученики, подгруппы чипами
+  // (под ними — потоки группы тихой строкой) и «Разделить»
   const columns: Column<GroupRow>[] = [
-    // узкие колонки — числом: доля от узкой таблицы резала название группы
-    { key: 'group', title: t('Группа'), width: '144px', cell: (g) => <b>{g.code}</b>, sortBy: (g) => g.code },
-    { key: 'students', title: t('Уч.'), hint: t('Учеников'), width: '88px', align: 'right', cell: (g) => <b className="num">{g.students}</b>, sortBy: (g) => g.students },
+    {
+      key: 'group',
+      title: t('Группа'),
+      width: '120px',
+      cell: (g) => <b className="coh__code">{g.code}</b>,
+      sortBy: (g) => g.code,
+    },
+    {
+      key: 'students',
+      title: t('Уч.'),
+      hint: t('Учеников'),
+      width: '64px',
+      align: 'right',
+      cell: (g) => <b className="num">{g.students}</b>,
+      sortBy: (g) => g.students,
+    },
     {
       key: 'subgroups',
       title: t('Подгруппы'),
-      // текстовые колонки делят поровну всё, что осталось от узких
       width: 'auto',
-      cell: (g) => (g.subgroups.length ? <SubgroupsLine rows={g.subgroups} onOpen={(id) => setDialog({ kind: 'sub', id })} /> : <span className="t-note">{t('учится целиком')}</span>),
+      cell: (g) => (
+        <span className="coh__cell">
+          {g.subgroups.length ? (
+            <SubgroupsLine rows={g.subgroups} onOpen={(id) => setDialog({ kind: 'sub', id })} />
+          ) : (
+            <span className="t-note">{t('учится целиком')}</span>
+          )}
+          {g.streams.length > 0 && (
+            <span className="t-note coh__streams">
+              {t('В потоках')}: <WrapList items={g.streams} />
+            </span>
+          )}
+        </span>
+      ),
     },
-    { key: 'streams', title: t('В потоках'), width: 'auto', cell: (g) => (g.streams.length ? <WrapList items={g.streams} /> : <span className="t-note">{t('нет')}</span>) },
     {
       // кнопка в строке не сжимается вместе с таблицей: ширина числом, не долей
       key: 'split',
       title: '',
-      width: '128px',
+      width: '104px',
       actions: true,
       cell: (g) => (
         <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'split', group: g.code })}>
@@ -413,56 +588,11 @@ export default function Cohorts() {
       ),
     },
   ]
-  const streamColumns: Column<AcadCohort>[] = [
-    // текстовые колонки делят поровну всё, что осталось от узких
-    { key: 'name', title: t('Поток'), width: 'auto', cell: (s) => <b>{s.name}</b>, sortBy: (s) => s.name },
-    { key: 'students', title: t('Уч.'), hint: t('Учеников'), width: '88px', align: 'right', cell: (s) => <b className="num">{s.students}</b>, sortBy: (s) => s.students },
-    {
-      key: 'parts',
-      title: t('Части'),
-      width: 'auto',
-      cell: (s) =>
-        s.parts?.length || s.subgroups?.length ? (
-          <span className="acad__wrapline">
-            {s.parts?.length ? <WrapList items={s.parts.map((p) => p.name)} /> : null}
-            {/* подгруппы внутри потока: набираются из всех его групп */}
-            {s.subgroups?.length ? <SubgroupsLine rows={s.subgroups} onOpen={(id) => setDialog({ kind: 'sub', id })} /> : null}
-          </span>
-        ) : (
-          <span className="t-note">{t('нет')}</span>
-        ),
-    },
-    {
-      key: 'used',
-      title: t('В расписании'),
-      width: 'auto',
-      cell: (s) => ((s.used as string[] | undefined)?.length ? <WrapList items={s.used as string[]} sep=";" /> : <span className="t-note">{t('не используется')}</span>),
-    },
-    {
-      // «Изменить» и меню строки в ряд: ширина числом под обе кнопки,
-      // иначе на узкой доле колонки они уезжали за край карточки
-      key: 'acts',
-      title: '',
-      width: '152px',
-      actions: true,
-      cell: (s) => (
-        <>
-          <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'stream', stream: s })}>
-            {t('Изменить')}
-          </Button>
-          <RowMenu>
-            <RowMenuItem risk disabled={Boolean((s.used as string[] | undefined)?.length)} onClick={() => remove.mutate(s.id, { onSuccess: () => toast.success(t('Поток удалён')), onError: (e) => toast.error(e.message) })}>
-              {t('Удалить поток')}
-            </RowMenuItem>
-          </RowMenu>
-        </>
-      ),
-    },
-  ]
   return (
-    <div className="cohorts">
+    <div className="cohorts lay-screen">
       <ScreenHead
         title={t('Подгруппы и потоки')}
+        subtitle={t('Подгруппа — часть группы на одном предмете. Поток — несколько групп на одном уроке')}
         actions={
           <>
             {/* английский: кто в какой подгруппе — списком школы, а не галочками по одному */}
@@ -478,26 +608,138 @@ export default function Cohorts() {
           </>
         }
       />
-      <StatRow>
-        <Kpi label={t('Групп')} value={data.kpis.groups} note={counted(data.kpis.students, 'ученик|ученика|учеников')} />
-        <Kpi label={t('Подгрупп')} value={data.kpis.subgroups || null} none={t('нет')} note={data.kpis.subgroups ? `${t('в группах:')} ${data.kpis.subgroup_groups}` : undefined} />
+      <div className="lay-4">
+        <Kpi
+          label={t('Групп')}
+          value={data.kpis.groups}
+          note={counted(data.kpis.students, 'ученик|ученика|учеников')}
+        />
+        <Kpi
+          label={t('Подгрупп')}
+          value={data.kpis.subgroups || null}
+          none={t('нет')}
+          note={data.kpis.subgroups ? `${t('в группах:')} ${data.kpis.subgroup_groups}` : undefined}
+        />
         <Kpi label={t('Потоков')} value={data.kpis.streams || null} none={t('нет')} />
-        <Kpi label={t('Не в подгруппе')} value={data.kpis.not_split || null} none={t('нет')} note={data.kpis.not_split ? t('учеников без подгруппы по предмету') : t('все распределены')} tone={data.kpis.not_split ? 'warn' : undefined} />
-      </StatRow>
-      <div className="acad__stack">
-        <DataCard title={t('Группы')} count={groups.length || undefined} right={<Field usageFilter kind="text" name="search" label={t('Найти группу')} value={search} onChange={setSearch} />}>
-          <DataTable columns={columns} rows={groups} rowKey={(g) => g.id} empty={t('групп не найдено')} fit />
+        <Kpi
+          label={t('Не в подгруппе')}
+          value={data.kpis.not_split || null}
+          none={t('нет')}
+          note={data.kpis.not_split ? t('учеников без подгруппы по предмету') : t('все распределены')}
+          tone={data.kpis.not_split ? 'warn' : 'good'}
+        />
+      </div>
+      <div className="lay-2 coh__cols">
+        <DataCard
+          title={t('Группы')}
+          count={groups.length || undefined}
+          right={
+            <div className="filters">
+              <Field
+                usageFilter
+                className="filters__search"
+                kind="text"
+                name="search"
+                label={t('Найти группу')}
+                placeholder={t('Найти группу')}
+                value={search}
+                onChange={setSearch}
+              />
+            </div>
+          }
+        >
+          <DataTable
+            columns={columns}
+            rows={groups}
+            rowKey={(g) => g.id}
+            empty={t('групп не найдено')}
+            limit={phone ? LIST_LIMIT : undefined}
+            fit
+          />
         </DataCard>
         <DataCard
           title={t('Потоки')}
           count={data.streams.length || undefined}
           empty={data.streams.length === 0 && t('потоков нет')}
-          emptyAction={data.streams.length === 0 ? <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'stream' })}>{t('Собрать')}</Button> : undefined}
+          emptyAction={
+            data.streams.length === 0 ? (
+              <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'stream' })}>
+                {t('Собрать')}
+              </Button>
+            ) : undefined
+          }
         >
-          <DataTable columns={streamColumns} rows={data.streams} rowKey={(s) => s.id} fit />
+          {/* список потоков прокручивается внутри карточки, как таблица групп рядом:
+              обе колонки кончаются на одной высоте; на телефоне — первые пять и «Показать все» */}
+          <div className="coh__scroll">
+            <Rows>
+              <ShowAll limit={phone ? LIST_LIMIT : data.streams.length}>
+                {data.streams.map((s) => {
+                  const used = (s.used as string[] | undefined) ?? []
+                  return (
+                    <Row
+                      key={s.id}
+                      icon="layers"
+                      title={s.name}
+                      note={
+                        <span className="coh__cell">
+                          {s.parts?.length ? <WrapList items={s.parts.map((p) => p.name)} /> : null}
+                          {/* подгруппы внутри потока: набираются из всех его групп */}
+                          {s.subgroups?.length ? (
+                            <SubgroupsLine
+                              rows={s.subgroups}
+                              onOpen={(id) => setDialog({ kind: 'sub', id })}
+                            />
+                          ) : null}
+                          {used.length ? (
+                            <WrapList items={used} sep=";" />
+                          ) : (
+                            <span>{t('не используется')}</span>
+                          )}
+                        </span>
+                      }
+                      right={<Chip size="sm">{t('{count} уч.', { count: s.students })}</Chip>}
+                      acts={
+                        <>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setDialog({ kind: 'stream', stream: s })}
+                          >
+                            {t('Изменить')}
+                          </Button>
+                          <RowMenu>
+                            <RowMenuItem
+                              risk
+                              disabled={used.length > 0}
+                              onClick={() =>
+                                remove.mutate(s.id, {
+                                  onSuccess: () => toast.success(t('Поток удалён')),
+                                  onError: (e) => toast.error(e.message),
+                                })
+                              }
+                            >
+                              {t('Удалить поток')}
+                            </RowMenuItem>
+                          </RowMenu>
+                        </>
+                      }
+                    />
+                  )
+                })}
+              </ShowAll>
+            </Rows>
+          </div>
         </DataCard>
       </div>
-      {dialog?.kind === 'split' && <SplitDrawer groups={data.groups} subjects={data.subjects} initial={dialog.group} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'split' && (
+        <SplitDrawer
+          groups={data.groups}
+          subjects={data.subjects}
+          initial={dialog.group}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {dialog?.kind === 'stream' && <StreamDrawer stream={dialog.stream} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'sub' && <SubgroupDrawer id={dialog.id} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'members' && <SubgroupMembersImport onClose={() => setDialog(null)} />}

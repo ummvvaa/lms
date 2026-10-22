@@ -1,0 +1,64 @@
+/* Расписание по макету: выбор вида и недели, тихие строки и сама неделя —
+   одной карточкой; сетка внутри неё — вложенной подложкой. */
+.sched__week {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 4);
+  min-width: 0;
+}
+
+/* вид и ключ слева, неделя справа; на узком окне — целиком на следующую строку */
+.sched__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 3);
+  min-width: 0;
+}
+
+/* ошибку звонков `WeekGrid` рисует своей карточкой; здесь она — тихая строка выше */
+.sched__week .acad__nobells {
+  display: none;
+}
+
+.sched__link {
+  color: var(--accent-ink);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sched__clash {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 3);
+}
+
+.sched__clash .warnline {
+  flex: 1 1 calc(var(--space) * 80);
+  margin: 0;
+}
+
+.sched__week .warnline {
+  margin: 0;
+}
+
+/* день недели на телефоне: сегменты дней над списком без своего большого разрыва */
+.sched__week .segrow {
+  margin-bottom: calc(var(--space) * 3);
+}
+
+.sched__week .filters .segrow {
+  margin-bottom: 0;
+}
+
+/* нечётная последняя карточка ряда — во всю ширину: без пустой клетки рядом */
+.sched__pairs > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.sched__pairs > .datacard {
+  margin: 0;
+}

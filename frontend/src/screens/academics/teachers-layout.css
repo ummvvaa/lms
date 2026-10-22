@@ -1,0 +1,72 @@
+/* Учителя по макету: таблица на две трети с фильтрами в своей карточке,
+   справа — карточка «Не отмечено за неделю» с бегущим светом. */
+.tch__cols {
+  align-items: start;
+}
+
+.tch__main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 4);
+  min-width: 0;
+}
+
+.tch__cols > .datacard {
+  margin: 0;
+}
+
+/* фамилия и предметы рядом с аватаром не ломаются посреди слова */
+.tch__main .personcell__text b {
+  overflow-wrap: normal;
+}
+
+.tch__nowrap {
+  white-space: nowrap;
+}
+
+/* «Не отмечено за неделю»: учитель — плиткой на вложенной подложке */
+.tch__unlist {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+
+.tch__un {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 3) calc(var(--space) * 4);
+}
+
+.tch__unhead {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 3);
+  min-width: 0;
+}
+
+.tch__unname {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* таблица в две трети ширины: поля клеток уже, имени остаётся место.
+   Только на ноутбуке: на телефоне строка таблицы — карточкой */
+@media (min-width: 760px) {
+  .tch__main .tbl th,
+  .tch__main .tbl td {
+    padding-inline: calc(var(--space) * 2);
+  }
+
+  .tch__main .tbl th:first-child,
+  .tch__main .tbl td:first-child {
+    padding-left: calc(var(--space) * 4);
+  }
+
+  .tch__main .tbl td {
+    padding-block: calc(var(--space) * 2);
+  }
+}

@@ -1,0 +1,14 @@
+/* Успеваемость по макету: период в шапке рядом с выгрузкой, под картой —
+   три списка в ряд одной высоты. */
+.grd__period {
+  display: inline-flex;
+  min-width: 0;
+}
+
+.grd__period .segrow {
+  margin-bottom: 0;
+}
+
+.grd__lists > .datacard {
+  margin: 0;
+}
