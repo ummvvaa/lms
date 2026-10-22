@@ -24,6 +24,8 @@ import { formatDate } from '../../lib/format'
 import { DURATION, EASE } from '../../motion'
 import { usePhone } from '../../phone'
 import ScoreBars from './ScoreBars'
+import { namesLine } from '../../components/patterns'
+import './career-my.css'
 
 type Picked = { option: number | null; choice: number | null }
 type Item = NonNullable<MyAttempt['items']>[number]
@@ -40,40 +42,94 @@ const answered = (value?: Picked) => Boolean(value && (value.option !== null || 
 
 function ResultView({ attempt }: { attempt: MyAttempt }) {
   const navigate = useNavigate()
+  const scores = attempt.scores ?? []
+  // наибольший балл — из тех же чисел, что в полосках ниже; равных первых может быть несколько
+  const top = scores.length ? Math.max(...scores.map((row) => row.score)) : null
+  const leaders = scores.filter((row) => row.score === top)
+  const lead = leaders[0] ?? null
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={attempt.test.title}
         crumb={{ label: t('Профтест'), to: '/career' }}
-        subtitle={attempt.finished_at ? t('сдан {date}', { date: formatDate(attempt.finished_at) }) : undefined}
+        subtitle={
+          attempt.finished_at ? t('сдан {date}', { date: formatDate(attempt.finished_at) }) : undefined
+        }
         actions={
           <Button variant="outline" size="sm" onClick={() => navigate('/career')}>
             {t('К списку тестов')}
           </Button>
         }
       />
-      <div className="acad__cols">
-        <DataCard title={t('Баллы по шкалам')} note={t('Полоска — от наименьшего возможного балла к наибольшему')}>
-          <ScoreBars scores={attempt.scores ?? []} threshold={attempt.threshold} />
+      <section className="lay-3 cmy__result">
+        {lead && (
+          <DataCard title={t('Наибольший балл')} className="card--beam cmy__lead">
+            <span className="cmy__mono" aria-hidden="true">
+              {lead.title.slice(0, 1)}
+            </span>
+            <b className="cmy__leadname">{namesLine(leaders.map((row) => row.title))}</b>
+            <span className="num cmy__leadscore">{tn(lead.score, '{n} балл|{n} балла|{n} баллов')}</span>
+            {lead.label && (
+              <Chip tone={lead.score >= attempt.threshold ? 'accent' : 'neutral'}>{lead.label}</Chip>
+            )}
+          </DataCard>
+        )}
+        <DataCard
+          title={t('Баллы по шкалам')}
+          note={t('Полоска — от наименьшего возможного балла к наибольшему')}
+          className={lead ? 'lay-span2' : 'lay-span2 cmy__wide'}
+        >
+          <ScoreBars scores={scores} threshold={attempt.threshold} />
         </DataCard>
-      </div>
+      </section>
     </div>
   )
 }
 
 /** Кнопки ответа одного утверждения: варианты теста или свои варианты вопроса. */
-function Answers({ item, options, value, active, onPick }: { item: Item; options: Option[]; value?: Picked; active: boolean; onPick: (value: Picked) => void }) {
+function Answers({
+  item,
+  options,
+  value,
+  active,
+  onPick,
+}: {
+  item: Item
+  options: Option[]
+  value?: Picked
+  active: boolean
+  onPick: (value: Picked) => void
+}) {
   const own = item.choices.length > 0
   return (
-    <div className={`ctake__answers${own ? ' ctake__answers--choices' : ''}`} role="group" aria-label={item.text}>
+    <div
+      className={`ctake__answers${own ? ' ctake__answers--choices' : ''}`}
+      role="group"
+      aria-label={item.text}
+    >
       {own
         ? item.choices.map((choice) => (
-            <Button key={choice.id} variant={value?.choice === choice.id ? 'default' : 'outline'} size="sm" aria-pressed={value?.choice === choice.id} disabled={!active} onClick={() => onPick({ option: null, choice: choice.id })}>
+            <Button
+              key={choice.id}
+              variant={value?.choice === choice.id ? 'default' : 'outline'}
+              size="sm"
+              aria-pressed={value?.choice === choice.id}
+              disabled={!active}
+              onClick={() => onPick({ option: null, choice: choice.id })}
+            >
               {choice.label}
             </Button>
           ))
         : options.map((option) => (
-            <Button key={option.id} variant={value?.option === option.id ? 'default' : 'outline'} size="sm" className="num" aria-pressed={value?.option === option.id} disabled={!active} onClick={() => onPick({ option: option.id, choice: null })}>
+            <Button
+              key={option.id}
+              variant={value?.option === option.id ? 'default' : 'outline'}
+              size="sm"
+              className="num"
+              aria-pressed={value?.option === option.id}
+              disabled={!active}
+              onClick={() => onPick({ option: option.id, choice: null })}
+            >
               {option.label}
             </Button>
           ))}
@@ -85,7 +141,8 @@ function Answers({ item, options, value, active, onPick }: { item: Item; options
 function keyPick(key: string, item: Item, options: Option[]): Picked | null {
   const index = Number(key) - 1
   if (!Number.isInteger(index) || index < 0) return null
-  if (item.choices.length > 0) return item.choices[index] ? { option: null, choice: item.choices[index].id } : null
+  if (item.choices.length > 0)
+    return item.choices[index] ? { option: null, choice: item.choices[index].id } : null
   return options[index] ? { option: options[index].id, choice: null } : null
 }
 
@@ -212,7 +269,9 @@ export default function CareerTake() {
         setCursor((c) => Math.max(0, c - (c % PAGE) - PAGE))
         return
       }
-      const index = items.findIndex((row, i) => i >= pageStart && i < pageStart + PAGE && !answered(picked[row.id]))
+      const index = items.findIndex(
+        (row, i) => i >= pageStart && i < pageStart + PAGE && !answered(picked[row.id]),
+      )
       if (index < 0) return
       const value = keyPick(event.key, items[index], options)
       if (value) pick(index, value)
@@ -240,14 +299,24 @@ export default function CareerTake() {
       {finish.isPending ? t('Считаю…') : t('Сдать тест')}
     </Button>
   )
-  const leftWords = left > 0 ? tn(left, 'Осталось {n} утверждение|Осталось {n} утверждения|Осталось {n} утверждений') : t('Все утверждения отвечены')
+  const leftWords =
+    left > 0
+      ? tn(left, 'Осталось {n} утверждение|Осталось {n} утверждения|Осталось {n} утверждений')
+      : t('Все утверждения отвечены')
 
   // --- телефон: лента в фокусе ---------------------------------------------------
   if (phone) {
-    const window_ = items.map((item, index) => ({ item, index, offset: index - cursor })).filter((row) => Math.abs(row.offset) <= AROUND)
+    const window_ = items
+      .map((item, index) => ({ item, index, offset: index - cursor }))
+      .filter((row) => Math.abs(row.offset) <= AROUND)
     return (
-      <div>
-        <ScreenHead title={attempt.test.title} crumb={{ label: t('Профтест'), to: '/career' }} subtitle={t('Отвечено {done} из {total}', { done, total })} actions={finishButton} />
+      <div className="cmy__phone">
+        <ScreenHead
+          title={attempt.test.title}
+          crumb={{ label: t('Профтест'), to: '/career' }}
+          subtitle={t('Отвечено {done} из {total}', { done, total })}
+          actions={finishButton}
+        />
         {attempt.instruction && (
           <Notice summary={t('Инструкция')} className="ctake__notice">
             <p>{attempt.instruction}</p>
@@ -261,7 +330,11 @@ export default function CareerTake() {
               const current = offset === 0
               const value = picked[item.id]
               const scale = 1 - Math.abs(offset) * 0.07
-              const opacity = current ? 1 : offset < 0 ? 0.55 - (Math.abs(offset) - 1) * 0.25 : 0.4 - (offset - 1) * 0.2
+              const opacity = current
+                ? 1
+                : offset < 0
+                  ? 0.55 - (Math.abs(offset) - 1) * 0.25
+                  : 0.4 - (offset - 1) * 0.2
               return (
                 <motion.div
                   key={item.id}
@@ -276,10 +349,20 @@ export default function CareerTake() {
                   onClick={offset < 0 ? () => setCursor(index) : undefined}
                 >
                   <div className="ctake__text">
-                    <b className={`ctake__num num${answered(value) ? ' ctake__num--done' : ''}`}>{item.number}</b>
+                    <b className={`ctake__num num${answered(value) ? ' ctake__num--done' : ''}`}>
+                      {item.number}
+                    </b>
                     <span>{item.text}</span>
                   </div>
-                  {(current || offset < 0) && <Answers item={item} options={options} value={value} active={current} onPick={(next) => pick(index, next)} />}
+                  {(current || offset < 0) && (
+                    <Answers
+                      item={item}
+                      options={options}
+                      value={value}
+                      active={current}
+                      onPick={(next) => pick(index, next)}
+                    />
+                  )}
                 </motion.div>
               )
             })}
@@ -291,12 +374,21 @@ export default function CareerTake() {
             <Button variant="outline" size="sm" disabled={cursor === 0} onClick={() => setCursor(cursor - 1)}>
               {t('Назад')}
             </Button>
-            <Button variant="outline" size="sm" disabled={cursor >= total - 1} onClick={() => setCursor(cursor + 1)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={cursor >= total - 1}
+              onClick={() => setCursor(cursor + 1)}
+            >
               {t('Дальше')}
             </Button>
           </div>
         </div>
-        {saving && <Chip size="sm" tone="info">{t('сохраняется…')}</Chip>}
+        {saving && (
+          <Chip size="sm" tone="info">
+            {t('сохраняется…')}
+          </Chip>
+        )}
       </div>
     )
   }
@@ -306,74 +398,112 @@ export default function CareerTake() {
   const pages = Math.max(1, Math.ceil(total / PAGE))
   const from = pageStart + 1
   const to = Math.min(total, pageStart + PAGE)
-  return (
-    <div>
-      <ScreenHead title={attempt.test.title} crumb={{ label: t('Профтест'), to: '/career' }} subtitle={t('Отвечено {done} из {total}', { done, total })} actions={finishButton} />
-      <div className="acad__cols acad__cols--even ctake__lead">
-        <DataCard title={t('Инструкция')} empty={!attempt.instruction && t('учитель не добавил инструкцию')}>
-          {attempt.instruction && <p className="acad__note">{attempt.instruction}</p>}
-        </DataCard>
-        <DataCard title={t('Что означают ответы')}>
-          {options.length > 0 && (
-            <ul className="bullets">
-              {options.map((option) => (
-                <li key={option.id}>
-                  <b className="num">{option.label}</b> — {tn(option.value, '{n} балл|{n} балла|{n} баллов')}
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="t-note">{t('Правильных и неправильных ответов нет — отвечайте так, как думаете сейчас. Клавиши 1–5 — ответ, стрелки — переход.')}</p>
-        </DataCard>
-      </div>
-      <DataCard
-        title={t('Утверждения {from}–{to} из {total}', { from, to, total })}
-        right={saving ? <Chip size="sm" tone="info">{t('сохраняется…')}</Chip> : <span className="t-note num">{t('страница {page} из {pages}', { page: pageNo, pages })}</span>}
-      >
-        <Progress percent={total ? (done / total) * 100 : 0} />
-        <div className="cpage">
-          <AnimatePresence initial={false} mode="wait">
-            <motion.div
-              key={pageStart}
-              initial={{ opacity: 0, x: still ? 0 : 48 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: still ? 0 : -48 }}
-              transition={motionOf({ duration: still ? 0 : DURATION.base })}
-            >
-              {pageItems.map((item, i) => {
-                const index = pageStart + i
-                const value = picked[item.id]
-                return (
-                  <div key={item.id} className={`ctake__item${answered(value) ? ' ctake__item--done' : ''}`}>
-                    <div className="ctake__text">
-                      <b className="ctake__num num">{item.number}</b>
-                      <span>{item.text}</span>
-                    </div>
-                    <Answers item={item} options={options} value={value} active onPick={(next) => pick(index, next)} />
-                  </div>
-                )
-              })}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-        <div className="ctake__foot">
-          <span className="t-note">{leftWords}</span>
-          <div className="ctake__nav">
-            <Button variant="outline" size="sm" disabled={pageStart === 0} onClick={() => setCursor(Math.max(0, pageStart - PAGE))}>
-              {t('Назад')}
-            </Button>
-            {pageStart + PAGE < total ? (
-              <Button variant="secondary" size="sm" onClick={() => setCursor(pageStart + PAGE)}>
-                {t('Дальше')}
-              </Button>
-            ) : (
-              <Button disabled={left > 0 || finish.isPending} onClick={() => void submit()}>
-                {finish.isPending ? t('Считаю…') : t('Сдать тест')}
-              </Button>
-            )}
-          </div>
-        </div>
+  // утверждения — главная карточка на две трети; инструкция и значения ответов — справа стопкой
+  const side = (
+    <div className="lay-stack">
+      <DataCard title={t('Инструкция')} empty={!attempt.instruction && t('учитель не добавил инструкцию')}>
+        {attempt.instruction && <p className="acad__note">{attempt.instruction}</p>}
       </DataCard>
+      <DataCard title={t('Что означают ответы')}>
+        {options.length > 0 && (
+          <ul className="bullets">
+            {options.map((option) => (
+              <li key={option.id}>
+                <b className="num">{option.label}</b> — {tn(option.value, '{n} балл|{n} балла|{n} баллов')}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="t-note">
+          {t(
+            'Правильных и неправильных ответов нет — отвечайте так, как думаете сейчас. Клавиши 1–5 — ответ, стрелки — переход.',
+          )}
+        </p>
+      </DataCard>
+    </div>
+  )
+  return (
+    <div className="lay-screen">
+      <ScreenHead
+        title={attempt.test.title}
+        crumb={{ label: t('Профтест'), to: '/career' }}
+        subtitle={t('Отвечено {done} из {total}', { done, total })}
+        actions={finishButton}
+      />
+      <div className="lay-main cmy__take">
+        <DataCard
+          title={t('Утверждения {from}–{to} из {total}', { from, to, total })}
+          className="card--beam"
+          right={
+            saving ? (
+              <Chip size="sm" tone="info">
+                {t('сохраняется…')}
+              </Chip>
+            ) : (
+              <span className="t-note num">{t('страница {page} из {pages}', { page: pageNo, pages })}</span>
+            )
+          }
+        >
+          <Progress percent={total ? (done / total) * 100 : 0} />
+          <div className="cpage">
+            <AnimatePresence initial={false} mode="wait">
+              <motion.div
+                key={pageStart}
+                initial={{ opacity: 0, x: still ? 0 : 48 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: still ? 0 : -48 }}
+                transition={motionOf({ duration: still ? 0 : DURATION.base })}
+              >
+                {pageItems.map((item, i) => {
+                  const index = pageStart + i
+                  const value = picked[item.id]
+                  return (
+                    <div
+                      key={item.id}
+                      className={`ctake__item${answered(value) ? ' ctake__item--done' : ''}`}
+                    >
+                      <div className="ctake__text">
+                        <b className="ctake__num num">{item.number}</b>
+                        <span>{item.text}</span>
+                      </div>
+                      <Answers
+                        item={item}
+                        options={options}
+                        value={value}
+                        active
+                        onPick={(next) => pick(index, next)}
+                      />
+                    </div>
+                  )
+                })}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+          <div className="ctake__foot">
+            <span className="t-note">{leftWords}</span>
+            <div className="ctake__nav">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pageStart === 0}
+                onClick={() => setCursor(Math.max(0, pageStart - PAGE))}
+              >
+                {t('Назад')}
+              </Button>
+              {pageStart + PAGE < total ? (
+                <Button variant="secondary" size="sm" onClick={() => setCursor(pageStart + PAGE)}>
+                  {t('Дальше')}
+                </Button>
+              ) : (
+                <Button disabled={left > 0 || finish.isPending} onClick={() => void submit()}>
+                  {finish.isPending ? t('Считаю…') : t('Сдать тест')}
+                </Button>
+              )}
+            </div>
+          </div>
+        </DataCard>
+        {side}
+      </div>
     </div>
   )
 }

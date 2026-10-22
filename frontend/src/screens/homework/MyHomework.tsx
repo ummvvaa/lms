@@ -13,6 +13,7 @@ import { Row, Rows, Segmented } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tk } from '../../i18n'
+import Icon from '../../layout/icons'
 import { dateWords } from '../academics/shared'
 import { dayInSchoolZone } from '../../lib/dates'
 import { FilePill, handedWords, leftChip, limitsWords, policyChip, whenWords, whoWords } from './myWork'
@@ -30,7 +31,8 @@ function isTab(value: string | null): value is StudentState {
   return TABS.some((tab) => tab.value === value)
 }
 
-function HomeworkCard({ item }: { item: MyHomework }) {
+/** Задание карточкой: кто задал, предмет и состояние; текст или итог проверки; срок; файлы; действие внизу. */
+function HomeworkCard({ item, main = false }: { item: MyHomework; main?: boolean }) {
   const navigate = useNavigate()
   const open = () => navigate(`/homework/${item.id}`)
   const submission = item.submission
@@ -67,21 +69,20 @@ function HomeworkCard({ item }: { item: MyHomework }) {
     (submission.files.length > 0 || submission.text || submission.link)
 
   return (
-    <section className="card card-pad mywork__card">
-      <div className="mywork__head">
-        <span className="mywork__subject t-card">{item.lesson.subject}</span>
-        <span className="mywork__who t-note">
-          {item.state === 'checked' && checkedOn
-            ? [item.lesson.teacher?.short ?? '', checkedOn].filter(Boolean).join(' · ')
-            : whoWords(item)}
-        </span>
-      </div>
-      <div className="mywork__deadline">
+    <section className={`card card-pad mywork__card${main ? ' card--beam' : ''}`}>
+      <div className="mywork__top">
+        <div className="mywork__head">
+          <span className="mywork__who t-note">
+            {item.state === 'checked' && checkedOn
+              ? [item.lesson.teacher?.short ?? '', checkedOn].filter(Boolean).join(' · ')
+              : whoWords(item)}
+          </span>
+          <span className="mywork__subject t-card">{item.lesson.subject}</span>
+        </div>
         <Chip tone={deadline.tone}>{deadline.chip}</Chip>
-        {deadline.small && <span className="t-note">{deadline.small}</span>}
       </div>
       {item.state === 'checked' && submission ? (
-        <div className="mywork__result">
+        <div className="mywork__result mywork__result--inner">
           <span className={`mywork__score num${submission.grade === null ? ' mywork__score--none' : ''}`}>
             {submission.grade ?? t('без оценки')}
           </span>
@@ -97,16 +98,24 @@ function HomeworkCard({ item }: { item: MyHomework }) {
           </div>
         </div>
       ) : (
-        <div className="mywork__task">{item.text || t('Задание — в прикреплённых файлах')}</div>
+        <div className="mywork__task mywork__task--muted">
+          {item.text || t('Задание — в прикреплённых файлах')}
+        </div>
+      )}
+      {deadline.small && (
+        <span className="mywork__due t-note">
+          <Icon name="clock" size={14} />
+          {deadline.small}
+        </span>
+      )}
+      {files.length > 0 && (
+        <div className="mywork__files">
+          {files.map((file) => (
+            <FilePill key={file.id} file={file} />
+          ))}
+        </div>
       )}
       <div className="mywork__foot">
-        {files.map((file) => (
-          <FilePill key={file.id} file={file} />
-        ))}
-        <span className="mywork__spacer" />
-        {draft && <Chip tone="warn">{t('начато, не сдано')}</Chip>}
-        {item.state === 'todo' && !item.past_due && <Chip tone={policy.tone}>{policy.label}</Chip>}
-        {item.state === 'missed' && <Chip>{t('учитель закрыл сдачу после срока')}</Chip>}
         {item.state === 'todo' ? (
           <Button onClick={open}>{item.past_due ? t('Сдать с опозданием') : t('Сдать')}</Button>
         ) : (
@@ -114,6 +123,9 @@ function HomeworkCard({ item }: { item: MyHomework }) {
             {t('Открыть')}
           </Button>
         )}
+        {draft && <Chip tone="warn">{t('начато, не сдано')}</Chip>}
+        {item.state === 'todo' && !item.past_due && <Chip tone={policy.tone}>{policy.label}</Chip>}
+        {item.state === 'missed' && <Chip>{t('учитель закрыл сдачу после срока')}</Chip>}
       </div>
     </section>
   )
@@ -138,8 +150,12 @@ export default function MyHomeworkScreen() {
   const items = data.items.filter((item) => item.state === tab)
   const current = TABS.find((item) => item.value === tab) ?? TABS[0]
 
+  // «Как сдать» — последней клеткой сетки: при нечётном числе заданий занимает пустое место
+  // рядом с последней карточкой, при чётном — ложится строкой на всю ширину
+  const wide = items.length === 0 || items.length % 2 === 0
+
   return (
-    <div>
+    <div className="lay-screen mywork__screen">
       <ScreenHead
         title={t('Домашние задания')}
         subtitle={t('Задания, которые нужно сдать в LMS. Остальные ДЗ — в карточке урока и в расписании.')}
@@ -153,44 +169,45 @@ export default function MyHomeworkScreen() {
           label: (
             <>
               {t(item.label)}
-              <span className="mywork__count num">{data.counts[item.value]}</span>
+              <span className="tabs__n num">{data.counts[item.value]}</span>
             </>
           ),
         }))}
       />
-      <div className="acad__cols">
-        <div className="acad__stack">
-          {items.length === 0 ? (
-            <DataCard title={t(current.label)} empty={t(current.empty)} />
-          ) : (
-            items.map((item) => <HomeworkCard key={item.id} item={item} />)
-          )}
-        </div>
-        <div className="acad__stack">
-          <DataCard title={t('Как сдать')}>
-            <Rows>
-              <Row
-                icon="docs"
-                tone="accent"
-                title={t('Сфотографируйте тетрадь')}
-                note={t('Несколько фото склеятся в один PDF — учитель листает его страницами')}
-              />
-              <Row
-                icon="upload"
-                tone="info"
-                title={t('Или приложите файл')}
-                note={`${t('Документ, аудио, видео или ссылка')} · ${limitsWords(data.limits)}`}
-              />
-              <Row
-                icon="clock"
-                tone="warn"
-                title={t('До срока работу можно заменить')}
-                note={t('После срока — только просмотр, если учитель не принимает работы позже')}
-              />
-            </Rows>
-          </DataCard>
-        </div>
-      </div>
+      <section className="lay-2 mywork__grid">
+        {items.length === 0 ? (
+          <DataCard className="lay-span2" title={t(current.label)} empty={t(current.empty)} />
+        ) : (
+          items.map((item, index) => (
+            <HomeworkCard key={item.id} item={item} main={tab === 'todo' && index === 0} />
+          ))
+        )}
+        <DataCard
+          title={t('Как сдать')}
+          className={wide ? 'lay-span2 mywork__how mywork__how--wide' : 'mywork__how'}
+        >
+          <Rows>
+            <Row
+              icon="docs"
+              tone="accent"
+              title={t('Сфотографируйте тетрадь')}
+              note={t('Несколько фото склеятся в один PDF — учитель листает его страницами')}
+            />
+            <Row
+              icon="upload"
+              tone="info"
+              title={t('Или приложите файл')}
+              note={`${t('Документ, аудио, видео или ссылка')} · ${limitsWords(data.limits)}`}
+            />
+            <Row
+              icon="clock"
+              tone="warn"
+              title={t('До срока работу можно заменить')}
+              note={t('После срока — только просмотр, если учитель не принимает работы позже')}
+            />
+          </Rows>
+        </DataCard>
+      </section>
     </div>
   )
 }

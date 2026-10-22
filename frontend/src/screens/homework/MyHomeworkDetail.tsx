@@ -71,11 +71,14 @@ function Banner({
   icon: IconName
   children: ReactNode
 }) {
+  // тихая строка без заливки: срок и закрытая сдача — янтарным, «сдано» — зелёной галочкой
   return (
-    <div className={`mywork__banner mywork__banner--${tone}`} role="status">
-      <Icon name={icon} size={16} />
+    <p className={`mywork__line${tone === 'good' ? ' mywork__line--good' : ' warnline'}`} role="status">
+      <span className={tone === 'good' ? 'mywork__lineicon' : 'warnline__what'}>
+        <Icon name={icon} size={14} />
+      </span>
       <span>{children}</span>
-    </div>
+    </p>
   )
 }
 
@@ -144,7 +147,9 @@ function WorkForm({
   async function addFiles(list: File[]) {
     if (list.length === 0) return
     if (list.length > room()) {
-      toast.error(`${tn(Math.max(0, room()), 'Можно приложить ещё {n} файл|Можно приложить ещё {n} файла|Можно приложить ещё {n} файлов')} · ${limitsWords(limits)}`)
+      toast.error(
+        `${tn(Math.max(0, room()), 'Можно приложить ещё {n} файл|Можно приложить ещё {n} файла|Можно приложить ещё {n} файлов')} · ${limitsWords(limits)}`,
+      )
       return
     }
     const refused = list.map((file) => refuseFile(file, limits)).filter(Boolean)
@@ -182,7 +187,8 @@ function WorkForm({
       })
       return
     }
-    if (made.unreadable.length) toast.info(t('Часть фото браузер не читает (например, HEIC) — они приложены отдельными файлами'))
+    if (made.unreadable.length)
+      toast.info(t('Часть фото браузер не читает (например, HEIC) — они приложены отдельными файлами'))
     if (made.pdf) {
       const refused = refuseFile(Object.assign(made.pdf, { name }), limits)
       if (refused) {
@@ -228,7 +234,7 @@ function WorkForm({
   ]
 
   return (
-    <DataCard title={t('Моя работа')}>
+    <DataCard title={t('Моя работа')} className="card--beam">
       <div className="mywork__ways">
         {ways
           .filter((way) => !way.hidden)
@@ -309,6 +315,7 @@ function WorkForm({
           onDragLeave={() => setOver(false)}
           onDrop={onDrop}
         >
+          <Icon name="upload" size={24} />
           <b>{t('Перетащите файлы сюда')}</b>
           <span className="t-note">{`${t('любые форматы: PDF, Word, Excel, PowerPoint, фото, аудио, видео, архивы')} · ${limitsWords(limits)}`}</span>
         </div>
@@ -393,15 +400,7 @@ function WorkForm({
         rows={3}
         placeholder={t('Например: в № 217 не понял условие, решил по-своему')}
       />
-      <div className="acad__actions mywork__actions">
-        <Button onClick={send} disabled={submit.isPending || busy || recorder.recording || !hasWork}>
-          {late ? t('Сдать с опозданием') : t('Сдать работу')}
-        </Button>
-        {onCancel && (
-          <Button variant="outline" onClick={onCancel}>
-            {t('Отмена')}
-          </Button>
-        )}
+      <div className="mywork__actions">
         <span className="t-note">
           {busy
             ? t('Дождитесь конца загрузки')
@@ -411,19 +410,41 @@ function WorkForm({
                 ? t('Сдача будет помечена «с опозданием»')
                 : t('До срока работу можно заменить.')}
         </span>
+        <div className="mywork__buttons">
+          {onCancel && (
+            <Button variant="outline" onClick={onCancel}>
+              {t('Отмена')}
+            </Button>
+          )}
+          <Button onClick={send} disabled={submit.isPending || busy || recorder.recording || !hasWork}>
+            {late ? t('Сдать с опозданием') : t('Сдать работу')}
+          </Button>
+        </div>
       </div>
     </DataCard>
   )
 }
 
 /** «Что сдано»: файлы, ответ, ссылка, комментарий учителю — и «Заменить работу», пока можно. */
-function HandedCard({ data, onReplace }: { data: MyHomeworkDetail; onReplace: () => void }) {
+function HandedCard({
+  data,
+  onReplace,
+  main = false,
+}: {
+  data: MyHomeworkDetail
+  onReplace: () => void
+  main?: boolean
+}) {
   const submission = data.submission
   if (!submission) return null
   const replaceable = data.may_change && data.state === 'review'
   const empty = submission.files.length === 0 && !submission.text && !submission.link && !submission.comment
   return (
-    <DataCard title={t('Что сдано')} empty={empty && t('в работе ничего нет')}>
+    <DataCard
+      title={t('Что сдано')}
+      className={main ? 'card--beam' : undefined}
+      empty={empty && t('в работе ничего нет')}
+    >
       <Rows>
         {submission.files.map((file) => (
           <FileRow key={file.id} file={file} />
@@ -458,12 +479,7 @@ function HandedCard({ data, onReplace }: { data: MyHomeworkDetail; onReplace: ()
         )}
       </Rows>
       {(replaceable || (data.state === 'review' && data.change_note)) && (
-        <div className="acad__actions mywork__actions">
-          {replaceable && (
-            <Button variant="outline" onClick={onReplace}>
-              {t('Заменить работу')}
-            </Button>
-          )}
+        <div className="mywork__actions">
           <span className="t-note">
             {replaceable
               ? data.due_at
@@ -471,6 +487,11 @@ function HandedCard({ data, onReplace }: { data: MyHomeworkDetail; onReplace: ()
                 : t('Работу можно заменить, пока учитель её не проверил.')
               : data.change_note}
           </span>
+          {replaceable && (
+            <Button variant="outline" onClick={onReplace}>
+              {t('Заменить работу')}
+            </Button>
+          )}
         </div>
       )}
     </DataCard>
@@ -484,7 +505,8 @@ function ResultCard({ data }: { data: MyHomeworkDetail }) {
   return (
     <DataCard
       title={t('Проверено')}
-      right={<span className="t-note">{whenWords(submission.checked_at)}</span>}
+      className="card--beam"
+      right={<span className="t-note mywork__when">{whenWords(submission.checked_at)}</span>}
     >
       <div className="mywork__result">
         <span className={`mywork__score num${submission.grade === null ? ' mywork__score--none' : ''}`}>
@@ -510,7 +532,7 @@ function TaskCard({ data }: { data: MyHomeworkDetail }) {
   const cohort = data.lesson.cohort
   return (
     <DataCard title={t('Задание')}>
-      <div className="mywork__text">{data.text || t('Задание — в прикреплённых файлах')}</div>
+      <div className="mywork__text mywork__inner">{data.text || t('Задание — в прикреплённых файлах')}</div>
       {data.files.length > 0 && (
         <Rows>
           {data.files.map((file) => (
@@ -559,7 +581,10 @@ export default function MyHomeworkDetailScreen() {
     banner = {
       tone: 'warn',
       icon: 'clock',
-      text: t('Срок прошёл {span} назад. Учитель принимает работы после срока — сдача будет помечена «с опозданием».', { span: spanWords(minutesPast(data.due_at, now)) }),
+      text: t(
+        'Срок прошёл {span} назад. Учитель принимает работы после срока — сдача будет помечена «с опозданием».',
+        { span: spanWords(minutesPast(data.due_at, now)) },
+      ),
     }
   } else if (data.state === 'missed') {
     banner = { tone: 'bad', icon: 'lock', text: t('Срок прошёл. Учитель не принимает работы после срока.') }
@@ -569,13 +594,33 @@ export default function MyHomeworkDetailScreen() {
       tone: 'good',
       icon: 'check',
       text: submission.late_minutes
-        ? t('Сдано с опозданием на {span} {when}. Учитель проверит работу.', { span: spanWords(submission.late_minutes), when })
+        ? t('Сдано с опозданием на {span} {when}. Учитель проверит работу.', {
+            span: spanWords(submission.late_minutes),
+            when,
+          })
         : t('Сдано {when}. Учитель проверит работу.', { when }),
     }
   }
 
+  const work = editing ? (
+    <WorkForm
+      data={data}
+      onDone={() => setReplacing(false)}
+      onCancel={replacing ? () => setReplacing(false) : undefined}
+    />
+  ) : (
+    <>
+      <ResultCard data={data} />
+      {submission?.submitted_at ? (
+        <HandedCard data={data} main={!submission.checked_at} onReplace={() => setReplacing(true)} />
+      ) : (
+        <DataCard title={t('Моя работа')} empty={data.change_note || t('работа не сдана')} />
+      )}
+    </>
+  )
+
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={data.lesson.subject}
         crumb={{ label: t('Домашние задания'), to: '/homework' }}
@@ -586,31 +631,17 @@ export default function MyHomeworkDetailScreen() {
           {banner.text}
         </Banner>
       )}
-      <div className="acad__cols">
-        {data.state !== 'missed' && (
-          <div className="acad__stack">
-            {editing ? (
-              <WorkForm
-                data={data}
-                onDone={() => setReplacing(false)}
-                onCancel={replacing ? () => setReplacing(false) : undefined}
-              />
-            ) : (
-              <>
-                <ResultCard data={data} />
-                {submission?.submitted_at ? (
-                  <HandedCard data={data} onReplace={() => setReplacing(true)} />
-                ) : (
-                  <DataCard title={t('Моя работа')} empty={data.change_note || t('работа не сдана')} />
-                )}
-              </>
-            )}
+      {/* сдача закрыта — работы нет, задание во всю ширину; иначе работа на две трети, задание справа */}
+      {data.state === 'missed' ? (
+        <TaskCard data={data} />
+      ) : (
+        <div className="lay-main">
+          <div className="lay-stack">{work}</div>
+          <div className="lay-stack mywork__side">
+            <TaskCard data={data} />
           </div>
-        )}
-        <div className="acad__stack">
-          <TaskCard data={data} />
         </div>
-      </div>
+      )}
     </div>
   )
 }

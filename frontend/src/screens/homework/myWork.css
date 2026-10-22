@@ -2,12 +2,31 @@
    работу, плашки состояния, итог проверки. Цвета — токены, размеры —
    переменные `density.css`, отступы — шаг четыре через `--space`. */
 
+/* вкладки состояний — по ширине подписей, а не во всю строку */
+.mywork__screen > .segrow {
+  align-self: flex-start;
+  max-width: 100%;
+}
+
 /* --- Карточка задания в списке ----------------------------------------------- */
+/* как в макете: вверху кто задал и предмет, справа состояние чипом; ниже текст,
+   срок с часами, файлы учителя; действие прижато к низу карточки */
 .mywork__card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: calc(var(--space) * 3) calc(var(--space) * 4);
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+  min-width: 0;
+}
+
+.mywork__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: calc(var(--space) * 3);
+}
+
+.mywork__top > [data-slot='badge'] {
+  flex: none;
 }
 
 .mywork__head {
@@ -21,20 +40,7 @@
   color: var(--ink-3);
 }
 
-.mywork__deadline {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: calc(var(--space) / 2);
-  text-align: right;
-}
-
-.mywork__deadline .t-note {
-  color: var(--ink-3);
-}
-
 .mywork__task {
-  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: calc(var(--space) / 2);
@@ -44,12 +50,30 @@
   overflow-wrap: anywhere;
 }
 
+.mywork__task--muted {
+  color: var(--ink-2);
+}
+
+.mywork__due {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.mywork__files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 2);
+}
+
 .mywork__foot {
-  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: calc(var(--space) * 2);
+  margin-top: auto;
 }
 
 .mywork__spacer {
@@ -67,22 +91,50 @@ body [data-slot='button'][data-variant].mywork__pill {
   overflow-wrap: anywhere;
 }
 
-.mywork__count {
-  margin-left: calc(var(--space) * 1);
-  color: var(--ink-3);
+/* «Как сдать» строкой на всю ширину: три подсказки рядом */
+@media (min-width: 1101px) {
+  .mywork__how--wide .rowlist {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: calc(var(--space) * 6);
+  }
+
+  .mywork__how--wide .rowlist > * {
+    align-items: flex-start;
+    border-top: 0;
+  }
 }
 
 /* --- Итог проверки ------------------------------------------------------------- */
 .mywork__result {
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: calc(var(--space) * 4);
 }
 
 .mywork__result .mywork__task {
-  grid-column: auto;
   min-width: 0;
+}
+
+/* итог проверки в карточке списка — вложенной плашкой, как в макете */
+.mywork__result--inner {
+  gap: calc(var(--space) * 3);
+  padding: calc(var(--space) * 3) calc(var(--space) * 4);
+  border-radius: var(--radius-inner);
+  background: var(--glass-in);
+}
+
+.mywork__result--inner .mywork__score {
+  width: calc(var(--space) * 10);
+  height: calc(var(--space) * 10);
+  font-size: var(--type-card);
+}
+
+.mywork__result--inner .mywork__score--none {
+  width: auto;
+  padding: 0 calc(var(--space) * 2);
+  font-size: var(--type-note);
+  white-space: nowrap;
 }
 
 .mywork__result .t-note {
@@ -111,35 +163,37 @@ body [data-slot='button'][data-variant].mywork__pill {
   text-align: center;
 }
 
-/* --- Плашки состояния: сдано, срок прошёл, закрыто ------------------------------ */
-.mywork__banner {
+/* --- Строка состояния над работой: сдано, срок прошёл, закрыто ---------------- */
+/* тихая строка без заливки; янтарь — от `warnline`, «сдано» — зелёная галочка */
+.mywork__line,
+.mywork__line.warnline {
   display: flex;
-  align-items: center;
-  gap: calc(var(--space) * 3);
-  margin-bottom: var(--gap-block);
-  padding: calc(var(--space) * 3) calc(var(--space) * 4);
-  border-radius: var(--radius-row);
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: calc(var(--space) * 2);
   font-size: var(--type-body);
-  font-weight: 600;
+  line-height: var(--leading-body);
+  color: var(--ink-2);
 }
 
-.mywork__banner .icon {
+/* значок — по середине первой строки текста */
+.mywork__line > span:first-child {
+  display: flex;
   flex: none;
+  align-items: center;
+  height: calc(var(--type-body) * var(--leading-body));
 }
 
-.mywork__banner--good {
-  background: var(--good-bg);
+.mywork__line > span:last-child {
+  min-width: 0;
+}
+
+.mywork__lineicon {
   color: var(--good);
 }
 
-.mywork__banner--warn {
-  background: var(--warn-bg);
-  color: var(--warn);
-}
-
-.mywork__banner--bad {
-  background: var(--bad-bg);
-  color: var(--bad);
+.mywork__when {
+  white-space: nowrap;
 }
 
 /* --- «Моя работа»: способы, запись, место для перетаскивания --------------------- */
@@ -152,12 +206,11 @@ body [data-slot='button'][data-variant].mywork__pill {
 
 body .mywork__way[data-slot='button'][data-variant] {
   display: flex;
-  flex-direction: column;
-  gap: calc(var(--space) * 1);
+  gap: calc(var(--space) * 2);
   height: auto;
   min-height: var(--touch);
-  padding: calc(var(--space) * 3) calc(var(--space) * 2);
-  white-space: normal;
+  padding: calc(var(--space) * 2) calc(var(--space) * 3);
+  white-space: nowrap;
 }
 
 .mywork__way .icon {
@@ -190,18 +243,23 @@ body .mywork__way[data-slot='button'][data-variant][aria-pressed='true'] {
   background: var(--bad);
 }
 
+/* место для файлов, как в макете: пунктир акцентом, мягкая подложка, стрелка загрузки */
 .mywork__drop {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: calc(var(--space) * 1);
+  gap: calc(var(--space) * 2);
   margin-bottom: calc(var(--space) * 3);
-  padding: calc(var(--space) * 5);
-  border: 2px dashed var(--line-2);
+  padding: calc(var(--space) * 6);
+  border: 2px dashed var(--accent-2);
   border-radius: var(--radius-card);
-  background: var(--surface-2);
+  background: var(--accent-bg);
   color: var(--ink-3);
   text-align: center;
+}
+
+.mywork__drop svg {
+  color: var(--accent-ink);
 }
 
 .mywork__drop b {
@@ -211,7 +269,7 @@ body .mywork__way[data-slot='button'][data-variant][aria-pressed='true'] {
 
 .mywork__drop--over {
   border-color: var(--accent);
-  background: var(--accent-bg);
+  border-style: solid;
 }
 
 .mywork__hint {
@@ -243,10 +301,35 @@ body .mywork__way[data-slot='button'][data-variant][aria-pressed='true'] {
   overflow-wrap: anywhere;
 }
 
+/* подвал работы: пояснение слева, действие справа */
 .mywork__actions {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 3);
   margin-top: calc(var(--space) * 4);
+}
+
+.mywork__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 2);
+  margin-left: auto;
+}
+
+/* текст задания вложенной плашкой */
+.mywork__inner {
+  padding: calc(var(--space) * 3) calc(var(--space) * 4);
+  border-radius: var(--radius-inner);
+  background: var(--glass-in);
+}
+
+/* одна колонка (узкое окно, телефон): задание — над работой, как в макете */
+@media (max-width: 1100px) {
+  .mywork__side {
+    order: -1;
+  }
 }
 
 .mywork__actions .t-note {
@@ -254,20 +337,15 @@ body .mywork__way[data-slot='button'][data-variant][aria-pressed='true'] {
 }
 
 @media (max-width: 759px) {
-  .mywork__card {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .mywork__deadline {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: calc(var(--space) * 2);
-    text-align: left;
-  }
-
   .mywork__ways {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* на телефоне значок над подписью: «Сфотографировать» в строку со значком не влезает */
+  body .mywork__way[data-slot='button'][data-variant] {
+    flex-direction: column;
+    gap: calc(var(--space) * 1);
+    padding: calc(var(--space) * 2) calc(var(--space) * 1);
   }
 
   .mywork__foot [data-slot='button'] {

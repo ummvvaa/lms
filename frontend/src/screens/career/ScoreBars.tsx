@@ -46,14 +46,14 @@ export default function ScoreBars({ scores, threshold, limit, compact = false }:
     {
       key: 'bar',
       title: t('Балл'),
-      width: '34%',
+      width: '32%',
       cell: (row) => (
         <span className="cbars__bar">
           <Bar percent={percentOf(row)} color={colorOf(row, threshold)} />
         </span>
       ),
     },
-    { key: 'score', title: t('Число'), width: '10%', align: 'right', cell: (row) => <b className="num">{row.score}</b>, sortBy: (row) => row.score },
+    { key: 'score', title: t('Число'), width: '12%', align: 'right', cell: (row) => <b className="num">{row.score}</b>, sortBy: (row) => row.score },
     {
       key: 'label',
       title: t('Интерпретация'),

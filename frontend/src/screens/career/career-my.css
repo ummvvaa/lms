@@ -1,0 +1,172 @@
+/* Профтест глазами ученика по макету: тесты плитками в главной карточке на две
+   трети, «Как это работает» справа; результат — карточка наибольшего балла и
+   баллы по шкалам рядом. Общие классы прохождения — в `career.css`. */
+
+/* --- Список тестов ------------------------------------------------------------- */
+.cmy__list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+
+/* плитка теста: значок, название с подписью, состояние с полосой, действие */
+.cmy__test {
+  display: grid;
+  grid-template-columns: calc(var(--space) * 11) minmax(0, 1fr) calc(var(--space) * 36) calc(var(--space) * 28);
+  align-items: center;
+  gap: calc(var(--space) * 4);
+  padding: calc(var(--space) * 4);
+  border-radius: var(--radius-inner);
+  background: var(--glass-in);
+}
+
+.cmy__ico {
+  display: grid;
+  place-items: center;
+  width: calc(var(--space) * 11);
+  height: calc(var(--space) * 11);
+  border-radius: var(--radius-row);
+  background: var(--neutral-bg);
+  color: var(--ink-3);
+}
+
+.cmy__ico--done {
+  background: var(--good-bg);
+  color: var(--good);
+}
+
+.cmy__ico--in_progress {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.cmy__name {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) / 2);
+  min-width: 0;
+}
+
+.cmy__name .t-note {
+  color: var(--ink-3);
+}
+
+.cmy__state {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+  min-width: 0;
+}
+
+.cmy__state > [data-slot='badge'] {
+  align-self: flex-start;
+}
+
+/* действие — у правого края плитки: полосы состояния во всех плитках на одной линии */
+.cmy__test > [data-slot='button'] {
+  justify-self: end;
+}
+
+/* «Как это работает»: шаги с номером в чипе */
+.cmy__steps {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-2);
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+}
+
+.cmy__steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--space) * 3);
+}
+
+.cmy__steps [data-slot='badge'] {
+  flex: none;
+  justify-content: center;
+  min-width: calc(var(--space) * 6);
+}
+
+/* --- Результат ----------------------------------------------------------------- */
+/* карточка наибольшего балла — по своей высоте, баллы рядом длиннее */
+.lay-3.cmy__result {
+  align-items: start;
+}
+
+/* варианты ответа — ровные клавиши, как в макете */
+.cmy__take .ctake__answers [data-slot='button'][data-variant] {
+  min-width: calc(var(--space) * 12);
+  height: calc(var(--space) * 10);
+}
+
+.cmy__lead {
+  align-items: center;
+  text-align: center;
+}
+
+.cmy__mono {
+  display: grid;
+  place-items: center;
+  width: calc(var(--space) * 18);
+  height: calc(var(--space) * 18);
+  margin: calc(var(--space) * 2) auto;
+  border-radius: var(--radius-kpi);
+  background: var(--accent-grad);
+  color: var(--on-accent);
+  font-family: var(--font-head);
+  font-size: var(--type-figure);
+  font-weight: 600;
+}
+
+.cmy__leadname {
+  display: block;
+  font-family: var(--font-head);
+  font-size: var(--type-card);
+}
+
+.cmy__leadscore {
+  display: block;
+  margin: calc(var(--space) * 1) 0 calc(var(--space) * 2);
+  color: var(--ink-2);
+}
+
+@media (max-width: 1100px) {
+  .cmy__test {
+    grid-template-columns: calc(var(--space) * 11) minmax(0, 1fr) auto;
+  }
+
+  .cmy__test > [data-slot='button'] {
+    grid-row: 1;
+    grid-column: 3;
+  }
+
+  .cmy__state {
+    grid-column: 2 / 3;
+  }
+}
+
+@media (max-width: 759px) {
+  .cmy__test {
+    grid-template-columns: calc(var(--space) * 11) minmax(0, 1fr);
+    gap: calc(var(--space) * 3);
+  }
+
+  .cmy__state,
+  .cmy__test > [data-slot='button'] {
+    grid-row: auto;
+    grid-column: 1 / -1;
+  }
+
+  .cmy__test > [data-slot='button'] {
+    justify-self: stretch;
+  }
+
+  .cmy__test > [data-slot='button'] {
+    min-height: var(--touch);
+  }
+}
