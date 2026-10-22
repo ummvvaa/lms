@@ -1,0 +1,101 @@
+/* Эссе по макету: список на две трети с фильтром в шапке карточки, редактор с полосой слов. */
+
+/* фильтр статусов и тип — в шапке карточки справа, одной строкой */
+.essay-list__card .datacard__title {
+  white-space: nowrap;
+}
+
+.essay-list__filters {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(var(--space) * 2);
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.essay-list__filters .segrow {
+  margin-bottom: 0;
+}
+
+.essay-list__filters .segrow__item {
+  white-space: nowrap;
+}
+
+/* справа в строке эссе: слова полосой и статус чипом */
+/* две колонки постоянной ширины: полосы и чипы строк стоят друг под другом */
+.essay-list__right {
+  display: inline-grid;
+  grid-template-columns: calc(var(--space) * 32) calc(var(--space) * 24);
+  align-items: center;
+  gap: calc(var(--space) * 4);
+}
+
+.essay-list__right > [data-slot='badge'] {
+  grid-column: 2;
+  justify-self: end;
+}
+
+.essay-list__words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+  width: calc(var(--space) * 32);
+  font-size: var(--type-note);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.essay-list__words .bar {
+  height: var(--space);
+}
+
+/* редактор: счётчик слов с полосой — справа в строке сохранения */
+.essay-edit__count {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 3);
+  margin-left: auto;
+}
+
+.essay-edit__count .essay__words {
+  margin-left: 0;
+  white-space: nowrap;
+}
+
+.essay-edit__count .bar {
+  width: calc(var(--space) * 40);
+}
+
+@media (max-width: 759px) {
+  .essay-list__right {
+    grid-template-columns: calc(var(--space) * 24) auto;
+    gap: calc(var(--space) * 3);
+  }
+
+  .essay-list__words {
+    width: auto;
+  }
+
+  .essay-edit__count {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .essay-edit__count .bar {
+    flex: 1 1 auto;
+    width: auto;
+  }
+
+  .essay-list__filters {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 759px) {
+  /* на телефоне слова и статус — строкой под названием эссе */
+  .essay-list__card .rowline__text {
+    flex: 1 1 calc(var(--space) * 50);
+  }
+}

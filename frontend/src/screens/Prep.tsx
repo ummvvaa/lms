@@ -31,6 +31,7 @@ import DataTable from '../components/DataTable'
 import Progress from '../components/Progress'
 import './prep.css'
 import './dashboards/student.css'
+import './prep-layout.css'
 import { t, tk, tn } from '../i18n'
 import { AnswerOption } from '../components/ui/answer-option'
 import { Button } from '../components/ui/button'
@@ -375,32 +376,33 @@ function ExamPicker({ onPick }: { onPick: (exam: string) => void }) {
   const exams = useCenterExams()
   if (exams.isLoading) return <Loading kind="cards" />
   const rows = exams.data?.exams ?? []
+  const solved = rows.reduce((sum, row) => sum + row.solved, 0)
+  const bank = rows.reduce((sum, row) => sum + row.bank_total, 0)
+  // по макету: показатели рядом сверху, под ними экзамены плитками в две колонки.
+  // Сравнения с группой и рейтингов здесь нет и не будет (инвариант №7)
   return (
-    <div className="acad__cols">
-      <div className="acad__stack">
-        <DataCard title={t('Экзамены')} count={rows.length || undefined} empty={rows.length === 0 && t('академический директор ведёт их справочником — как появятся, раздел откроется')}>
-          <Rows>
-            {rows.map((exam) => (
-              <Row
-                key={exam.exam_type}
-                lead={<b className="stu__slot">{exam.title.slice(0, 2)}</b>}
-                title={exam.title}
-                note={exam.bank_total === 0 ? t('банк пока пуст') : t('решено {done} из {total}', { done: exam.solved, total: exam.bank_total })}
-                right={exam.bank_total > 0 ? <span className="prep__rowbar"><Progress percent={Math.round((exam.solved / exam.bank_total) * 100)} /></span> : undefined}
-                onOpen={() => onPick(exam.exam_type)}
-                openLabel={t('Открыть')}
-              />
-            ))}
-          </Rows>
-        </DataCard>
+    <>
+      <div className="lay-3">
+        <Kpi label={t('Решено заданий')} value={solved || null} none={t('нет')} />
+        <Kpi label={t('Заданий в банке')} value={bank || null} none={t('нет')} />
+        <Kpi label={t('Экзаменов')} value={rows.length || null} none={t('нет')} />
       </div>
-      <div className="acad__stack">
-        <StatRow>
-          <Kpi label={t('Экзаменов')} value={rows.length || null} none={t('нет')} />
-          <Kpi label={t('Заданий в банке')} value={rows.reduce((sum, row) => sum + row.bank_total, 0) || null} none={t('нет')} />
-        </StatRow>
-      </div>
-    </div>
+      <DataCard title={t('Экзамены')} className="card--beam prep-exams" count={rows.length || undefined} empty={rows.length === 0 && t('академический директор ведёт их справочником — как появятся, раздел откроется')}>
+        <Rows>
+          {rows.map((exam) => (
+            <Row
+              key={exam.exam_type}
+              lead={<b className="stu__slot prep-exams__mono">{exam.title.slice(0, 2)}</b>}
+              title={exam.title}
+              note={exam.bank_total === 0 ? t('банк пока пуст') : t('решено {done} из {total}', { done: exam.solved, total: exam.bank_total })}
+              right={exam.bank_total > 0 ? <span className="prep__rowbar"><Progress percent={Math.round((exam.solved / exam.bank_total) * 100)} /></span> : undefined}
+              onOpen={() => onPick(exam.exam_type)}
+              openLabel={t('Открыть')}
+            />
+          ))}
+        </Rows>
+      </DataCard>
+    </>
   )
 }
 
@@ -502,7 +504,7 @@ function Statistics({ exam }: { exam: string }) {
   const maxDay = Math.max(1, ...days.map(([, n]) => n))
 
   return (
-    <div>
+    <div className="lay-screen">
       <BadgesBlock limit={3} />
       <div className="card card-pad">
         <StatRow>
@@ -528,7 +530,7 @@ function Statistics({ exam }: { exam: string }) {
         )}
       </div>
 
-      <div className="split">
+      <div className="lay-2">
         <div className="card card-pad">
           <span className="eyebrow">{t('Активность за три месяца')}</span>
           <div className="prep__calendar">
@@ -600,9 +602,9 @@ function Theory({ exam }: { exam: string }) {
     bySection.set(key, [...(bySection.get(key) ?? []), row])
   }
   return (
-    <div>
+    <div className="lay-stack">
       {[...bySection.entries()].map(([section, lessons]) => (
-        <div key={section} className="card card-pad mb-3">
+        <div key={section} className="card card-pad">
           <span className="eyebrow">{section}</span>
           <ul className="rows__list">
             {lessons.map((lesson) => (
@@ -656,7 +658,7 @@ export default function Prep() {
 
   if (session && !review) {
     return (
-      <div>
+      <div className="lay-screen">
         <ScreenHead
           title={t('Центр подготовки')}
         />
@@ -666,7 +668,7 @@ export default function Prep() {
   }
   if (review) {
     return (
-      <div>
+      <div className="lay-screen">
         <ScreenHead title={t('Центр подготовки')} />
         <Review review={review} onAgain={reset} />
       </div>
@@ -675,10 +677,8 @@ export default function Prep() {
 
   if (exam === null) {
     return (
-      <div>
-        <ScreenHead
-          title={t('Центр подготовки')}
-        />
+      <div className="lay-screen">
+        <ScreenHead title={t('Центр подготовки')} subtitle={t('Задания банка школы по вашим экзаменам')} />
         <ExamPicker onPick={setExam} />
       </div>
     )
@@ -687,7 +687,7 @@ export default function Prep() {
   const examMocks = (mocks.data?.results ?? []).filter((m) => m.exam_type === exam)
 
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={`${t('Центр подготовки')} · ${exam}`}
         actions={
@@ -710,7 +710,7 @@ export default function Prep() {
       {error && <ErrorNote error={new Error(error)} />}
 
       {tab === 'prepare' && (
-        <div>
+        <div className="lay-stack">
           {/* Формат тренажёра — блок на цветном фоне: иконка, название,
               подпись и кружок выбора. Недоступный помечен «Скоро», а не
               просто выключен: выключенная кнопка без объяснения читается
@@ -767,9 +767,7 @@ export default function Prep() {
           )}
 
           {(runs.data?.length ?? 0) > 0 && (
-            <>
-              <h2 className="section">{t('Пройденные Mock Test онлайн')}</h2>
-              <div className="card card-pad">
+            <DataCard title={t('Пройденные Mock Test онлайн')} count={runs.data?.length}>
                 <DataTable
                   columns={[
                     { key: 'date', title: t('Дата'), width: '20%', cell: (run: MyRun) => <span className="num">{formatDate(run.created_at)}</span>, sortBy: (run: MyRun) => run.created_at },
@@ -780,8 +778,7 @@ export default function Prep() {
                   rows={(runs.data ?? []).slice(0, 8)}
                   rowKey={(run) => run.id}
                 />
-              </div>
-            </>
+            </DataCard>
           )}
         </div>
       )}

@@ -1,0 +1,58 @@
+/* Каталог вузов и «Мои вузы» по макету: режимы в шапке, полоса соответствия в строке. */
+
+/* соответствие в таблице: полоса и число рядом, число не переносится */
+.catalog-fit {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  min-width: calc(var(--space) * 24);
+}
+
+.catalog-fit .bar {
+  flex: 1 1 auto;
+  min-width: calc(var(--space) * 10);
+}
+
+.catalog-fit .num {
+  white-space: nowrap;
+}
+
+/* переключатель режимов в шапке: подписи не переносятся */
+.catalog-modes .segrow__item {
+  white-space: nowrap;
+}
+
+@media (max-width: 759px) {
+  /* на телефоне четыре режима не помещаются в ширину — ряд прокручивается внутри себя */
+  .catalog-modes {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+/* дата дедлайна и действия строки не переносятся посреди себя */
+.catalog-date {
+  white-space: nowrap;
+}
+
+.tbl .catalog__acts {
+  flex-wrap: nowrap;
+}
+
+/* «Мои вузы»: дата ближайшего дедлайна мельче чисел, как в макете, и не рвётся */
+.mine-kpis > .kpi:last-child .kpi__value {
+  font-size: var(--type-dialog);
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+@media (max-width: 759px) {
+  /* название программы занимает строку, чипы и дата уходят под него, кнопки переносятся */
+  .mine-list .rowline__text {
+    flex: 1 1 calc(var(--space) * 50);
+  }
+
+  .mine-list .rowline__acts {
+    flex-wrap: wrap;
+  }
+}

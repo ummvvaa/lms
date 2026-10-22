@@ -1,0 +1,43 @@
+/* Подготовка по макету: показатели рядом, экзамены плитками в две колонки. */
+
+/* экзамены — плитки по два в ряд внутри главной карточки */
+.prep-exams .rowlist {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(var(--space) * 3);
+}
+
+.prep-exams .rowline {
+  flex-wrap: wrap;
+  align-items: center;
+  padding: calc(var(--space) * 4);
+  border-top: 0;
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
+}
+
+.prep-exams .rowline__title {
+  font-size: var(--type-card);
+}
+
+/* полоса решённого — отдельной строкой под названием, во всю ширину плитки */
+.prep-exams .prep__rowbar {
+  order: 3;
+  flex: 1 0 100%;
+}
+
+.prep-exams .rowline__open {
+  order: 2;
+}
+
+.prep-exams__mono {
+  width: calc(var(--space) * 12);
+  height: calc(var(--space) * 12);
+  border-radius: var(--radius-row);
+}
+
+@media (max-width: 759px) {
+  .prep-exams .rowlist {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

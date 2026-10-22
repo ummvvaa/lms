@@ -25,7 +25,7 @@ import {
 } from '../api/hooks'
 import Field from '../components/Field'
 import Progress from '../components/Progress'
-import { Row, Rows, StatRow } from '../components/patterns'
+import { Row, Rows, ShowAll, StatRow } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t, tk } from '../i18n'
@@ -43,7 +43,7 @@ const TIER_NOTE: Record<string, string> = {
 /** План по программе уже есть: сервер отвечает 409 с кодом — текст ответа на языке человека. */
 
 /** Форма запуска: специальность, уровень, страны из справочника. */
-function LaunchForm({ onStarted }: { onStarted: (run: SelectionRun) => void }) {
+function LaunchForm({ onStarted, className }: { onStarted: (run: SelectionRun) => void; className?: string }) {
   const start = useStartSelection()
   const facets = useCatalogFacets()
   const [major, setMajor] = useState('')
@@ -52,7 +52,7 @@ function LaunchForm({ onStarted }: { onStarted: (run: SelectionRun) => void }) {
   const allCountries: string[] = facets.data?.countries ?? []
 
   return (
-    <DataCard title={t('Новый подбор')}>
+    <DataCard title={t('Новый подбор')} className={className}>
       <Field.Row>
         <Field kind="text" name="major" label={t('Специальность')} value={major} onChange={setMajor} placeholder="Computer Science" />
         <Field
@@ -190,8 +190,8 @@ function Result({ run }: { run: SelectionRun }) {
     .filter(([, rows]) => rows.length > 0)
 
   return (
-    <div className="acad__cols">
-      <div className="acad__stack">
+    <div className="lay-main">
+      <div className="lay-stack">
         <StatRow>
           <Kpi value={run.profile.gpa} label="GPA" none={t('нет')} />
           <Kpi value={run.profile.ielts} label="IELTS" none={t('нет')} />
@@ -226,7 +226,7 @@ function Result({ run }: { run: SelectionRun }) {
           </DataCard>
         )}
       </div>
-      <div className="acad__stack">
+      <div className="lay-stack">
         <DataCard title={t('Подбор от {date}', { date: formatDate(run.created_at) })} note={`${run.major || t('Все специальности')}${run.level_title ? ` · ${run.level_title}` : ''}`}>
           <Rows>
             <Row title={t('Страны')} value={run.countries.length > 0 ? run.countries.join(', ') : t('весь справочник школы')} />
@@ -283,7 +283,7 @@ export default function Selection() {
     if (run.error) return <ErrorNote error={run.error} />
     if (!run.data) return null
     return (
-      <div>
+      <div className="lay-screen">
         <ScreenHead title={t('Подбор вузов')} crumb={{ label: t('Подбор'), to: '/selection' }} />
         {run.data.status === 'running' && <ProgressCard run={run.data} />}
         {run.data.status === 'failed' && <ErrorNote error={new Error(run.data.error || t('Подбор не получился — запустите заново'))} />}
@@ -296,39 +296,49 @@ export default function Selection() {
   const running = active.data?.run
 
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Подбор вузов')}
-        actions={running ? <Button size="sm" onClick={() => navigate(`/selection/${running.id}`)}>{`${t('Открыть расчёт')} · ${running.progress}%`}</Button> : undefined}
+        subtitle={t('Назовите направление — покажем, где вы проходите сейчас и что подтянуть до остальных')}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => navigate('/catalog')}>
+              {t('Каталог вузов')}
+            </Button>
+            {running && <Button size="sm" onClick={() => navigate(`/selection/${running.id}`)}>{`${t('Открыть расчёт')} · ${running.progress}%`}</Button>}
+          </>
+        }
       />
-      <div className="acad__cols">
-        <div className="acad__stack">
-          {running && (
-            <DataCard title={t('Идёт расчёт')} note={running.major || t('все специальности')}>
-              <Progress percent={running.progress} />
-            </DataCard>
-          )}
-          {!running && <LaunchForm onStarted={(started) => navigate(`/selection/${started.id}`)} />}
-          <DataCard title={t('История подборов')} count={history.length || undefined} empty={history.length === 0 && t('подборов ещё не было — запустите первый, это пара минут')}>
-            <Rows>
-              {history.map((row) => (
-                <Row
-                  key={row.id}
-                  icon="clock"
-                  title={`${formatDate(row.created_at)} · ${row.major || t('все специальности')}`}
-                  note={`${row.countries.length > 0 ? row.countries.join(', ') : t('без фильтра стран')} · ${row.status_title}`}
-                  to={`/selection/${row.id}`}
-                />
-              ))}
-            </Rows>
+      {/* по макету: форма подбора на две трети с бегущим светом, справа «как считается» и история */}
+      <div className="lay-3">
+        {running ? (
+          <DataCard title={t('Идёт расчёт')} note={running.major || t('все специальности')} className="lay-span2 card--beam">
+            <Progress percent={running.progress} />
           </DataCard>
-        </div>
-        <div className="acad__stack">
+        ) : (
+          <LaunchForm className="lay-span2 card--beam" onStarted={(started) => navigate(`/selection/${started.id}`)} />
+        )}
+        <div className="lay-stack">
           <DataCard title={t('Как считается')}>
             <Rows>
               <Row lead={<b className="num stu__slot">1</b>} title={t('Вы называете направление')} />
               <Row lead={<b className="num stu__slot">2</b>} title={t('Считаем соответствие')} />
               <Row lead={<b className="num stu__slot">3</b>} title={t('Показываем разбор')} note={t('Четыре категории, разрывы словами и что подтянуть до каждой программы.')} />
+            </Rows>
+          </DataCard>
+          <DataCard title={t('История подборов')} count={history.length || undefined} empty={history.length === 0 && t('подборов ещё не было — запустите первый, это пара минут')}>
+            <Rows>
+              <ShowAll>
+                {history.map((row) => (
+                  <Row
+                    key={row.id}
+                    icon="clock"
+                    title={`${formatDate(row.created_at)} · ${row.major || t('все специальности')}`}
+                    note={`${row.countries.length > 0 ? row.countries.join(', ') : t('без фильтра стран')} · ${row.status_title}`}
+                    to={`/selection/${row.id}`}
+                  />
+                ))}
+              </ShowAll>
             </Rows>
           </DataCard>
         </div>

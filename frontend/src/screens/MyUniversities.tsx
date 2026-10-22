@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import { useCatalog, useChangeTier, useMyUniversities, useRemoveFromMyList, useSetPriority } from '../api/hooks'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { MatchBreakdown } from '../components/MatchCard'
-import { Row, Rows, StatRow } from '../components/patterns'
+import { Row, Rows } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, UnverifiedNote } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t, tk, tn } from '../i18n'
@@ -55,16 +55,16 @@ export default function MyUniversities({ onMode }: { onMode: (mode: CatalogMode)
     .sort()[0]
 
   return (
-    <div>
-      <StatRow>
+    <div className="lay-screen">
+      {/* по макету: четыре показателя в ряд, под ними список подачи на всю ширину */}
+      <div className="lay-4 mine-kpis">
         <Kpi label={t('В списке')} value={results.length || null} none={t('нет')} />
         <Kpi label={t('Проходите')} value={openCount || null} none={t('нет')} tone={openCount ? 'good' : undefined} />
         <Kpi label={t('Ждут подтверждения')} value={waiting || null} none={t('нет')} tone={waiting ? 'warn' : undefined} note={t('директора по поступлению')} />
         <Kpi label={t('Ближайший дедлайн')} value={nearest ? formatDate(nearest) : null} none={t('нет')} />
-      </StatRow>
-      <div className="acad__cols">
-        <div className="acad__stack">
+      </div>
           <DataCard
+            className="card--beam mine-list"
             title={t('Список подачи')}
             count={results.length || undefined}
             note={results.length === 0 ? undefined : tn(results.length, '{n} программа · по {open} вы проходите уже сейчас|{n} программы · по {open} вы проходите уже сейчас|{n} программ · по {open} вы проходите уже сейчас', { open: openCount })}
@@ -81,6 +81,7 @@ export default function MyUniversities({ onMode }: { onMode: (mode: CatalogMode)
                 const card = byProgram.get(result.program)
                 const entry = card?.my_entry ?? null
                 const gap = result.breakdown.find((row) => !row.is_met && !row.is_unknown && row.gap_phrase)
+                const deadline = card?.rounds[0]?.deadline
                 const tierTitle = TIERS.find((tier) => tier.value === entry?.tier)?.title
                 return (
                   <div key={result.program} className="uni__item">
@@ -88,6 +89,7 @@ export default function MyUniversities({ onMode }: { onMode: (mode: CatalogMode)
                       avatar={result.university_name}
                       title={result.university_name}
                       note={[result.program_name, t(result.country), tierTitle ? t(tierTitle) : '', entry && entry.added_by === 'student' && !entry.is_confirmed ? t('ждёт подтверждения') : ''].filter(Boolean).join(' · ')}
+                      when={deadline ? <span className="num">{formatDate(deadline)}</span> : undefined}
                       right={
                         <span className="catalog__acts">
                           {entry?.is_priority && <Chip tone="accent" size="sm">{t('приоритетный')}</Chip>}
@@ -150,8 +152,6 @@ export default function MyUniversities({ onMode }: { onMode: (mode: CatalogMode)
               })}
             </Rows>
           </DataCard>
-        </div>
-      </div>
       <ConfirmDialog
         open={dropping !== null}
         title={t('Убрать из списка?')}

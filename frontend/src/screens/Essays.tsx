@@ -23,8 +23,8 @@ import {
   type EssayDocType,
 } from '../api/hooks'
 import Empty from '../components/Empty'
-import { Row, Rows, Segmented, Tile } from '../components/patterns'
-import { Chip, counted, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Row, Rows, Segmented, ShowAll, Tile } from '../components/patterns'
+import { Bar, Chip, counted, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { SelectField } from '../components/SelectField'
 import { t, tk, tn } from '../i18n'
 import { Textarea } from '../components/ui/textarea'
@@ -33,6 +33,7 @@ import { Button } from '../components/ui/button'
 
 import { ESSAY_TITLE as STATUS_TITLE, ESSAY_TONE as STATUS_TONE } from './essayStatus'
 import { formatDate } from '../lib/format'
+import './essays-layout.css'
 
 const GUIDE_SKIPPED = 'essay.guide.seen'
 
@@ -80,23 +81,23 @@ function EssayRequirements() {
   const requirements = useEssayRequirements()
   const data = requirements.data
   if (!data) return null
+  // по макету — главная карточка правой колонки, с бегущим светом
   return (
-    <div className="card card-pad">
-      <span className="eyebrow">{t('Требования ваших вузов')}</span>
+    <DataCard title={t('Требования ваших вузов')} className="card--beam" count={data.has_data ? data.requirements.length || undefined : undefined}>
       {data.has_data ? (
-        <ul className="essay__list">
-          {data.requirements.slice(0, 6).map((row, index) => (
-            <li key={index}>
-              <b>{row.university}</b> · {row.program} — <span className="muted">{row.note}</span>
-            </li>
-          ))}
-        </ul>
+        <Rows>
+          <ShowAll>
+            {data.requirements.map((row, index) => (
+              <Row key={index} title={row.university} note={[row.program, row.note].filter(Boolean).join(' · ')} />
+            ))}
+          </ShowAll>
+        </Rows>
       ) : (
         <p className="muted essay__note">
           {t('Список вузов пуст — выберите программы, и требования появятся здесь.')}
         </p>
       )}
-    </div>
+    </DataCard>
   )
 }
 
@@ -320,7 +321,6 @@ function AssistChat({ essay }: { essay: Essay }) {
 function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
   const current = essay.versions[0]
   const [text, setText] = useState(current?.text ?? '')
-  const [tab, setTab] = useState<'text' | 'versions' | 'comments'>('text')
   const addVersion = useAddEssayVersion()
   const submit = useSubmitEssay()
   const words = text.trim() ? text.trim().split(/\s+/).length : 0
@@ -355,7 +355,7 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
   }
 
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={essay.title}
         subtitle={tn(
@@ -365,7 +365,6 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
         )}
         actions={
           <>
-            <Chip tone={STATUS_TONE[essay.status]}>{t(STATUS_TITLE[essay.status])}</Chip>
             <Button variant="outline" size="sm" onClick={onBack}>
               {t('К списку')}
             </Button>
@@ -403,81 +402,64 @@ function Editor({ essay, onBack }: { essay: Essay; onBack: () => void }) {
         }
       />
 
+      {/* по макету: текст на две трети; справа замечания куратора, версии и помощник */}
       <div className="essay__editorgrid">
-        <div className="card card-pad">
-          <div className="essay__tabsrow">
-            <Segmented
-              value={tab}
-              onChange={setTab}
-              label={t('Что показать')}
-              items={[
-                { value: 'text', label: t('Текст') },
-                { value: 'versions', label: `${t('Версии')} · ${essay.versions.length}` },
-                { value: 'comments', label: `${t('Замечания куратора')} · ${essay.comments.length}` },
-              ]}
-            />
-            <b className="num essay__words">
-              {tn(limit, '{words} / {n} слово|{words} / {n} слова|{words} / {n} слов', { words })}
-            </b>
+        <div className="card card-pad essay-edit__text">
+          <Textarea
+            className="essay__editor"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            rows={16}
+            placeholder={t('Пишите здесь. Текст сохраняется автоматически, прежние версии остаются в истории.')}
+          />
+          <div className="essay__savedrow">
+            <Chip tone={words > limit ? 'bad' : 'good'}>{savedPhrase()}</Chip>
+            <span className="muted essay__note">{t('Прежние версии остаются в истории')}</span>
+            <span className="essay-edit__count">
+              <b className="num essay__words">{tn(limit, '{words} / {n} слово|{words} / {n} слова|{words} / {n} слов', { words })}</b>
+              <Bar percent={limit ? (words / limit) * 100 : 0} color={words > limit ? 'var(--bad)' : undefined} />
+            </span>
           </div>
-
-          {tab === 'text' && (
-            <>
-              <Textarea
-                className="essay__editor"
-                value={text}
-                onChange={(event) => setText(event.target.value)}
-                rows={16}
-                placeholder={t(
-                  'Пишите здесь. Текст сохраняется автоматически, прежние версии остаются в истории.',
-                )}
-              />
-              <div className="essay__savedrow">
-                <Chip tone={words> limit ? 'bad' : 'good'}>{savedPhrase()}</Chip>
-                <span className="muted essay__note">{t('Прежние версии остаются в истории')}</span>
-              </div>
-            </>
-          )}
-
-          {tab === 'versions' && (
-            <Rows>
-              {essay.versions.length === 0 && <EmptyNote what={tk('версий пока нет')} who={tk('появятся при первом сохранении')} />}
-              {essay.versions.map((version) => (
-                <Row
-                  key={version.id}
-                  icon="doc"
-                  tone="neutral"
-                  title={t('Версия {number}', { number: version.number })}
-                  note={`${formatDate(version.created_at)} · ${counted(version.word_count, 'слово|слова|слов')}`}
-                  right={
-                    <Button variant="ghost" size="sm" onClick={() => setText(version.text)}>
-                      {t('Вернуть текст')}
-                    </Button>
-                  }
-                />
-              ))}
-            </Rows>
-          )}
-
-          {tab === 'comments' && (
-            <Rows>
-              {essay.comments.length === 0 && (
-                <EmptyNote what={tk('замечаний пока нет')} who={tk('пишет директор по поступлению')} />
-              )}
-              {essay.comments.map((comment) => (
-                <Row
-                  key={comment.id}
-                  icon="person"
-                  tone="warn"
-                  title={comment.author_name}
-                  note={`${formatDate(comment.created_at)} · ${comment.text}`}
-                />
-              ))}
-            </Rows>
-          )}
         </div>
 
-        <AssistChat essay={essay} />
+        <div className="lay-stack">
+          <DataCard
+            title={t('Замечания куратора')}
+            className="card--beam"
+            count={essay.comments.length || undefined}
+          >
+            <Rows>
+              {essay.comments.length === 0 && <EmptyNote what={tk('замечаний пока нет')} who={tk('пишет директор по поступлению')} />}
+              <ShowAll>
+                {essay.comments.map((comment) => (
+                  <Row key={comment.id} icon="person" tone="warn" title={comment.author_name} note={`${formatDate(comment.created_at)} · ${comment.text}`} />
+                ))}
+              </ShowAll>
+            </Rows>
+          </DataCard>
+          <DataCard title={t('Версии')} count={essay.versions.length || undefined}>
+            <Rows>
+              {essay.versions.length === 0 && <EmptyNote what={tk('версий пока нет')} who={tk('появятся при первом сохранении')} />}
+              <ShowAll>
+                {essay.versions.map((version) => (
+                  <Row
+                    key={version.id}
+                    icon="doc"
+                    tone="neutral"
+                    title={t('Версия {number}', { number: version.number })}
+                    note={`${formatDate(version.created_at)} · ${counted(version.word_count, 'слово|слова|слов')}`}
+                    right={
+                      <Button variant="ghost" size="sm" onClick={() => setText(version.text)}>
+                        {t('Вернуть текст')}
+                      </Button>
+                    }
+                  />
+                ))}
+              </ShowAll>
+            </Rows>
+          </DataCard>
+          <AssistChat essay={essay} />
+        </div>
       </div>
     </div>
   )
@@ -506,7 +488,7 @@ function TypePicker({ onCreated }: { onCreated: (essay: Essay) => void }) {
   }
 
   return (
-    <div>
+    <div className="lay-screen">
       {requirements.data && (
         <div className="card card-pad essay__requirements">
           <span className="eyebrow">{t('Требования ваших вузов')}</span>
@@ -612,7 +594,7 @@ export default function Essays() {
 
   if (creating) {
     return (
-      <div>
+      <div className="lay-screen">
         <ScreenHead
           title={t('Новое эссе')}
           actions={
@@ -631,46 +613,27 @@ export default function Essays() {
     )
   }
 
+  // счётчики на фильтре статусов — из уже пришедшего списка
+  const statusItems = [
+    { value: '', label: <>{t('Все')}<span className="tabs__n num">{essays.length}</span></> },
+    ...Object.entries(STATUS_TITLE)
+      .map(([value, title]) => ({ value, title, n: essays.filter((essay) => essay.status === value).length }))
+      .filter((item) => item.n > 0 || item.value === statusFilter)
+      .map((item) => ({ value: item.value, label: <>{t(item.title)}<span className="tabs__n num">{item.n}</span></> })),
+  ]
+
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Эссе')}
-        actions={
-          <>
-            <SelectField
-              usageFilter
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              aria-label={t('Статус')}
-            >
-              <option value="">{t('Любой статус')}</option>
-              {Object.entries(STATUS_TITLE).map(([value, title]) => (
-                <option key={value} value={value}>
-                  {t(title)}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField
-              usageFilter
-              value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value)}
-              aria-label={t('Тип документа')}
-            >
-              <option value="">{t('Любой тип')}</option>
-              {essayTypes.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </SelectField>
-            <Button onClick={() => setCreating(true)}>{t('Новое эссе')}</Button>
-          </>
-        }
+        subtitle={t('Черновики, версии и проверка куратором')}
+        actions={<Button onClick={() => setCreating(true)}>{t('Новое эссе')}</Button>}
       />
 
-      <div className="essay__screen">
-        <div className="essay__main">
-          {essays.length === 0 && (
+      {/* по макету: «Мои эссе» на две трети с фильтром в шапке карточки, справа требования вузов и пример дня */}
+      <div className="lay-3 essay-list">
+        {essays.length === 0 ? (
+          <div className="lay-span2 lay-stack">
             <Empty
               icon="doc"
               title={t('Эссе ещё не заведены')}
@@ -678,20 +641,52 @@ export default function Essays() {
               action={t('Новое эссе')}
               onAction={() => setCreating(true)}
             />
-          )}
-
-          <DataCard title={t('Мои эссе')} count={shown.length || undefined} empty={essays.length > 0 && shown.length === 0 && t('с таким фильтром эссе нет')}>
+          </div>
+        ) : (
+          <DataCard
+            title={t('Мои эссе')}
+            className="lay-span2 essay-list__card"
+            right={
+              <div className="essay-list__filters">
+                <Segmented usageFilter value={statusFilter} onChange={setStatusFilter} label={t('Статус')} items={statusItems} />
+                {essayTypes.length > 1 && (
+                  <SelectField usageFilter value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} aria-label={t('Тип документа')}>
+                    <option value="">{t('Любой тип')}</option>
+                    {essayTypes.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </SelectField>
+                )}
+              </div>
+            }
+          >
             <Rows>
+              {shown.length === 0 && <EmptyNote what={tk('с таким фильтром эссе нет')} />}
               {shown.map((essay) => {
                 const last = essay.versions[essay.versions.length - 1]
+                const limit = essay.effective_word_limit
                 return (
                   <Row
                     key={essay.id}
                     icon="doc"
                     tone="accent"
                     title={essay.title}
-                    note={[essay.doc_type_name ?? essay.program_name ?? t('Общее эссе'), last ? formatDate(last.created_at) : t('без версий'), last ? tn(essay.effective_word_limit, '{words} / {n} слово|{words} / {n} слова|{words} / {n} слов', { words: last.word_count }) : ''].filter(Boolean).join(' · ')}
-                    right={<Chip tone={STATUS_TONE[essay.status]} size="sm">{t(STATUS_TITLE[essay.status])}</Chip>}
+                    note={[essay.doc_type_name ?? essay.program_name ?? t('Общее эссе'), last ? formatDate(last.created_at) : t('без версий')].filter(Boolean).join(' · ')}
+                    right={
+                      <span className="essay-list__right">
+                        {last && (
+                          <span className="essay-list__words">
+                            <span className="num">{tn(limit, '{words} / {n} слово|{words} / {n} слова|{words} / {n} слов', { words: last.word_count })}</span>
+                            <Bar percent={limit ? (last.word_count / limit) * 100 : 0} />
+                          </span>
+                        )}
+                        <Chip tone={STATUS_TONE[essay.status]} size="sm">
+                          {t(STATUS_TITLE[essay.status])}
+                        </Chip>
+                      </span>
+                    }
                     onOpen={() => setOpenId(essay.id)}
                     openLabel={t('Открыть эссе')}
                   />
@@ -699,14 +694,12 @@ export default function Essays() {
               })}
             </Rows>
           </DataCard>
-        </div>
+        )}
 
-        {/* Справа — то, по чему ученик сверяется, когда пишет: пример дня
-            и требования его вузов. До фазы 49 правые две трети экрана
-            списка оставались пустыми */}
-        <div className="essay__side">
-          <ReadingOfDay />
+        {/* Справа — то, по чему ученик сверяется, когда пишет: требования его вузов и пример дня */}
+        <div className="lay-stack">
           <EssayRequirements />
+          <ReadingOfDay />
         </div>
       </div>
     </div>

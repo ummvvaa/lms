@@ -16,12 +16,13 @@ import Field from '../components/Field'
 import MatchCard from '../components/MatchCard'
 import PhoneFold from '../components/PhoneFold'
 import { Row, Rows, Segmented } from '../components/patterns'
-import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Bar, Chip, counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t, tk } from '../i18n'
 import { formatDate } from '../lib/format'
 import MyUniversities from './MyUniversities'
 import './catalog.css'
+import './catalog-layout.css'
 
 type Mode = 'mine' | 'catalog' | 'pick' | 'whatif'
 const MODES: Mode[] = ['mine', 'catalog', 'pick', 'whatif']
@@ -32,7 +33,8 @@ const TIERS: { value: string; title: string; hint: string }[] = [
   { value: 'safety', title: 'safety', hint: tk('подстраховка') },
 ]
 
-const LEVEL_TONE: Record<string, 'good' | 'warn' | 'neutral'> = { high: 'good', medium: 'warn', low: 'neutral' }
+/** Цвет полосы соответствия по уровню: высокое — зелёным, среднее — янтарным, низкое — акцентом. */
+const LEVEL_COLOR: Record<string, string | undefined> = { high: 'var(--good)', medium: 'var(--warn)', low: undefined }
 
 /** Чего не хватает — первая незакрытая позиция словами. */
 function gapOf(card: CatalogCard): string {
@@ -122,8 +124,8 @@ function WhatIfPanel() {
   const steps = (values: number[]) => values.map((value) => ({ value: String(value), label: value === 0 ? t('как есть') : `+${value}` }))
 
   return (
-    <div className="acad__cols">
-      <div className="acad__stack">
+    <div className="lay-main">
+      <div className="lay-stack">
         {whatIf.isPending && <Loading kind="table" />}
         {data && (
           <>
@@ -146,8 +148,8 @@ function WhatIfPanel() {
         )}
         {!data && !whatIf.isPending && <DataCard title={t('Пересчёт')} empty={t('подвиньте прибавку справа — список пересчитается')} />}
       </div>
-      <div className="acad__stack">
-        <DataCard title={t('Если сдать лучше')}>
+      <div className="lay-stack">
+        <DataCard title={t('Если сдать лучше')} className="card--beam">
           <div className="catalog__sliders">
             <span className="t-caps">IELTS</span>
             <Segmented usageFilter={false} value={ielts} onChange={(value) => { setIelts(value); run({ ielts: value }) }} label="IELTS" items={steps([0, 0.5, 1, 1.5, 2])} />
@@ -168,9 +170,9 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
   const pick = usePickPrograms()
 
   return (
-    <div className="acad__cols">
-      <div className="acad__stack">
-        <DataCard title={t('Расскажите, чего хотите')}>
+    <div className="lay-screen">
+      <div className="lay-stack">
+        <DataCard title={t('Расскажите, чего хотите')} className="card--beam">
           <Field kind="textarea" name="wish" label={t('Что важно')} value={text} onChange={setText} rows={3} placeholder={t('Например: хочу в Канаду на Computer Science, важна стоимость обучения')} />
           <div className="acad__actions">
             <Button size="sm" onClick={() => pick.mutate(text)} disabled={pick.isPending || text.trim() === ''}>
@@ -235,7 +237,7 @@ export default function Catalog() {
     {
       key: 'program',
       title: t('Программа'),
-      width: '34%',
+      width: '27%',
       cell: (card) => (
         <>
           <b>{card.university_name}</b>
@@ -252,21 +254,30 @@ export default function Catalog() {
     {
       key: 'match',
       title: t('Соотв.'),
-      width: '12%',
+      width: '14%',
       align: 'right',
-      cell: (card) => (card.has_requirements ? <Chip tone={LEVEL_TONE[card.level] ?? 'neutral'} size="sm">{`${card.percent}%`}</Chip> : <span className="t-note">{t('нет')}</span>),
+      // по макету: полоса соответствия и число рядом; цвет полосы — уровень соответствия
+      cell: (card) =>
+        card.has_requirements ? (
+          <span className="catalog-fit">
+            <Bar percent={card.percent} color={LEVEL_COLOR[card.level]} />
+            <span className="num">{`${card.percent}%`}</span>
+          </span>
+        ) : (
+          <span className="t-note">{t('нет')}</span>
+        ),
       sortBy: (card) => (card.has_requirements ? card.percent : null),
     },
-    { key: 'gap', title: t('Чего не хватает'), width: '22%', cell: (card) => <span className={card.is_open ? 'text-good' : undefined}>{gapOf(card)}</span> },
+    { key: 'gap', title: t('Чего не хватает'), width: '23%', cell: (card) => <span className={card.is_open ? 'text-good' : undefined}>{gapOf(card)}</span> },
     {
       key: 'deadline',
       title: t('Дедлайн'),
-      width: '12%',
+      width: '14%',
       align: 'right',
-      cell: (card) => (card.rounds[0] ? <span className="num">{formatDate(card.rounds[0].deadline)}</span> : <span className="t-note">{t('нет')}</span>),
+      cell: (card) => (card.rounds[0] ? <span className="num catalog-date">{formatDate(card.rounds[0].deadline)}</span> : <span className="t-note">{t('нет')}</span>),
       sortBy: (card) => card.rounds[0]?.deadline ?? null,
     },
-    { key: 'add', title: t('В список'), width: '20%', cell: (card) => <AddButton card={card} limitReached={limitReached} /> },
+    { key: 'add', title: t('В список'), width: '22%', cell: (card) => <AddButton card={card} limitReached={limitReached} /> },
   ]
 
   const filterCard = (
@@ -280,7 +291,8 @@ export default function Catalog() {
   )
 
   return (
-    <div>
+    <div className="lay-screen">
+      {/* по макету: режимы — переключателем в шапке справа */}
       <ScreenHead
         title={t('Каталог вузов')}
         subtitle={
@@ -288,21 +300,22 @@ export default function Catalog() {
             ? counted(catalog.data?.count ?? 0, 'программа|программы|программ')
             : `${counted(catalog.data?.count ?? 0, 'программа|программы|программ')} · ${t('в списке {count} из {limit}', { count: inList, limit })}`
         }
+        actions={
+          <div className="catalog-modes">
+            <Segmented<Mode>
+              value={mode}
+              onChange={setMode}
+              label={t('Режим')}
+              items={[
+                { value: 'mine', label: t('Мои вузы') },
+                { value: 'catalog', label: t('Каталог') },
+                { value: 'pick', label: t('Подобрать словами') },
+                { value: 'whatif', label: t('Что откроется, если') },
+              ]}
+            />
+          </div>
+        }
       />
-
-      <div className="acad__toolbar">
-        <Segmented<Mode>
-          value={mode}
-          onChange={setMode}
-          label={t('Режим')}
-          items={[
-            { value: 'mine', label: t('Мои вузы') },
-            { value: 'catalog', label: t('Каталог') },
-            { value: 'pick', label: t('Подобрать словами') },
-            { value: 'whatif', label: t('Что откроется, если') },
-          ]}
-        />
-      </div>
 
       {mode === 'mine' && <MyUniversities onMode={setMode} />}
       {mode === 'pick' && <PickPanel limitReached={limitReached} />}
@@ -311,7 +324,7 @@ export default function Catalog() {
       {mode === 'catalog' && (
         <div className="catalog__layout">
           <PhoneFold active={hasFilters}>{filterCard}</PhoneFold>
-          <div className="acad__stack">
+          <div className="lay-stack">
             {catalog.error && <ErrorNote error={catalog.error} />}
             {catalog.isLoading && !catalog.data && <Loading kind="table" />}
             {catalog.data && (
