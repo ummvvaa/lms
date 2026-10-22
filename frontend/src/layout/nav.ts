@@ -240,9 +240,10 @@ export const NAV: Record<Role, NavItem[]> = {
   // в меню пользователя, отчётов родителям у него нет (решение владельца)
   teacher: [
     { path: '/dashboard', label: tk('Сегодня'), icon: 'sun', group: 'work' },
-    { path: '/schedule', label: tk('Расписание'), icon: 'schedule', group: 'work' },
+    // подписи бара телефона — как в макете учителя: «Уроки» и «Проверка»
+    { path: '/schedule', label: tk('Расписание'), icon: 'schedule', group: 'work', short: tk('Уроки') },
     { path: '/journals', label: tk('Журналы'), icon: 'book', group: 'work' },
-    HOMEWORK_REVIEW,
+    { ...HOMEWORK_REVIEW, short: tk('Проверка') },
   ],
   // у администратора дашборд и есть сводный вид — отдельного пункта
   // «Сводный вид» ему не заводим, он вёл бы на тот же экран

@@ -1,0 +1,154 @@
+/* «Сегодня» учителя по макету: уроки дня строками-плашками (номер урока,
+   предмет, состояние, кнопка), журналы с полосой «проведено», плитка вида
+   оценивания у СОР и СОЧ. Цвета — токены, размеры — шаг четыре. */
+
+.tday__lessons,
+.tday__journals {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+
+.tday__lesson,
+.tday__journal {
+  display: grid;
+  align-items: center;
+  gap: calc(var(--space) * 4);
+  padding: calc(var(--space) * 3) calc(var(--space) * 4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-inner);
+  background: var(--glass-in);
+  min-width: 0;
+}
+
+.tday__lesson {
+  grid-template-columns: calc(var(--space) * 12) minmax(0, 1fr) auto;
+}
+
+/* идущий урок — кромкой акцента и мягким ободком, как `.c-today` макета */
+.tday__lesson--now {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 4px var(--accent-bg);
+}
+
+.tday__lesson--past .tday__title {
+  color: var(--ink-2);
+}
+
+.tday__slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+}
+
+.tday__slot b {
+  font-family: var(--font-head);
+  font-size: var(--type-value);
+  line-height: 1;
+}
+
+.tday__slot span {
+  color: var(--ink-3);
+  font-size: var(--type-note);
+}
+
+.tday__what {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+  min-width: 0;
+}
+
+.tday__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.tday__note {
+  color: var(--ink-3);
+  font-size: var(--type-note);
+}
+
+.tday__state,
+.tday__end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(var(--space) * 3);
+  white-space: nowrap;
+}
+
+.tday__journal {
+  grid-template-columns: minmax(0, 1fr) calc(var(--space) * 40) calc(var(--space) * 40) auto;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform var(--dur-lift) var(--ease-out),
+    box-shadow var(--dur-lift) var(--ease-out);
+}
+
+.tday__journal:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hi);
+}
+
+.tday__journal > svg {
+  color: var(--ink-3);
+}
+
+.tday__held {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+  min-width: 0;
+}
+
+/* плитка вида оценивания слева в строке: СОР — пометкой, СОЧ — акцентом */
+.tday__kind {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: calc(var(--space) * 12);
+  height: calc(var(--space) * 10);
+  border-radius: var(--radius-inrow);
+  background: var(--info-bg);
+  color: var(--info);
+  font-size: var(--type-note);
+  font-weight: 600;
+}
+
+.tday__kind--soch {
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+}
+
+@media (max-width: 759px) {
+  .tday__lesson {
+    grid-template-columns: calc(var(--space) * 12) minmax(0, 1fr);
+    row-gap: calc(var(--space) * 2);
+  }
+
+  .tday__end {
+    grid-column: 2;
+    justify-content: space-between;
+  }
+
+  .tday__journal {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .tday__held,
+  .tday__journal .tday__state {
+    grid-column: 1;
+    justify-content: flex-start;
+  }
+
+  .tday__journal > svg {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
