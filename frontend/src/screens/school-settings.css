@@ -1,12 +1,5 @@
-/* Настройки школы: разделы списком слева, правила раздела справа */
-.rules__layout {
-  display: grid;
-  grid-template-columns: calc(var(--space) * 66) minmax(0, 1fr);
-  gap: var(--gap-block);
-  align-items: start;
-}
-
-.rules__layout > .datacard {
+/* Настройки школы: правила раздела на две трети, справа разделы и история (`lay-main`) */
+.rules__side > .datacard {
   margin: 0;
 }
 
@@ -21,14 +14,24 @@
   margin: 0;
 }
 
-/* правило строкой — слева смысл, справа число и кнопки */
+/* правило строкой, как в макете: смысл, поле, кнопки — три колонки в одну линию */
 .rules__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, calc(var(--space) * 52));
-  gap: var(--gap-block);
-  align-items: start;
-  padding: calc(var(--space) * 2) 0;
+  grid-template-columns: minmax(0, 1fr) calc(var(--space) * 44) calc(var(--space) * 46);
+  gap: calc(var(--space) * 4);
+  align-items: center;
+  padding: calc(var(--space) * 3) 0;
   border-top: 1px solid var(--line);
+}
+
+/* подпись поля — для читалки: единица и границы уже стоят в тексте слева */
+.rules__edit .field__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .rules__row:first-child {
@@ -51,8 +54,13 @@
 
 .rules__actions {
   display: flex;
-  gap: var(--space);
+  justify-content: flex-end;
+  gap: calc(var(--space) * 2);
   flex-wrap: wrap;
+}
+
+.rules__actions > * {
+  white-space: nowrap;
 }
 
 /* группа правил: поля в ряд, под ними сумма и кнопки на всю группу */
@@ -90,5 +98,9 @@
   .rules__groupfoot .rules__actions {
     margin-left: 0;
     width: 100%;
+  }
+
+  .rules__actions {
+    justify-content: flex-start;
   }
 }

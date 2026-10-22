@@ -5,13 +5,13 @@
  * заводится без выката, но мера берётся из закрытого набора — за балл
  * экзамена, GPA или статус бейджа быть не может (инвариант №12).
  *
- * Вид — таблица строками: название и подпись как увидит ученик, мера,
- * порог, переключатель «показывать»; правка — в правой панели.
+ * Вид — по макету: плитки по три в ряд — медаль, название и подпись,
+ * как увидит ученик, мера с порогом, переключатель «показывать» и меню;
+ * правка — в правой панели, по нажатию на плитку или из меню.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useBadgeDirectory, type BadgeDirectoryRow } from '../api/hooks'
-import DataTable, { type Column } from '../components/DataTable'
 import EditDrawer from '../components/EditDrawer'
 import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import RowMenu, { RowMenuItem } from '../components/RowMenu'
@@ -19,7 +19,8 @@ import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Switch } from '../components/ui/switch'
 import { t } from '../i18n'
-import './academics/academics.css'
+import Icon, { type IconName } from '../layout/icons'
+import './badges.css'
 
 /**
  * Меры, которые система умеет считать. Ни одной про баллы — инвариант №12.
@@ -76,75 +77,63 @@ export default function Badges() {
   const rows = query.data?.results ?? []
   const fail = (error: Error) => toast.error(error.message)
 
-  const columns: Column<BadgeDirectoryRow>[] = [
-    {
-      key: 'name',
-      title: t('Бейдж'),
-      width: '34%',
-      cell: (row) => (
-        <>
-          <b>{row.name}</b>
-          {row.description && <span className="t-note"> · {row.description}</span>}
-        </>
-      ),
-      sortBy: (row) => row.name.toLowerCase(),
-    },
-    { key: 'metric', title: t('Даётся за'), width: '30%', cell: (row) => row.metric_title, sortBy: (row) => row.metric_title },
-    { key: 'threshold', title: t('Нужно'), width: '10%', align: 'right', cell: (row) => <span className="num">{row.threshold}</span>, sortBy: (row) => row.threshold },
-    { key: 'order', title: t('Порядок'), width: '10%', align: 'right', cell: (row) => <span className="num">{row.order}</span>, sortBy: (row) => row.order },
-    {
-      key: 'shown',
-      title: t('Показывать'),
-      width: '10%',
-      cell: (row) => (
-        <Switch
-          checked={row.is_active}
-          aria-label={t('Показывать бейдж: {name}', { name: row.name })}
-          disabled={update.isPending}
-          onCheckedChange={(next) => update.mutate({ id: row.id, is_active: next }, { onError: fail })}
-        />
-      ),
-      sortBy: (row) => (row.is_active ? 0 : 1),
-    },
-    {
-      key: 'actions',
-      title: '',
-      width: '6%',
-      align: 'right',
-      cell: (row) => (
-        <RowMenu>
-          <RowMenuItem onClick={() => setEditing(row)}>{t('Править')}</RowMenuItem>
-          <RowMenuItem risk onClick={() => remove.mutate(row.id, { onError: fail })}>
-            {t('Удалить')}
-          </RowMenuItem>
-        </RowMenu>
-      ),
-    },
-  ]
+  // порядок плиток — как у ученика на экране достижений
+  const sorted = [...rows].sort((a, b) => a.order - b.order || a.id - b.id)
+  const shown = rows.filter((row) => row.is_active).length
 
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Достижения школы')}
+        subtitle={rows.length > 0 ? t('Бейджи, которые ученики получают сами — за дела в LMS. Включено {on} из {total}', { on: shown, total: rows.length }) : undefined}
         actions={<Button onClick={() => setCreating(true)}>{t('Добавить бейдж')}</Button>}
       />
 
-      <div className="acad__cols">
-        <div className="acad__stack">
-          <DataCard
-            title={t('Бейджи')}
-            count={rows.length || undefined}
-            empty={rows.length === 0 && t('заведите первый бейдж — ученики увидят его на экране достижений')}
-            emptyAction={
-              <Button variant="secondary" size="sm" onClick={() => setCreating(true)}>
-                {t('Добавить бейдж')}
-              </Button>
-            }
-          >
-            <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={setEditing} selected={(row) => row.id === editing?.id} />
-          </DataCard>
+      {rows.length === 0 ? (
+        <DataCard
+          title={t('Бейджи')}
+          empty={t('заведите первый бейдж — ученики увидят его на экране достижений')}
+          emptyAction={
+            <Button variant="secondary" size="sm" onClick={() => setCreating(true)}>
+              {t('Добавить бейдж')}
+            </Button>
+          }
+        />
+      ) : (
+        <div className="lay-3">
+          {sorted.map((row) => (
+            <section key={row.id} className={`card card-pad badgetile${row.is_active ? '' : ' badgetile--off'}${row.id === editing?.id ? ' badgetile--on' : ''}`}>
+              <div className="badgetile__top">
+                <span className="badgetile__medal" aria-hidden="true">
+                  <Icon name={(row.icon || 'medal') as IconName} size={24} />
+                </span>
+                <span className="badgetile__acts">
+                  <Switch
+                    checked={row.is_active}
+                    aria-label={t('Показывать бейдж: {name}', { name: row.name })}
+                    disabled={update.isPending}
+                    onCheckedChange={(next) => update.mutate({ id: row.id, is_active: next }, { onError: fail })}
+                  />
+                  <RowMenu>
+                    <RowMenuItem onClick={() => setEditing(row)}>{t('Править')}</RowMenuItem>
+                    <RowMenuItem risk onClick={() => remove.mutate(row.id, { onError: fail })}>
+                      {t('Удалить')}
+                    </RowMenuItem>
+                  </RowMenu>
+                </span>
+              </div>
+              <div className="badgetile__text">
+                <span className="t-card">{row.name}</span>
+                {row.description && <span className="t-note">{row.description}</span>}
+              </div>
+              <div className="badgetile__rule">
+                <span className="t-note">{row.metric_title}</span>
+                <b className="num">{row.threshold}</b>
+              </div>
+            </section>
+          ))}
         </div>
-      </div>
+      )}
 
       <EditDrawer
         open={creating || editing !== null}

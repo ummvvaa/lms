@@ -109,7 +109,9 @@ test("удаление навсегда: числа в модалке и под�
       response.url().includes("/purge/") &&
       response.request().method() === "GET",
   );
-  await row.getByRole("button", { name: "Стереть" }).click();
+  // с 22.10.2026 «Стереть» — в меню строки «…»
+  await row.getByRole("button", { name: "Ещё действия" }).click();
+  await page.getByRole("menuitem", { name: "Стереть" }).click();
   expect((await preview).status(), "предпросмотр приходит с сервера").toBe(200);
 
   const dialog = page.locator(".drawer");

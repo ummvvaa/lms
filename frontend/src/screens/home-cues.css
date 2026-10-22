@@ -1,0 +1,96 @@
+/* Сюжеты главной: таблица на две трети и справа — как увидит ученик */
+
+.cues__title {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) / 2);
+  min-width: 0;
+}
+
+/* заголовок и условие — в две строки, а не многоточием посреди фразы */
+.cues__title > b,
+.cues__when {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.cues__action {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.cues__action [data-slot='badge'] {
+  max-width: 100%;
+  justify-content: flex-start;
+}
+
+.cues__chiptext {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cues__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space);
+}
+
+.cues__controls [data-slot='switch'] {
+  margin: 0 calc(var(--space) * 2);
+}
+
+/* превью сюжета: тёплый градиент акцента, как карточка на главной ученика */
+.cues__preview {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+}
+
+.cues__preview > p {
+  margin: 0;
+}
+
+.cues__hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 5);
+  border-radius: var(--radius-card);
+  background: var(--accent-grad);
+  color: var(--on-accent);
+  overflow: hidden;
+}
+
+.cues__eyebrow {
+  font-size: var(--type-note);
+  opacity: 0.85;
+}
+
+.cues__herotitle {
+  font-weight: 600;
+  font-size: var(--type-value);
+  line-height: 1.25;
+}
+
+.cues__herotext {
+  font-size: var(--type-note);
+  opacity: 0.9;
+}
+
+/* подпись кнопки — не кнопка: в превью нажимать нечего */
+.cues__herobtn {
+  align-self: flex-start;
+  padding: calc(var(--space) * 2) calc(var(--space) * 4);
+  border-radius: calc(var(--space) * 3);
+  background: color-mix(in srgb, var(--on-accent) 22%, transparent);
+  font-weight: 600;
+  font-size: var(--type-note);
+  white-space: nowrap;
+}

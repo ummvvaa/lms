@@ -7,8 +7,9 @@
  * и показывает имя, каким оно было на момент удаления. Удалённые уроки
  * приходят сюда тем же путём и возвращаются той же кнопкой.
  *
- * Вид — таблица: тип, что, кто и когда удалил, состояние, возврат в строке;
- * стирание и журнал — в правой панели.
+ * Вид — по макету: над карточкой ряд типов со счётчиками, в шапке карточки —
+ * «только то, что ещё в архиве»; таблица: что, тип, кто и когда удалил,
+ * состояние, возврат в строке; стирание и журнал — в правой панели.
  */
 import { useMemo, useState } from 'react'
 import {
@@ -24,12 +25,14 @@ import {
 import DataTable, { type Column } from '../components/DataTable'
 import EditDrawer from '../components/EditDrawer'
 import Field from '../components/Field'
+import RowMenu, { RowMenuItem } from '../components/RowMenu'
 import { Row, Rows, Segmented } from '../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
 import { formatDateTime } from '../lib/format'
 import './academics/academics.css'
+import './archive.css'
 
 function when(value: string): string {
   return formatDateTime(value)
@@ -182,11 +185,10 @@ export default function Archive() {
   }
 
   const columns: Column<ArchiveRow>[] = [
-    { key: 'kind', title: t('Тип'), width: '14%', cell: (row) => row.kind, sortBy: (row) => row.kind },
     {
       key: 'title',
       title: t('Что'),
-      width: '30%',
+      width: '24%',
       cell: (row) => (
         <>
           <b>{row.title}</b>
@@ -195,12 +197,23 @@ export default function Archive() {
       ),
       sortBy: (row) => row.title,
     },
-    { key: 'who', title: t('Кто удалил'), width: '16%', cell: (row) => row.actor_name || <span className="t-note">{t('неизвестно кто')}</span> },
-    { key: 'when', title: t('Когда'), width: '12%', cell: (row) => <span className="num">{when(row.created_at)}</span>, sortBy: (row) => row.created_at },
+    {
+      key: 'kind',
+      title: t('Тип'),
+      width: '15%',
+      cell: (row) => (
+        <Chip size="sm" className="archive__kind">
+          {row.kind}
+        </Chip>
+      ),
+      sortBy: (row) => row.kind,
+    },
+    { key: 'who', title: t('Кто удалил'), width: '14%', cell: (row) => row.actor_name || <span className="t-note">{t('неизвестно кто')}</span> },
+    { key: 'when', title: t('Когда'), width: '16%', cell: (row) => <span className="num archive__when">{when(row.created_at)}</span>, sortBy: (row) => row.created_at },
     {
       key: 'state',
       title: t('Состояние'),
-      width: '14%',
+      width: '13%',
       cell: (row) =>
         row.purged_at ? (
           <Chip tone="bad" size="sm">
@@ -220,7 +233,7 @@ export default function Archive() {
     {
       key: 'acts',
       title: '',
-      width: '14%',
+      width: '18%',
       align: 'right',
       cell: (row) => (
         <span className="acad__inline">
@@ -229,9 +242,12 @@ export default function Archive() {
               <Button variant="secondary" size="sm" disabled={restore.isPending} onClick={() => restore.mutate(row.id, { onSuccess: (result) => setFlash(result.detail), onError: (error) => setFlash(error.message) })}>
                 {t('Вернуть')}
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setPanel({ mode: 'purge', row })}>
-                {t('Стереть')}
-              </Button>
+              {/* одно действие на виду, стирание — в «…»: оно необратимо и нужно редко */}
+              <RowMenu>
+                <RowMenuItem risk onClick={() => setPanel({ mode: 'purge', row })}>
+                  {t('Стереть')}
+                </RowMenuItem>
+              </RowMenu>
             </>
           )}
           {row.purged_at && (
@@ -244,10 +260,18 @@ export default function Archive() {
     },
   ]
 
+  // галочка в шапке карточки, как в макете
+  const onlyToggle = (
+    <span className="archive__only">
+      <Field usageFilter kind="checkbox" name="pending" label={t('Показывать только то, что ещё в архиве')} checked={onlyPending} onChange={setOnlyPending} />
+    </span>
+  )
+
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Архив')}
+        subtitle={t('Всё удалённое лежит здесь и восстанавливается одной кнопкой')}
         actions={
           <Button variant="outline" onClick={() => setPanel({ mode: 'cleanup' })}>
             {t('Очистить архив старше…')}
@@ -255,26 +279,38 @@ export default function Archive() {
         }
       />
 
-      <div className="acad__toolbar">
-        <Segmented<string> value={kind} onChange={setKind} label={t('Тип записи')} items={[{ value: '', label: t('Все {count}', { count: all.length }) }, ...kinds.map((value) => ({ value, label: `${value} ${all.filter((row) => row.kind === value).length}` }))]} />
-        <Field usageFilter kind="checkbox" name="pending" label={t('Показывать только то, что ещё в архиве')} checked={onlyPending} onChange={setOnlyPending} />
-      </div>
+      {all.length > 0 && (
+        <div className="filters archive__kinds">
+          <Segmented<string>
+            value={kind}
+            onChange={setKind}
+            label={t('Тип записи')}
+            items={[
+              { value: '', label: <>{t('Все')}<span className="tabs__n num">{all.length}</span></> },
+              ...kinds.map((value) => ({ value, label: <>{value}<span className="tabs__n num">{all.filter((row) => row.kind === value).length}</span></> })),
+            ]}
+          />
+        </div>
+      )}
 
       {flash && (
-        <Chip tone="good" size="sm">
+        <Chip tone="good" size="sm" className="archive__flash">
           {flash}
         </Chip>
       )}
       {list.isLoading && <Loading kind="table" />}
       {list.isError && <ErrorNote error={list.error} />}
 
-      <div className="acad__cols">
-        <div className="acad__stack">
-          <DataCard title={t('Удалённое')} count={rows.length || undefined} empty={!list.isLoading && rows.length === 0 && t('архив пуст — сюда попадает всё удалённое и отсюда же возвращается')}>
-            <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} limit={30} />
-          </DataCard>
-        </div>
-      </div>
+      <DataCard
+        title={t('Удалённое')}
+        count={rows.length || undefined}
+        right={onlyToggle}
+        // пустая карточка сворачивается в строку: галочка остаётся в ней, иначе стёртое не найти
+        emptyAction={onlyToggle}
+        empty={!list.isLoading && rows.length === 0 && t('архив пуст — сюда попадает всё удалённое и отсюда же возвращается')}
+      >
+        <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} limit={30} />
+      </DataCard>
 
       <EditDrawer
         open={panel !== null}

@@ -12,8 +12,8 @@
  * «Сбросить»; сумму и порядок экран показывает сразу и не даёт сохранить
  * неверные, сервер проверяет то же самое ещё раз.
  *
- * Правил больше полусотни, поэтому экран разбит на разделы: список слева,
- * правила раздела справа. На телефоне список разделов — сам экран, раздел
+ * Правил больше полусотни, поэтому экран разбит на разделы: правила
+ * раздела на две трети, справа список разделов и история изменений. На телефоне список разделов — сам экран, раздел
  * открывается по нажатию и возвращает крошкой. Раздел живёт в адресе
  * (`?section=`): ссылку на него можно переслать, «Назад» ведёт к списку.
  */
@@ -131,27 +131,27 @@ function RuleRow({ rule }: { rule: SchoolRule }) {
         />
         )}
         {rule.kind === 'bool' && error && <span className="t-note text-bad">{error}</span>}
-        <div className="rules__actions">
-          <Button size="sm" disabled={!changed || save.isPending} onClick={submit}>
-            {t('Сохранить')}
+      </div>
+      <div className="rules__actions">
+        <Button size="sm" disabled={!changed || save.isPending} onClick={submit}>
+          {t('Сохранить')}
+        </Button>
+        <Button variant="outline" size="sm" disabled={rule.is_default || reset.isPending} onClick={restore}>
+          {t('Сбросить')}
+        </Button>
+        {/* выключенному правилу — предложенное значение в поле; сохранит человек сам */}
+        {rule.suggested > 0 && draft.trim() === '0' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setDraft(String(rule.suggested))
+              setError('')
+            }}
+          >
+            {t('Подставить {value}', { value: shown(rule.suggested) })}
           </Button>
-          <Button variant="outline" size="sm" disabled={rule.is_default || reset.isPending} onClick={restore}>
-            {t('Сбросить')}
-          </Button>
-          {/* выключенному правилу — предложенное значение в поле; сохранит человек сам */}
-          {rule.suggested > 0 && draft.trim() === '0' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setDraft(String(rule.suggested))
-                setError('')
-              }}
-            >
-              {t('Подставить {value}', { value: shown(rule.suggested) })}
-            </Button>
-          )}
-        </div>
+        )}
       </div>
     </div>
   )
@@ -280,10 +280,9 @@ function SectionList({ data, current }: { data: SchoolRulesScreen; current: stri
   )
 }
 
-/** Правила одного раздела и его история: кто, когда, было → стало. */
+/** Правила одного раздела; на телефоне под ними — история раздела. */
 function SectionRules({ data, code, phone = false }: { data: SchoolRulesScreen; code: string; phone?: boolean }) {
   const section = data.sections.find((row) => row.code === code)
-  const history = data.history.filter((row) => row.section === code)
   if (!section) return null
   const own = data.rules.filter((rule) => rule.section === code)
   const single = own.filter((rule) => !rule.group)
@@ -304,14 +303,22 @@ function SectionRules({ data, code, phone = false }: { data: SchoolRulesScreen; 
           ))}
         </DataCard>
       )}
-      <DataCard className="card--beam" title={t('История изменений')} count={history.length || undefined} empty={history.length === 0 && t('в этом разделе правила ещё не меняли')}>
-        <Rows>
-          {history.map((row) => (
-            <Row key={row.id} title={t(row.title)} note={row.actor || t('система')} value={`${logged(row.old_value)} → ${logged(row.new_value)}`} when={whenAt(row.created_at)} />
-          ))}
-        </Rows>
-      </DataCard>
+      {phone && <SectionHistory data={data} code={code} />}
     </div>
+  )
+}
+
+/** История раздела: кто, когда, было → стало. На компьютере — справа, под списком разделов. */
+function SectionHistory({ data, code }: { data: SchoolRulesScreen; code: string }) {
+  const history = data.history.filter((row) => row.section === code)
+  return (
+    <DataCard className="card--beam" title={t('История изменений')} count={history.length || undefined} empty={history.length === 0 && t('в этом разделе правила ещё не меняли')}>
+      <Rows>
+        {history.map((row) => (
+          <Row key={row.id} title={t(row.title)} note={row.actor || t('система')} value={`${logged(row.old_value)} → ${logged(row.new_value)}`} when={whenAt(row.created_at)} />
+        ))}
+      </Rows>
+    </DataCard>
   )
 }
 
@@ -347,9 +354,13 @@ export default function SchoolSettings() {
   return (
     <div>
       <ScreenHead title={t('Настройки школы')} subtitle={subtitle} />
-      <div className="rules__layout">
-        <SectionList data={data} current={current.code} />
+      {/* по макету: правила на две трети, справа разделы и история изменений */}
+      <div className="lay-main">
         <SectionRules data={data} code={current.code} />
+        <div className="lay-stack rules__side">
+          <SectionList data={data} current={current.code} />
+          <SectionHistory data={data} code={current.code} />
+        </div>
       </div>
     </div>
   )

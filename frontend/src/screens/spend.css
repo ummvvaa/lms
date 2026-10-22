@@ -1,0 +1,44 @@
+/* Расходы на модель: доли расходов полосами в правой колонке */
+
+.aispend__bars {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 4);
+}
+
+.aispend__bar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+  min-width: 0;
+}
+
+.aispend__barhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--space) * 3);
+  font-size: var(--type-body);
+}
+
+.aispend__barhead > b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.aispend__barhead > .num {
+  white-space: nowrap;
+}
+
+.aispend__nowrap {
+  white-space: nowrap;
+}
+
+.aispend__bar > * {
+  flex: 0 0 auto;
+}

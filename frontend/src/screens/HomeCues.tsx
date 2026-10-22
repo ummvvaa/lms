@@ -7,8 +7,9 @@
  * заводится строкой, без выката. Надпись над заголовком собирает сервер:
  * в ней живое число, и в справочнике ему взяться неоткуда.
  *
- * Вид — таблица: заголовок, условие, кнопка, показывать; порядок —
- * кнопками «выше» и «ниже» в строке. Числового «порядка» в форме нет:
+ * Вид — по макету: таблица на две трети (номер, заголовок, условие,
+ * кнопка, порядок стрелками, показывать), справа — первый включённый
+ * сюжет так, как его увидит ученик. Числового «порядка» в форме нет:
  * новый сюжет встаёт последним, дальше его двигают. Правка — в правой панели.
  */
 import { useState } from 'react'
@@ -18,11 +19,12 @@ import DataTable, { type Column } from '../components/DataTable'
 import EditDrawer from '../components/EditDrawer'
 import RowForm, { type FieldDef, type RowValues } from '../components/RowForm'
 import RowMenu, { RowMenuItem } from '../components/RowMenu'
-import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Switch } from '../components/ui/switch'
 import { t } from '../i18n'
-import './academics/academics.css'
+import Icon from '../layout/icons'
+import './home-cues.css'
 
 /** Поля формы — функцией: подписи переводятся при показе, на языке человека. */
 const fields = (): FieldDef[] => [
@@ -82,95 +84,103 @@ export default function HomeCues() {
     {
       key: 'title',
       title: t('Сюжет'),
-      width: '30%',
+      width: '36%',
       cell: (row) => (
-        <>
+        // описание — по наведению: в строке, как в макете, только заголовок; целиком оно в превью и в правке
+        <span className="cues__title" title={row.description || undefined}>
           <b>{row.title}</b>
-          {row.description && <span className="t-note"> · {row.description}</span>}
-        </>
+        </span>
       ),
     },
-    { key: 'condition', title: t('Показывается, когда'), width: '26%', cell: (row) => row.condition_title },
+    { key: 'condition', title: t('Показывается, когда'), width: '34%', cell: (row) => <span className="t-note cues__when">{row.condition_title}</span> },
     {
       key: 'action',
       title: t('Кнопка'),
-      width: '18%',
+      width: '30%',
       cell: (row) => (
-        <>
-          {row.action_label}
-          <span className="t-note"> · {row.action_path}</span>
-        </>
+        <span className="cues__action" title={row.action_path}>
+          <Chip size="sm">
+            <span className="cues__chiptext">{row.action_label}</span>
+          </Chip>
+        </span>
       ),
     },
     {
-      key: 'order',
-      title: t('Порядок'),
-      width: '12%',
+      // порядок стрелками, «показывать» и меню — одной линией справа, как в макете;
+      // на телефоне — внизу карточки строки
+      key: 'controls',
+      title: '',
+      width: '192px',
+      actions: true,
       cell: (row) => {
         const index = rows.findIndex((item) => item.id === row.id)
         return (
-          <span className="acad__inline">
-            <Button variant="ghost" size="sm" disabled={index === 0 || update.isPending} aria-label={`${t('Выше')}: ${row.title}`} onClick={() => move(index, -1)}>
-              {t('Выше')}
+          <span className="cues__controls">
+            <Button variant="ghost" size="icon-sm" disabled={index === 0 || update.isPending} aria-label={`${t('Выше')}: ${row.title}`} onClick={() => move(index, -1)}>
+              <Icon name="chevronUp" size={14} />
             </Button>
-            <Button variant="ghost" size="sm" disabled={index === rows.length - 1 || update.isPending} aria-label={`${t('Ниже')}: ${row.title}`} onClick={() => move(index, 1)}>
-              {t('Ниже')}
+            <Button variant="ghost" size="icon-sm" disabled={index === rows.length - 1 || update.isPending} aria-label={`${t('Ниже')}: ${row.title}`} onClick={() => move(index, 1)}>
+              <Icon name="chevronDown" size={14} />
             </Button>
+            <Switch
+              checked={row.is_active}
+              aria-label={`${t('Показывать сюжет')}: ${row.title}`}
+              disabled={update.isPending}
+              onCheckedChange={(next) => update.mutate({ id: row.id, is_active: next }, { onError: fail })}
+            />
+            <RowMenu>
+              <RowMenuItem onClick={() => setEditing(row)}>{t('Править')}</RowMenuItem>
+              <RowMenuItem risk onClick={() => remove.mutate(row.id, { onError: fail })}>
+                {t('Удалить')}
+              </RowMenuItem>
+            </RowMenu>
           </span>
         )
       },
     },
-    {
-      key: 'shown',
-      title: t('Показывать'),
-      width: '8%',
-      cell: (row) => (
-        <Switch
-          checked={row.is_active}
-          aria-label={`${t('Показывать сюжет')}: ${row.title}`}
-          disabled={update.isPending}
-          onCheckedChange={(next) => update.mutate({ id: row.id, is_active: next }, { onError: fail })}
-        />
-      ),
-    },
-    {
-      key: 'actions',
-      title: '',
-      width: '6%',
-      align: 'right',
-      cell: (row) => (
-        <RowMenu>
-          <RowMenuItem onClick={() => setEditing(row)}>{t('Править')}</RowMenuItem>
-          <RowMenuItem risk onClick={() => remove.mutate(row.id, { onError: fail })}>
-            {t('Удалить')}
-          </RowMenuItem>
-        </RowMenu>
-      ),
-    },
   ]
 
+  // первый включённый сюжет — тот, что ученик увидит первым, если условие выполнено
+  const first = rows.find((row) => row.is_active)
+
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Сюжеты главной')}
+        subtitle={t('Подсказки «Что закрыть» на главной ученика')}
         actions={<Button onClick={() => setCreating(true)}>{t('Добавить сюжет')}</Button>}
       />
 
-      <div className="acad__cols">
-        <div className="acad__stack">
-          <DataCard
-            title={t('Сюжеты')}
-            count={rows.length || undefined}
-            empty={rows.length === 0 && t('заведите сюжет — он появится на главной, когда у ученика будет что закрывать')}
-            emptyAction={
-              <Button variant="secondary" size="sm" onClick={() => setCreating(true)}>
-                {t('Добавить сюжет')}
-              </Button>
-            }
-          >
-            <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={setEditing} selected={(row) => row.id === editing?.id} />
-          </DataCard>
-        </div>
+      <div className="lay-3">
+        <DataCard
+          className="lay-span2"
+          title={t('Сюжеты')}
+          count={rows.length || undefined}
+          empty={rows.length === 0 && t('заведите сюжет — он появится на главной, когда у ученика будет что закрывать')}
+          emptyAction={
+            <Button variant="secondary" size="sm" onClick={() => setCreating(true)}>
+              {t('Добавить сюжет')}
+            </Button>
+          }
+        >
+          <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={setEditing} selected={(row) => row.id === editing?.id} />
+        </DataCard>
+
+        <DataCard className="card--beam" title={t('Так увидит ученик')}>
+          <div className="cues__preview">
+            {first ? (
+              <div className="cues__hero">
+                <span className="cues__eyebrow">{t('Что закрыть')}</span>
+                <span className="cues__herotitle">{first.title}</span>
+                {first.description && <span className="cues__herotext">{first.description}</span>}
+                <span className="cues__herobtn">{first.action_label}</span>
+              </div>
+            ) : (
+              <p className="t-note">{t('Включённых сюжетов нет — на главной ученика подсказок не будет')}</p>
+            )}
+            <p className="t-note">{t('Порядок решает, какой сюжет ученик увидит первым. Выключенные не показываются никому')}</p>
+          </div>
+        </DataCard>
       </div>
 
       <EditDrawer

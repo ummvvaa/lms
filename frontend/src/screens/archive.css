@@ -1,0 +1,42 @@
+/* Архив: галочка в шапке карточки, тип чипом, даты и подписи — в одну строку */
+
+.archive__only {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.archive__only .field {
+  margin: 0;
+}
+
+.archive__kind,
+.archive__when {
+  white-space: nowrap;
+}
+
+.archive__flash {
+  align-self: flex-start;
+}
+
+/* типы записей — чипами в ряд, как в макете, а не серой подложкой сегментов */
+.archive__kinds .segrow {
+  gap: calc(var(--space) * 2);
+  padding: 0;
+  background: none;
+}
+
+.archive__kinds .segrow__item {
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  white-space: nowrap;
+}
+
+.archive__kinds .segrow__item--on {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.archive__kinds .segrow__item--on .tabs__n {
+  background: color-mix(in srgb, var(--surface) 20%, transparent);
+  color: var(--surface);
+}
