@@ -100,13 +100,12 @@ async function pupils(page: Page): Promise<Row[]> {
     .filter((row): row is Row => row !== undefined);
 }
 
-test.beforeAll(() => {
-  // база обнуляется здесь, а не в globalSetup: проект идёт последним,
-  // и всё, что до него, к этому моменту уже отработало
-  resetAll();
-});
-
 test("администратор: две группы и пятеро учеников", async ({ browser }) => {
+  // база обнуляется здесь, а не в globalSetup: проект идёт последним,
+  // и всё, что до него, к этому моменту уже отработало. И не в beforeAll:
+  // перезапустится процесс посреди файла — beforeAll сработает в новом
+  // снова и сотрёт уже заведённый посев, а первая проверка идёт один раз
+  resetAll();
   const page = await as(browser, "admin");
 
   for (const [code, parallel] of [

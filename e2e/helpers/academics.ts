@@ -16,13 +16,37 @@ export interface LessonRow {
   slot: number;
   /** звонок урока «10:25–11:10»; урок без звонка в сетке — пусто */
   bell?: string;
+  room?: string;
   is_live?: boolean;
   actual_teacher?: { id: number; short: string } | null;
+  /** учитель по расписанию; `actual_teacher` — он же или замена */
+  teacher?: { id: number; short: string } | null;
+  /** отметка урока уже поставлена */
+  marked?: boolean;
   /** предмет ведётся в LMS: есть журнал, отметки и оценки */
   in_lms?: boolean;
   /** `in_lms: false` — предмет «только расписание»: урок в неделе есть, отметок и оценок нет */
   subject: { id: number; title: string; short_title: string; in_lms?: boolean };
-  cohort: { id: number; name: string; group: string; students?: number };
+  /** `group` — вся группа, `subgroup` — подгруппа, `stream` — поток; `group` — код группы */
+  cohort: { id: number; kind?: string; name: string; group: string; students?: number };
+}
+
+/**
+ * День через `n` дней от сегодня по Алматы, `ГГГГ-ММ-ДД` — так же, как
+ * `daysFromToday` во фронте. `toISOString()` отдаёт день по UTC: с полуночи
+ * до пяти утра по Алматы это ещё вчера, и сценарий открывал бы не ту неделю.
+ */
+export function almatyDay(n = 0): string {
+  const at = new Date();
+  at.setUTCDate(at.getUTCDate() + n);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Almaty",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(at);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 /** Дата «N дней назад» в виде YYYY-MM-DD. */

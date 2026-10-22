@@ -1220,9 +1220,16 @@ test("дисциплина: три недели уроков с пропуска
   }
   await teacher.context().close();
   // уроки второго учителя отмечает администратор: он отмечает любой урок
-  // предмет «только расписание» не отмечается: у его уроков нет журнала (07.10.2026)
+  // предмет «только расписание» не отмечается: у его уроков нет журнала (07.10.2026).
+  // Только уроки учителей прогона и только неотмеченные: администратор видит
+  // всю школу, и отмечать заодно сотни чужих уроков dev-базы посеву незачем
   const others = (await lessonsBetween(admin, daysAgo(21), daysAgo(0))).filter(
-    (row) => row.date < daysAgo(0) && row.subject.in_lms !== false && !mine.some((own) => own.id === row.id),
+    (row) =>
+      row.date < daysAgo(0) &&
+      row.subject.in_lms !== false &&
+      !row.marked &&
+      (row.actual_teacher?.short ?? row.teacher?.short ?? "").includes("Прогон") &&
+      !mine.some((own) => own.id === row.id),
   );
   for (const lesson of others) await markLesson(admin, lesson.id, "all");
 
