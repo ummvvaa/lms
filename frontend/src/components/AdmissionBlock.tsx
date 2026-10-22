@@ -97,15 +97,18 @@ function Line({
   actions,
   mono,
   edit,
+  wide,
 }: {
   label: string
   value: ReactNode
   actions?: ReactNode
   mono?: boolean
   edit?: boolean
+  /** длинное значение (показанный пароль) — под названием во всю строку */
+  wide?: boolean
 }) {
   return (
-    <div className={`cadm__pair${edit ? ' cadm__pair--edit' : ''}`}>
+    <div className={`cadm__pair${edit ? ' cadm__pair--edit' : ''}${wide ? ' cadm__pair--wide' : ''}`}>
       <span className="cadm__k">{t(label)}</span>
       <span className={`cadm__v${mono ? ' cadm__v--mono' : ''}`}>{value}</span>
       {actions && <span className="cadm__acts">{actions}</span>}
@@ -229,6 +232,7 @@ function CredentialRow({
     <Line
       label={title}
       mono
+      wide={Boolean(shown)}
       value={shown ? <Text>{shown}</Text> : <span aria-label={t('пароль скрыт')}>{MASK}</span>}
       actions={
         <>

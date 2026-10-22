@@ -2723,33 +2723,61 @@ body [data-slot='button'][data-variant].notif__all {
   }
 }
 
-/* На ноутбуке (фаза 77) действия строки — значки в колонке постоянной
-   ширины: три места по 44 px (глаз, копия, карандаш — больше в одной
-   строке не бывает), и прочерки пустых значений стоят на одной вертикали.
+/* На ноутбуке (фаза 77) действия строки — значки по 44 px (глаз, копия,
+   карандаш). Колонки у строк общие (`subgrid`): колонка действий шириной
+   в самую длинную строку значков, а не в постоянные три места — в равном
+   столбце карточки постоянная колонка резала значение («+7 701 234 …»);
+   значения всех строк начинаются и кончаются на одной вертикали.
    Строка не ниже поля касания и выровнена по своему верху: подпись
    в две строки кнопки вниз не уводит. Телефон (≤640) эти правила
    не видит — там кнопки остаются словами, а раскладка прежняя. */
 @media (min-width: 760px) {
   .cadm {
-    gap: 0;
+    grid-template-columns: minmax(calc(var(--space) * 28), calc(var(--space) * 36)) minmax(0, 1fr) auto;
+    gap: 0 calc(var(--space) * 2);
   }
 
   .cadm__pair {
-    grid-template-columns: minmax(calc(var(--space) * 30), calc(var(--space) * 40)) minmax(0, 1fr) calc(var(--space) * 35);
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
     align-items: start;
     min-height: var(--touch);
   }
 
   /* поле ввода — во всю колонку значения, но не уже, чем нужен паролю;
-     «Сохранить» и «Отмена» — словами, по своей ширине */
+     «Сохранить» и «Отмена» — словами, по своей ширине: строка правки
+     живёт своими колонками и общую колонку действий не раздувает */
   .cadm__pair--edit {
-    grid-template-columns: minmax(calc(var(--space) * 30), calc(var(--space) * 40)) minmax(calc(var(--space) * 60), 1fr) auto;
+    grid-template-columns: minmax(calc(var(--space) * 28), calc(var(--space) * 36)) minmax(calc(var(--space) * 60), 1fr) auto;
   }
 
   .cadm__k,
   .cadm__v,
   .cadm__acts {
     min-height: var(--touch);
+  }
+
+  /* показанный пароль в равном столбце карточки не помещается рядом
+     с названием: строка живёт своими колонками — сверху название и значки,
+     под ними пароль во всю ширину; три значка этой строки не раздувают
+     общую колонку действий, и соседние значения не режутся */
+  .cadm__pair--wide {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'k acts'
+      'v v';
+  }
+
+  .cadm__pair--wide > .cadm__k {
+    grid-area: k;
+  }
+
+  .cadm__pair--wide > .cadm__v {
+    grid-area: v;
+  }
+
+  .cadm__pair--wide > .cadm__acts {
+    grid-area: acts;
   }
 
   .cadm__k {
@@ -2788,6 +2816,7 @@ body [data-slot='button'][data-variant].notif__all {
 
   .cadm-tiles .cadm__pair,
   .cadm-tiles .cadm__pair--edit {
+    grid-column: auto;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       'k acts'
