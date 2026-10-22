@@ -6590,13 +6590,8 @@ msgid "Порог посещаемости"
 msgstr "Attendance threshold"
 
 #: core/school_rules.py:78
-msgid ""
-"Ниже — ученик в «Рисках», процент выделен на экранах посещаемости, "
-"успеваемости группы, в карточке и в ответах помощника"
-msgstr ""
-"Below this, the student appears in “Risks”, and the percentage is highlighted"
-" on the attendance and group performance screens, in the student record and "
-"in assistant answers"
+msgid "Ниже — ученик в «Рисках», процент выделен на экранах посещаемости, успеваемости группы и в карточке"
+msgstr "Below this, the student appears in “Risks”, and the percentage is highlighted on the attendance and group performance screens and in the student record"
 
 #: core/school_rules.py:88
 msgid "Порог четвертной оценки"
