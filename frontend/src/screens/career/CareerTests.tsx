@@ -188,7 +188,7 @@ function TestsTab({ manage }: { manage: boolean }) {
           </div>
           {asTable ? (
             <DataCard className="card--beam" title={t('Тесты')} count={rows.length}>
-              <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} />
+              <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} rowClass={() => 'ctl-row'} />
             </DataCard>
           ) : (
           <>
