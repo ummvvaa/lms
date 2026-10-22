@@ -90,3 +90,16 @@
   min-width: 0;
   padding-inline: 0;
 }
+
+/* список журналов: «проведено» числом и полосой под ним */
+.jlist__held {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: calc(var(--space) * 1.5);
+  width: 100%;
+}
+
+.jlist__held .bar {
+  width: calc(var(--space) * 24);
+}
