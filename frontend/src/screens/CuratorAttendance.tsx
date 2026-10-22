@@ -25,8 +25,8 @@ import DataTable, { type Column } from '../components/DataTable'
 import { ExportPreview } from '../components/ExportPreview'
 import Field from '../components/Field'
 import Modal from '../components/Modal'
-import { Row, Rows, Segmented, StatRow } from '../components/patterns'
-import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, ScreenTabs, type Tone } from '../components/ui'
+import { Avatar, Row, Rows, Segmented, StatRow } from '../components/patterns'
+import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { t, tk, tn } from '../i18n'
@@ -35,7 +35,9 @@ import { formatDate, formatTime } from '../lib/format'
 import { usePhone } from '../phone'
 import { ALL, useGroup, useMyGroups } from './curator/state'
 import { dateWords } from './academics/shared'
+import GroupSwitch from './curator/GroupSwitch'
 import './attendance.css'
+import './curator/curator-layout.css'
 
 type Tab = 'mark' | 'stats'
 
@@ -118,7 +120,7 @@ function MarkRow({ group, row, onSaved }: { group: number; row: AttendanceRow; o
   )
 }
 
-function GroupSheet({ groupId, groupCode }: { groupId: number; groupCode: string }) {
+function GroupSheet({ groupId, groupCode, lead = false }: { groupId: number; groupCode: string; lead?: boolean }) {
   const today = todayAlmaty()
   const sheet = useAttendanceSheet(String(groupId), today, true)
   const [summary, setSummary] = useState<{ noted: { by: string; at: string } | null; absent: number; late_count: number } | null>(null)
@@ -137,7 +139,13 @@ function GroupSheet({ groupId, groupCode }: { groupId: number; groupCode: string
     .filter(Boolean)
     .join(' · ')
   return (
-    <DataCard title={`${groupCode} · ${dateWords(today)}`} note={note || undefined} count={data.rows.length || undefined} empty={data.rows.length === 0 && t('в группе нет учеников')}>
+    <DataCard
+      className={lead ? 'card--beam' : undefined}
+      title={`${groupCode} · ${dateWords(today)}`}
+      note={note || undefined}
+      count={data.rows.length || undefined}
+      empty={data.rows.length === 0 && t('в группе нет учеников')}
+    >
       <div className="cmark">
         {data.rows.map((row) => (
           <MarkRow key={row.student} group={data.group} row={row} onSaved={setSummary} />
@@ -190,55 +198,74 @@ function Stats({ group }: { group: string }) {
   // по умолчанию — кто чаще не был, потом кто чаще опаздывал; колонки сортируются и сами
   const rows = [...data.rows].sort((a, b) => b.absent - a.absent || b.late - a.late || a.full_name.localeCompare(b.full_name))
   const columns: Column<AttendanceStatsRow>[] = [
-    { key: 'name', title: t('Ученик'), width: 'auto', phone: 'head', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
+    {
+      key: 'name',
+      title: t('Ученик'),
+      width: 'auto',
+      phone: 'head',
+      cell: (row) => (
+        <span className="personcell">
+          <Avatar name={row.full_name} size={30} />
+          <b>{row.full_name}</b>
+        </span>
+      ),
+      sortBy: (row) => row.full_name,
+    },
     ...(all ? [{ key: 'group', title: t('Группа'), width: '12%', cell: (row: AttendanceStatsRow) => <Chip size="sm">{row.group}</Chip>, sortBy: (row: AttendanceStatsRow) => row.group }] : []),
     { key: 'present', title: t('Был'), width: '10%', align: 'right', cell: (row) => <span className="num">{row.present}</span>, sortBy: (row) => row.present },
-    { key: 'absent', title: t('Не был'), width: '10%', align: 'right', cell: (row) => <b className={`num${row.absent ? ' text-bad' : ''}`}>{row.absent}</b>, sortBy: (row) => row.absent },
-    { key: 'late', title: t('Опоздал'), width: '10%', align: 'right', cell: (row) => <b className={`num${row.late ? ' text-warn' : ''}`}>{row.late}</b>, sortBy: (row) => row.late },
+    { key: 'absent', title: t('Не был'), width: '10%', align: 'right', cell: (row) => <span className="num">{row.absent}</span>, sortBy: (row) => row.absent },
+    { key: 'late', title: t('Опоздал'), width: '10%', align: 'right', cell: (row) => <span className="num">{row.late}</span>, sortBy: (row) => row.late },
     {
       key: 'percent',
       title: t('Процент'),
-      width: '10%',
+      width: '16%',
       align: 'right',
-      cell: (row) => (row.percent === null ? <span className="t-note">{t('нет')}</span> : <b className="num">{row.percent} %</b>),
+      // процент числом и полосой из того же числа
+      cell: (row) =>
+        row.percent === null ? (
+          <span className="t-note">{t('нет')}</span>
+        ) : (
+          <span className="catt__pct">
+            <span className="cstudents__bar" aria-hidden="true">
+              <i style={{ width: `${row.percent}%` }} />
+            </span>
+            <b className="num">{row.percent} %</b>
+          </span>
+        ),
       sortBy: (row) => row.percent,
     },
   ]
   const current = opened === null ? null : data.rows.find((row) => row.id === opened) ?? null
   return (
-    <div className="acad__stack">
-      <div className="att__bar">
+    <>
+      <div className="filters">
         <Segmented value={period} onChange={setPeriod} label={t('Период')} items={data.periods.map((row) => ({ value: row.code, label: t(row.title) }))} />
-        {period === 'custom' && (
+        {period === 'custom' ? (
           <>
             <Field usageFilter kind="date" name="from" label={t('С')} value={from} max={to} onChange={setFrom} className="att__date" />
             <Field usageFilter kind="date" name="to" label={t('По')} value={to} max={todayAlmaty()} onChange={setTo} className="att__date" />
           </>
+        ) : (
+          <span className="t-note num">{`${formatDate(data.period.from)} — ${formatDate(data.period.to)}`}</span>
+        )}
+        {rows.length > 0 && (
+          <span className="filters__end catt__exports">
+            <Button variant="outline" size="sm" onClick={() => setExporting('table')}>
+              {t('Выгрузить')}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setExporting('security')}>
+              {t('Для СБ')}
+            </Button>
+          </span>
         )}
       </div>
       <StatRow>
+        <Kpi label={t('Средний процент')} value={data.totals.percent === null ? null : `${data.totals.percent} %`} none={t('нет')} note={rows.length ? tn(rows.length, 'по {n} ученику|по {n} ученикам|по {n} ученикам') : undefined} />
         <Kpi label={t('Дней отмечено')} value={data.totals.days || null} none={t('нет')} />
-        <Kpi label={t('Отсутствий')} value={data.totals.absent || null} none={t('нет')} tone={data.totals.absent ? 'bad' : undefined} />
-        <Kpi label={t('Опозданий')} value={data.totals.late || null} none={t('нет')} tone={data.totals.late ? 'warn' : undefined} />
-        <Kpi label={t('Средний процент')} value={data.totals.percent === null ? null : `${data.totals.percent} %`} none={t('нет')} />
+        <Kpi label={t('Отсутствий')} value={data.totals.absent || null} none={t('нет')} note={t('за период')} />
+        <Kpi label={t('Опозданий')} value={data.totals.late || null} none={t('нет')} note={t('за период')} />
       </StatRow>
-      <DataCard
-        title={t('По ученикам')}
-        count={rows.length || undefined}
-        empty={rows.length === 0 && t('за период отметок не было')}
-        right={
-          rows.length > 0 ? (
-            <>
-              <Button variant="outline" size="sm" onClick={() => setExporting('table')}>
-                {t('Выгрузить')}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setExporting('security')}>
-                {t('Для СБ')}
-              </Button>
-            </>
-          ) : undefined
-        }
-      >
+      <DataCard className={rows.length ? 'card--beam' : undefined} title={t('По ученикам')} count={rows.length || undefined} empty={rows.length === 0 && t('за период отметок не было')}>
         {rows.length > 0 && <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={(row) => setOpened(row.id)} fit={!phone} />}
       </DataCard>
       {current && <StudentDates row={current} words={data.words} onClose={() => setOpened(null)} />}
@@ -253,13 +280,14 @@ function Stats({ group }: { group: string }) {
           onClose={() => setExporting(null)}
         />
       )}
-    </div>
+    </>
   )
 }
 
 // --- Экран --------------------------------------------------------------------------
 
 export default function CuratorAttendance() {
+  const phone = usePhone()
   const [params, setParams] = useSearchParams()
   const [group, setGroup] = useGroup()
   const { groups, ready } = useMyGroups()
@@ -272,31 +300,32 @@ export default function CuratorAttendance() {
   }
   if (!ready) return <Loading kind="table" />
   const shown = group === ALL ? groups : groups.filter((row) => row.code === group)
+  const modes = (
+    <Segmented<Tab>
+      value={tab}
+      onChange={setTab}
+      label={t('Раздел')}
+      items={[
+        { value: 'mark', label: t('Отметка') },
+        { value: 'stats', label: t('Аналитика') },
+      ]}
+    />
+  )
   return (
-    <div>
-      <ScreenHead title={t('Посещаемость')} />
+    <div className="lay-screen catt">
+      {/* «Отметка / Аналитика» — справа в шапке; на телефоне шапка прячет действия
+          в меню, поэтому там переключатель — своей строкой под группами */}
+      <ScreenHead title={t('Посещаемость')} subtitle={t('Утренняя отметка по своим группам и аналитика за период')} actions={!phone && groups.length > 0 ? modes : undefined} />
       {groups.length === 0 ? (
         <DataCard title={t('Вам не назначены группы')} empty={t('Обратитесь к администратору: группы куратору назначает он.')} />
       ) : (
         <>
-          {groups.length > 1 && (
-            <ScreenTabs value={group} onChange={setGroup} items={[{ value: ALL, label: t('Все мои группы') }, ...groups.map((row) => ({ value: row.code, label: row.code }))]} />
-          )}
-          <div className="att__bar">
-            <Segmented<Tab>
-              value={tab}
-              onChange={setTab}
-              label={t('Раздел')}
-              items={[
-                { value: 'mark', label: t('Отметка') },
-                { value: 'stats', label: t('Аналитика') },
-              ]}
-            />
-          </div>
+          <GroupSwitch groups={groups} value={group} onChange={setGroup} />
+          {phone && <div className="att__bar">{modes}</div>}
           {tab === 'mark' && (
-            <div className="acad__stack">
-              {shown.map((row) => (
-                <GroupSheet key={row.id} groupId={row.id} groupCode={row.code} />
+            <div className={shown.length > 1 ? 'lay-2 catt__sheets' : 'catt__sheets'}>
+              {shown.map((row, index) => (
+                <GroupSheet key={row.id} groupId={row.id} groupCode={row.code} lead={index === 0} />
               ))}
             </div>
           )}
