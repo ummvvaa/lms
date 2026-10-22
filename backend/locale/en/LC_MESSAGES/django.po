@@ -6235,12 +6235,8 @@ msgid "Данные домена «{domain}» внесены"
 msgstr "“{domain}” domain data entered"
 
 #: core/onboarding.py:127
-msgid ""
-"Внесите данные в таблице или вставьте текст в помощнике; файл загружает "
-"администратор"
-msgstr ""
-"Enter data in the table or paste text into the assistant; files are uploaded "
-"by the administrator"
+msgid "Внесите данные в таблице; файл загружает администратор"
+msgstr "Enter data in the table; files are uploaded by the administrator"
 
 #: core/onboarding.py:132 core/onboarding.py:159
 msgid "Открыть таблицу"
@@ -11757,12 +11753,8 @@ msgid "Ученик не редактирует данные"
 msgstr "Students do not edit data"
 
 #: students/views.py:292
-msgid ""
-"Файлы загружает администратор. Данные вносятся руками в таблице или вставкой "
-"текста в помощнике"
-msgstr ""
-"Files are uploaded by the administrator. Data is entered by hand in the table"
-" or by pasting text into the assistant"
+msgid "Файлы загружает администратор. Данные вносятся руками в таблице"
+msgstr "Files are uploaded by the administrator. Data is entered by hand in the table"
 
 #: students/views.py:390 students/views.py:408
 msgid "Учётные записи заводит администратор"
