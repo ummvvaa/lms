@@ -472,7 +472,7 @@ export default function Users() {
             <Field usageFilter className="filters__end" kind="checkbox" name="inactive" label={t('Показать неактивных ({n})', { n: inactive })} checked={showInactive} onChange={setShowInactive} />
           </div>
 
-          <div className="lay-main">
+          <div className="lay-main lay-main--even">
           <div className="lay-stack">
 
           {error && (

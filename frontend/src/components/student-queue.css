@@ -92,3 +92,15 @@
   margin-top: calc(var(--space) * 1);
   max-width: calc(var(--space) * 80);
 }
+
+/* признаки ученика второй линией (очередь куратора) */
+.cqueue .squeue__flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 1);
+  margin-top: calc(var(--space) * 1);
+}
+
+.cqueue .squeue__flags:empty {
+  display: none;
+}

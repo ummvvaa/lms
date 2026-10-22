@@ -253,7 +253,9 @@
 
 @keyframes tab-grow {
   from {
-    transform: scaleX(0.3);
+    /* отдельное свойство, а не transform: иначе пока идёт появление,
+       анимация держит transform и полоса не едет к новой вкладке */
+    scale: 0.3 1;
     opacity: 0;
   }
 }
@@ -558,6 +560,12 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+/* пустой блок — одна строка: свёрнутая карточка не тянется на высоту ряда,
+   ровная высота — для карточек с данными */
+:where(.lay-2, .lay-3, .lay-4) > .datacard--folded {
+  align-self: start;
+}
+
 /* широкая колонка и узкая: вторая колонка — стопка карточек */
 .lay-main {
   display: grid;
@@ -565,6 +573,16 @@
   gap: var(--gap-block);
   align-items: start;
   min-width: 0;
+}
+
+/* колонки вровень: правая стопка тянется на высоту левой, добирает
+   последняя карточка — иначе правая колонка кончалась на середине таблицы */
+.lay-main--even {
+  align-items: stretch;
+}
+
+.lay-main--even > .lay-stack > :last-child {
+  flex: 1 1 auto;
 }
 
 .lay-span2 {

@@ -54,7 +54,7 @@ function useAcademicsCards(group: string, lead: boolean): BoardCard[] {
       folded: lessons === 0,
       node: (
         <DataCard
-          className={lead ? 'card--beam' : undefined}
+          className={lead && lessons > 0 ? 'card--beam' : undefined}
           title={t('Сегодня в группах')}
           empty={lessons === 0 && t('уроков сегодня нет')}
           right={
@@ -157,8 +157,8 @@ function useAcademicsCards(group: string, lead: boolean): BoardCard[] {
           empty={
             (reports === null || reports.total === 0) &&
             // сервер отдаёт код расписания отчётов: month | quarter; подпись короткая —
-            // свёрнутая карточка на 1440 должна оставаться одной строкой
-            (data.cadence === 'quarter' ? t('соберутся сами после закрытия четверти') : t('соберутся сами в конце месяца'))
+            // свёрнутая карточка в узкой колонке на 1440 должна оставаться одной строкой
+            (data.cadence === 'quarter' ? t('после закрытия четверти') : t('в конце месяца'))
           }
           right={
             <Button variant="outline" size="sm" onClick={() => navigate('/reports')}>

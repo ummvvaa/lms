@@ -215,6 +215,19 @@
   white-space: nowrap;
 }
 
+/* значок строки — цель касания 44 px; кнопка отдана подсказке через
+   `render`, `data-slot` у неё — `tooltip-trigger`, поэтому селектор держится
+   на варианте и размере, как у значков блока «Поступление» */
+body [data-variant][data-size='icon'].mydocs__ibtn {
+  width: calc(var(--space) * 11);
+  height: var(--touch);
+  color: var(--ink-2);
+}
+
+body [data-variant][data-size='icon'].mydocs__ibtn:hover {
+  color: var(--ink);
+}
+
 body [data-slot='button'][data-variant].mydocs__more {
   display: inline-flex;
   align-items: center;

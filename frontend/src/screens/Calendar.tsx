@@ -158,16 +158,17 @@ export default function Calendar() {
   )
 
   const nearestCard = (
-    <DataCard className="card--beam" title={t('Ближайшее')} count={upcoming.length || undefined} empty={upcoming.length === 0 && t('впереди пока пусто')}>
+    <DataCard className={upcoming.length ? 'card--beam' : undefined} title={t('Ближайшее')} count={upcoming.length || undefined} empty={upcoming.length === 0 && t('впереди пока пусто')}>
       <Rows>
         <ShowAll>{upcoming.map(eventRow)}</ShowAll>
       </Rows>
     </DataCard>
   )
 
-  // справа — выбранный день, без выбора — ближайшее; бегущий свет у неё одной
+  // справа — выбранный день, без выбора — ближайшее; бегущий свет у неё одной,
+  // свёрнутой пустой карточке свет не нужен
   const sideCard = picked ? (
-    <DataCard className="card--beam" title={formatDayMonth(picked)} count={dayEvents.length + dayWork.length || undefined} empty={dayEvents.length + dayWork.length === 0 && t('в этот день ничего не намечено')}>
+    <DataCard className={dayEvents.length + dayWork.length ? 'card--beam' : undefined} title={formatDayMonth(picked)} count={dayEvents.length + dayWork.length || undefined} empty={dayEvents.length + dayWork.length === 0 && t('в этот день ничего не намечено')}>
       <Rows>
         {dayWork.map((row) => (
           <Row key={row.title} icon="pencil" tone="info" title={row.title} />

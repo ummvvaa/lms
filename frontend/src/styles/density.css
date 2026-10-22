@@ -125,7 +125,7 @@
     --pad-card-x: 16px;
     --field-h: 44px;
     --control-h: 44px;
-    --btn-row-h: 36px;
+    --btn-row-h: var(--touch);
     --row-list-h: 48px;
     --row-h: 48px;
     --pad-screen: 16px;

@@ -53,6 +53,13 @@
   place-items: center;
 }
 
+/* в тёмной теме `--ink-2` светлый, и белые инициалы на нём читались
+   на 2.6:1 — подложка и цвет как у `.ava` (больше 8:1) */
+:root[data-theme='dark'] .pqueue__avatar {
+  background: linear-gradient(135deg, var(--accent-bg), var(--neutral-bg));
+  color: var(--accent-ink);
+}
+
 .pqueue__who {
   flex: 1 1 var(--field-narrow-w);
   min-width: 0;
