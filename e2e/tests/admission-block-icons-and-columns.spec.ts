@@ -298,7 +298,7 @@ test("на 1280 телефон и показанный пароль читают
 
 const box = async (l: Locator) => (await l.boundingBox())!;
 
-test("раскладка: два столбца сверху, две карточки снизу; на телефоне порядок прежний", async ({
+test("раскладка: два равных столбца без пустоты внизу; на телефоне порядок прежний", async ({
   browser,
 }) => {
   const setup = await as(browser, "admin");
@@ -309,58 +309,38 @@ test("раскладка: два столбца сверху, две карто�
     const page = await as(browser, role);
     await page.goto(`/students/${id}`);
     await settle(page);
-    // раскладка не шире окна: шесть колонок областей не раздуваются
+    // раскладка не шире окна
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
       `${role}: страница не шире окна`,
     ).toBeLessThanOrEqual(LAPTOP.width);
-    const who = await box(page.locator(".card__slot--who"));
-    const behavior = await box(page.locator(".card__slot--behavior"));
-    const admission = await box(page.locator(".card__slot--admission"));
-    const exam = await box(page.locator(".card__slot--exam"));
-    const talent = await box(page.locator(".card__slot--talent"));
-    const sport = await box(page.locator(".card__slot--sport"));
-
-    // левый столбец: «Кто это», «Профиль и дисциплина», «Экзамены» —
-    // друг под другом, одной ширины
-    for (const [name, card] of [
-      ["дисциплина", behavior],
-      ["экзамены", exam],
-    ] as const) {
-      expect(Math.round(card.x), `${role}: левый край ${name}`).toBe(
-        Math.round(who.x),
-      );
-      expect(Math.round(card.width), `${role}: ширина ${name}`).toBe(
-        Math.round(who.width),
-      );
-    }
-    expect(behavior.y).toBeGreaterThan(who.y + who.height);
-    expect(exam.y).toBeGreaterThan(behavior.y + behavior.height);
-    // правый: «Поступление» с той же верхней линии, шире и в стороне
-    expect(Math.round(admission.y), `${role}: верхняя линия`).toBe(
-      Math.round(who.y),
+    // с 22.10.2026 по макету: два равных столбца, блок ложится в более короткий
+    const cards = await Promise.all(
+      ["who", "behavior", "exam", "admission", "talent", "sport"].map(
+        async (slot) => [slot, await box(page.locator(`.card__slot--${slot}`))] as const,
+      ),
     );
-    expect(admission.x).toBeGreaterThan(who.x + who.width);
-    expect(admission.width, `${role}: «Поступление» шире`).toBeGreaterThan(
-      who.width * 1.5,
-    );
-    // столбцы одной высоты — пустоты внизу нет; сколько ушло в растяжку
-    // нижней карточки слева, видно по зазору под её строками
-    const leftBottom = exam.y + exam.height;
-    const rightBottom = admission.y + admission.height;
-    expect(
-      Math.abs(leftBottom - rightBottom),
-      `${role}: низ столбцов`,
-    ).toBeLessThanOrEqual(2);
-    const examRows = await box(
-      page.locator(".card__slot--exam .domain__fields"),
-    );
-    const slack = leftBottom - (examRows.y + examRows.height);
-    expect(slack, `${role}: пустота под строками «Экзаменов»`).toBeLessThan(80);
-    // нижний ряд: две карточки на одной линии, под обоими столбцами
-    expect(Math.round(sport.y)).toBe(Math.round(talent.y));
-    expect(talent.y).toBeGreaterThanOrEqual(Math.max(leftBottom, rightBottom));
-    expect(sport.x).toBeGreaterThan(talent.x + talent.width - 1);
+    const lefts = [...new Set(cards.map(([, card]) => Math.round(card.x)))].sort((x, y) => x - y);
+    expect(lefts.length, `${role}: столбцов два`).toBe(2);
+    const widths = cards.map(([, card]) => Math.round(card.width));
+    expect(Math.max(...widths) - Math.min(...widths), `${role}: столбцы равной ширины`).toBeLessThanOrEqual(1);
+    // «Кто это» — первым слева сверху
+    const who = cards.find(([slot]) => slot === "who")![1];
+    expect(Math.round(who.x)).toBe(lefts[0]);
+    // столбцы кончаются на одной линии, карточки в столбце не наезжают
+    const bottoms = lefts.map((left) => {
+      const column = cards
+        .map(([, card]) => card)
+        .filter((card) => Math.round(card.x) === left)
+        .sort((x, y) => x.y - y.y);
+      for (let i = 1; i < column.length; i += 1)
+        expect(column[i].y, `${role}: карточки столбца не наезжают`).toBeGreaterThanOrEqual(
+          column[i - 1].y + column[i - 1].height - 1,
+        );
+      const last = column[column.length - 1];
+      return last.y + last.height;
+    });
+    expect(Math.abs(bottoms[0] - bottoms[1]), `${role}: низ столбцов`).toBeLessThanOrEqual(2);
     await page.context().close();
   }
 

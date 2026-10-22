@@ -27,6 +27,9 @@ import ImportHistory from '../components/ImportHistory'
 import ManualEntryNote from '../components/ManualEntryNote'
 import { DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import { Button } from '../components/ui/button'
+import { toast } from 'sonner'
+import { downloadFile } from '../api/client'
+import Icon from '../layout/icons'
 import { Row, Rows } from '../components/patterns'
 import { t, tk } from '../i18n'
 
@@ -149,6 +152,23 @@ function listsOf(code: string): { key: string; tab: string; note: string; body: 
   return []
 }
 
+/** «Шаблон» мастера — в шапке экрана справа (макет Import). */
+function TemplateButton() {
+  return (
+    <Button
+      variant="outline"
+      onClick={() =>
+        void downloadFile('/admission-imports/template/', 'shablon-importa.xlsx').catch((error: Error) =>
+          toast.error(error.message),
+        )
+      }
+    >
+      <Icon name="download" size={16} />
+      {t('Шаблон')}
+    </Button>
+  )
+}
+
 /** Загрузки списков и справочников — в порядке доменов. */
 const allLists = () => ['behavior', 'sport', 'admission', 'exam'].flatMap((code) => listsOf(code))
 
@@ -165,7 +185,11 @@ function AdminImport() {
 
   return (
     <div className="import-screen">
-      <ScreenHead title={t('Импорт')} />
+      <ScreenHead
+        title={t('Импорт')}
+        subtitle={mode === 'wizard' ? t('Колонки узнаются по заголовкам. Пустая ячейка ничего не стирает.') : undefined}
+        actions={mode === 'wizard' ? <TemplateButton /> : undefined}
+      />
       <ScreenTabs
         value={mode}
         onChange={(value) => setMode(value as 'wizard' | 'lists')}
@@ -175,7 +199,7 @@ function AdminImport() {
         ]}
       />
 
-      {mode === 'wizard' && <ImportWizard />}
+      {mode === 'wizard' && <ImportWizard headHint />}
 
       {mode === 'lists' && !list && (
         <DataCard
@@ -238,6 +262,7 @@ function UploadsForDirector({ mine, curator = false }: { mine?: Domain; curator?
                 })
               : t('Файл → что заполняем → проверка строк → готово.')
         }
+        actions={<TemplateButton />}
       />
       <ImportWizard />
       {/* подсказка «файлы загружает администратор» — для директоров; куратор

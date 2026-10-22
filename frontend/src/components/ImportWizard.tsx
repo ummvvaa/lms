@@ -17,7 +17,7 @@
  * права не считает. Правила разбора живут в реестре и здесь не трогаются.
  */
 import ExportButton from './ExportPreview'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import {
@@ -27,13 +27,13 @@ import {
   type AdmissionImportReport,
   type AdmissionPreview,
 } from '../api/hooks'
-import { downloadFile } from '../api/client'
-import { Chip, DataCard, EmptyNote, ErrorNote, withNumbers } from './ui'
+import { Chip, EmptyNote, ErrorNote, withNumbers } from './ui'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import ImportPreview from './ImportRowsPreview'
 import { SelectField } from './SelectField'
 import WizardSteps from './WizardSteps'
+import Icon from '../layout/icons'
 import DataTable from './DataTable'
 import { t, tk, tn } from '../i18n'
 
@@ -53,7 +53,10 @@ const DOMAIN_ROW = 'домен'
 
 type WizardColumn = AdmissionPreview['columns'][number]
 
-export default function ImportWizard() {
+export default function ImportWizard({ headHint = false }: {
+  /** правило «пустая ячейка ничего не стирает» уже сказано подписью в шапке экрана */
+  headHint?: boolean
+} = {}) {
   const navigate = useNavigate()
   const [step, setStep] = useState<Step>(1)
   const [file, setFile] = useState<File | null>(null)
@@ -170,24 +173,47 @@ export default function ImportWizard() {
     return [...groups.entries()].map(([title, options]) => ({ title, options }))
   }, [preview])
 
+  // строка под рядом шагов: файл, источник соответствий или отчёт — и состояние проверки
+  const head: { note?: string; right?: ReactNode } =
+    step === 1
+      ? { note: file?.name }
+      : step === 2
+        ? { note: t('Колонка → поле → домен: из реестра соответствий') }
+        : step === 3
+          ? {
+              note: file?.name,
+              right: (
+                <Chip tone={errorsLeft > 0 ? 'warn' : 'good'} size="sm">
+                  {errorsLeft > 0 ? t('Есть ошибки') : t('Готово к применению')}
+                </Chip>
+              ),
+            }
+          : { note: report ? `${t('Листов:')} ${report.sheets} · ${report.file_name}` : undefined }
+
   return (
-    <div className="import-flow">
+    // мастер — одна главная карточка экрана (макет Import): шаги сверху, под ними
+    // текущий шаг и его кнопки; название шага говорит ряд шагов, а не заголовок
+    <section className="card card-pad card--beam import-flow import-wizard">
       <WizardSteps stackedOnPhone steps={STEPS.map((row) => t(row.title))} current={step} />
+      {head.note || head.right ? (
+        <div className="import-wizard__head">
+          {head.note && <p className="datacard__note">{head.note}</p>}
+          {head.right}
+        </div>
+      ) : null}
 
       {step === 1 && (
-        <DataCard
-          title={t('Файл')}
-          right={<Chip size="sm">{t('Шаг {step} из {total}', { step, total: 4 })}</Chip>}
-          note={file?.name}
-        >
+        <>
           <p className="import-flow__hint">
             {t(
               'Таблица с ФИО: лист книги Excel — учебная группа, для CSV группу выбирают здесь. Список с почтой или логином ученика — любой лист или CSV, группа не нужна',
             )}
           </p>
-          <p className="import-flow__hint">
-            {t('Колонки узнаются по заголовкам. Пустая ячейка ничего не стирает.')}
-          </p>
+          {!headHint && (
+            <p className="import-flow__hint">
+              {t('Колонки узнаются по заголовкам. Пустая ячейка ничего не стирает.')}
+            </p>
+          )}
           <label className="wizard__group">
             <span className="eyebrow">{t('Группа для CSV')}</span>
             <SelectField
@@ -205,7 +231,8 @@ export default function ImportWizard() {
               ))}
             </SelectField>
           </label>
-          <label className="filepick">
+          {/* поле выбора файла растянуто на всю зону: файл можно и перетащить, и выбрать щелчком */}
+          <label className="filepick import-drop">
             <Input
               type="file"
               accept=".xlsx,.xlsm,.csv"
@@ -219,14 +246,21 @@ export default function ImportWizard() {
                 }
               }}
             />
-            <Button size="sm" nativeButton={false} render={<span />}>
-              {t('Выбрать файл')}
-            </Button>
-            <span className="muted filepick__name">{file ? file.name : t('Файл не выбран')}</span>
+            <span className="import-drop__icon" aria-hidden="true">
+              <Icon name="upload" size={22} />
+            </span>
+            <b className="import-drop__title">{t('Перетащите файл сюда')}</b>
+            <span className="muted import-drop__note">{t('или нажмите, чтобы выбрать · xlsx или csv')}</span>
+            <span className="import-drop__pick">
+              <Button size="sm" nativeButton={false} render={<span />}>
+                {t('Выбрать файл')}
+              </Button>
+              <span className="muted filepick__name">{file ? file.name : t('Файл не выбран')}</span>
+            </span>
           </label>
           {check.isPending && <p className="muted">{t('Читаю файл…')}</p>}
           {check.error && <ErrorNote error={check.error} />}
-          <p className="muted">
+          <p className="muted import-drop__safe">
             {t('Пароли из таблицы шифруются при загрузке. На этом экране они не показываются.')}
           </p>
 
@@ -258,40 +292,24 @@ export default function ImportWizard() {
               </div>
             </>
           )}
-          <div className="import-flow__actions">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                void downloadFile('/admission-imports/template/', 'shablon-importa.xlsx').catch(
-                  (error: Error) => toast.error(error.message),
-                )
-              }
-            >
-              {t('Шаблон')}
-            </Button>
-            {preview && counts && (
-              <>
-                {/* строк нет, но есть неузнанные колонки — дальше можно: колонку ученика назначают на шаге 2 */}
-                <Button
-                  size="sm"
-                  onClick={() => setStep(2)}
-                  disabled={counts.rows === 0 && preview.unknown_columns.length === 0}
-                >
-                  {t('Дальше')}
-                </Button>
-              </>
-            )}
-          </div>
-        </DataCard>
+          {/* «Шаблон» — в шапке экрана (макет Import); здесь только переход дальше */}
+          {preview && counts && (
+            <div className="import-flow__actions">
+              {/* строк нет, но есть неузнанные колонки — дальше можно: колонку ученика назначают на шаге 2 */}
+              <Button
+                size="sm"
+                onClick={() => setStep(2)}
+                disabled={counts.rows === 0 && preview.unknown_columns.length === 0}
+              >
+                {t('Дальше')}
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {step === 2 && preview && (
-        <DataCard
-          title={t('Что заполняем')}
-          right={<Chip size="sm">{t('Шаг {step} из {total}', { step, total: 4 })}</Chip>}
-          note={t('Колонка → поле → домен: из реестра соответствий')}
-        >
+        <>
           {/* чипы доменов: выбрать или снять; чужой домен снять нельзя — он и так не пишется */}
           <div className="wizard__chips">
             {preview.domains.map((code) => {
@@ -433,19 +451,11 @@ export default function ImportWizard() {
               {t('Дальше')}
             </Button>
           </div>
-        </DataCard>
+        </>
       )}
 
       {step === 3 && preview && counts && (
-        <DataCard
-          title={t('Проверка строк')}
-          note={file?.name}
-          right={
-            <Chip tone={errorsLeft > 0 ? 'warn' : 'good'} size="sm">
-              {errorsLeft > 0 ? t('Есть ошибки') : t('Готово к применению')}
-            </Chip>
-          }
-        >
+        <>
           {errorsLeft > 0 && (
             <p className="import-flow__hint">
               {t('Пока есть строки с ошибкой, применить нельзя: отнесите их ученику или пропустите')}
@@ -571,19 +581,11 @@ export default function ImportWizard() {
               {t('Применить')}
             </Button>
           </div>
-        </DataCard>
+        </>
       )}
 
       {step === 4 && report && (
-        <DataCard
-          title={t('Готово')}
-          right={
-            <Chip tone="good" size="sm">
-              {t('Шаг {step} из {total}', { step, total: 4 })}
-            </Chip>
-          }
-          note={`${t('Листов:')} ${report.sheets} · ${report.file_name}`}
-        >
+        <>
           <div className="toolbar">
             <Chip tone="good" className="num">
               {t('Учеников обновлено:')} {report.students_updated}
@@ -657,8 +659,8 @@ export default function ImportWizard() {
               {t('Загрузить ещё файл')}
             </Button>
           </div>
-        </DataCard>
+        </>
       )}
-    </div>
+    </section>
   )
 }

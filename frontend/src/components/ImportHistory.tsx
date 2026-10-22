@@ -240,7 +240,7 @@ export default function ImportHistory() {
       key: 'when',
       title: t('Когда'),
       width: '14%',
-      cell: (row) => <span className="num">{when(row.when)}</span>,
+      cell: (row) => <span className="num whitespace-nowrap">{when(row.when)}</span>,
     },
     {
       key: 'type',
@@ -304,7 +304,7 @@ export default function ImportHistory() {
         )
       }
     >
-      <div className="import-history__filters">
+      <div className="filters import-history__row">
         <Field
           usageFilter
           kind="date"

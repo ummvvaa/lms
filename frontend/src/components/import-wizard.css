@@ -225,3 +225,107 @@
     min-width: 0;
   }
 }
+
+/* «Импорт» по макету Import: мастер — одна главная карточка с бегущим светом,
+   ряд шагов сверху, под ним строка «файл · состояние» и текущий шаг. */
+.import-wizard > .wizard__steps {
+  padding-bottom: calc(var(--space) * 4);
+  margin-bottom: calc(var(--space) * 4);
+  border-bottom: 1px solid var(--line);
+}
+
+.import-wizard__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 3);
+  margin-bottom: calc(var(--space) * 4);
+  min-width: 0;
+}
+
+.import-wizard__head .datacard__note {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-wizard__head [data-slot='badge'] {
+  margin-left: auto;
+  flex: none;
+}
+
+/* фильтры истории — одним рядом над таблицей, а не тремя широкими колонками */
+.import-history__row {
+  margin-bottom: calc(var(--space) * 4);
+}
+
+/* шаг «Файл»: зона для файла пунктиром на всю ширину карточки; нативное поле
+   растянуто поверх неё — файл можно бросить в зону или выбрать щелчком */
+.filepick.import-drop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  width: 100%;
+  margin-top: calc(var(--space) * 2);
+  padding: calc(var(--space) * 9) calc(var(--space) * 4);
+  border: 2px dashed var(--accent-2);
+  border-radius: var(--radius-card);
+  background: var(--accent-bg);
+  text-align: center;
+}
+
+.filepick.import-drop input[type='file'] {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.import-drop__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space) * 13);
+  height: calc(var(--space) * 13);
+  border-radius: var(--radius-kpi);
+  background: var(--accent-grad);
+  color: var(--on-accent);
+}
+
+.import-drop__title {
+  font-family: var(--font-head);
+  font-size: var(--type-card);
+  font-weight: 600;
+}
+
+.import-drop__pick {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 3);
+  margin-top: calc(var(--space) * 1);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.import-drop__pick .filepick__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-drop__safe {
+  margin: calc(var(--space) * 3) 0 0;
+  font-size: var(--type-note);
+}
+
+/* подпись «для книги Excel и списка по почте не нужна» обрезалась в узком списке */
+.import-wizard .wizard__group {
+  width: min(100%, calc(var(--space) * 100));
+}

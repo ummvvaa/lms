@@ -1,0 +1,54 @@
+/* Карточка ученика по макету StudentCard: «Назад» слева и действия справа,
+   главная карточка с кольцом готовности, вкладки, под ними два равных столбца. */
+.scard__bar {
+  margin: 0;
+}
+
+.scard .card__hero {
+  margin: 0;
+}
+
+.scard__cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gap-block);
+  align-items: stretch;
+  min-width: 0;
+}
+
+.scard__slot {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.scard__slot > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* нижняя карточка столбца добирает остаток: столбцы кончаются на одной линии */
+.scard__col > .scard__slot:last-child {
+  flex: 1 1 auto;
+}
+
+/* узкое окно и телефон: одна колонка, порядок — прежний (`order` у блока) */
+@media (max-width: 1023px) {
+  .scard__cols {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .scard__col {
+    display: contents;
+  }
+
+  .scard__slot {
+    order: var(--phone-order, 0);
+  }
+}
+
+/* удаление — во всю ширину под столбцами, разрыв как между блоками */
+.scard > .danger {
+  margin-top: 0;
+}

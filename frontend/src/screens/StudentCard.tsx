@@ -2,7 +2,7 @@
  * Карточка ученика: пять доменов на одной странице.
  * Свой домен редактируется, чужие показаны с подписью «ведёт: <имя>».
  */
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import {
   useBatchSave,
@@ -31,9 +31,11 @@ import { Input } from '../components/ui/input'
 import { NativeSelectOption } from '../components/ui/native-select'
 import { SelectField } from '../components/SelectField'
 import './card.css'
+import './student-card-layout.css'
 import { t } from '../i18n'
 import { Button } from '../components/ui/button'
 import { formatDateTime } from '../lib/format'
+import { usePhone } from '../phone'
 
 /** Сырое значение поля — то же, что сервер увидит в базе.
  *
@@ -63,6 +65,60 @@ function shown(student: Card, domain: Domain, field: DomainField): string {
 
 type HistoryEntry = NonNullable<ReturnType<typeof useStudentHistory>['data']>[number]
 
+/** Блок вкладки доменов: место в порядке макета, порядок на телефоне и прикидка высоты. */
+type Block = { slot: string; phone: number; height: number; node: ReactNode }
+
+/**
+ * Два равных столбца по макету StudentCard: блоки идут в порядке макета
+ * («Кто это», «Профиль и дисциплина», «Экзамены», «Поступление», дальше
+ * остальные) и каждый ложится в столбец, который сейчас короче. Высоты —
+ * прикидка по числу строк: у 11 класса семнадцать строк «Поступления»
+ * уравновешивают слева экзамены, таланты и спорт, у 8–10 «Поступления» нет —
+ * и столбцы всё равно сходятся, а не оставляют пустоту под одним из них.
+ */
+/** Порядок блоков макета; домен, которого в макете нет, — после них. */
+const MOCKUP_ORDER = ['who', 'behavior', 'exam', 'admission', 'talent', 'sport']
+const rank = (slot: string) => (MOCKUP_ORDER.includes(slot) ? MOCKUP_ORDER.indexOf(slot) : MOCKUP_ORDER.length)
+
+function twoColumns(blocks: Block[]): [Block[], Block[]] {
+  const left: Block[] = []
+  const right: Block[] = []
+  let leftHeight = 0
+  let rightHeight = 0
+  for (const block of blocks) {
+    if (leftHeight <= rightHeight) {
+      left.push(block)
+      leftHeight += block.height
+    } else {
+      right.push(block)
+      rightHeight += block.height
+    }
+  }
+  return [left, right]
+}
+
+/**
+ * Вкладка доменов: два столбца-стопки, нижняя карточка каждого добирает
+ * остаток высоты — столбцы кончаются на одной линии. На телефоне и узком
+ * окне стопки раскрываются в одну колонку в прежнем порядке (`order`).
+ */
+function DomainColumns({ blocks }: { blocks: Block[] }) {
+  const columns = twoColumns(blocks)
+  return (
+    <div className="scard__cols card__domains">
+      {columns.map((column, index) => (
+        <div key={index} className="lay-stack scard__col">
+          {column.map((block) => (
+            <div key={block.slot} className="scard__slot" style={{ '--phone-order': block.phone } as CSSProperties}>
+              {block.node}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function StudentCardScreen() {
   const { me } = useAuth()
   // У куратора карточка своя (фаза 61): пять вкладок на чтение вместо
@@ -80,6 +136,8 @@ function DirectorStudentCard() {
   const student = useStudent(Number.isFinite(studentId) ? studentId : null)
   const history = useStudentHistory(Number.isFinite(studentId) ? studentId : null)
   const batch = useBatchSave()
+  // кольцо готовности по макету — 112, на телефоне рядом с именем ему места меньше
+  const phone = usePhone()
 
   const [tab, setTab] = useState<'domains' | 'history' | 'grades' | 'career'>('domains')
   // отчёт родителям на одного ученика — у четырёх ролей (27.09.2026)
@@ -144,12 +202,132 @@ function DirectorStudentCard() {
     void history.refetch()
   }
 
+  // блоки вкладки доменов в порядке макета; `phone` — прежний порядок на телефоне
+  // («Кто это», «Поступление», дальше домены), его держат браузерные проверки
+  const examDomain = domains.find((d) => d.code === 'exam')
+  const domainBlocks: Block[] = [
+    {
+      slot: 'who',
+      phone: 0,
+      height: 220,
+      node: <StudentRegistryCard card={card} canEdit={me?.role === 'admin'} className="card__slot--who" />,
+    },
+  ]
+  domains.forEach((domain, index) => {
+    const model = profileModelOf(domain)
+    const editable = domain.is_mine
+    if (!model) return
+    if (domain.code === 'admission') return
+    // у 8–10 нет поступления, экзаменов и документов — их блоков в карточке нет
+    if (!domain.parallels.includes(card.parallel)) return
+    // блок домена показывает поля `card=main`; у поступления цели
+    // ученика — отдельной карточкой, а служебные признаки в карточке
+    // не показываются вовсе (фаза 68). Раскладку задаёт реестр
+    const fields = model.fields.filter((f) => f.card === 'main')
+    domainBlocks.push({
+      slot: domain.code,
+      phone: 2 + index,
+      height: 80 + fields.length * (editable ? 58 : 42),
+      node: (
+        <section className={`card card-pad domain${editable ? ' domain--mine' : ''} card__slot--${domain.code}`}>
+          <div className="domain__head">
+            <span className="datacard__title">{domain.title}</span>
+            <Chip tone={editable ? 'accent' : 'neutral'}>
+              {editable ? t('вы редактируете') : t('ведёт: {owner}', { owner: domain.owner_name })}
+            </Chip>
+          </div>
+          <dl className="domain__fields">
+            {fields.map((field) => (
+              <div key={field.name} className="domain__row">
+                <dt className="muted">{field.title}</dt>
+                <dd>
+                  {editable && field.choices ? (
+                    // поле со списком — выбор, а не ввод: набранная подпись
+                    // («Работает самостоятельно») уходила на сервер вместо ключа
+                    <SelectField
+                      className="domain__input"
+                      aria-label={field.title}
+                      value={edits[`${domain.code}:${field.name}`] ?? raw(card, domain, field)}
+                      onChange={(e) =>
+                        setEdits((prev) => ({
+                          ...prev,
+                          [`${domain.code}:${field.name}`]: e.target.value,
+                        }))
+                      }
+                    >
+                      <NativeSelectOption value="">{t('не выбрано')}</NativeSelectOption>
+                      {field.choices.map((choice) => (
+                        <NativeSelectOption key={choice.value} value={choice.value}>
+                          {choice.title}
+                        </NativeSelectOption>
+                      ))}
+                    </SelectField>
+                  ) : editable ? (
+                    <Input
+                      className="cell num domain__input"
+                      value={
+                        edits[`${domain.code}:${field.name}`] ??
+                        (shown(card, domain, field) === t('нет') ? '' : shown(card, domain, field))
+                      }
+                      onChange={(e) =>
+                        setEdits((prev) => ({
+                          ...prev,
+                          [`${domain.code}:${field.name}`]: e.target.value,
+                        }))
+                      }
+                    />
+                  ) : (
+                    <span className="num domain__value">{shown(card, domain, field)}</span>
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ),
+    })
+  })
+  // у 8–10 блока экзаменов нет, а пробники сотрудники ведут у всех
+  // параллелей (`core/parallels.py`, `MOCK_PARALLELS`): на месте
+  // блока экзаменов — пробники. Вносят Кымбат и администратор
+  if (seesMocks && !examDomain?.parallels.includes(card.parallel)) {
+    domainBlocks.push({
+      slot: 'exam',
+      phone: 2 + domains.length,
+      height: 360,
+      node: (
+        <div className="card__slot--exam">
+          <MockAttempts studentId={card.id} role={me?.role ?? ''} />
+        </div>
+      ),
+    })
+  }
+  // «Поступление» — тот же блок, что у куратора (фаза 70): состав
+  // и порядок строк равны колонкам таблицы Асем, и собран он
+  // на сервере одним местом. Реестровая раскладка домена его
+  // не рисует — иначе владелец видел бы меньше куратора. По макету
+  // он идёт после экзаменов
+  const admission = card.admission_block
+  if (admission) {
+    const rows =
+      6 + admission.credentials.length + admission.documents.length + admission.attempts.reduce((n, a) => n + a.slots, 0)
+    domainBlocks.push({
+      slot: 'admission',
+      phone: 1,
+      height: 100 + rows * 44,
+      node: <AdmissionBlock block={admission} studentId={card.id} className="card__slot--admission" />,
+    })
+  }
+
+  domainBlocks.sort((a, b) => rank(a.slot) - rank(b.slot))
+
   return (
-    <div>
-      <div className="toolbar">
+    <div className="lay-screen scard">
+      <div className="toolbar scard__bar">
         <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
           {t('← Назад')}
         </Button>
+        <span className="toolbar__spacer" />
         {me && REPORT_ROLES.includes(me.role) && (
           <Button variant="outline" size="sm" onClick={() => setReporting(true)}>
             {t('Отчёт родителям')}
@@ -172,7 +350,7 @@ function DirectorStudentCard() {
           </p>
         </div>
         {readiness && (
-          <Ring percent={readiness.score} size={84}>
+          <Ring percent={readiness.score} size={phone ? 84 : 112}>
             <div>
               <div className="num card__score">{readiness.score}%</div>
               <div className="card__scorelabel">{t('готовность')}</div>
@@ -226,108 +404,7 @@ function DirectorStudentCard() {
         </div>
       )}
 
-      {tab === 'domains' && (
-        <div className="grid grid--two card__domains">
-          {/* порядок в разметке — порядок на телефоне; на ноутбуке карточки
-              расставляет `card.css` по именованным областям (фаза 77).
-              Реестровая карточка идёт первой: имя и группа —
-              это ответ на вопрос «кто это», а не доменные данные */}
-          <StudentRegistryCard card={card} canEdit={me?.role === 'admin'} className="card__slot--who" />
-          {/* «Поступление» — тот же блок, что у куратора (фаза 70): состав
-              и порядок строк равны колонкам таблицы Асем, и собран он
-              на сервере одним местом. Реестровая раскладка домена его
-              не рисует — иначе владелец видел бы меньше куратора */}
-          {card.admission_block && (
-            <AdmissionBlock block={card.admission_block} studentId={card.id} className="card__slot--admission" />
-          )}
-          {domains.flatMap((domain) => {
-            const model = profileModelOf(domain)
-            const editable = domain.is_mine
-            if (!model) return []
-            if (domain.code === 'admission') return []
-            // у 8–10 нет поступления, экзаменов и документов — их блоков в карточке нет
-            if (!domain.parallels.includes(card.parallel)) return []
-            // блок домена показывает поля `card=main`; у поступления цели
-            // ученика — отдельной карточкой, а служебные признаки в карточке
-            // не показываются вовсе (фаза 68). Раскладку задаёт реестр
-            const sections: { key: string; title: string; fields: DomainField[] }[] = [
-              {
-                key: domain.code,
-                title: domain.title,
-                fields: model.fields.filter((f) => f.card === 'main'),
-              },
-            ]
-            return sections.map((section) => (
-              <section
-                key={section.key}
-                className={`card card-pad domain${editable ? ' domain--mine' : ''} card__slot--${domain.code}`}
-              >
-                <div className="domain__head">
-                  <span className="datacard__title">{section.title}</span>
-                  <Chip tone={editable ? 'accent' : 'neutral'}>
-                    {editable ? t('вы редактируете') : t('ведёт: {owner}', { owner: domain.owner_name })}
-                  </Chip>
-                </div>
-                <dl className="domain__fields">
-                  {section.fields.map((field) => (
-                    <div key={field.name} className="domain__row">
-                      <dt className="muted">{field.title}</dt>
-                      <dd>
-                        {editable && field.choices ? (
-                          // поле со списком — выбор, а не ввод: набранная подпись
-                          // («Работает самостоятельно») уходила на сервер вместо ключа
-                          <SelectField
-                            className="domain__input"
-                            aria-label={field.title}
-                            value={edits[`${domain.code}:${field.name}`] ?? raw(card, domain, field)}
-                            onChange={(e) =>
-                              setEdits((prev) => ({
-                                ...prev,
-                                [`${domain.code}:${field.name}`]: e.target.value,
-                              }))
-                            }
-                          >
-                            <NativeSelectOption value="">{t('не выбрано')}</NativeSelectOption>
-                            {field.choices.map((choice) => (
-                              <NativeSelectOption key={choice.value} value={choice.value}>
-                                {choice.title}
-                              </NativeSelectOption>
-                            ))}
-                          </SelectField>
-                        ) : editable ? (
-                          <Input
-                            className="cell num domain__input"
-                            value={
-                              edits[`${domain.code}:${field.name}`] ??
-                              (shown(card, domain, field) === t('нет') ? '' : shown(card, domain, field))
-                            }
-                            onChange={(e) =>
-                              setEdits((prev) => ({
-                                ...prev,
-                                [`${domain.code}:${field.name}`]: e.target.value,
-                              }))
-                            }
-                          />
-                        ) : (
-                          <span className="num domain__value">{shown(card, domain, field)}</span>
-                        )}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </section>
-            ))
-          })}
-          {/* у 8–10 блока экзаменов нет, а пробники сотрудники ведут у всех
-              параллелей (`core/parallels.py`, `MOCK_PARALLELS`): на месте
-              блока экзаменов — пробники. Вносят Кымбат и администратор */}
-          {seesMocks && !domains.find((d) => d.code === 'exam')?.parallels.includes(card.parallel) && (
-            <div className="card__slot--exam">
-              <MockAttempts studentId={card.id} role={me?.role ?? ''} />
-            </div>
-          )}
-        </div>
-      )}
+      {tab === 'domains' && <DomainColumns blocks={domainBlocks} />}
 
       {tab === 'grades' && seesGrades && <GradesTab studentId={card.id} />}
 

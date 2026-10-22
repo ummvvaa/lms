@@ -1,0 +1,24 @@
+/* «Таблица» администратора — реестр учеников по макету Table:
+   имя с аватаром ссылкой на карточку, почта одной строкой. */
+.registry__who {
+  color: inherit;
+  text-decoration: none;
+}
+
+.registry__who b {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.registry__who:hover b {
+  color: var(--accent-ink);
+}
+
+.registry__mail {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
