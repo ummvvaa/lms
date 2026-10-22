@@ -135,8 +135,11 @@ test("куратор: кабинет со своими группами, чуж�
   // посещаемость, расписание, успеваемость, отчёты родителям, задачи и журнал.
   // «Импорта» и пробников файлом нет: кураторы вносят руками; чужих разделов нет
   const nav = curator.locator("nav.shell__menu");
-  // с 08.10.2026 у куратора есть «Профтест» (результаты своих групп)
-  await expect(nav.getByRole("link")).toHaveCount(11);
+  await expect(nav.getByRole("link")).toHaveCount(10);
+  // «Профтеста» и «Проверки ДЗ» у куратора нет: оба пункта спрятаны
+  // переключателем кабинета куратора
+  await expect(nav).not.toContainText("Профтест");
+  await expect(nav).not.toContainText("Проверка ДЗ");
   for (const label of [
     "Главная",
     "Очередь",

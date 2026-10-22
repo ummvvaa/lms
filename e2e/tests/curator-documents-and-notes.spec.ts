@@ -307,8 +307,9 @@ test("напомнить всем: задача каждому со списко
     .find((c) => c.url.includes("/documents/remind/"));
   expect(call?.status).toBe(200);
 
+  // задачи на экране — плашками `.ctasks__row`
   await page.goto("/tasks?group=BOSTON&filter=open");
-  const made = page.locator(".rowline", { hasText: "Загрузить:" });
+  const made = page.locator(".ctasks__row", { hasText: "Загрузить:" });
   await expect(made.first()).toBeVisible();
   expect(await made.count()).toBeGreaterThanOrEqual(count);
   expect(diag.consoleErrors).toEqual([]);
@@ -416,24 +417,25 @@ test("заметки: куратор пишет, Кымбат читает, уч
   await student.context().close();
 });
 
-test("звонок родителям: телефон с владельцем, итог уходит в заметки и журнал", async ({
+test("звонок родителям: итог уходит в заметки и журнал", async ({
   browser,
 }) => {
   const page = await as(browser, "curator");
   const diag = watch(page);
   await page.goto(`/students/${studentId}`);
-
-  await page.getByRole("button", { name: "Родителям" }).first().click();
-  const dialog = page.getByRole("dialog");
-  // у контакта назван владелец домена: «ведёт Салтанат»
-  await expect(dialog).toContainText("ведёт Салтанат");
-  await dialog.getByPlaceholder("Коротко").fill(CALL);
-  const mark = diag.mark();
-  await dialog.getByRole("button", { name: "Сохранить итог звонка" }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  expect(
-    diag.since(mark).some((c) => c.url.includes("/call/") && c.status === 200),
-  ).toBeTruthy();
+  await expect(page.locator("h1")).toBeVisible();
+  // кнопки «Родителям» в шапке карточки у куратора нет: кнопки шапки
+  // спрятаны переключателем кабинета. Окно звонка не открыть, а запись
+  // итога остаётся — её и проверяем запросом от имени куратора
+  await expect(
+    page.getByRole("button", { name: "Родителям", exact: true }),
+  ).toHaveCount(0);
+  const noted = await apiPost<{ noted: boolean }>(
+    page,
+    `/api/curator/students/${studentId}/call/`,
+    { text: CALL },
+  );
+  expect(noted.noted, "итог звонка записан в заметки").toBe(true);
 
   await page.getByRole("tab", { name: "Заметки" }).click();
   await expect(
@@ -472,17 +474,24 @@ test("передача Кымбат: строка уходит к владель
       .some((c) => c.url.includes("/escalate/") && c.status === 200),
   ).toBeTruthy();
 
-  // строка ушла из очереди в блок внизу — с именем адресата
+  // строка ушла из очереди в карточку «Передано владельцу» внизу — с именем адресата
   await expect(
     page.locator(`.squeue__row[data-suggestion="${suggestion}"]`),
   ).toHaveCount(0);
-  const handed = page.locator(".cescalated");
+  const handed = page.locator(".datacard", { hasText: "Передано владельцу" });
   await expect(handed).toContainText("Передано владельцу");
   await expect(handed).toContainText("у Кымбат");
   await expect(handed).toContainText(HANDOVER);
 
   // вернуть себе — и передать снова: до решения владельца строка своя
-  await handed.getByRole("button", { name: "Вернуть себе" }).click();
+  const returned = page.waitForResponse(
+    (r) => r.url().includes(`/api/suggestions/${suggestion}/unescalate/`) && r.request().method() === "POST",
+  );
+  await handed
+    .locator(".rowline", { hasText: HANDOVER })
+    .getByRole("button", { name: "Вернуть себе" })
+    .click();
+  expect((await returned).status()).toBe(200);
   await expect(
     page.locator(`.squeue__row[data-suggestion="${suggestion}"]`),
   ).toBeVisible();
@@ -601,8 +610,16 @@ test("журнал: только чтение, по группе, выгрузк
   const rows = page.locator("table.tbl tbody tr");
   await expect(rows.first()).toBeVisible();
   await expect(page.locator("body")).toContainText("Передано владельцу домена");
-  // ни одной кнопки правки в таблице — журнал не редактируется
-  await expect(page.locator("table.tbl button")).toHaveCount(0);
+  // ни одной кнопки правки в таблице — журнал не редактируется; кнопки
+  // в строках — только ссылки на карточку ученика
+  await expect(page.locator("table.tbl button:not([data-variant='link'])")).toHaveCount(0);
+  const studentLink = page.locator("table.tbl tbody button[data-variant='link']").first();
+  if (await studentLink.count()) {
+    await studentLink.click();
+    await expect(page).toHaveURL(/\/students\/\d+/);
+    await page.goBack();
+    await expect(rows.first()).toBeVisible();
+  }
 
   await exportThroughPreview(page, page.getByRole("button", { name: "Выгрузить" }));
 

@@ -3,9 +3,9 @@
  *
  * Два сценария:
  *
- * 1. Посещаемость группы за день: лист открывается «все были», снимаем
- *    отметку, пишем причину, сохраняем — и число в карточке ученика
- *    меняется, потому что процент считается из дней.
+ * 1. Посещаемость: утренняя отметка своих групп строками «в школе / нет /
+ *    опоздал», аналитика за период с процентом по ученикам, а дни без
+ *    причины — в карточке ученика с «Оформить».
  * 2. Контакты родителя правятся прямо в карточке, и замечание пишется
  *    словами.
  *
@@ -16,18 +16,8 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { probeEmail } from "../helpers/roles";
 import { watch } from "../helpers/session";
-import { daysAgo, lessonsBetween } from "../helpers/academics";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
-
-/** Вчера — по местным часам: в UTC вечером получился бы позавчерашний день. */
-const YESTERDAY = (() => {
-  const date = new Date();
-  date.setDate(date.getDate() - 1);
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-})();
 
 async function as(browser: Browser, role: string): Promise<Page> {
   const context = await browser.newContext({ storageState: statePath(role) });
@@ -43,36 +33,85 @@ async function studentId(page: Page, email: string): Promise<number> {
   return row!.id;
 }
 
-test("посещаемость: день матрицей по урокам, месяц с процентом и днями без причины", async ({
+test("посещаемость: утренняя отметка строками, аналитика за период, дни без причины в карточке", async ({
   browser,
 }) => {
   const page = await as(browser, "curator");
   const diag = watch(page);
 
+  // 1. Отметка: строка на ученика — ФИО и три кнопки рядом
   await page.goto("/attendance");
   await expect(page.locator("h1")).toContainText("Посещаемость");
+  const rows = page.locator(".cmark__row");
+  await expect(rows.first()).toBeVisible();
+  expect(await rows.count(), "в группах куратора есть ученики").toBeGreaterThan(0);
+  const name = (await rows.first().locator(".cmark__name").innerText()).trim();
+  const marks = rows.first().getByRole("group", { name: `${name}: отметка` });
+  await expect(marks).toBeVisible();
+  for (const word of ["в школе", "нет", "опоздал"])
+    await expect(marks.getByRole("button", { name: word, exact: true }), `кнопка «${word}»`).toBeVisible();
 
-  // день — последний учебный с уроками: в понедельник «вчера» без уроков
-  const past = (await lessonsBetween(page, daysAgo(10), daysAgo(1))).map((row) => row.date).sort();
-  const day = past[past.length - 1] ?? YESTERDAY;
-  await page.getByLabel("День").fill(day);
-  const grid = page.locator(".matrix").first();
-  await expect(grid).toBeVisible();
-  const rows = grid.locator("tbody tr");
-  expect(await rows.count(), "в группе есть ученики").toBeGreaterThan(0);
-  await expect(page.locator(".statrow")).toContainText("Не отмечено");
-  await expect(page.locator("body")).toContainText("«н» — не был");
-
-  // месяц: процент по урокам и дни без причины с «Оформить»
-  await page.getByRole("button", { name: "Месяц", exact: true }).click();
-  await expect(page).toHaveURL(/view=month/);
-  await expect(page.locator("main")).toContainText("Посещаемость");
-  const days = page.locator(".datacard", { hasText: "Дни без причины" }).first();
-  await expect(days).toBeVisible();
+  // 2. Аналитика: период переключается, процент по ученикам и средний
+  await page
+    .getByRole("group", { name: "Раздел" })
+    .getByRole("button", { name: "Аналитика", exact: true })
+    .click();
+  await expect(page).toHaveURL(/tab=stats/);
+  const week = (await (await page.request.get("/api/attendance/stats/?group=all&period=week")).json()) as {
+    periods: { code: string; title: string }[];
+  };
+  // текущий месяц — второй период после недели
+  const month = week.periods.find((row) => /^\d{4}-\d{2}$/.test(row.code));
+  expect(month, "месяц среди периодов аналитики").toBeTruthy();
+  const loaded = page.waitForResponse(
+    (r) => r.url().includes("/api/attendance/stats/") && r.url().includes(`period=${month!.code}`),
+  );
+  await page
+    .getByRole("group", { name: "Период" })
+    .getByRole("button", { name: month!.title, exact: true })
+    .click();
+  expect((await loaded).status(), "аналитика за месяц").toBe(200);
+  const stats = (await (
+    await page.request.get(`/api/attendance/stats/?group=all&period=${month!.code}`)
+  ).json()) as { totals: { percent: number | null } };
+  await expect(page.locator(".datacard", { hasText: "По ученикам" }).first()).toBeVisible();
+  // средний процент — плиткой, только когда он посчитан: плитка «нет» ничего не говорит
+  const average = page.locator(".stat", { hasText: "Средний процент" });
+  if (stats.totals.percent !== null) await expect(average).toBeVisible();
+  else await expect(average).toHaveCount(0);
   const mark = diag.mark();
   await page.reload();
-  await expect(page.locator(".matrix").first()).toBeVisible();
-  expect(diag.since(mark).filter((c) => c.status >= 400)).toEqual([]);
+  await expect(page.locator(".datacard", { hasText: "По ученикам" }).first()).toBeVisible();
+  expect(diag.since(mark).filter((c) => c.status >= 400), "отказы API после перезагрузки").toEqual([]);
+
+  // 3. Дни без причины — в карточке ученика: «Дни с пропусками» и «Оформить»
+  const pupils = (await (
+    await page.request.get("/api/students/?page_size=500")
+  ).json()) as { results: { id: number }[] };
+  let absent = 0;
+  for (const pupil of pupils.results.slice(0, 60)) {
+    const grades = (await (
+      await page.request.get(`/api/acad/students/${pupil.id}/grades/`)
+    ).json()) as { days?: { has_absent: boolean }[] };
+    if (grades.days?.some((day) => day.has_absent)) {
+      absent = pupil.id;
+      break;
+    }
+  }
+  expect(absent, "у учеников куратора есть пропуски без причины (посев)").toBeGreaterThan(0);
+  await page.goto(`/students/${absent}?tab=grades`);
+  const days = page.locator(".datacard").filter({
+    has: page.locator(".datacard__title", { hasText: /^Дни с пропусками$/ }),
+  });
+  await expect(days).toBeVisible();
+  const excuse = days.getByRole("button", { name: "Оформить", exact: true }).first();
+  await expect(excuse).toBeVisible();
+  // кнопка открывает окно причины за этот день; закрываем, ничего не оформляя
+  await excuse.click();
+  const dialog = page.getByRole("dialog", { name: "Уважительная причина" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Отмена", exact: true }).click();
+  await expect(dialog).toBeHidden();
 
   expect(diag.consoleErrors, "ошибки в консоли").toEqual([]);
   expect(diag.pageErrors, "исключения").toEqual([]);
@@ -91,6 +130,11 @@ test("карточка: замечание словами и правка кон
     .locator(".card")
     .filter({ hasText: "Дисциплина" })
     .first();
+
+  await expect(discipline).toBeVisible();
+  // у ученика без отметок и замечаний блок свёрнут в строку: форма — по кнопке
+  const open = discipline.getByRole("button", { name: "Записать замечание" });
+  if (await open.count()) await open.click();
 
   // текст свой на каждый прогон: повторный прогон на живой базе не должен
   // проходить за счёт замечания, оставленного прошлым

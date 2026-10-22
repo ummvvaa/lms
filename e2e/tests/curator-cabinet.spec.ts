@@ -209,11 +209,16 @@ test("ученики: сортировка, корзина, выгрузка и 
   const after = await rows.first().innerText();
   expect(after).not.toBe(before);
 
-  // корзина сужает список и попадает в адрес
-  const bucket = page.locator(".cfilters .segrow__item").nth(1);
+  // корзина сужает список и попадает в адрес; корзины — сегментами
+  // «Кого показать» над таблицей, первый сегмент — «Все»
+  const bucket = page
+    .getByRole("group", { name: "Кого показать" })
+    .getByRole("button")
+    .nth(1);
   const label = await bucket.innerText();
   await bucket.click();
   await expect(page).toHaveURL(/bucket=/);
+  await expect(bucket).toHaveAttribute("aria-pressed", "true");
   const narrowed = await rows.count();
   expect(narrowed, `корзина «${label}» пуста`).toBeGreaterThan(0);
 
@@ -285,14 +290,22 @@ test("задача группе: по одной на каждого учени�
       .some((c) => c.url.includes("/curator/tasks/") && c.status === 201),
   ).toBeTruthy();
 
+  // задачи на экране — плашками `.ctasks__row`, «Сделано» на виду у открытой
   await page.goto("/tasks?group=BOSTON&filter=open");
-  const made = page.locator(".rowline", { hasText: title });
+  const made = page.locator(".ctasks__row", { hasText: title });
   await expect(made).toHaveCount(students);
 
   // закрытие одной не трогает остальные
+  const closed = page.waitForResponse(
+    (r) =>
+      r.url().includes("/api/curator/tasks/") &&
+      r.url().includes("/status/") &&
+      r.request().method() === "POST",
+  );
   await made.first().getByRole("button", { name: "Сделано" }).click();
+  expect((await closed).status()).toBe(200);
   await expect(
-    page.locator(".rowline", { hasText: title }),
+    page.locator(".ctasks__row", { hasText: title }),
   ).toHaveCount(students - 1);
 
   expect(diag.consoleErrors).toEqual([]);

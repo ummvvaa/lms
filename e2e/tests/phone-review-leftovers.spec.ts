@@ -3,8 +3,8 @@
  *
  * Всё на 390×844:
  *
- * 1. Вкладки: лента начинается с первой вкладки, активная видна; плашка
- *    не тянет страницу вбок (очередь куратора).
+ * 1. Вкладки: лента начинается с первой вкладки, активная видна; строка
+ *    фильтров очереди куратора и плашка «Моих групп» не тянут страницу вбок.
  * 2. «Мои документы» у ученика: названия видны; «Профтест» открывается списком тестов;
  *    у Салтанат в таблице подпись статуса, а не код.
  * 3. Очередь на дашборде директора не выше кураторской плотности.
@@ -71,10 +71,17 @@ test("вкладки начинаются с первой, активная ви
   await student.context().close();
 
   const curator = await as(browser, "curator");
+  // у очереди плашки нет: над строками — фильтры по домену и порядку одной строкой
   await curator.goto("/queue");
   await settle(curator);
-  await expect(curator.locator(".notice--folded").first()).toBeVisible();
+  await expect(curator.locator(".filters").first()).toBeVisible();
   expect(await docWidth(curator), "очередь не шире экрана").toBeLessThanOrEqual(PHONE.width);
+  // плашка с пояснением осталась в «Моих группах»: на телефоне она свёрнута
+  // в строку и страницу вбок не тянет
+  await curator.goto("/my-groups");
+  await settle(curator);
+  await expect(curator.locator(".notice--folded").first()).toBeVisible();
+  expect(await docWidth(curator), "«Мои группы» не шире экрана").toBeLessThanOrEqual(PHONE.width);
   await curator.goto("/journal");
   await settle(curator);
   expect(await docWidth(curator), "журнал не шире экрана").toBeLessThanOrEqual(PHONE.width);

@@ -4,9 +4,9 @@
  * учитель видит новый кабинет у себя.
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { daysAgo, lessonsBetween } from "../helpers/academics";
+import { almatyDay, lessonsBetween, type LessonRow } from "../helpers/academics";
 import { statePath } from "../helpers/auth-state";
-import { watch } from "../helpers/session";
+import { apiPost, watch } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 240_000 });
 
@@ -17,14 +17,24 @@ async function as(browser: Browser, role: string): Promise<Page> {
   return page;
 }
 
-const daysAhead = (n: number): string => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+/** День через `n` дней по Алматы: по UTC ночью «завтра» было бы сегодняшним днём. */
+const daysAhead = (n: number): string => almatyDay(n);
+
+/** Неделя урока в редакторе: вид «по группе» открывает первую группу, а не группу урока. */
+const weekOf = (lesson: LessonRow): string =>
+  `/schedule?from=${lesson.date}&key=${encodeURIComponent(lesson.cohort.group)}`;
 
 test("неделя по группе: панель урока и правка «этот и все следующие» с накладкой", async ({ browser }) => {
   const kymbat = await as(browser, "director_exam");
   const diag = watch(kymbat);
-  // будущий урок учителя прогона на следующей неделе
+  // будущий урок учителя прогона на следующей неделе — урок всей группы:
+  // неделя группы показывает его наверняка, урок потока может стоять у другой группы
   const future = (await lessonsBetween(kymbat, daysAhead(1), daysAhead(14))).filter(
-    (row) => row.actual_teacher?.short?.includes("Прогон") && row.is_live !== false,
+    (row) =>
+      row.actual_teacher?.short?.includes("Прогон") &&
+      row.is_live !== false &&
+      row.cohort.kind === "group" &&
+      Boolean(row.cohort.group),
   );
   expect(future.length, "впереди есть уроки учителя прогона").toBeGreaterThan(1);
   // учителей «Прогон» в посеве четверо (12.10.2026): накладка — только у одного
@@ -34,9 +44,14 @@ test("неделя по группе: панель урока и правка «
   expect(same.length, "у учителя первого урока есть и другие уроки").toBeGreaterThan(1);
   const other = same.find((row) => row.date === lesson.date && row.slot !== lesson.slot) ?? same[1];
 
-  await kymbat.goto(`/schedule?from=${lesson.date}`);
+  await kymbat.goto(weekOf(lesson));
   await expect(kymbat.locator("h1")).toContainText("Расписание");
-  const chip = kymbat.locator(".les", { hasText: lesson.subject.title }).first();
+  // фишка урока — с предметом и кодом группы: у потока на той же неделе
+  // может стоять урок того же предмета другой группы
+  const chip = kymbat
+    .locator(".les", { hasText: lesson.subject.title })
+    .filter({ hasText: lesson.cohort.group })
+    .first();
   await expect(chip).toBeVisible();
   await chip.click();
   const drawer = kymbat.locator(".drawer");
@@ -55,28 +70,28 @@ test("неделя по группе: панель урока и правка «
     (r) => r.url().includes("/acad/lessons/") && r.url().endsWith("/edit/") && r.request().method() === "POST",
   );
   await form.getByRole("button", { name: "Сохранить" }).click();
-  expect((await saved).status()).toBe(200);
+  const answer = await saved;
+  expect(answer.status()).toBe(200);
+  const moved = ((await answer.json()) as { lesson: { id: number } | null }).lesson;
+  expect(moved, "сервер вернул перенесённый урок").toBeTruthy();
   await expect(kymbat.locator("body")).toContainText("Изменена серия с");
 
   // накладка видна в списке, изменение — в журнале
-  await kymbat.goto(`/schedule?from=${other.date}`);
+  await kymbat.goto(`/schedule?from=${other.date}&key=${encodeURIComponent(lesson.cohort.group)}`);
   // накладка описана словами: учитель ведёт два урока сразу
   await expect(kymbat.locator(".datacard", { hasText: "Накладки" })).toContainText("ведёт два урока сразу");
   await expect(kymbat.locator(".datacard", { hasText: "Последние изменения" })).toBeVisible();
 
-  // возвращаем как было: кабинет и время обратно, чтобы посев не расходился
-  const back = kymbat.locator(".les", { hasText: lesson.subject.title }).first();
-  await back.click();
-  await kymbat.locator(".drawer").getByRole("button", { name: "Изменить" }).click();
-  const undo = kymbat.getByRole("dialog", { name: "Изменить урок" });
-  await undo.getByRole("button", { name: "Этот и все следующие" }).click();
-  await undo.getByLabel("Кабинет").fill("204");
-  await undo.getByLabel("Урок", { exact: true }).selectOption(String(lesson.slot));
-  await undo.getByLabel("Дата").fill(lesson.date);
-  const force = undo.getByLabel("Всё равно сохранить с накладкой");
-  if (await force.isVisible().catch(() => false)) await force.check();
-  await undo.getByRole("button", { name: "Сохранить" }).click();
-  await expect(kymbat.locator("body")).toContainText("Изменена серия с");
+  // возвращаем как было: кабинет и время обратно, чтобы посев не расходился.
+  // Правку формой сценарий уже проверил — возврат запросом к перенесённому уроку
+  await apiPost(kymbat, `/api/acad/lessons/${moved!.id}/edit/`, {
+    id: moved!.id,
+    scope: "next",
+    date: lesson.date,
+    slot: lesson.slot,
+    room: lesson.room ?? "",
+    force: true,
+  });
   expect(diag.pageErrors, "исключения").toEqual([]);
   await kymbat.context().close();
 });
@@ -85,11 +100,13 @@ test("отмена урока с причиной видна учителю и �
   // урок берём из расписания самого учителя прогона: в посеве есть второй учитель
   // с той же фамилией, а его уроков учитель не увидит
   const teacher = await as(browser, "teacher");
-  const future = (await lessonsBetween(teacher, daysAhead(1), daysAhead(14))).filter((row) => row.is_live !== false);
+  const future = (await lessonsBetween(teacher, daysAhead(1), daysAhead(14))).filter(
+    (row) => row.is_live !== false && row.cohort.kind === "group" && Boolean(row.cohort.group),
+  );
   expect(future.length, "впереди есть уроки учителя прогона").toBeGreaterThan(0);
   const lesson = future[future.length - 1];
   const kymbat = await as(browser, "director_exam");
-  await kymbat.goto(`/schedule?from=${lesson.date}`);
+  await kymbat.goto(weekOf(lesson));
   const own = kymbat.locator(".les", { hasText: lesson.subject.title }).filter({ hasText: lesson.actual_teacher?.short ?? "" });
   await own.last().click();
   await kymbat.locator(".drawer").getByRole("button", { name: "Отменить урок" }).click();
@@ -105,7 +122,7 @@ test("отмена урока с причиной видна учителю и �
   await expect(teacher.locator(".les--off, .les--cancelled").first()).toBeVisible();
   await teacher.context().close();
 
-  await kymbat.goto(`/schedule?from=${lesson.date}`);
+  await kymbat.goto(weekOf(lesson));
   await kymbat.locator(".les--off, .les--cancelled").filter({ hasText: lesson.subject.title }).last().click();
   const restored = kymbat.waitForResponse(
     (r) => r.url().includes("/acad/lessons/") && r.url().endsWith("/restore/") && r.request().method() === "POST",

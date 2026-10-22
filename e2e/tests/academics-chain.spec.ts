@@ -1,6 +1,6 @@
 /**
  * Сквозная цепочка учебной части в браузере: учитель отметил урок →
- * куратор видит «н» в посещаемости → оформляет уважительную причину
+ * куратор видит «н» в карточке ученика → оформляет уважительную причину
  * за период → в журнале учителя «у» → отчёт собран → PDF скачан →
  * «отправлен родителям».
  */
@@ -25,7 +25,7 @@ async function as(browser: Browser, role: string): Promise<Page> {
 let lessonId = 0;
 let lessonDate = "";
 let courseId = 0;
-let groupCode = "";
+let subjectShort = "";
 let studentId = 0;
 let studentName = "";
 let reportId = 0;
@@ -41,7 +41,8 @@ test("учитель: урок отмечен с экрана урока — о�
   lessonId = lesson.id;
   lessonDate = lesson.date;
   courseId = lesson.course;
-  groupCode = lesson.cohort.group;
+  // в днях с пропусками предмет назван коротким именем: «Матем н»
+  subjectShort = lesson.subject.short_title;
 
   await teacher.goto(`/lessons/${lessonId}`);
   await expect(teacher.locator("h1")).toContainText(lesson.subject.title);
@@ -66,14 +67,22 @@ test("учитель: урок отмечен с экрана урока — о�
   await teacher.context().close();
 });
 
-test("куратор: видит «н» в посещаемости группы за день", async ({ browser }) => {
+test("куратор: видит «н» за день в карточке ученика", async ({ browser }) => {
+  // посещаемость куратора — утренняя отметка дня, сетки уроков в ней нет;
+  // «н» по урокам он видит в карточке ученика, в днях с пропусками
   const curator = await as(browser, "curator");
-  await curator.goto(`/attendance?group=${encodeURIComponent(groupCode)}&date=${lessonDate}`);
-  await expect(curator.locator("h1")).toContainText("Посещаемость");
-  const grid = curator.locator(".matrix");
-  await expect(grid).toBeVisible();
-  const row = grid.locator("tr", { hasText: studentName }).first();
-  await expect(row).toContainText("н");
+  await curator.goto(`/students/${studentId}?tab=grades`);
+  const days = curator.locator(".datacard").filter({
+    has: curator.locator(".datacard__title", { hasText: /^Дни с пропусками$/ }),
+  });
+  await expect(days).toBeVisible();
+  // строка того самого дня: число дня слева, «предмет н» в пояснении
+  const day = String(Number(lessonDate.slice(8)));
+  const line = days
+    .locator(".rowline")
+    .filter({ has: curator.locator(".num", { hasText: new RegExp(`^${day}$`) }) })
+    .filter({ hasText: `${subjectShort} н` });
+  await expect(line, `«${subjectShort} н» за ${lessonDate}`).toHaveCount(1);
   await curator.context().close();
 });
 
@@ -124,7 +133,12 @@ test("отчёт: собран, проверен, PDF скачан, отправ
   await expect(kymbat.locator("h1")).toContainText("Отчёты родителям");
   // вид отчёта выбирается карточкой на странице (30.09.2026), не из меню «⋯»:
   // стандартный отчёт LMS за текущий месяц по всем группам
-  await kymbat.getByRole("button", { name: /^Стандартный/ }).click();
+  await kymbat
+    .locator("section.rlay-kind", {
+      has: kymbat.getByRole("heading", { name: "Стандартный", exact: true }),
+    })
+    .getByRole("button", { name: "Собрать", exact: true })
+    .click();
   const dialog = kymbat.getByRole("dialog", { name: "Стандартный" });
   await expect(dialog.getByLabel("Период")).toBeVisible();
   const built = kymbat.waitForResponse(

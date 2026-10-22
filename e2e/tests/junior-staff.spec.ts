@@ -3,11 +3,13 @@
  * перевод на следующий год.
  *
  * Ученик прогона 8–10 — «Прогон Ерлан» в LISBON (9 параллель), его заводит
- * посев. Асем его не видит нигде; Салтанат находит фильтром по параллели;
- * куратор в карточке видит учёбу без вкладок поступления и выдаёт ссылку
- * на пароль на экране; администратор задаёт параллель группе и видит
- * предпросмотр перевода года. Сам перевод здесь не запускается: он
- * переводит всю школу контура, а проверяют его тесты сервера.
+ * посев. Асем видит его карточку без блока «Поступление»; Салтанат находит
+ * фильтром по параллели; куратор в карточке видит учёбу без вкладок
+ * поступления и без кнопок шапки (ссылка на пароль, родителям, передать,
+ * отчёт родителям — они у куратора спрятаны); ссылку на пароль выдаёт на
+ * экране администратор из своей карточки ученика; он же задаёт параллель
+ * группе и видит предпросмотр перевода года. Сам перевод здесь не
+ * запускается: он переводит всю школу контура, а проверяют его тесты сервера.
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
@@ -50,7 +52,7 @@ test("Асем видит 8–10 без поступления, Салтанат
   await asem.context().close();
 });
 
-test("куратор: карточка 8–10 без поступления, ссылка на пароль на экране", async ({ browser }) => {
+test("куратор: карточка 8–10 без поступления и кнопок шапки; ссылку на пароль выдаёт администратор", async ({ browser }) => {
   const curator = await as(browser, "curator");
   const id = await juniorId(curator);
   await curator.goto(`/students/${id}`);
@@ -58,16 +60,27 @@ test("куратор: карточка 8–10 без поступления, с�
   const tabs = curator.locator(".screentabs, [role=tablist]").first();
   await expect(tabs).toContainText("Успеваемость");
   for (const tab of ["Экзамены", "Документы", "Вузы", "Задачи"]) await expect(tabs, tab).not.toContainText(tab);
+  // кнопки шапки карточки у куратора спрятаны переключателем кабинета:
+  // ни на виду, ни в меню «Действия» телефона их нет
+  for (const name of ["Ссылка на пароль", "Родителям", "Передать", "Отчёт родителям"])
+    await expect(curator.getByRole("button", { name, exact: true }), name).toHaveCount(0);
+  await curator.context().close();
 
-  const issued = curator.waitForResponse((r) => r.url().includes(`/api/students/${id}/password-link/`));
-  await curator.getByRole("button", { name: "Ссылка на пароль" }).click();
+  // ссылку на пароль ученику без почты выдаёт администратор из карточки
+  const admin = await as(browser, "admin");
+  await admin.goto(`/students/${id}`);
+  await expect(admin.locator("h1")).toContainText("Прогон Ерлан");
+  const issued = admin.waitForResponse(
+    (r) => r.url().includes(`/api/students/${id}/password-link/`) && r.request().method() === "POST",
+  );
+  await admin.getByRole("button", { name: "Ссылка на пароль" }).click();
   expect((await issued).status()).toBe(200);
-  const dialog = curator.getByRole("dialog");
+  const dialog = admin.getByRole("dialog");
   await expect(dialog).toContainText("probe_junior");
   // без почты письмо не уходит — ссылку передают лично (07.10.2026)
   await expect(dialog).toContainText("Письмо не отправлено");
   await expect(dialog.locator("input")).toHaveValue(/\/set-password\?token=/);
-  await curator.context().close();
+  await admin.context().close();
 });
 
 test("администратор: параллель при заведении группы и предпросмотр перевода года", async ({ browser }) => {

@@ -67,11 +67,13 @@ test.beforeAll(async ({ browser }) => {
 
 // --- 3, 11, 12: меню четырёх ролей ------------------------------------------------
 
-test("меню: импорт у администратора и Кымбат, профтест у Асем и куратора, сюжеты у администратора", async ({
+test("меню: импорт у администратора и Кымбат, профтест у Асем, сюжеты у администратора, у куратора ни того ни другого", async ({
   browser,
 }) => {
-  // «Профтест» сотрудника — у того, кто ведёт профориентацию, администратора,
-  // Асем и куратора (08.10.2026); прежней «анкеты» и «Вопросов профтеста» нет ни у кого
+  // «Профтест» сотрудника — у того, кто ведёт профориентацию, администратора
+  // и Асем; у куратора его нет, как и «Проверки ДЗ»: оба пункта спрятаны
+  // переключателем кабинета куратора. Прежней «анкеты» и «Вопросов профтеста»
+  // нет ни у кого
   const expectations: [string, string[], string[]][] = [
     ["admin", ["Импорт", "Сюжеты главной", "Достижения школы", "Профтест"], ["Вопросы профтеста"]],
     ["director_exam", ["Импорт"], ["Сюжеты главной", "Вопросы профтеста", "Профтест"]],
@@ -79,7 +81,7 @@ test("меню: импорт у администратора и Кымбат, п
     ["director_behavior", ["Правила обзвона"], ["Импорт", "Сюжеты главной", "Вопросы профтеста", "Достижения школы", "Профтест"]],
     ["director_talent", ["Предметы"], ["Импорт", "Профтест"]],
     ["director_sport", ["Соревнования"], ["Импорт", "Профтест"]],
-    ["curator", ["Посещаемость", "Профтест"], ["Импорт"]],
+    ["curator", ["Посещаемость", "Отчёты родителям"], ["Импорт", "Профтест", "Проверка ДЗ"]],
   ];
   for (const [role, has, lacks] of expectations) {
     const page = await as(browser, role);
@@ -137,8 +139,8 @@ test("Асем правит в блоке «Поступление» срок п
   await expect(row("Срок годности паспорта")).toContainText("01.05.2031");
 
   // попытка SAT-3: пустой слот занимается баллом, дата необязательна
-  const before = await row("SAT-3").innerText();
-  if (before.includes("—")) {
+  // пустой слот подписан словом «нет» (прочерков нет) — узнаём его по метке пустоты
+  if ((await row("SAT-3").locator(".cadm__empty").count()) > 0) {
     const attempt = page.waitForResponse((r) => r.url().includes("/admission-block/attempt/"));
     await row("SAT-3").getByRole("button", { name: "Изменить" }).click();
     await block.getByLabel("SAT-3: Балл").fill("1410");
@@ -166,15 +168,23 @@ test("Асем правит в блоке «Поступление» срок п
   expect(diag.pageErrors, "исключения").toEqual([]);
   await page.context().close();
 
-  // куратору блок целиком не отдан: у попыток и ссылок карандаша нет
+  // куратору блок целиком не отдан: у попыток и ссылок карандаша нет.
+  // У куратора блок показывает только заполненные строки — пустая скрыта,
+  // и проверка на ней ничего бы не значила; берём ссылку на табель,
+  // которую Асем только что записала, и попытку, если она заполнена
   const curator = await as(browser, "curator");
   await curator.goto(`/students/${studentId}`);
   const cblock = curator.locator(".cadm");
   await expect(cblock).toBeVisible();
-  const crow = cblock.locator(".cadm__pair").filter({
-    has: curator.locator(".cadm__k", { hasText: /^IELTS-1$/ }),
-  });
-  await expect(crow.getByRole("button", { name: "Изменить" })).toHaveCount(0);
+  const crow = (label: string) =>
+    cblock.locator(".cadm__pair").filter({
+      has: curator.locator(".cadm__k", { hasText: new RegExp(`^${label}$`) }),
+    });
+  await expect(crow("Ссылка на табель")).toBeVisible();
+  await expect(crow("Ссылка на табель").getByRole("button", { name: "Изменить" })).toHaveCount(0);
+  for (const label of ["IELTS-1", "SAT-3"])
+    if (await crow(label).isVisible())
+      await expect(crow(label).getByRole("button", { name: "Изменить" }), label).toHaveCount(0);
   await curator.context().close();
 });
 
@@ -481,10 +491,14 @@ test("посещаемость у Салтанат на чтение: день �
   await expect(page.locator(".matrix").first()).toBeVisible();
   await expect(page.locator(".statrow")).toContainText("Дни без причины");
 
-  // прежние отметки дня — третьим видом, на чтение: карточка месяца и список,
-  // фразы «отметка дня закрыта» на экране нет — так отвечает сервер на запись
-  await page.getByRole("button", { name: "Отметки дня до уроков" }).click();
-  await expect(page.locator(".datacard", { hasText: "отметки дня" }).first()).toBeVisible();
+  // утренняя отметка куратора — третьим видом, у Салтанат на чтение:
+  // ни флажков «Нет в школе», ни «Сохранить», у ученика словами «был / не был / опоздал»
+  await page.getByRole("button", { name: "Отметка куратора" }).click();
+  await expect(page).toHaveURL(/view=mark/);
+  const markRow = page.locator(".rowline").filter({ has: page.locator(".rowline__value") }).first();
+  await expect(markRow.locator(".rowline__value")).toHaveText(/^(был|не был|опоздал)$/);
+  await expect(page.getByRole("checkbox", { name: "Нет в школе" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Сохранить/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Внести посещаемость" })).toHaveCount(0);
 
   // и сервер отвечает отказом, если обойти экран
@@ -502,8 +516,9 @@ test("посещаемость у Салтанат на чтение: день �
   expect(diag.pageErrors, "исключения").toEqual([]);
   await page.context().close();
 
-  // куратор видит тот же экран, но с «Оформить» у дней без причины. День без
-  // причины — не меньше двух «н» и 60 % уроков дня (правило школы), а в посеве
+  // у куратора вместо матрицы — утренний лист, а дни без причины с «Оформить» —
+  // в карточке ученика, «Дни с пропусками». День без причины — не меньше двух
+  // «н» и 60 % уроков дня (правило школы), а в посеве
   // пропуски по одному уроку: такого дня нет ни у кого. Заводим его сами:
   // администратор отмечает ученику прогона «н» на всех уроках одного дня
   const admin = await as(browser, "admin");
@@ -514,7 +529,7 @@ test("посещаемость у Салтанат на чтение: день �
   expect(pupil, "ученик прогона заведён").toBeTruthy();
   const month = daysAgo(0).slice(0, 7);
   const lessons = (await lessonsBetween(admin, `${month}-01`, daysAgo(1)))
-    .filter((row) => row.in_lms !== false && row.is_live !== false);
+    .filter((row) => row.in_lms !== false && row.subject.in_lms !== false && row.is_live !== false);
   const byDay = new Map<string, typeof lessons>();
   for (const row of lessons) byDay.set(row.date, [...(byDay.get(row.date) ?? []), row]);
   // уроки дня берутся по ученику: подгруппы и потоки тоже считаются в его день
@@ -524,7 +539,10 @@ test("посещаемость у Салтанат на чтение: день �
     const own = (await (
       await admin.request.get(`/api/acad/lessons/?from=${date}&to=${date}&student=${pupil!.id}`)
     ).json()) as { lessons?: typeof lessons };
-    const rows = (own.lessons ?? []).filter((row) => row.in_lms !== false && row.is_live !== false);
+    // предмет «только расписание» отметок не принимает — его уроки не в счёт
+    const rows = (own.lessons ?? []).filter(
+      (row) => row.in_lms !== false && row.subject.in_lms !== false && row.is_live !== false,
+    );
     if (rows.length >= 2) {
       day = date;
       dayLessons = rows;
@@ -540,12 +558,17 @@ test("посещаемость у Салтанат на чтение: день �
   await admin.context().close();
 
   const curator = await as(browser, "curator");
-  await curator.goto("/attendance?view=month&group=CHICAGO");
-  await expect(curator.locator(".matrix").first()).toBeVisible();
-  const unexcused = curator.locator(".datacard", { hasText: "Дни без причины" }).first();
-  await expect(unexcused).toContainText("Прогон Айгерим");
-  // у куратора у дня без причины стоит «Оформить» — подсказки абзацем на экране больше нет
-  await expect(unexcused.getByRole("button", { name: "Оформить" }).first()).toBeVisible();
+  await curator.goto(`/students/${pupil!.id}?tab=grades`);
+  const days = curator.locator(".datacard").filter({
+    has: curator.locator(".datacard__title", { hasText: /^Дни с пропусками$/ }),
+  });
+  // строка дня — с числом дня слева, «н» по урокам и «Оформить» у куратора
+  const unexcused = days.locator(".rowline").filter({
+    has: curator.locator(".num", { hasText: new RegExp(`^${Number(day!.slice(8))}$`) }),
+  });
+  await expect(unexcused).toHaveCount(1);
+  await expect(unexcused).toContainText(" н");
+  await expect(unexcused.getByRole("button", { name: "Оформить", exact: true })).toBeVisible();
   await curator.context().close();
 
   // возвращаем отметки: «н» целого дня не должно уехать в другие сценарии
