@@ -480,7 +480,9 @@
   background: var(--accent-grad);
 }
 
+/* сдвиг бегунка — только наш `transform`: `translate` реестра сложился бы с ним */
 [data-slot='switch-thumb'] {
+  translate: none;
   width: 18px;
   height: 18px;
   margin-left: var(--seg-pad);
@@ -584,7 +586,8 @@
   min-width: 0;
 }
 
-.lay-screen > * {
+.lay-screen > *,
+.lay-screen > div > .tabs {
   margin-top: 0;
   margin-bottom: 0;
 }
@@ -713,7 +716,8 @@
 
 @media (max-width: 759px) {
   .filters .field,
-  .filters .filters__search {
+  .filters .filters__search,
+  .filters .field:not(.filters__search, .field--check) {
     flex: 1 1 100%;
     min-width: 0;
     max-width: none;
