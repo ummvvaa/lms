@@ -38,11 +38,13 @@ import {
   type Domain,
   type DomainMeta,
 } from '../api/types'
-import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
+import { Chip, DataCard, EmptyNote, ErrorNote, Loading, Ring, ScreenHead, ScreenTabs } from '../components/ui'
 import { Row, Rows } from '../components/patterns'
-import { AddRowForm, ProfileCard, ProposeForm, RowsList } from '../components/PortfolioForms'
+import { AddRowForm, ProfileCard, ProposeForm } from '../components/PortfolioForms'
+import { DateTile, EntryList, Medal, WhoConfirms, ownerOf, waitingState } from './PortfolioEntries'
 import { modelOf, pendingByField, pendingNewRows } from './portfolioData'
 import './portfolio.css'
+import './portfolio-layout.css'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { t } from '../i18n'
@@ -337,10 +339,27 @@ export default function MyData() {
   const pendingAchievements = pendingActivities.filter((r) => r.category !== 'olympiad')
   const pendingCompetitions = pendingNewRows(myProposals, 'students.Competition')
 
+  // состояние записи раздела: подтверждена директором или ждёт отметки
+  const confirmState = (confirmed: boolean) =>
+    confirmed
+      ? { label: t('подтверждено'), tone: 'good' as const }
+      : { label: t('внесено, ждёт отметки'), tone: 'warn' as const }
+  // счётчик на вкладке — только когда есть что считать
+  const tabLabel = (label: string, n: number) =>
+    n > 0 ? (
+      <>
+        {label}
+        <span className="tabs__n num">{n}</span>
+      </>
+    ) : (
+      label
+    )
+
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Портфолио')}
+        subtitle={t('Всё, что увидит комиссия вуза: баллы, достижения, документы')}
         actions={
           <Button
             variant="outline"
@@ -353,37 +372,34 @@ export default function MyData() {
         }
       />
 
-      {superseded.length > 0 && (
-        <div className="card card-pad propose__declined">
-          <span className="eyebrow">{t('Куратор внёс за вас')}</span>
-          <ul className="propose__declinedlist">
-            {superseded.slice(0, 5).map((proposal) => (
-              <li key={proposal.id}>
+      {(declined.length > 0 || superseded.length > 0) && (
+        <div className="pfl-notes">
+          {/* вернули на доработку — тихой янтарной строкой, без отдельной карточки */}
+          {declined.slice(0, 5).map((proposal) => (
+            <p key={proposal.id} className="warnline">
+              <span className="warnline__what">{t('Возвращено на доработку')}</span>
+              <span>
+                <b>{proposal.changes.map((c) => t(c.field_title)).join(', ')}</b>
+                <span> — {proposal.reject_reason}. </span>
+                <span>{t('Поправьте и внесите заново в карточке ниже.')}</span>
+              </span>
+            </p>
+          ))}
+          {/* куратор внёс значение сам — не отказ, поэтому строка не янтарная */}
+          {superseded.slice(0, 5).map((proposal) => (
+            <p key={proposal.id} className="warnline pfl-note">
+              <span className="warnline__what">{t('Куратор внёс за вас')}</span>
+              <span>
                 {proposal.changes.map((c) => (
                   <span key={`${c.model}.${c.field}`}>
                     <b>{t(c.field_title)}</b>
-                    <span className="muted"> — {t('куратор внёс значение {value}.', { value: c.superseded_value || t('нет') })} </span>
+                    <span> — {t('куратор внёс значение {value}.', { value: c.superseded_value || t('нет') })} </span>
                   </span>
                 ))}
-                <span className="muted">{t('Ваше предложение закрыто, отклонения нет.')}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {declined.length > 0 && (
-        <div className="card card-pad propose__declined">
-          <span className="eyebrow">{t('Возвращено на доработку')}</span>
-          <ul className="propose__declinedlist">
-            {declined.slice(0, 5).map((proposal) => (
-              <li key={proposal.id}>
-                <b>{proposal.changes.map((c) => t(c.field_title)).join(', ')}</b>
-                <span className="muted"> — {proposal.reject_reason}. </span>
-                <span className="muted">{t('Поправьте и внесите заново в карточке ниже.')}</span>
-              </li>
-            ))}
-          </ul>
+                <span>{t('Ваше предложение закрыто, отклонения нет.')}</span>
+              </span>
+            </p>
+          ))}
         </div>
       )}
 
@@ -392,10 +408,10 @@ export default function MyData() {
         onChange={setTab}
         items={[
           { value: 'overview', label: t('Обзор') },
-          { value: 'achievements', label: t('Достижения') },
-          { value: 'documents', label: t('Документы') },
-          { value: 'sport', label: t('Спорт') },
-          { value: 'olympiads', label: t('Олимпиады') },
+          { value: 'achievements', label: tabLabel(t('Достижения'), achievementRows.length + pendingAchievements.length) },
+          { value: 'documents', label: tabLabel(t('Документы'), documentsDone) },
+          { value: 'sport', label: tabLabel(t('Спорт'), competitions.length + pendingCompetitions.length) },
+          { value: 'olympiads', label: tabLabel(t('Олимпиады'), olympiadRows.length + pendingOlympiads.length) },
           { value: 'cv', label: 'CV' },
         ]}
       />
@@ -490,8 +506,6 @@ export default function MyData() {
             </DataCard>
 
             {domainCard('exam')}
-            {domainCard('behavior')}
-            {domainCard('talent')}
             {domainCard('sport')}
 
             <DataCard
@@ -514,16 +528,20 @@ export default function MyData() {
           </div>
 
           <div className="portfolio__side">
-            {/* Заполненность: процент, полоса и что именно заполнить.
+            {/* Заполненность: кольцо, разделы и что именно заполнить.
                 Это «сколько рассказал», а не готовность к подаче —
                 величины разные, и путать их нельзя */}
             <DataCard
+              className="pfl-fill"
               title={t('Заполнено на {percent}%', { percent: state?.percent ?? 0 })}
             >
-              <div className="bar portfolio__fillbar">
-                {/* цвет полосы задаётся явно: у `.bar > i` своего фона нет,
-                    и без него заполненная часть невидима */}
-                <i style={{ width: `${state?.percent ?? 0}%`, background: 'var(--accent)' }} />
+              <div className="pfl-fill__ring">
+                <Ring percent={state?.percent ?? 0} size={128}>
+                  <b className="num pfl-fill__n">
+                    {t('{done} из {total}', { done: filledSections, total: totalSections })}
+                  </b>
+                  <span className="t-note">{t('Заполнено')}</span>
+                </Ring>
               </div>
               {(state?.next_steps ?? []).length === 0 && (
                 <EmptyNote what={t('всё заполнено — портфолио рассказано целиком')} />
@@ -532,20 +550,14 @@ export default function MyData() {
                 {(state?.next_steps ?? []).map((step, index) => (
                   <Row
                     key={index}
+                    lead={<span className="portfolio__check" aria-hidden="true" />}
                     title={t(step.text)}
-                    right={<Chip tone="warn">{t('Нет')}</Chip>}
                     onOpen={() => setTab(step.tab as Tab)}
                     openLabel={t('Заполнить')}
                   />
                 ))}
               </Rows>
               <div className="portfolio__fillfacts">
-                <div>
-                  <span className="eyebrow">{t('Заполнено')}</span>
-                  <b className="num">
-                    {t('{done} из {total}', { done: filledSections, total: totalSections })}
-                  </b>
-                </div>
                 <div>
                   <span className="eyebrow">{t('Документов')}</span>
                   <b className="num">{documentsDone}</b>
@@ -561,116 +573,165 @@ export default function MyData() {
 
             {me?.student_id && <MyCredentialsCard studentId={me.student_id} />}
 
+            {domainCard('talent')}
+            {domainCard('behavior')}
           </div>
         </div>
       )}
 
       {tab === 'achievements' && (
-        <div className="grid grid--two">
-          <DataCard
-            title={t('Достижения')}
-            count={achievementRows.length}
-          >
-            <RowsList
-              rows={achievementRows.map((row) => ({
-                id: row.id,
-                label: row.title,
-                byCurator: (row.entered_by_curator ?? []).length > 0,
-                note: row.is_confirmed ? t('подтверждено') : t('внесено, ждёт отметки'),
-              }))}
-              pendingRows={pendingAchievements.map((row) => ({ label: row.title ?? '', note: '' }))}
-              emptyText={t('Достижений пока нет — добавьте первое')}
-            />
-            {activityModel && (
-              <AddRowForm
-                model="students.Activity"
-                fields={activityModel.fields.filter(
-                  (f) => f.student_proposable && !['subject', 'proof_url'].includes(f.name),
-                )}
-                submitLabel={t('Добавить достижение')}
-                withFile
+        <div className="lay-3 pfl-tab">
+          <div className="lay-span2">
+            <DataCard title={t('Достижения')} count={achievementRows.length + pendingAchievements.length}>
+              <EntryList
+                rows={[
+                  ...pendingAchievements.map((row, index) => ({
+                    key: `pending-${index}`,
+                    title: row.title ?? '',
+                    lead: <Medal />,
+                    state: waitingState(),
+                  })),
+                  ...achievementRows.map((row) => ({
+                    key: row.id,
+                    title: row.title,
+                    meta: row.date ? formatDate(row.date) : undefined,
+                    lead: <Medal on={row.is_confirmed} />,
+                    byCurator: (row.entered_by_curator ?? []).length > 0,
+                    state: confirmState(row.is_confirmed),
+                  })),
+                ]}
+                empty={t('Достижений пока нет — добавьте первое')}
               />
-            )}
-          </DataCard>
-          {/* бейджи школы — рядом, но своим именем: два блока «Достижения»
-              на одном экране путают (фаза 46) */}
-          <BadgesBlock limit={4} />
+              {activityModel && (
+                <AddRowForm
+                  model="students.Activity"
+                  fields={activityModel.fields.filter(
+                    (f) => f.student_proposable && !['subject', 'proof_url'].includes(f.name),
+                  )}
+                  submitLabel={t('Добавить достижение')}
+                  withFile
+                />
+              )}
+            </DataCard>
+          </div>
+          <div className="lay-stack">
+            <WhoConfirms owner={ownerOf(domains, 'students.Activity')} />
+            {/* бейджи школы — рядом, но своим именем: два блока «Достижения»
+                на одном экране путают (фаза 46) */}
+            <BadgesBlock limit={4} />
+          </div>
         </div>
       )}
 
       {tab === 'sport' && (
-        <div className="grid grid--two">
-          {domainCard('sport')}
-          <DataCard
-            title={t('Спортивные соревнования')}
-            count={competitions.length}
-          >
-            <RowsList
-              rows={competitions.map((row) => ({
-                id: row.id,
-                label: row.name,
-                note: row.result || '',
-                byCurator: (row.entered_by_curator ?? []).length > 0,
-              }))}
-              pendingRows={pendingCompetitions.map((row) => ({
-                label: row.name ?? '',
-                note: row.result ?? '',
-              }))}
-              emptyText={t('Соревнований пока нет')}
-            />
-            {competitionModel && (
-              <AddRowForm
-                model="students.Competition"
-                fields={competitionModel.fields.filter((f) => f.student_proposable && f.name !== 'proof_url')}
-                submitLabel={t('Добавить соревнование')}
-                withFile
+        <div className="lay-3 pfl-tab">
+          <div className="lay-span2">
+            <DataCard title={t('Спортивные соревнования')} count={competitions.length + pendingCompetitions.length}>
+              <EntryList
+                rows={[
+                  ...pendingCompetitions.map((row, index) => ({
+                    key: `pending-${index}`,
+                    title: row.name ?? '',
+                    result: row.result ?? '',
+                    lead: <DateTile value={row.date ?? null} />,
+                    state: waitingState(),
+                  })),
+                  ...competitions.map((row) => ({
+                    key: row.id,
+                    title: row.name,
+                    result: row.result,
+                    lead: <DateTile value={row.date} />,
+                    byCurator: (row.entered_by_curator ?? []).length > 0,
+                  })),
+                ]}
+                empty={t('Соревнований пока нет')}
               />
-            )}
-          </DataCard>
+              {competitionModel && (
+                <AddRowForm
+                  model="students.Competition"
+                  fields={competitionModel.fields.filter((f) => f.student_proposable && f.name !== 'proof_url')}
+                  submitLabel={t('Добавить соревнование')}
+                  withFile
+                />
+              )}
+            </DataCard>
+          </div>
+          <div className="lay-stack">
+            <WhoConfirms owner={ownerOf(domains, 'students.Competition')} />
+            {domainCard('sport')}
+          </div>
         </div>
       )}
 
       {tab === 'olympiads' && (
-        <div className="grid grid--two">
-          <DataCard
-            title={t('Олимпиады')}
-            count={olympiadRows.length}
-          >
-            <RowsList
-              rows={olympiadRows.map((row) => ({
-                id: row.id,
-                label: row.title,
-                note: [row.subject_name, row.is_confirmed ? t('подтверждено') : t('внесено, ждёт отметки')]
-                  .filter(Boolean)
-                  .join(' · '),
-              }))}
-              pendingRows={pendingOlympiads.map((row) => ({
-                label: row.title ?? '',
-                note: row.subject ?? '',
-              }))}
-              emptyText={t('Олимпиад пока нет — даже школьный этап считается')}
-            />
-            {activityModel && (
-              <AddRowForm
-                model="students.Activity"
-                fields={activityModel.fields.filter(
-                  (f) => f.student_proposable && !['category', 'proof_url'].includes(f.name),
-                )}
-                fixed={{ category: 'olympiad' }}
-                submitLabel={t('Добавить олимпиаду')}
-                withFile
+        <div className="lay-3 pfl-tab">
+          <div className="lay-span2">
+            <DataCard title={t('Олимпиады')} count={olympiadRows.length + pendingOlympiads.length}>
+              <EntryList
+                rows={[
+                  ...pendingOlympiads.map((row, index) => ({
+                    key: `pending-${index}`,
+                    title: row.title ?? '',
+                    meta: row.subject ?? '',
+                    lead: <Medal />,
+                    state: waitingState(),
+                  })),
+                  ...olympiadRows.map((row) => ({
+                    key: row.id,
+                    title: row.title,
+                    meta: [row.date ? formatDate(row.date) : '', row.subject_name].filter(Boolean).join(' · '),
+                    lead: <Medal on={row.is_confirmed} />,
+                    byCurator: (row.entered_by_curator ?? []).length > 0,
+                    state: confirmState(row.is_confirmed),
+                  })),
+                ]}
+                empty={t('Олимпиад пока нет — даже школьный этап считается')}
               />
-            )}
-          </DataCard>
+              {activityModel && (
+                <AddRowForm
+                  model="students.Activity"
+                  fields={activityModel.fields.filter(
+                    (f) => f.student_proposable && !['category', 'proof_url'].includes(f.name),
+                  )}
+                  fixed={{ category: 'olympiad' }}
+                  submitLabel={t('Добавить олимпиаду')}
+                  withFile
+                />
+              )}
+            </DataCard>
+          </div>
+          <WhoConfirms owner={ownerOf(domains, 'students.Activity')} />
         </div>
       )}
 
-      {tab === 'documents' && <DocumentsTab />}
+      {tab === 'documents' && (
+        <div className="lay-3 pfl-tab">
+          <div className="lay-span2">
+            <DocumentsTab />
+          </div>
+          <WhoConfirms owner={ownerOf(domains, 'documents')} />
+        </div>
+      )}
 
       {/* CV собирается на сервере из портфолио и на нём не хранится:
           профиль меняется каждый день, копия резюме устаревала бы молча */}
       {tab === 'cv' && (
-        <div className="portfolio__col">
+        <div className="lay-3 pfl-tab">
+          <div className="lay-span2">
+            <DataCard title={t('Что попадёт в CV')}>
+              <Rows>
+                {sections.map((section) => (
+                  <Row
+                    key={section.code}
+                    icon="checklist"
+                    tone={section.value > 0 ? 'good' : 'neutral'}
+                    title={t(section.title)}
+                    right={<span className="num portfolio__percent">{section.value}%</span>}
+                  />
+                ))}
+              </Rows>
+            </DataCard>
+          </div>
           <DataCard
             title={t('CV собирается из портфолио')}
             right={
@@ -684,19 +745,6 @@ export default function MyData() {
               </Button>
             }
           />
-          <DataCard title={t('Что попадёт в CV')}>
-            <Rows>
-              {sections.map((section) => (
-                <Row
-                  key={section.code}
-                  icon="checklist"
-                  tone={section.value > 0 ? 'good' : 'neutral'}
-                  title={t(section.title)}
-                  right={<span className="num portfolio__percent">{section.value}%</span>}
-                />
-              ))}
-            </Rows>
-          </DataCard>
         </div>
       )}
     </div>

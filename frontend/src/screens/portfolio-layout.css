@@ -1,0 +1,191 @@
+/* Раскладка «Портфолио» 11 и разделов 8–10 «Олимпиады» и «Спорт» по макету.
+
+   Записи раздела — плитками на подложке: значок или дата, название
+   с подписью, итог и состояние чипом. Вкладки списков — список на две
+   трети, справа «Кто подтверждает». */
+
+/* бегущий свет вокруг показателя или общей карточки: обёртка повторяет её скругление */
+.pfl-beam {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  border-radius: var(--radius-kpi);
+}
+
+.pfl-beam > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pfl-beam--card {
+  border-radius: var(--radius-card);
+}
+
+/* ряды вкладок и верх «Спорта» — как в макете: карточки по своей высоте */
+.lay-3.pfl-tab,
+.lay-3.pfl-top {
+  align-items: start;
+}
+
+/* строки «вернули на доработку» и «куратор внёс за вас» под шапкой */
+.pfl-notes {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+
+.pfl-notes .warnline {
+  margin: 0;
+}
+
+/* «куратор внёс за вас» — не отказ: подпись тихая, не янтарная */
+.pfl-note .warnline__what {
+  color: var(--ink-2);
+}
+
+/* --- Записи плитками --------------------------------------------------- */
+.pfl-list {
+  display: grid;
+  gap: calc(var(--space) * 2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pfl-list .pfl-entry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: calc(var(--space) * 3);
+  padding: calc(var(--space) * 3) calc(var(--space) * 4);
+  border-top: 0;
+  border-radius: var(--radius-row);
+  background: var(--surface-2);
+  font-size: var(--type-body);
+}
+
+.pfl-list .pfl-entry--bare {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.pfl-entry__what {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pfl-entry__title {
+  overflow-wrap: anywhere;
+}
+
+.pfl-entry__meta {
+  font-size: var(--type-note);
+  color: var(--ink-3);
+}
+
+.pfl-entry__result {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pfl-entry__state {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: calc(var(--space) * 2);
+  white-space: nowrap;
+}
+
+.pfl-entry__state:empty,
+.pfl-entry__result:empty {
+  display: none;
+}
+
+/* медаль у олимпиад и достижений: подтверждённая — залитая акцентом */
+.pfl-medal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space) * 10);
+  height: calc(var(--space) * 10);
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+}
+
+.pfl-medal--on {
+  background: var(--accent-grad);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-acc);
+}
+
+/* дата соревнования плиткой: число крупно, месяц под ним */
+.pfl-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: calc(var(--space) * 13);
+  padding: calc(var(--space) * 1) 0;
+  border-radius: var(--radius-inner);
+  background: var(--surface);
+  line-height: 1.15;
+}
+
+.pfl-date b {
+  font-size: var(--type-card);
+  font-weight: 700;
+}
+
+.pfl-date span {
+  font-size: var(--type-note);
+  color: var(--ink-3);
+}
+
+.pfl-addnote {
+  margin: calc(var(--space) * 3) 0 0;
+}
+
+.pfl-who {
+  margin: 0 0 calc(var(--space) * 2);
+  font-weight: 600;
+}
+
+/* --- Заполненность: кольцо по центру карточки --------------------------- */
+.pfl-fill__ring {
+  display: flex;
+  justify-content: center;
+  margin: calc(var(--space) * 1) 0 calc(var(--space) * 4);
+}
+
+.pfl-fill__ring .ring__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pfl-fill__n {
+  font-size: var(--type-card);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 759px) {
+  /* на телефоне итог и состояние уходят под название */
+  .pfl-list .pfl-entry {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: calc(var(--space) * 2);
+    padding: calc(var(--space) * 3);
+  }
+
+  .pfl-list .pfl-entry--bare {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pfl-entry__result,
+  .pfl-entry__state {
+    grid-column: -2 / -1;
+    justify-content: flex-start;
+  }
+}

@@ -8,12 +8,14 @@
 import { useMemo } from 'react'
 import { useAchievementRows, useDomainMeta, useMyProfile, useMyProposals } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
-import { AddRowForm, ProfileCard, RowsList } from '../components/PortfolioForms'
+import { AddRowForm, ProfileCard } from '../components/PortfolioForms'
+import { DateTile, EntryList, waitingState } from './PortfolioEntries'
 import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
 import { modelOf, pendingByField, pendingNewRows } from './portfolioData'
 import { formatMonthYear } from '../lib/format'
 import './portfolio.css'
+import './portfolio-layout.css'
 
 const monthOf = (value: string | null) =>
   value ? formatMonthYear(value) : ''
@@ -37,24 +39,38 @@ export default function Sport() {
   const level = (value: string) =>
     competitionModel?.fields.find((f) => f.name === 'level')?.choices?.find((c) => c.value === value)?.title ?? ''
 
+  const waiting = pendingNewRows(myProposals, 'students.Competition')
+
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead title={t('Спорт')} subtitle={owner ? t('Вносите сами, подтверждает {owner}', { owner }) : t('Вносите сами')} />
-      <div className="portfolio__two">
-        <div className="portfolio__main">
-          <DataCard title={t('Соревнования')} count={competitions.length}>
-            <RowsList
-              rows={competitions.map((row) => ({
-                id: row.id,
-                label: row.name,
-                note: [monthOf(row.date), level(row.level), row.result].filter(Boolean).join(' · '),
-                byCurator: (row.entered_by_curator ?? []).length > 0,
-              }))}
-              pendingRows={pendingNewRows(myProposals, 'students.Competition').map((row) => ({
-                label: row.name ?? '',
-                note: row.result ?? '',
-              }))}
-              emptyText={t('Соревнований пока нет')}
+      <div className="lay-3 pfl-top">
+        {/* вид спорта и уровень — главная карточка раздела, со светом по рамке */}
+        <div className="pfl-beam pfl-beam--card card--beam">
+          <ProfileCard code="sport" domains={domains} card={card} pending={pendingByField(myProposals)} />
+        </div>
+        <div className="lay-span2">
+          <DataCard title={t('Соревнования')} count={competitions.length + waiting.length}>
+            <EntryList
+              rows={[
+                ...waiting.map((row, index) => ({
+                  key: `pending-${index}`,
+                  title: row.name ?? '',
+                  meta: level(row.level ?? ''),
+                  result: row.result ?? '',
+                  lead: <DateTile value={row.date ?? null} />,
+                  state: waitingState(),
+                })),
+                ...competitions.map((row) => ({
+                  key: row.id,
+                  title: row.name,
+                  meta: [monthOf(row.date), level(row.level)].filter(Boolean).join(' · '),
+                  result: row.result,
+                  lead: <DateTile value={row.date} />,
+                  byCurator: (row.entered_by_curator ?? []).length > 0,
+                })),
+              ]}
+              empty={t('Соревнований пока нет')}
             />
             {competitionModel && (
               <AddRowForm
@@ -65,9 +81,6 @@ export default function Sport() {
               />
             )}
           </DataCard>
-        </div>
-        <div className="portfolio__side">
-          <ProfileCard code="sport" domains={domains} card={card} pending={pendingByField(myProposals)} />
         </div>
       </div>
     </div>

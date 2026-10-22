@@ -1,0 +1,72 @@
+/* «Достижения» ученика по макету: три показателя, бейджи плитками по четыре. */
+
+/* бегущий свет вокруг показателя «Получено»: обёртка повторяет его скругление */
+.ach-beam {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  border-radius: var(--radius-kpi);
+}
+
+.ach-beam > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* в показателе — название бейджа, а не число: мельче и без переноса посреди слова */
+.ach-kpi .ach-kpi__name {
+  font-size: var(--type-card);
+  font-weight: 600;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* плитка бейджа: медаль, название, условие, полоса внизу */
+.ach-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space) * 2);
+  min-width: 0;
+}
+
+.ach-tile__medal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space) * 13);
+  height: calc(var(--space) * 13);
+  margin-bottom: calc(var(--space) * 1);
+  border-radius: calc(var(--space) * 4);
+  background: var(--surface-2);
+  color: var(--ink-3);
+}
+
+.ach-tile--on .ach-tile__medal {
+  background: var(--accent-grad);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-acc);
+}
+
+.ach-tile__name {
+  font-weight: 600;
+}
+
+.ach-tile__desc {
+  flex: 1 1 auto;
+  font-size: var(--type-note);
+  color: var(--ink-3);
+}
+
+.ach-tile__progress {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 1);
+  align-self: stretch;
+}
+
+.ach-tile__chip {
+  margin-top: auto;
+}
