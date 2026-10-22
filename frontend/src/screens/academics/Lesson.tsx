@@ -245,6 +245,7 @@ export default function LessonScreen() {
   ) : (
     <Chip tone="warn">{t('не отмечен')}</Chip>
   )
+  const allPresent = () => attendance.mutate({ lesson: lesson.id, all_present: true }, { onSuccess: () => toast.success(t('Урок отмечен: все были')), onError: fail })
   const saveMarks = () =>
     attendance.mutate(
       { lesson: lesson.id, rows: [] },
@@ -304,8 +305,8 @@ export default function LessonScreen() {
           .join(' · ')}
         actions={
           <>
-            {mayMark && (
-              <Button variant="outline" onClick={() => attendance.mutate({ lesson: lesson.id, all_present: true }, { onSuccess: () => toast.success(t('Урок отмечен: все были')), onError: fail })}>
+            {mayMark && !phone && (
+              <Button variant="outline" onClick={allPresent}>
                 {t('Все присутствуют')}
               </Button>
             )}
@@ -350,7 +351,18 @@ export default function LessonScreen() {
         {(topic, recipients) => (
           <div className="lesson__grid">
             <div className="lesson__roster">
-              <DataCard title={t('Состав')} count={roster.length} empty={roster.length === 0 && t('в составе нет учеников')} note={future ? t('Урок ещё впереди: отметить можно со звонка. Тему и домашнее задание можно записать заранее.') : data.locked ? tn(data.scale?.edit_days ?? 7, 'Урок старше {n} дня: отметки и оценки только для чтения. Исправление — через Кымбат.|Урок старше {n} дней: отметки и оценки только для чтения. Исправление — через Кымбат.|Урок старше {n} дней: отметки и оценки только для чтения. Исправление — через Кымбат.') : undefined}>
+              <DataCard
+                title={t('Состав')}
+                count={roster.length}
+                // на телефоне «Все присутствуют» — на виду над составом, а не в меню шапки
+                right={
+                  mayMark && phone ? (
+                    <Button variant="outline" size="sm" onClick={allPresent}>
+                      {t('Все присутствуют')}
+                    </Button>
+                  ) : undefined
+                }
+                empty={roster.length === 0 && t('в составе нет учеников')} note={future ? t('Урок ещё впереди: отметить можно со звонка. Тему и домашнее задание можно записать заранее.') : data.locked ? tn(data.scale?.edit_days ?? 7, 'Урок старше {n} дня: отметки и оценки только для чтения. Исправление — через Кымбат.|Урок старше {n} дней: отметки и оценки только для чтения. Исправление — через Кымбат.|Урок старше {n} дней: отметки и оценки только для чтения. Исправление — через Кымбат.') : undefined}>
                 {roster.length > 0 && (
                   <div className="roster">
                     <RosterHead kind={lesson.kind} max={max} mayGrade={mayGrade} passOnly={passOnly} />
