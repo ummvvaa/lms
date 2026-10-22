@@ -231,14 +231,30 @@ body [data-slot='button'][data-variant].login__lang--on {
   min-height: 0;
 }
 
-/* Клетка «Человек»: имя и почта, под ними — роль. Отдельной колонкой
-   роли не хватало места в таблице шириной в карточку, должность резалась */
+/* Клетка «Человек»: аватар, справа имя и почта, под ними — роль. Отдельной
+   колонкой роли не хватало места в таблице шириной в карточку, должность резалась */
 .users__who {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: calc(var(--space) * 1);
   padding-block: calc(var(--space) * 2);
+}
+
+.users__who .personcell__text {
+  align-items: flex-start;
+  gap: 2px;
+}
+
+/* почта целиком одной строкой, длинная — многоточием, полная — в окне правки */
+.users__login {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.users__role {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2);
 }
 
 .users__who [data-slot='native-select-wrapper'] {

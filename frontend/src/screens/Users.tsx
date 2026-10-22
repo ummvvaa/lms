@@ -39,7 +39,7 @@ import Field from '../components/Field'
 import HandoutDialog from '../components/HandoutDialog'
 import LoginLocks from '../components/LoginLocks'
 import Modal from '../components/Modal'
-import { Segmented } from '../components/patterns'
+import { Avatar, Segmented } from '../components/patterns'
 import PhoneFold from '../components/PhoneFold'
 import RowMenu, { RowMenuItem, RowMenuSeparator } from '../components/RowMenu'
 import StudyGroups, { Curators } from '../components/StudyGroups'
@@ -63,6 +63,19 @@ const STATE_TONE: Record<string, Tone> = {
   waiting: 'neutral',
   expired: 'bad',
   ready: 'good',
+}
+
+/** Состояния, при которых человек не войдёт без нового пароля. */
+const NEEDS_PASSWORD = ['no_password', 'expired']
+
+/** Цвет отрезка полосы паролей — тот же тон, что у чипа состояния. */
+const STATE_COLOR: Record<Tone, string> = {
+  good: 'var(--good)',
+  warn: 'var(--warn)',
+  bad: 'var(--bad)',
+  info: 'var(--info)',
+  neutral: 'var(--ink-3)',
+  accent: 'var(--accent)',
 }
 
 /** Роли списка. `short` — короткая форма для строки на телефоне:
@@ -161,12 +174,23 @@ function UserActions({ user }: { user: ManagedUser }) {
   const [mailing, setMailing] = useState(false)
   const [history, setHistory] = useState(false)
   const fail = (error: Error) => toast.error(error.message)
+  // кнопка на виду — только там, где без неё человек не войдёт; у остальных
+  // «Выдать пароль» — первым пунктом меню: две кнопки в каждой строке рябили
+  const needsPassword = user.is_active && NEEDS_PASSWORD.includes(user.password_state)
+  const issue = () => temp.mutate(user.id, { onSuccess: setIssued, onError: fail })
   return (
     <span className="acad__inline">
-      <Button variant="secondary" size="sm" disabled={temp.isPending || !user.is_active} onClick={() => temp.mutate(user.id, { onSuccess: setIssued, onError: fail })}>
-        {t('Выдать пароль')}
-      </Button>
+      {needsPassword && (
+        <Button variant="secondary" size="sm" disabled={temp.isPending} onClick={issue}>
+          {t('Выдать пароль')}
+        </Button>
+      )}
       <RowMenu>
+        {!needsPassword && (
+          <RowMenuItem onClick={issue} disabled={temp.isPending || !user.is_active}>
+            {t('Выдать пароль')}
+          </RowMenuItem>
+        )}
         <RowMenuItem onClick={() => setEditing(true)}>{t('Изменить')}</RowMenuItem>
         <RowMenuItem onClick={() => setHistory(true)}>{t('Письма')}</RowMenuItem>
         <RowMenuItem onClick={() => link.mutate(user.id, { onSuccess: setShown, onError: fail })} disabled={!user.is_active}>
@@ -339,34 +363,23 @@ export default function Users() {
       width: 'auto',
       phone: 'head',
       cell: (user) => (
-        <span className="users__who">
-          <span>
-            <b>{user.full_name || t('без имени')}</b>
-            {user.is_probe && (
-              <Chip size="sm">
-                {t('прогон')}
-              </Chip>
-            )}
-            <span className="t-note"> · {user.email || user.login}</span>
-            {!user.is_active && (
-              <Chip size="sm">
-                {t('доступ отключён')}
-              </Chip>
-            )}
+        <span className="users__who personcell">
+          <Avatar name={user.full_name || user.email || user.login || '?'} />
+          <span className="personcell__text">
+            <span>
+              <b>{user.full_name || t('без имени')}</b>
+              {user.is_probe && <Chip size="sm">{t('прогон')}</Chip>}
+              {!user.is_active && <Chip size="sm">{t('доступ отключён')}</Chip>}
+            </span>
+            <span className="t-note users__login">{user.email || user.login}</span>
+            <span className="users__role">
+              <RoleNote user={user} />
+              {user.sees_whole_school && <Chip tone="info" size="sm">{t('вся школа')}</Chip>}
+            </span>
           </span>
-          <RoleNote user={user} />
         </span>
       ),
       sortBy: (user) => (user.full_name || user.email || user.login || '').toLowerCase(),
-    },
-    {
-      key: 'access',
-      title: t('Доступ'),
-      hint: t('Доступ'),
-      width: '152px',
-      phone: 'hidden',
-      cell: (user) => (user.sees_whole_school ? <Chip tone="info" size="sm">{t('вся школа')}</Chip> : <span className="t-note">{t('свои')}</span>),
-      sortBy: (user) => (user.sees_whole_school ? 0 : 1),
     },
     {
       // состояние приходит с сервера: чип, счётчик и строка обязаны говорить
@@ -384,7 +397,7 @@ export default function Users() {
       ),
       sortBy: (user) => user.password_state,
     },
-    { key: 'acts', title: '', width: '184px', actions: true, cell: (user) => <UserActions user={user} /> },
+    { key: 'acts', title: '', width: '176px', actions: true, cell: (user) => <UserActions user={user} /> },
   ]
 
   const closePanel = () => {
@@ -419,8 +432,8 @@ export default function Users() {
         value={tab}
         onChange={(next) => setFilter('tab', next === 'accounts' ? '' : next)}
         items={[
-          { value: 'accounts', label: t('Учётные записи') },
-          { value: 'groups', label: t('Учебные группы') },
+          { value: 'accounts', label: <>{t('Учётные записи')}<span className="tabs__n num">{page?.counts.all ?? 0}</span></> },
+          { value: 'groups', label: <>{t('Учебные группы')}<span className="tabs__n num">{page?.groups.length ?? 0}</span></> },
         ]}
       />
 
@@ -436,28 +449,31 @@ export default function Users() {
       )}
 
       {tab === 'accounts' && (
-        <div className="acad__stack">
+        <div className="lay-screen">
           <PhoneFold active={Boolean(search || roleFilter || groupFilter || parallelFilter || neverLoggedIn)}>
-            <div className="acad__toolbar">
-              <Field usageFilter name="search" label={t('Поиск')} value={search} placeholder={t('Поиск по имени или почте')} onChange={(value) => setFilter('search', value)} />
+            <div className="filters">
+              <Field usageFilter className="filters__search" name="search" label={t('Поиск')} value={search} placeholder={t('Поиск по имени или почте')} onChange={(value) => setFilter('search', value)} />
               <Field usageFilter kind="select" name="role" label={t('Роль')} value={roleFilter} onChange={(value) => setFilter('role', value)} options={[{ value: '', title: t('Все роли') }, ...ROLES.map((r) => ({ value: r.value, title: t(r.title) }))]} />
               <Field usageFilter kind="select" name="group" label={t('Группа')} value={groupFilter} onChange={(value) => setFilter('group', value)} options={[{ value: '', title: t('Все группы') }, ...(page?.groups ?? []).map((code) => ({ value: code, title: code }))]} />
               <Field usageFilter kind="select" name="parallel" label={t('Параллель')} value={parallelFilter} onChange={(value) => setFilter('parallel', value)} options={PARALLEL_FILTER.map((item) => ({ value: item.value, title: item.value ? item.title : t(item.title) }))} />
-              <Field usageFilter kind="checkbox" name="inactive" label={t('Показать неактивных ({n})', { n: inactive })} checked={showInactive} onChange={setShowInactive} />
               <Field usageFilter kind="checkbox" name="never_logged_in" label={t('Не входили ни разу')} checked={neverLoggedIn} onChange={(value) => setFilter('never_logged_in', value ? 'true' : '')} />
             </div>
           </PhoneFold>
 
           {/* состояния пароля со счётчиками: в день раздачи человек работает
               именно ими — «кому ещё не выдали» и «у кого сгорело» */}
-          <div className="acad__toolbar">
+          <div className="filters">
             <Segmented<string>
               value={state}
               onChange={(next) => setFilter('state', next)}
               label={t('Состояние пароля')}
               items={[{ value: '', label: t('Все {n}', { n: page?.counts.all ?? 0 }) }, ...(page?.states ?? []).map((mode) => ({ value: mode.code, label: `${mode.title} ${page?.counts[mode.code] ?? 0}` }))]}
             />
+            <Field usageFilter className="filters__end" kind="checkbox" name="inactive" label={t('Показать неактивных ({n})', { n: inactive })} checked={showInactive} onChange={setShowInactive} />
           </div>
+
+          <div className="lay-main">
+          <div className="lay-stack">
 
           {error && (
             <Chip tone="bad" size="sm">
@@ -520,8 +536,33 @@ export default function Users() {
           >
             <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} selected={(row) => picked.includes(row.id)} fit />
           </DataCard>
-          {/* кто заперт после неудачных попыток входа и кнопка снять */}
-          <LoginLocks />
+          </div>
+
+          <div className="lay-stack">
+            {/* кто заперт после неудачных попыток входа и кнопка снять */}
+            <LoginLocks />
+            {/* те же числа, что на сегментах состояний, — долями одной полосы */}
+            {(page?.counts.all ?? 0) > 0 && (
+              <DataCard title={t('Состояние паролей')}>
+                <div className="shares" aria-hidden="true">
+                  {(page?.states ?? []).map((mode) => {
+                    const n = page?.counts[mode.code] ?? 0
+                    return n > 0 ? <i key={mode.code} style={{ flex: n, background: STATE_COLOR[STATE_TONE[mode.code] ?? 'neutral'] }} /> : null
+                  })}
+                </div>
+                <div className="shares__legend">
+                  {(page?.states ?? []).map((mode) => (
+                    <div key={mode.code}>
+                      <span className="shares__dot" style={{ background: STATE_COLOR[STATE_TONE[mode.code] ?? 'neutral'] }} />
+                      <span className="t-note">{mode.title}</span>
+                      <span className="num">{page?.counts[mode.code] ?? 0}</span>
+                    </div>
+                  ))}
+                </div>
+              </DataCard>
+            )}
+          </div>
+          </div>
         </div>
       )}
 

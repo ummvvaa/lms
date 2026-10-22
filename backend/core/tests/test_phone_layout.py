@@ -206,7 +206,9 @@ def test_user_row_on_the_phone_is_a_name_and_a_password():
     users = read("screens", "Users.tsx")
     columns = users[users.index("const columns: Column<ManagedUser>[]") :]
     phone = dict(re.findall(r"key: '(\w+)',[^}]*?phone: '(\w+)'", columns))
-    assert phone == {"pick": "hidden", "person": "head", "access": "hidden"}, phone
+    # колонки «Доступ» нет с 22.10.2026: «вся школа» — чипом под именем рядом с ролью
+    assert phone == {"pick": "hidden", "person": "head"}, phone
+    assert "key: 'access'" not in columns
     assert "if (phone) return null" in users, "роль на телефоне снова в карточке"
     assert ".users__table" not in read("screens", "screens.css"), "правила старой таблицы пользователей не нужны"
 
