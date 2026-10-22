@@ -1,0 +1,92 @@
+/* Журнал группы по макету: четверти и вид — в шапке карточки матрицы,
+   клетка — плашка внутри ячейки: оценка цветом по уровню, «н / оп / у»
+   своими цветами, неотмеченный урок — пунктиром. Подложку несёт плашка,
+   а не ячейка таблицы: у ячеек сетки ровный фон, тон читается пятном. */
+
+.jmatrix {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 4);
+  min-width: 0;
+}
+
+.jmatrix__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 3);
+}
+
+.jmatrix__head .segrow {
+  margin-bottom: 0;
+}
+
+.jmatrix .jcell,
+.jmatrix .jhw {
+  width: calc(var(--space) * 10);
+  height: calc(var(--space) * 8);
+  margin: 0 auto;
+  border: 1px solid transparent;
+  border-radius: var(--radius-inrow);
+}
+
+.jmatrix .jcell--un {
+  border: 1px dashed var(--line-2);
+}
+
+.jmatrix .jcell--future {
+  width: auto;
+  height: 100%;
+}
+
+.jmatrix td.matrix__cell--good :is(.jcell, .jhw) {
+  background: var(--good-bg);
+  color: var(--good);
+}
+
+.jmatrix td.matrix__cell--warn :is(.jcell, .jhw) {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.jmatrix td.matrix__cell--bad :is(.jcell, .jhw) {
+  background: var(--bad-bg);
+  color: var(--bad);
+}
+
+.jmatrix td.matrix__cell--info :is(.jcell, .jhw) {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+/* в цветной плашке буква отметки и балл — её цветом */
+.jmatrix td[class*='matrix__cell--'] :is(.jcell__a, .jcell__g) {
+  color: inherit;
+}
+
+/* легенда — своей карточкой рядом с темами уроков, пункт под пунктом */
+.datacard .jlegend {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+  padding: 0;
+  border-top: 0;
+}
+
+.jlegend__i.matrix__cell--unmarked {
+  border: 1px dashed var(--line-2);
+  background: transparent;
+}
+
+/* окно ячейки: оценки ФО — ровной сеткой по десять, баллы СОР — по тем же клеткам */
+.jedit__grades {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: calc(var(--space) * 1.5);
+}
+
+.jedit__grades > [data-slot='button'] {
+  min-width: 0;
+  padding-inline: 0;
+}

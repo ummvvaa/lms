@@ -30,7 +30,7 @@ import {
 import Field from '../../components/Field'
 import Matrix, { type MatrixCell, type MatrixColumn, type MatrixRow, type MatrixTone } from '../../components/Matrix'
 import Modal from '../../components/Modal'
-import { Row, Rows, Segmented, StatRow } from '../../components/patterns'
+import { Row, Rows, Segmented } from '../../components/patterns'
 import { ApiError } from '../../api/client'
 import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
@@ -48,7 +48,7 @@ type Mode = 'both' | 'a' | 'g'
 const MARK_SHORT: Record<string, string> = { absent: tk('н'), excused: tk('у'), late: tk('оп') }
 
 function cellNode(cell: JournalCell, column: JournalColumn, mode: Mode) {
-  if (column.future) return <span className="jcell" />
+  if (column.future) return <span className="jcell jcell--future" />
   const mark = cell.mark
   const showMark = mode !== 'g'
   const showGrade = mode !== 'a'
@@ -58,7 +58,8 @@ function cellNode(cell: JournalCell, column: JournalColumn, mode: Mode) {
     .filter(Boolean)
     .join(' · ')
   return (
-    <span className="jcell" title={hint || undefined}>
+    // неотмеченный урок — пунктиром, как в легенде
+    <span className={`jcell${column.unmarked ? ' jcell--un' : ''}`} title={hint || undefined}>
       {showMark &&
         (mark === null ? (
           <i className="jcell__a" />
@@ -591,8 +592,53 @@ export default function Journal() {
   const selectedLesson = selectedAt !== null ? data.columns[selectedAt] : null
   const kpiNext = data.kpis.next_assessment
 
+  const legend = (
+    <div className="jlegend">
+      <span className="jlegend__k">
+        <i className="jlegend__i">·</i> {t('был')}
+      </span>
+      <span className="jlegend__k">
+        <i className="jlegend__i jcell__a--absent">{t('н')}</i> {t('не был')}
+      </span>
+      <span className="jlegend__k">
+        <i className="jlegend__i jcell__a--excused">{t('у')}</i> {t('уважительная')}
+      </span>
+      <span className="jlegend__k">
+        <i className="jlegend__i jcell__a--late">{t('оп')}</i> {t('опоздал')}
+      </span>
+      <span className="jlegend__k">
+        <i className="jlegend__i matrix__cell--unmarked" /> {t('урок не отмечен')}
+      </span>
+      <span className="jlegend__k">
+        <i className="jlegend__i matrix__cell--good">9</i> {t('оценка: цвет — уровень')}
+      </span>
+      {hwColumns.length > 0 && (
+        <>
+          <span className="jlegend__k">
+            <i className="jlegend__i matrix__cell--good">9</i> {t('оценка за ДЗ')}
+          </span>
+          <span className="jlegend__k">
+            <i className="jlegend__i jhw__chk">✓</i> {t('ДЗ проверено без оценки')}
+          </span>
+          <span className="jlegend__k">
+            <Chip tone="accent" size="sm">
+              {t('сдано')}
+            </Chip>{' '}
+            {mayReview ? t('ждёт проверки — нажмите, откроется работа') : t('ждёт проверки')}
+          </span>
+          <span className="jlegend__k">
+            <i className="jlegend__i jhw__miss">—</i> {t('ДЗ не сдано')}
+          </span>
+        </>
+      )}
+      <span className="jlegend__k">
+        <Icon name="lock" size={13} /> {tn(data.scale.edit_days, 'старше {n} дня — правит Кымбат|старше {n} дней — правит Кымбат|старше {n} дней — правит Кымбат')}
+      </span>
+    </div>
+  )
+
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={data.course.subject.title}
         crumb={{ label: t('Журналы'), to: data.is_owner ? '/journals' : '/schedule' }}
@@ -600,28 +646,28 @@ export default function Journal() {
         subtitle={`${counted(data.rows.length, 'ученик|ученика|учеников')} · ${passOnly ? t('без оценок: сдан или не сдан по профтесту') : data.course.subject.scheme_title} · ${data.course.teacher?.full_name ?? ''}`}
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={() => setDialog('export')}>
+            <Button variant="outline" onClick={() => setDialog('export')}>
               {t('Выгрузить')}
             </Button>
             {data.may_edit && kz && (
-              <Button variant="outline" size="sm" onClick={() => setDialog('assessment')}>
+              <Button variant="outline" onClick={() => setDialog('assessment')}>
                 {t('СОР или СОЧ')}
               </Button>
             )}
             {data.may_edit && kz && data.quarter && (
-              <Button variant="outline" size="sm" onClick={() => setDialog('final')}>
+              <Button variant="outline" onClick={() => setDialog('final')}>
                 {t('Выставить итог')}
               </Button>
             )}
             {data.today_lesson && data.may_edit && (
-              <Button size="sm" onClick={() => navigate(`/lessons/${data.today_lesson?.id}`)}>
+              <Button onClick={() => navigate(`/lessons/${data.today_lesson?.id}`)}>
                 {t('Урок сегодня')} · {data.today_lesson.slot}
               </Button>
             )}
           </>
         }
       />
-      <StatRow>
+      <div className="lay-4">
         <Kpi label={t('Уроков проведено')} value={data.kpis.held || null} none={t('ещё не было')} note={t('из {planned} за {period}', { planned: data.kpis.planned, period: data.period.title.toLowerCase() })} />
         <Kpi
           label={t('Не отмечено')}
@@ -648,23 +694,10 @@ export default function Journal() {
         ) : (
           <Kpi label={t('Учеников')} value={data.rows.length} />
         )}
-      </StatRow>
-
-      <div className="acad__toolbar">
-        <PeriodSwitch value={data.period.code} periods={data.periods} onChange={setPeriod} />
-        {!phone && (
-          <Segmented
-            value={mode}
-            onChange={setMode}
-            label={t('Что показывать')}
-            items={[
-              { value: 'both', label: t('Посещаемость и оценки') },
-              { value: 'a', label: t('Посещаемость') },
-              { value: 'g', label: t('Оценки') },
-            ]}
-          />
-        )}
       </div>
+
+      {/* на телефоне четверти — над списком уроков, на большом экране — в шапке матрицы */}
+      {phone && <PeriodSwitch value={data.period.code} periods={data.periods} onChange={setPeriod} />}
 
       {phone ? (
         <DataCard title={t('Уроки')} count={data.all_lessons.length}>
@@ -684,7 +717,20 @@ export default function Journal() {
       ) : data.rows.length === 0 ? (
         <DataCard title={t('Журнал')} empty={t('в составе нет учеников')} />
       ) : (
-        <div className="card">
+        <div className="card card-pad jmatrix">
+          <div className="jmatrix__head">
+            <PeriodSwitch value={data.period.code} periods={data.periods} onChange={setPeriod} />
+            <Segmented
+              value={mode}
+              onChange={setMode}
+              label={t('Что показывать')}
+              items={[
+                { value: 'both', label: t('Посещаемость и оценки') },
+                { value: 'a', label: t('Посещаемость') },
+                { value: 'g', label: t('Оценки') },
+              ]}
+            />
+          </div>
           <Matrix
             rows={rows}
             columns={matrixColumns}
@@ -718,52 +764,13 @@ export default function Journal() {
               return summaryCell(line.stats, slot.key, line.career)
             }}
           />
-          <div className="jlegend">
-            <span className="jlegend__k">
-              <i className="jlegend__i">·</i> {t('был')}
-            </span>
-            <span className="jlegend__k">
-              <i className="jlegend__i jcell__a--absent">{t('н')}</i> {t('не был')}
-            </span>
-            <span className="jlegend__k">
-              <i className="jlegend__i jcell__a--excused">{t('у')}</i> {t('уважительная')}
-            </span>
-            <span className="jlegend__k">
-              <i className="jlegend__i jcell__a--late">{t('оп')}</i> {t('опоздал')}
-            </span>
-            <span className="jlegend__k">
-              <i className="jlegend__i matrix__cell--unmarked" /> {t('урок не отмечен')}
-            </span>
-            <span className="jlegend__k">
-              <Icon name="lock" size={13} /> {tn(data.scale.edit_days, 'старше {n} дня — правит Кымбат|старше {n} дней — правит Кымбат|старше {n} дней — правит Кымбат')}
-            </span>
-            {hwColumns.length > 0 && (
-              <>
-                <span className="jlegend__k">
-                  <i className="jlegend__i matrix__cell--good">9</i> {t('оценка за ДЗ')}
-                </span>
-                <span className="jlegend__k">
-                  <i className="jlegend__i jhw__chk">✓</i> {t('ДЗ проверено без оценки')}
-                </span>
-                <span className="jlegend__k">
-                  <Chip tone="accent" size="sm">
-                    {t('сдано')}
-                  </Chip>{' '}
-                  {mayReview ? t('ждёт проверки — нажмите, откроется работа') : t('ждёт проверки')}
-                </span>
-                <span className="jlegend__k">
-                  <i className="jlegend__i jhw__miss">—</i> {t('ДЗ не сдано')}
-                </span>
-              </>
-            )}
-          </div>
         </div>
       )}
 
       {selectedLesson && selected && selectedAt !== null && data.may_edit && !phone && <CellEditor key={`${selected.row}-${selectedAt}`} journal={data} cell={{ row: selected.row, col: selectedAt }} askLateFirst={lateAsk !== null && lateAsk.row === selected?.row && lateAsk.col === selected?.col} onClose={() => { setSelected(null); setLateAsk(null) }} />}
 
-      <div className="acad__cols acad__cols--even">
-        <div className="acad__stack">
+      <div className="lay-main">
+        <div className="lay-stack">
           <DataCard title={t('Темы уроков')} count={data.topics.length || undefined} empty={data.topics.length === 0 && t('уроков ещё не было')}>
             <Rows>
               {data.topics.map((lesson) => (
@@ -785,6 +792,7 @@ export default function Journal() {
             </DataCard>
           )}
         </div>
+        {!phone && data.rows.length > 0 && <DataCard title={t('Обозначения')}>{legend}</DataCard>}
       </div>
 
       {dialog === 'final' && <FinalDialog journal={data} onClose={() => setDialog(null)} />}
