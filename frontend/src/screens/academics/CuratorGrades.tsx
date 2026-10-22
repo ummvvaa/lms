@@ -8,10 +8,11 @@ import { useNavigate } from 'react-router'
 import { useGroupGrades, type GroupGrades } from '../../api/academics'
 import DataTable, { type Column } from '../../components/DataTable'
 import { ExportPreview } from '../../components/ExportPreview'
-import { Row, Rows, StatRow } from '../../components/patterns'
+import { Avatar, Row, Rows, ShowAll, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { plural, t } from '../../i18n'
+import { usePhone } from '../../phone'
 import GroupSwitch from '../curator/GroupSwitch'
 import { useGroup, useMyGroups } from '../curator/state'
 import { PeriodSwitch, subjectHead } from './shared'
@@ -19,6 +20,7 @@ import { PeriodSwitch, subjectHead } from './shared'
 type GradeRow = GroupGrades['rows'][number]
 
 export default function CuratorGrades() {
+  const phone = usePhone()
   const navigate = useNavigate()
   const [group, setGroup] = useGroup()
   const { groups, ready } = useMyGroups()
@@ -32,14 +34,25 @@ export default function CuratorGrades() {
   const switcher = <GroupSwitch groups={groups} value={group === 'all' ? picked : group} onChange={setGroup} />
   if (!data.has_courses || data.rows.length === 0)
     return (
-      <div>
+      <div className="lay-screen">
         <ScreenHead title={t('Успеваемость')} />
         {switcher}
         <DataCard title={t('Оценок ещё нет')} empty={data.rows.length ? t('расписание не составлено') : t('в группе нет учеников')} />
       </div>
     )
   const columns: Column<GradeRow>[] = [
-    { key: 'name', title: t('Ученик'), width: '200px', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
+    {
+      key: 'name',
+      title: t('Ученик'),
+      width: '260px',
+      cell: (row) => (
+        <span className="personcell">
+          <Avatar name={row.full_name} size={30} />
+          <b>{row.full_name}</b>
+        </span>
+      ),
+      sortBy: (row) => row.full_name,
+    },
     // таблица в ширину карточки, как у школы: колонки предметов делят место
     // поровну, шапка длинного ряда стоит вертикально, полное название — в подсказке
     ...data.subjects.map((subject, index) => ({
@@ -60,49 +73,64 @@ export default function CuratorGrades() {
       hint: t('Посещаемость'),
       width: '104px',
       align: 'right',
-      cell: (row) => (row.attendance_pct === null ? <span className="t-note">{t('нет')}</span> : <b className={`num${row.attendance_pct < data.attendance_below ? ' text-bad' : ''}`}>{row.attendance_pct} %</b>),
+      // ниже нормы — красным чипом, а не красным числом
+      cell: (row) =>
+        row.attendance_pct === null ? (
+          <span className="t-note">{t('нет')}</span>
+        ) : row.attendance_pct < data.attendance_below ? (
+          <Chip tone="bad" size="sm" className="num">{`${row.attendance_pct} %`}</Chip>
+        ) : (
+          <b className="num">{row.attendance_pct} %</b>
+        ),
       sortBy: (row) => row.attendance_pct,
     },
   ]
+  const periods = <PeriodSwitch value={data.period.code} periods={data.periods} onChange={setPeriod} />
   return (
-    <div>
+    <div className="lay-screen">
+      {/* период — справа в шапке; на телефоне шапка прячет действия в меню,
+          поэтому там он своей строкой под группами */}
       <ScreenHead
         title={t('Успеваемость')}
+        subtitle={t('Оценки по предметам LMS · {period}', { period: t(data.period.title) })}
         actions={
-          <Button variant="outline" size="sm" onClick={() => setExporting(true)}>
-            {t('Выгрузить')}
-          </Button>
+          <>
+            {!phone && periods}
+            <Button variant="outline" size="sm" onClick={() => setExporting(true)}>
+              {t('Выгрузить')}
+            </Button>
+          </>
         }
       />
       {switcher}
-      {/* один столбик с общим шагом: панель периода, числа, таблица и карточка
-          не наезжают друг на друга ни на 1440, ни на 390 */}
-      <div className="acad__stack">
-        <div className="acad__toolbar">
-          <PeriodSwitch value={data.period.code} periods={data.periods} onChange={setPeriod} />
-        </div>
-        <StatRow>
-          <Kpi label={t('Посещаемость')} value={data.kpis.attendance !== null ? `${data.kpis.attendance} %` : null} none={t('нет данных')} />
-          <Kpi label={t('Двойка в прогнозе')} value={data.kpis.risk || null} none={t('нет')} tone={data.kpis.risk ? 'bad' : undefined} note={plural(data.kpis.risk, 'ученик|ученика|учеников')} />
-          <Kpi label={t('Пропуски без причины')} value={data.kpis.absent || null} none={t('нет')} action={data.kpis.absent ? { label: t('Оформить'), to: '/attendance' } : undefined} />
-        </StatRow>
-        <div className="card">
+      {phone && <div className="acad__toolbar">{periods}</div>}
+      <StatRow>
+        <Kpi label={t('Посещаемость')} value={data.kpis.attendance !== null ? `${data.kpis.attendance} %` : null} none={t('нет данных')} />
+        <Kpi label={t('Двойка в прогнозе')} value={data.kpis.risk || null} none={t('нет')} tone={data.kpis.risk ? 'bad' : undefined} note={plural(data.kpis.risk, 'ученик|ученика|учеников')} />
+        <Kpi label={t('Пропуски без причины')} value={data.kpis.absent || null} none={t('нет')} action={data.kpis.absent ? { label: t('Оформить'), to: '/attendance' } : undefined} />
+      </StatRow>
+      <div className="lay-main">
+        <DataCard className="card--beam" title={t('{group} · по ученикам', { group: picked })} count={data.rows.length}>
           <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={(row) => navigate(`/students/${row.id}?tab=grades`)} fit />
-        </div>
-        <DataCard title={t('Кому нужна помощь')} count={data.need_help.length || undefined} empty={data.need_help.length === 0 && t('все справляются')}>
-          <Rows>
-            {data.need_help.map((row) => (
-              <Row
-                key={row.id}
-                avatar={row.full_name}
-                tone="warn"
-                title={row.full_name}
-                note={[row.low.join(', '), row.attendance_pct !== null && row.attendance_pct < data.attendance_below ? t('посещаемость {pct} %', { pct: row.attendance_pct }) : ''].filter(Boolean).join(' · ')}
-                to={`/students/${row.id}?tab=grades`}
-              />
-            ))}
-          </Rows>
         </DataCard>
+        <div className="lay-stack">
+          <DataCard title={t('Кому нужна помощь')} count={data.need_help.length || undefined} empty={data.need_help.length === 0 && t('все справляются')}>
+            <Rows>
+              <ShowAll>
+                {data.need_help.map((row) => (
+                  <Row
+                    key={row.id}
+                    avatar={row.full_name}
+                    tone="warn"
+                    title={row.full_name}
+                    note={[row.low.join(', '), row.attendance_pct !== null && row.attendance_pct < data.attendance_below ? t('посещаемость {pct} %', { pct: row.attendance_pct }) : ''].filter(Boolean).join(' · ')}
+                    to={`/students/${row.id}?tab=grades`}
+                  />
+                ))}
+              </ShowAll>
+            </Rows>
+          </DataCard>
+        </div>
       </div>
       {exporting && <ExportPreview path={`/acad/grades/group/export/?group=${encodeURIComponent(picked)}&period=${encodeURIComponent(data.period.code)}`} fallback={t('успеваемость-группы.xlsx')} title={t('Выгрузка успеваемости группы')} onClose={() => setExporting(false)} />}
     </div>

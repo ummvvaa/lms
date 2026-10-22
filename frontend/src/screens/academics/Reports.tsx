@@ -367,22 +367,26 @@ export default function Reports() {
 
       {data.period && (
         <>
+          {/* этапы — кнопками того же фильтра статуса, что в ряду над ними (макет отчётов) */}
           <StatRow>
-            <Kpi label={t('Всего')} value={data.counts.total} note={t(data.period.title)} />
+            <Kpi label={t('Всего')} value={data.counts.total} note={t(data.period.title)} onClick={() => set({ status: 'all' })} />
             <Kpi
+              onClick={() => set({ status: 'draft' })}
               label={t('Черновики')}
               value={data.counts.draft || null}
               none={t('нет')}
               tone={data.counts.draft ? 'warn' : undefined}
             />
             <Kpi
+              onClick={() => set({ status: 'checked' })}
               label={t('Проверены')}
               value={data.counts.checked || null}
               none={t('нет')}
               tone={data.counts.checked ? 'info' : undefined}
             />
-            <Kpi label={t('Выгружены')} value={data.counts.exported || null} none={t('нет')} />
+            <Kpi onClick={() => set({ status: 'exported' })} label={t('Выгружены')} value={data.counts.exported || null} none={t('нет')} />
             <Kpi
+              onClick={() => set({ status: 'sent' })}
               label={t('Отправлены')}
               value={data.counts.sent || null}
               none={t('нет')}
