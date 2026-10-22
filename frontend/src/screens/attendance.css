@@ -127,3 +127,44 @@
     min-height: var(--touch);
   }
 }
+
+/* Плашка внутри клетки матрицы (D107): правило таблицы `.matrix__table td` по весу
+   сильнее подложки тона, поэтому цвет несёт плашка — так же, как в журнале учителя. */
+.att__plate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(var(--space) * 10);
+  height: calc(var(--space) * 8);
+  padding: 0 calc(var(--space) * 1);
+  border-radius: var(--radius-inrow);
+}
+
+td.matrix__cell--good .att__plate {
+  background: var(--good-bg);
+  color: var(--good);
+}
+
+td.matrix__cell--warn .att__plate {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+td.matrix__cell--bad .att__plate {
+  background: var(--bad-bg);
+  color: var(--bad);
+}
+
+td.matrix__cell--info .att__plate {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+td.matrix__cell--neutral .att__plate {
+  background: var(--surface-2);
+  color: var(--ink-3);
+}
+
+td[class*='matrix__cell--'] .att__plate :is(.att__mark, .num) {
+  color: inherit;
+}

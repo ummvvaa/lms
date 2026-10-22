@@ -256,11 +256,14 @@ function DayView({ data, date, onDate }: { data: Sheet; date: string; onDate: (n
                 if (!cell?.has_lesson) return null
                 if (cell.unmarked) return <span className="att__cellnote">{t('не отмечен')}</span>
                 if (!cell.started) return <span className="att__cellnote">{t('впереди')}</span>
-                // «н» из долгого опоздания: подсказка говорит, что ученик пришёл, но по правилу школы это пропуск
+                // «н» из долгого опоздания: подсказка говорит, что ученик пришёл, но по правилу школы это пропуск;
+                // цвет несёт плашка внутри клетки, как в журнале учителя (D107)
                 return (
-                  <b className={`att__mark att__mark--${cell.mark ?? 'none'}`} title={cell.late_as_absent ? lateAsAbsentWords(cell.late_by) : undefined}>
-                    {cellLetter(cell)}
-                  </b>
+                  <span className="att__plate">
+                    <b className={`att__mark att__mark--${cell.mark ?? 'none'}`} title={cell.late_as_absent ? lateAsAbsentWords(cell.late_by) : undefined}>
+                      {cellLetter(cell)}
+                    </b>
+                  </span>
                 )
               }}
             />
@@ -429,12 +432,18 @@ function MonthView({ data, month, onMonth }: { data: Sheet; month: string; onMon
             cell={(row, column) => {
               const line = byId.get(Number(row.key))
               if (!line) return null
-              if (column.key === 's-pct') return <b className="num">{line.pct === null ? t('нет') : `${line.pct} %`}</b>
+              if (column.key === 's-pct')
+                return (
+                  <span className="att__plate">
+                    <b className="num">{line.pct === null ? t('нет') : `${line.pct} %`}</b>
+                  </span>
+                )
               if (column.key === 's-abs') return <b className="num">{monthWords(line) || t('нет')}</b>
               const cell = line.cells[dayIndex.get(String(column.key)) ?? -1]
               if (!cell || !cell.lessons) return null
               const words = monthWords(cell)
-              return words ? <b className="num">{words}</b> : <span className="att__dot">{'·'}</span>
+              // цвет дня несёт плашка внутри клетки, как в журнале учителя (D107)
+              return <span className="att__plate">{words ? <b className="num">{words}</b> : <span className="att__dot">{'·'}</span>}</span>
             }}
           />
         )}
