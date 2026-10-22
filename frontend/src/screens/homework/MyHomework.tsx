@@ -156,10 +156,7 @@ export default function MyHomeworkScreen() {
 
   return (
     <div className="lay-screen mywork__screen">
-      <ScreenHead
-        title={t('Домашние задания')}
-        subtitle={t('Задания, которые нужно сдать в LMS. Остальные ДЗ — в карточке урока и в расписании.')}
-      />
+      <ScreenHead title={t('Домашние задания')} />
       <Segmented
         value={tab}
         onChange={setTab}

@@ -17,7 +17,16 @@ import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { todayAlmaty } from '../../lib/dates'
 import { usePhone } from '../../phone'
-import { CardRow, DateBox, findNext, NextLessonCard, PhoneHead, TodayList, type TodayLesson } from './home-today'
+import {
+  Columns,
+  DateBox,
+  findNext,
+  firstNameOf,
+  NextLessonCard,
+  PhoneHead,
+  TodayList,
+  type TodayLesson,
+} from './home-today'
 import './student.css'
 import './student-home.css'
 
@@ -31,7 +40,13 @@ const KPI_LINK: Record<string, string> = {
 
 /** Цвет чипа «Скоро»: СОЧ тяжелее СОР, олимпиады и спорт — пометкой. */
 // ДЗ к сдаче в LMS — своим тоном: строка ведёт в задание (`/homework/<id>`)
-const SOON_TONE: Record<string, Tone> = { sor: 'warn', soch: 'bad', olympiad: 'info', competition: 'info', homework: 'accent' }
+const SOON_TONE: Record<string, Tone> = {
+  sor: 'warn',
+  soch: 'bad',
+  olympiad: 'info',
+  competition: 'info',
+  homework: 'accent',
+}
 
 type Kpis = HomeData['kpis']
 
@@ -61,7 +76,15 @@ function todayLessons(data: HomeData): TodayLesson[] {
 
 /** Число-показатель с сервера: подпись — чипом, если у числа есть тон. */
 function KpiOf({ kpi }: { kpi: Kpis[number] }) {
-  return <Kpi label={t(kpi.title)} value={kpi.value || null} note={kpi.note} tone={kpi.tone || undefined} to={KPI_LINK[kpi.code]} />
+  return (
+    <Kpi
+      label={t(kpi.title)}
+      value={kpi.value || null}
+      note={kpi.note}
+      tone={kpi.tone || undefined}
+      to={KPI_LINK[kpi.code]}
+    />
+  )
 }
 
 /** Посещаемость кольцом: процент — то же число, что в показателе. */
@@ -78,7 +101,11 @@ function AttendanceCard({ kpi }: { kpi: Kpis[number] }) {
         ) : (
           <b className="kpi__value kpi__value--none">{t('нет')}</b>
         )}
-        <Chip tone={kpi.tone === 'warn' ? 'warn' : known ? 'good' : 'neutral'} size="sm" className="stuhome__ringchip">
+        <Chip
+          tone={kpi.tone === 'warn' ? 'warn' : known ? 'good' : 'neutral'}
+          size="sm"
+          className="stuhome__ringchip"
+        >
           {kpi.note}
         </Chip>
       </div>
@@ -126,6 +153,7 @@ export default function JuniorHome() {
   const kpi = (code: string) => data.kpis.find((item) => item.code === code)
   const attendance = kpi('attendance')
   const others = data.kpis.filter((item) => item.code !== 'attendance')
+  const greeting = t('Привет, {name}', { name: firstNameOf(me?.full_name ?? '') })
   const homework = data.soon.filter((row) => row.kind === 'homework')
   const soon = data.soon.filter((row) => row.kind !== 'homework')
 
@@ -186,14 +214,24 @@ export default function JuniorHome() {
   if (phone)
     return (
       <div className="lay-screen">
-        <PhoneHead name={me?.full_name ?? ''} line={[data.date_words, me?.group].filter(Boolean).join(' · ')} />
-        <NextLessonCard lessons={lessons} empty={data.lessons_empty || t('уроков сегодня нет')} tiles={false} />
+        <PhoneHead title={greeting} line={[data.date_words, me?.group].filter(Boolean).join(' · ')} />
+        <NextLessonCard
+          lessons={lessons}
+          empty={data.lessons_empty || t('уроков сегодня нет')}
+          tiles={false}
+        />
         <div className="stuhome__pair">
           <Kpi label={t('ДЗ к сдаче')} value={String(homework.length)} to="/homework" />
           {attendance && <KpiOf kpi={attendance} />}
         </div>
         {/* без звонков главный урок не выбрать — уроки дня уже строками в карточке выше */}
-        {(findNext(lessons)?.index ?? -1) >= 0 && <TodayList title={t('Сегодня')} lessons={lessons} empty={data.lessons_empty || t('уроков сегодня нет')} />}
+        {(findNext(lessons)?.index ?? -1) >= 0 && (
+          <TodayList
+            title={t('Сегодня')}
+            lessons={lessons}
+            empty={data.lessons_empty || t('уроков сегодня нет')}
+          />
+        )}
         {soonCard}
         {homework.length > 0 && homeworkCard}
         {recentCard}
@@ -208,7 +246,7 @@ export default function JuniorHome() {
   return (
     <div className="lay-screen">
       <ScreenHead
-        title={t('Главная')}
+        title={greeting}
         subtitle={[data.date_words, data.quarter].filter(Boolean).join(' · ')}
         actions={
           <Button variant="outline" onClick={() => navigate('/schedule')}>
@@ -217,15 +255,26 @@ export default function JuniorHome() {
         }
       />
 
-      <div className="lay-3">
-        <NextLessonCard className="lay-span2" lessons={lessons} empty={data.lessons_empty || t('уроков сегодня нет')} tiles />
-        {attendance && <AttendanceCard kpi={attendance} />}
-      </div>
-
-      <CardRow
-        cards={[
-          { key: 'homework', folded: homework.length === 0, node: homeworkCard },
+      {/* две колонки вместо рядов: короткие карточки стоят стопкой справа, и столбцы
+          кончаются вровень, а не карточка напротив длинной с пустотой внутри */}
+      <Columns
+        main={[
+          {
+            key: 'next',
+            folded: false,
+            node: (
+              <NextLessonCard lessons={lessons} empty={data.lessons_empty || t('уроков сегодня нет')} tiles />
+            ),
+          },
           { key: 'recent', folded: data.recent.length === 0, node: recentCard },
+        ]}
+        aside={[
+          {
+            key: 'attendance',
+            folded: !attendance,
+            node: attendance ? <AttendanceCard kpi={attendance} /> : null,
+          },
+          { key: 'homework', folded: homework.length === 0, node: homeworkCard },
           { key: 'soon', folded: soon.length === 0, node: soonCard },
         ]}
       />

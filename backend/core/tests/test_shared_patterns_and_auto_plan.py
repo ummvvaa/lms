@@ -54,8 +54,8 @@ def test_student_home_kept_tasks_and_readiness():
 
     Первая сборка фазы собрала главную по образцу и потеряла две вещи:
     «задания на сегодня» (задачу отмечают прямо здесь, за это начисляется
-    XP) и разбивку готовности по пяти доменам (C4 из аудита фазы 7 —
-    домен без данных подписан, а не спрятан). Образец задавал характер,
+    XP) и разбивку готовности по доменам с данными (с 22.10.2026 домен
+    без данных не показывается). Образец задавал характер,
     а не право удалять построенное. В новом языке те же блоки — карточки
     данных на доске главной.
     """
@@ -65,7 +65,9 @@ def test_student_home_kept_tasks_and_readiness():
     assert "function ReadinessBlock" in home, "с главной ученика пропала разбивка готовности"
 
     ready = home.split("function ReadinessBlock")[1].split("export default function StudentHome")[0]
-    assert "readiness.skipped" in ready, "домены без данных снова прячутся вместо подписи"
+    # с 22.10.2026 домен без данных на главной не показывается (решение владельца):
+    # строка «данных пока нет» ничего не говорила
+    assert "readiness.skipped" not in ready and "данных пока нет" not in ready, "в готовности снова пустые строки"
 
     tasks = home.split("function TasksBlock")[1].split("function ReadinessBlock")[0]
     assert "useTaskStatus" in tasks, "задачу с главной больше не отметить"

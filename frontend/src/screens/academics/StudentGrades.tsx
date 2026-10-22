@@ -13,12 +13,19 @@
 import { useState } from 'react'
 import { useMyGrades, type StudentGrades as Grades } from '../../api/academics'
 import DataTable, { type Column } from '../../components/DataTable'
-import { Row, Rows, ShowAll, StatRow } from '../../components/patterns'
+import { Row, Rows, ShowAll } from '../../components/patterns'
 import { Bar, Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
-import { counted, t } from '../../i18n'
+import { counted, t, tk } from '../../i18n'
 import { dateWords, lateTotal, PeriodSwitch } from './shared'
 import { HomeworkKpi } from '../homework/myWork'
 import '../dashboards/student.css'
+
+/** Отметка в дне с пропусками словами: «SAT Math — не был», а не «SAT Math н». */
+const MARK_WORD: Record<string, string> = {
+  absent: tk('{subject} — не был'),
+  excused: tk('{subject} — по уважительной'),
+  late: tk('{subject} — опоздание'),
+}
 
 type Subject = Grades['subjects'][number]
 
@@ -133,50 +140,58 @@ export default function StudentGrades() {
     },
   ]
 
+  const att = data.attendance
+  const homeworkShown = Boolean(data.homework && data.homework.total > 0 && data.homework.pct !== null)
+  const kpis = [
+    att.pct !== null && <Kpi key="pct" label={t('Посещаемость')} value={`${att.pct} %`} note={counted(att.total, 'урок|урока|уроков')} />,
+    att.absent > 0 && <Kpi key="absent" label={t('Пропуски')} value={att.absent} note={t('без причины')} />,
+    att.excused > 0 && <Kpi key="excused" label={t('По уважительной')} value={att.excused} />,
+    att.late > 0 && <Kpi key="late" label={t('Опоздания')} value={att.late} note={lateTotal(att)} />,
+    homeworkShown && <HomeworkKpi key="homework" homework={data.homework} />,
+  ].filter(Boolean)
+
   return (
     <div className="lay-screen stugr">
       <ScreenHead title={t('Оценки')} subtitle={subtitle} actions={<PeriodSwitch value={data.period.code} periods={data.periods} onChange={setPeriod} />} />
-      <StatRow>
-        <Kpi label={t('Посещаемость')} value={data.attendance.pct !== null ? `${data.attendance.pct} %` : null} none={t('уроков с отметкой не было')} note={counted(data.attendance.total, 'урок|урока|уроков')} />
-        <Kpi label={t('Пропуски')} value={data.attendance.absent || null} none={t('нет')} note={t('без причины')} />
-        <Kpi label={t('По уважительной')} value={data.attendance.excused || null} none={t('нет')} />
-        <Kpi label={t('Опоздания')} value={data.attendance.late || null} none={t('нет')} note={lateTotal(data.attendance)} />
-        <HomeworkKpi homework={data.homework} />
-      </StatRow>
+      {/* показатели — только со значением: плитка «нет» ничего не говорит; дни с пропусками — рядом,
+          короткий список напротив длинного оставлял пустоту */}
+      <div className={data.days.length > 0 ? 'lay-main' : 'lay-stack'}>
+        {kpis.length > 0 && <div className={`stugr__kpis stugr__kpis--${Math.min(kpis.length, 3)}`}>{kpis}</div>}
+        {data.days.length > 0 && (
+          <DataCard title={t('Дни с пропусками')} count={data.days.length}>
+            <Rows>
+              <ShowAll>
+                {data.days.map((day) => (
+                  <Row
+                    key={day.date}
+                    lead={<b className="num stu__slot">{Number(day.date.slice(8))}</b>}
+                    title={`${day.weekday}, ${dateWords(day.date)}`}
+                    note={day.marks.map((m) => t(MARK_WORD[m.mark ?? 'late'] ?? MARK_WORD.late, { subject: m.subject })).join(', ')}
+                  />
+                ))}
+              </ShowAll>
+            </Rows>
+          </DataCard>
+        )}
+      </div>
       <DataCard className="card--beam" title={t('По предметам')} count={data.subjects.length || undefined} empty={empty && t('оценок за период ещё нет')}>
         <DataTable columns={columns} rows={data.subjects} rowKey={(item) => item.course.id} />
       </DataCard>
-      <div className={grades.length > 0 && data.days.length > 0 ? 'lay-2 stugr__lists' : 'lay-stack stugr__lists'}>
-        <DataCard title={t('Последние оценки')} count={grades.length || undefined} empty={grades.length === 0 && t('за период оценок не было')}>
-          <Rows>
-            <ShowAll>
-              {grades.map((row) => (
-                <Row
-                  key={`${row.lesson}-${row.subject}-${row.kind}`}
-                  lead={<b className="num stu__slot">{row.value}</b>}
-                  title={`${row.subject_title} · ${row.kind_label}`}
-                  note={[dateWords(row.date), row.max ? t('из {max}', { max: row.max }) : '', row.comment ? `«${row.comment}»` : ''].filter(Boolean).join(' · ')}
-                  to={`/lessons/${row.lesson}`}
-                />
-              ))}
-            </ShowAll>
-          </Rows>
-        </DataCard>
-        <DataCard title={t('Дни с пропусками')} count={data.days.length || undefined} empty={data.days.length === 0 && t('пропусков нет')}>
-          <Rows>
-            <ShowAll>
-              {data.days.map((day) => (
-                <Row
-                  key={day.date}
-                  lead={<b className="num stu__slot">{Number(day.date.slice(8))}</b>}
-                  title={`${day.weekday}, ${dateWords(day.date)}`}
-                  note={day.marks.map((m) => `${m.subject} ${m.mark === 'absent' ? t('н') : m.mark === 'excused' ? t('у') : t('оп')}`).join(', ')}
-                />
-              ))}
-            </ShowAll>
-          </Rows>
-        </DataCard>
-      </div>
+      <DataCard title={t('Последние оценки')} count={grades.length || undefined} empty={grades.length === 0 && t('за период оценок не было')}>
+        <Rows>
+          <ShowAll>
+            {grades.map((row) => (
+              <Row
+                key={`${row.lesson}-${row.subject}-${row.kind}`}
+                lead={<b className="num stu__slot">{row.value}</b>}
+                title={`${row.subject_title} · ${row.kind_label}`}
+                note={[dateWords(row.date), row.max ? t('из {max}', { max: row.max }) : '', row.comment ? `«${row.comment}»` : ''].filter(Boolean).join(' · ')}
+                to={`/lessons/${row.lesson}`}
+              />
+            ))}
+          </ShowAll>
+        </Rows>
+      </DataCard>
     </div>
   )
 }

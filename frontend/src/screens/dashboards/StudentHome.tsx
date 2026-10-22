@@ -13,7 +13,14 @@ import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useMyLessons } from '../../api/academics'
 import { useMyHomework } from '../../api/homework'
-import { useCalendar, useGameState, useHomeCues, useMyProfile, useMyTasks, useTaskStatus } from '../../api/hooks'
+import {
+  useCalendar,
+  useGameState,
+  useHomeCues,
+  useMyProfile,
+  useMyTasks,
+  useTaskStatus,
+} from '../../api/hooks'
 import { useAuth } from '../../auth/AuthContext'
 import { Row, Rows, ShowAll } from '../../components/patterns'
 import { Bar, Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
@@ -24,7 +31,16 @@ import { todayAlmaty } from '../../lib/dates'
 import { usePhone } from '../../phone'
 import { MarkChip } from '../academics/shared'
 import { formatDate, formatDateTime, formatDayMonth, formatWeekday } from '../../lib/format'
-import { CardRow, DateBox, findNext, NextLessonCard, PhoneHead, TodayList, type TodayLesson } from './home-today'
+import {
+  Columns,
+  DateBox,
+  findNext,
+  firstNameOf,
+  NextLessonCard,
+  PhoneHead,
+  TodayList,
+  type TodayLesson,
+} from './home-today'
 import './student.css'
 import './student-home.css'
 
@@ -40,7 +56,9 @@ function HomeworkDue() {
   const navigate = useNavigate()
   const { data } = useMyHomework()
   if (!data) return null
-  const rows = data.items.filter((item) => item.state === 'todo').sort((a, b) => (a.due_at ?? '9999').localeCompare(b.due_at ?? '9999'))
+  const rows = data.items
+    .filter((item) => item.state === 'todo')
+    .sort((a, b) => (a.due_at ?? '9999').localeCompare(b.due_at ?? '9999'))
   return (
     <DataCard
       title={t('ДЗ к сдаче')}
@@ -90,12 +108,13 @@ function TasksBlock() {
   const open = tasks.data
     .filter((task) => task.status !== 'done')
     .sort((a, b) => (a.due_date_effective ?? '9999').localeCompare(b.due_date_effective ?? '9999'))
+  // открытых задач нет — карточки нет: пояснение о том, кто их ставит, ничего не даёт
+  if (open.length === 0) return null
   return (
     <DataCard
       title={t('Задачи')}
       count={open.length || undefined}
       note={game.data?.streak_phrase || undefined}
-      empty={open.length === 0 && t('открытых задач нет: их ставят куратор и школа, дедлайны вузов добавляются сами')}
     >
       <Rows>
         <ShowAll>
@@ -110,12 +129,27 @@ function TasksBlock() {
                     checked={false}
                     disabled={move.isPending}
                     onCheckedChange={() =>
-                      move.mutate({ id: task.id, status: 'done' }, { onSuccess: () => toast.success(t('Задача выполнена')), onError: (error) => toast.error(error.message) })
+                      move.mutate(
+                        { id: task.id, status: 'done' },
+                        {
+                          onSuccess: () => toast.success(t('Задача выполнена')),
+                          onError: (error) => toast.error(error.message),
+                        },
+                      )
                     }
                   />
                 }
                 title={task.title}
-                note={[task.university_name ?? '', due ? (due === today ? t('сегодня') : t('до {date}', { date: formatDate(due) })) : t('без срока')].filter(Boolean).join(' · ')}
+                note={[
+                  task.university_name ?? '',
+                  due
+                    ? due === today
+                      ? t('сегодня')
+                      : t('до {date}', { date: formatDate(due) })
+                    : t('без срока'),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
                 right={
                   due !== null && due < today ? (
                     <Chip tone="bad" size="sm">
@@ -131,7 +165,6 @@ function TasksBlock() {
     </DataCard>
   )
 }
-
 
 /** Уроки дня в общем виде: отметка, «сейчас» или отмена — чипом. */
 function useTodayLessons(): { lessons: TodayLesson[]; nowSlot: number | null; ready: boolean } {
@@ -152,7 +185,13 @@ function useTodayLessons(): { lessons: TodayLesson[]; nowSlot: number | null; re
           {lesson.status_title}
         </Chip>
       ) : lesson.mine?.mark ? (
-        <MarkChip mark={lesson.mine.mark} words={MARK_WORDS} size="sm" lateBy={lesson.mine.late_by} lateAsAbsent={lesson.mine.late_as_absent} />
+        <MarkChip
+          mark={lesson.mine.mark}
+          words={MARK_WORDS}
+          size="sm"
+          lateBy={lesson.mine.late_by}
+          lateAsAbsent={lesson.mine.late_as_absent}
+        />
       ) : lesson.slot === now ? (
         <Chip tone="accent" size="sm">
           {t('сейчас')}
@@ -187,9 +226,14 @@ function ReadinessBlock({ className }: { className?: string }) {
   const readiness = data?.readiness
   if (!readiness) return null
   const rows = [
-    ...readiness.parts.map((part) => ({ code: part.code, title: part.title, value: part.value as number | null })),
-    ...readiness.skipped.map((part) => ({ code: part.code, title: part.title, value: null as number | null })),
+    // домены без данных не показываются: пустая строка в разбивке ничего не говорит
+    ...readiness.parts.map((part) => ({
+      code: part.code,
+      title: part.title,
+      value: part.value as number | null,
+    })),
   ]
+  if (rows.length === 0) return null
   return (
     <DataCard
       className={`stuhome__ready${className ? ` ${className}` : ''}`}
@@ -201,7 +245,6 @@ function ReadinessBlock({ className }: { className?: string }) {
           </Chip>
         ) : undefined
       }
-      empty={rows.length === 0 && t('данных пока нет — профиль ещё заполняется')}
     >
       <div className="stuhome__readybody">
         <b className="num stuhome__score">{readiness.score}%</b>
@@ -209,19 +252,15 @@ function ReadinessBlock({ className }: { className?: string }) {
           {rows.map((row) => (
             <div key={row.code} className="stuhome__barrow">
               <span className="stuhome__barname">{row.title}</span>
-              {row.value === null ? (
-                <span className="t-note stuhome__barnone">{t('данных пока нет')}</span>
-              ) : (
-                <>
-                  <Bar percent={row.value} color={row.code === readiness.weakest ? undefined : 'var(--good)'} />
-                  <span className="num stuhome__barval">{row.value}%</span>
-                </>
-              )}
+              <Bar
+                percent={row.value ?? 0}
+                color={row.code === readiness.weakest ? undefined : 'var(--good)'}
+              />
+              <span className="num stuhome__barval">{row.value ?? 0}%</span>
             </div>
           ))}
         </div>
       </div>
-      {readiness.skipped.length > 0 && <p className="t-note">{t('Блоки без данных в процент не входят — он считается по тем, что заполнены.')}</p>}
     </DataCard>
   )
 }
@@ -249,6 +288,7 @@ export default function StudentHome() {
   const openTasks = (tasks.data ?? []).filter((task) => task.status !== 'done').length
   const todo = (homework.data?.items ?? []).filter((item) => item.state === 'todo')
   const readiness = profile.data.readiness
+  const greeting = t('Привет, {name}', { name: profile.data.first_name || firstNameOf(me?.full_name ?? '') })
 
   const nearestCard = (
     <DataCard
@@ -277,7 +317,11 @@ export default function StudentHome() {
     </DataCard>
   )
   const cuesCard = (
-    <DataCard title={t('Что закрыть')} count={cueRows.length || undefined} empty={cueRows.length === 0 && t('незакрытых мест нет')}>
+    <DataCard
+      title={t('Что закрыть')}
+      count={cueRows.length || undefined}
+      empty={cueRows.length === 0 && t('незакрытых мест нет')}
+    >
       <div className="stuhome__cues">
         {cueRows.map((cue) => (
           <div key={cue.code} className="stuhome__cue">
@@ -298,17 +342,39 @@ export default function StudentHome() {
   if (phone)
     return (
       <div className="lay-screen">
-        <PhoneHead name={me?.full_name ?? ''} line={[`${formatWeekday(day)}, ${formatDayMonth(day)}`, me?.group].filter(Boolean).join(' · ')} />
-        {today.ready && <NextLessonCard lessons={today.lessons} nowSlot={today.nowSlot} empty={lessonsEmpty} tiles={false} />}
+        <PhoneHead
+          title={greeting}
+          line={[`${formatWeekday(day)}, ${formatDayMonth(day)}`, me?.group].filter(Boolean).join(' · ')}
+        />
+        {today.ready && (
+          <NextLessonCard
+            lessons={today.lessons}
+            nowSlot={today.nowSlot}
+            empty={lessonsEmpty}
+            tiles={false}
+          />
+        )}
         <div className="stuhome__pair">
-          <Kpi label={t('ДЗ к сдаче')} value={String(todo.length)} chip={todo.some((item) => item.past_due) ? { label: t('срок прошёл'), tone: 'bad' } : undefined} to="/homework" />
+          <Kpi
+            label={t('ДЗ к сдаче')}
+            value={String(todo.length)}
+            chip={todo.some((item) => item.past_due) ? { label: t('срок прошёл'), tone: 'bad' } : undefined}
+            to="/homework"
+          />
           {readiness && <Kpi label={t('Готовность к подаче')} value={`${readiness.score}%`} />}
         </div>
         {/* без звонков главный урок не выбрать — уроки дня уже строками в карточке выше */}
-        {today.ready && (findNext(today.lessons, today.nowSlot)?.index ?? -1) >= 0 && <TodayList title={t('Сегодня')} lessons={today.lessons} nowSlot={today.nowSlot} empty={lessonsEmpty} />}
+        {today.ready && (findNext(today.lessons, today.nowSlot)?.index ?? -1) >= 0 && (
+          <TodayList
+            title={t('Сегодня')}
+            lessons={today.lessons}
+            nowSlot={today.nowSlot}
+            empty={lessonsEmpty}
+          />
+        )}
         {nearestCard}
         {cuesCard}
-        <TasksBlock />
+        {openTasks > 0 && <TasksBlock />}
         <ReadinessBlock />
         <HomeworkDue />
       </div>
@@ -317,7 +383,7 @@ export default function StudentHome() {
   return (
     <div className="lay-screen">
       <ScreenHead
-        title={t('Главная')}
+        title={greeting}
         subtitle={
           nearest
             ? nearest.days_left === 0
@@ -336,16 +402,21 @@ export default function StudentHome() {
         }
       />
 
-      <div className={readiness ? 'lay-3' : 'lay-stack'}>
-        {readiness && <ReadinessBlock className="card--beam lay-span2" />}
-        {nearestCard}
-      </div>
-
-      <CardRow
-        cards={[
+      {/* две колонки: готовность и «Что закрыть» слева, короткие карточки стопкой справа —
+          столбцы кончаются вровень, без пустоты внутри карточек ряда */}
+      <Columns
+        main={[
+          {
+            key: 'ready',
+            folded: !readiness,
+            node: readiness ? <ReadinessBlock className="card--beam" /> : null,
+          },
           { key: 'cues', folded: cueRows.length === 0, node: cuesCard },
-          { key: 'tasks', folded: openTasks === 0, node: <TasksBlock /> },
+        ]}
+        aside={[
+          { key: 'nearest', folded: upcoming.length === 0, node: nearestCard },
           { key: 'homework', folded: todo.length === 0, node: <HomeworkDue /> },
+          ...(openTasks > 0 ? [{ key: 'tasks', folded: false, node: <TasksBlock /> }] : []),
         ]}
       />
 

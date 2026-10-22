@@ -2,17 +2,6 @@
    готовность полосами, ряд карточек одной высоты, телефонная шапка.
    Цвета — токены, размеры — шаг четыре и переменные плотности. */
 
-/* клетка ряда: карточка тянется на высоту ряда */
-.stuhome__cell {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.stuhome__cell > .card {
-  flex: 1;
-}
-
 /* --- следующий урок --------------------------------------------------------- */
 .stuhome__next {
   display: flex;
@@ -205,10 +194,6 @@ a.stuhome__tile:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.stuhome__barnone {
-  grid-column: span 2;
 }
 
 .stuhome__barval {

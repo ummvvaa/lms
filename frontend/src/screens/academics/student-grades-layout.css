@@ -48,6 +48,27 @@
   flex: none;
 }
 
-.stugr__lists > .datacard {
-  margin: 0;
+/* показатели со значением: по числу плиток, на телефоне — по две */
+.stugr__kpis {
+  display: grid;
+  gap: var(--gap-kpi);
+  align-content: start;
+}
+
+.stugr__kpis--1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.stugr__kpis--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.stugr__kpis--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 759px) {
+  .stugr__kpis--3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

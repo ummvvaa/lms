@@ -107,15 +107,16 @@ def test_home_folds_what_is_empty_instead_of_showing_a_carousel():
 def test_home_holds_what_is_needed_today():
     """На главной — то, что нужно сегодня; каждая карточка в одном месте (решение владельца, 07.10.2026).
 
-    Уроки, ДЗ к сдаче, задачи с галочкой, готовность с подписанными пустыми
-    доменами, ближайшее и незакрытые места. Баллы, документы, вузы, эссе
+    Уроки, ДЗ к сдаче, задачи с галочкой, готовность по доменам с данными,
+    ближайшее и незакрытые места. Баллы, документы, вузы, эссе
     и подготовка — в своих разделах, на главной их нет.
     """
     home = read("screens", "dashboards", "StudentHome.tsx")
     for block in ("<LessonsToday />", "<HomeworkDue />", "<TasksBlock />", "<ReadinessBlock />"):
         assert block in home, block
     assert "useTaskStatus" in home and "streak_phrase" in home
-    assert "readiness.skipped" in home
+    # домены без данных не показываются (решение владельца, 22.10.2026)
+    assert "readiness.skipped" not in home
     for gone in ("PrepBlock", "EssaysBlock", "useMyUniversities", "useJourney", "useScholarshipOverview", "<StatRow>"):
         assert gone not in home, gone
 

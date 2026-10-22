@@ -7,10 +7,10 @@
  * телефона и плитка даты для строк «Скоро» и «Ближайшее». Новых данных здесь
  * нет: только то, что главная уже получила.
  */
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { shortDate } from '../../components/CalendarCard'
-import { Avatar, Row, Rows } from '../../components/patterns'
+import { Row, Rows } from '../../components/patterns'
 import { Bar, Chip, DataCard } from '../../components/ui'
 import { t, tn } from '../../i18n'
 import { timeInSchoolZone } from '../../lib/dates'
@@ -29,9 +29,7 @@ export interface TodayLesson {
 }
 
 type Next =
-  | { state: 'now' | 'next'; index: number; minutes: number }
-  | { state: 'over'; index: -1; minutes: 0 }
-  | null
+  { state: 'now' | 'next'; index: number; minutes: number } | { state: 'over'; index: -1; minutes: 0 } | null
 
 const minutesOf = (hhmm: string) => {
   const [h, m] = hhmm.split(':').map(Number)
@@ -72,7 +70,10 @@ function nextWords(next: Next, lesson: TodayLesson | undefined): string | null {
       ? t('идёт')
       : next.minutes >= 60
         ? next.minutes % 60
-          ? t('через {hours} ч {minutes} мин', { hours: Math.floor(next.minutes / 60), minutes: next.minutes % 60 })
+          ? t('через {hours} ч {minutes} мин', {
+              hours: Math.floor(next.minutes / 60),
+              minutes: next.minutes % 60,
+            })
           : t('через {hours} ч', { hours: next.minutes / 60 })
         : t('через {minutes} мин', { minutes: next.minutes })
   return lesson?.slot ? `${when} · ${t('{n} урок', { n: lesson.slot })}` : when
@@ -112,7 +113,9 @@ export function NextLessonCard({
         ) : (
           <span className="datacard__title t-card">{t('Уроки сегодня')}</span>
         )}
-        {lessons.length > 0 && <span className="t-note">{tn(lessons.length, '{n} урок|{n} урока|{n} уроков')}</span>}
+        {lessons.length > 0 && (
+          <span className="t-note">{tn(lessons.length, '{n} урок|{n} урока|{n} уроков')}</span>
+        )}
       </div>
       {lessons.length === 0 ? (
         <p className="t-note">{empty}</p>
@@ -154,7 +157,9 @@ export function NextLessonCard({
             {lessons.map((item, index) => {
               const body = (
                 <>
-                  <span className="num t-note">{startOf(item.bell) || (item.slot ? t('{n} урок', { n: item.slot }) : '')}</span>
+                  <span className="num t-note">
+                    {startOf(item.bell) || (item.slot ? t('{n} урок', { n: item.slot }) : '')}
+                  </span>
                   <b className="stuhome__tilename">{item.subject}</b>
                   {item.meta && <span className="t-note stuhome__tilename">{item.meta}</span>}
                   {item.chip}
@@ -197,12 +202,20 @@ export function TodayList({
 }) {
   const next = findNext(lessons, nowSlot)
   return (
-    <DataCard title={title} count={lessons.length || undefined} note={note} empty={lessons.length === 0 && empty} right={right}>
+    <DataCard
+      title={title}
+      count={lessons.length || undefined}
+      note={note}
+      empty={lessons.length === 0 && empty}
+      right={right}
+    >
       <Rows>
         {lessons.map((lesson, index) => (
           <Row
             key={lesson.key}
-            lead={<span className="num stuhome__time">{startOf(lesson.bell) || lesson.slot || index + 1}</span>}
+            lead={
+              <span className="num stuhome__time">{startOf(lesson.bell) || lesson.slot || index + 1}</span>
+            }
             title={lesson.subject}
             note={lesson.meta || undefined}
             right={lesson.chip}
@@ -234,35 +247,49 @@ export function DateBox({ iso, today }: { iso: string; today: string }) {
 }
 
 /** Шапка главной на телефоне: аватар, имя, дата и группа строкой. */
-export function PhoneHead({ name, line }: { name: string; line: string }) {
+/**
+ * Имя для приветствия: в учётке ФИО хранится «Фамилия Имя Отчество» —
+ * имя второе слово; одно слово — оно и есть имя.
+ */
+export function firstNameOf(fullName: string): string {
+  const words = fullName.trim().split(/\s+/).filter(Boolean)
+  return words[1] ?? words[0] ?? ''
+}
+
+/** Шапка главной на телефоне: приветствие и строка «дата · группа». Аватар — один, в полосе оболочки. */
+export function PhoneHead({ title, line }: { title: string; line: string }) {
   return (
     <header className="stuhome__phonehead">
-      <Avatar name={name} size={40} />
       <div className="stuhome__phonewho">
-        <b className="stuhome__phonename">{name}</b>
+        <b className="stuhome__phonename">{title}</b>
         {line && <span className="t-note">{line}</span>}
       </div>
     </header>
   )
 }
 
-/** Ряд карточек без пустоты: живые — в ряд по числу, пустые — строкой ниже. */
-export function CardRow({ cards }: { cards: { key: string; folded: boolean; node: ReactNode }[] }) {
-  const live = cards.filter((card) => !card.folded)
-  const folded = cards.filter((card) => card.folded)
+/**
+ * Две колонки главной: живые карточки — каждая в своей колонке по порядку,
+ * пустые одной строкой — под колонками на всю ширину, чтобы столбцы
+ * кончались вровень и пустая строка не удлиняла короткий.
+ */
+type BoardCard = { key: string; folded: boolean; node: ReactNode }
+export function Columns({ main, aside }: { main: BoardCard[]; aside: BoardCard[] }) {
+  const live = (cards: BoardCard[]) => cards.filter((card) => !card.folded)
+  const folded = [...main, ...aside].filter((card) => card.folded)
   return (
     <>
-      {live.length > 0 && (
-        <div className={live.length === 1 ? 'lay-stack' : `lay-${live.length}`}>
-          {live.map((card) => (
-            <div key={card.key} className="stuhome__cell">
-              {card.node}
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="lay-main">
+        {[live(main), live(aside)].map((cards, index) => (
+          <div key={index} className="lay-stack">
+            {cards.map((card) => (
+              <Fragment key={card.key}>{card.node}</Fragment>
+            ))}
+          </div>
+        ))}
+      </div>
       {folded.map((card) => (
-        <div key={card.key}>{card.node}</div>
+        <Fragment key={card.key}>{card.node}</Fragment>
       ))}
     </>
   )
