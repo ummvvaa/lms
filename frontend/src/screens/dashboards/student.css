@@ -26,20 +26,6 @@
 }
 
 /* --- календарь: сетка месяца в белой карточке ------------------------------ */
-.stucal__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space) * 2);
-  margin-bottom: calc(var(--space) * 3);
-}
-
-.stucal__title {
-  font-weight: 700;
-  font-size: var(--type-card);
-  white-space: nowrap;
-}
-
 .stucal__grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));

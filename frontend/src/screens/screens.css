@@ -1016,14 +1016,6 @@ body [data-slot='button'][data-variant].essay__opt--wrong {
 }
 
 /* Вкладки редактора чипами, счётчик слов — справа на той же линии. */
-.essay__tabsrow {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space) * 3);
-  flex-wrap: wrap;
-  margin-bottom: calc(var(--space) * 3);
-}
-
 .essay__words {
   margin-left: auto;
   font-size: var(--type-note);
@@ -1110,30 +1102,6 @@ body [data-slot='button'][data-variant].essay__opt--wrong {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(calc(var(--space) * 70), 1fr));
   gap: var(--gap-block);
-}
-
-/* Список эссе в две колонки (фаза 49): слева черновики, справа — пример
-   дня и требования вузов. Одна колонка оставляла правые две трети экрана
-   пустыми. */
-.essay__screen {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: var(--gap-block);
-  align-items: start;
-}
-
-.essay__main,
-.essay__side {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-block);
-  min-width: 0;
-}
-
-@media (max-width: 1100px) {
-  .essay__screen {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* Окно человека на «Пользователях»: заведение и правка по роли */

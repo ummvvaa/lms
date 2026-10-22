@@ -636,7 +636,8 @@
   background: linear-gradient(135deg, var(--glint), var(--accent-bg));
   color: var(--accent-ink);
   font-family: var(--font-head);
-  font-size: 10px;
+  /* инициалы растут вместе с кружком: у аватара 28 — 10, у 72 — 26 */
+  font-size: calc(var(--ava-size, 28px) * 0.36);
   font-weight: 600;
   letter-spacing: 0;
 }

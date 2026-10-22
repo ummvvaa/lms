@@ -61,10 +61,6 @@
 }
 
 /* ноутбук: две карточки одной ширины над утверждениями */
-.ctake__lead {
-  margin-bottom: var(--gap-block);
-}
-
 .cpage {
   overflow: hidden;
 }
