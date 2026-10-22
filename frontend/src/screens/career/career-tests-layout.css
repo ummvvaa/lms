@@ -1,0 +1,93 @@
+/* --- Профтест по макету Career -------------------------------------------------
+   Тесты — карточками по четыре в ряд (на узком окне по две, на телефоне
+   столбиком): плитка с иконкой и состояние сверху, название и кто загрузил,
+   утверждений и сдали из скольких с полосой, внизу «Кому» и «Открыть».
+   Кнопки всех карточек ряда стоят на одной линии. */
+.ctl-test {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+  min-width: 0;
+}
+
+.ctl-test__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 2);
+}
+
+.ctl-test__ico {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space) * 11);
+  height: calc(var(--space) * 11);
+  border-radius: var(--radius-inner);
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+}
+
+.ctl-test__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+  min-width: 0;
+}
+
+.ctl-test__title {
+  line-height: var(--leading-body);
+  overflow-wrap: anywhere;
+}
+
+.ctl-test__stats {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+  margin-top: auto;
+}
+
+.ctl-test__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--space) * 2);
+  white-space: nowrap;
+}
+
+.ctl-test__acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+}
+
+/* выбор группы в ряду фильтров: свой нижний разрыв `.acad__pick` ряду не нужен */
+.filters .acad__pick {
+  margin-bottom: 0;
+}
+
+/* вкладки стоят в общем столбике экрана: разрыв под ними даёт `lay-screen` */
+.ctl-screen .tabs {
+  margin-bottom: 0;
+}
+
+/* подвал «Показать все» под сеткой тестов — на всю ширину ряда */
+.ctl-grid > :not(.ctl-test) {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 759px) {
+  /* выбор группы на телефоне — во всю ширину, как остальные фильтры */
+  .filters .acad__pick {
+    max-width: none;
+  }
+}
+
+/* «включён / выключен» — по ширине слова, в т. ч. кнопкой на телефоне */
+.ctl-test__head .ctl-test__state {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+}

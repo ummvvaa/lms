@@ -1,23 +1,14 @@
-.usage-screen {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: calc(var(--space) * 5);
-  min-width: 0;
-}
+/* Использование по макету Usage: шапка с выгрузкой, фильтры одной строкой,
+   четыре показателя, сводка — главная карточка с бегущим светом.
+   Раскладка столбиком — общий `lay-screen`, фильтры — общий `filters`. */
 
-.usage-screen__filters {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: calc(var(--space) * 3);
-}
-
-.usage-screen__reset {
-  display: flex;
-  align-items: end;
+/* даты в ряду фильтров — по ширине даты, а не на всю долю ряда */
+.usage-screen__filters .field:has(input[type='date']) {
+  flex: 0 0 auto;
 }
 
 .usage-screen__table {
-  margin-top: calc(var(--space) * 4);
+  margin-top: 0;
 }
 
 .usage-screen__pages,
@@ -33,12 +24,9 @@
 }
 
 @media (max-width: 759px) {
-  .usage-screen__filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .usage-screen__filters > :nth-child(n + 3) {
-    grid-column: 1 / -1;
+  /* даты на телефоне — две в ряд, списки — каждый на всю ширину */
+  .usage-screen__filters .field:has(input[type='date']) {
+    flex: 1 1 calc(50% - var(--space));
   }
 
   .usage-screen .kpi__label {
@@ -50,5 +38,13 @@
   .usage-screen .segrow {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 759px) {
+  /* списки ряда фильтров на телефоне — во всю ширину: общий предел ширины
+     списка весит больше телефонного правила `filters` */
+  .usage-screen__filters .field:not(:has(input[type='date'])) {
+    max-width: none;
   }
 }

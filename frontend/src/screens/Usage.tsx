@@ -1,8 +1,9 @@
 import { useState } from 'react'
+import { useAuth } from '../auth/AuthContext'
 import DataTable from '../components/DataTable'
 import ExportButton from '../components/ExportPreview'
 import Field from '../components/Field'
-import { Segmented, StatRow } from '../components/patterns'
+import { Segmented } from '../components/patterns'
 import { DataCard, EmptyNote, ErrorNote, Kpi, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t, tk } from '../i18n'
@@ -22,6 +23,7 @@ const DIMENSIONS: { value: UsageDimension; label: string; column: string }[] = [
 type SummaryRow = UsageSummary['results'][number]
 
 export default function Usage() {
+  const { me } = useAuth()
   const registry = useUsageRegistry()
   const [filters, setFilters] = useState<UsageFilters>({ by: 'action' })
   const [page, setPage] = useState(1)
@@ -44,7 +46,7 @@ export default function Usage() {
   const totalPages = Math.max(1, Math.ceil((data?.count ?? 0) / 50))
 
   return (
-    <div className="usage-screen">
+    <div className="lay-screen usage-screen">
       <ScreenHead
         title={t('Использование')}
         subtitle={t('Действия в системе за выбранный период. Даты и время — по Алматы.')}
@@ -58,73 +60,72 @@ export default function Usage() {
           />
         }
       />
-      <DataCard title={t('Период и фильтры')}>
-        <div className="usage-screen__filters">
-          <Field
-            usageFilter
-            kind="date"
-            name="usage-from"
-            label={t('с')}
-            value={period.from}
-            onChange={(value) => change({ from: value, to: period.to })}
-          />
-          <Field
-            usageFilter
-            kind="date"
-            name="usage-to"
-            label={t('по')}
-            value={period.to}
-            onChange={(value) => change({ from: period.from, to: value })}
-          />
-          <Field
-            usageFilter
-            kind="select"
-            name="usage-role"
-            label={t('Роль')}
-            value={filters.role ?? ''}
-            onChange={(value) => change({ role: value })}
-            options={[
-              { value: '', title: t('Все роли') },
-              ...(registry.data?.roles ?? []).map((role) => ({ value: role.key, title: role.title })),
-            ]}
-          />
-          <Field
-            usageFilter
-            kind="select"
-            name="usage-action"
-            label={t('Действие')}
-            value={filters.action ?? ''}
-            onChange={(value) => change({ action: value })}
-            options={[
-              { value: '', title: t('Все действия') },
-              ...(registry.data?.actions ?? []).map((action) => ({ value: action.key, title: action.title })),
-            ]}
-          />
-          <Field
-            usageFilter
-            kind="select"
-            name="usage-screen"
-            label={t('Экран')}
-            value={filters.screen ?? ''}
-            onChange={(value) => change({ screen: value })}
-            options={[
-              { value: '', title: t('Все экраны') },
-              ...(registry.data?.screens ?? []).map((screen) => ({ value: screen.key, title: screen.title })),
-            ]}
-          />
-          <div className="usage-screen__reset">
-            <Button variant="ghost" size="sm" onClick={reset}>
-              {t('Сбросить фильтры')}
-            </Button>
-          </div>
+      {/* фильтры — одной строкой над показателями, без отдельной карточки (макет Usage) */}
+      <div className="filters usage-screen__filters">
+        <Field
+          usageFilter
+          kind="date"
+          name="usage-from"
+          label={t('с')}
+          value={period.from}
+          onChange={(value) => change({ from: value, to: period.to })}
+        />
+        <Field
+          usageFilter
+          kind="date"
+          name="usage-to"
+          label={t('по')}
+          value={period.to}
+          onChange={(value) => change({ from: period.from, to: value })}
+        />
+        <Field
+          usageFilter
+          kind="select"
+          name="usage-role"
+          label={t('Роль')}
+          value={filters.role ?? ''}
+          onChange={(value) => change({ role: value })}
+          options={[
+            { value: '', title: t('Все роли') },
+            ...(registry.data?.roles ?? []).map((role) => ({ value: role.key, title: role.title })),
+          ]}
+        />
+        <Field
+          usageFilter
+          kind="select"
+          name="usage-action"
+          label={t('Действие')}
+          value={filters.action ?? ''}
+          onChange={(value) => change({ action: value })}
+          options={[
+            { value: '', title: t('Все действия') },
+            ...(registry.data?.actions ?? []).map((action) => ({ value: action.key, title: action.title })),
+          ]}
+        />
+        <Field
+          usageFilter
+          kind="select"
+          name="usage-screen"
+          label={t('Экран')}
+          value={filters.screen ?? ''}
+          onChange={(value) => change({ screen: value })}
+          options={[
+            { value: '', title: t('Все экраны') },
+            ...(registry.data?.screens ?? []).map((screen) => ({ value: screen.key, title: screen.title })),
+          ]}
+        />
+        <div className="filters__end">
+          <Button variant="ghost" size="sm" onClick={reset}>
+            {t('Сбросить фильтры')}
+          </Button>
         </div>
-      </DataCard>
+      </div>
       {registry.isError && <ErrorNote error={registry.error} />}
       {summary.isError && <ErrorNote error={summary.error} />}
       {(registry.isLoading || summary.isLoading) && <Loading kind="table" />}
       {data && (
         <>
-          <StatRow>
+          <div className="lay-4">
             <Kpi label={t('Активных пользователей')} value={data.cards.active_users} />
             <Kpi label={t('Действий')} value={data.cards.actions} />
             <Kpi
@@ -137,9 +138,10 @@ export default function Usage() {
               label={t('Ни разу не входили')}
               value={data.cards.never_logged_in}
               note={t('Сейчас, среди активных учётных записей')}
+              to={me?.role === 'admin' ? '/users' : undefined}
             />
-          </StatRow>
-          <DataCard title={t('Сводка')} count={data.count}>
+          </div>
+          <DataCard className="card--beam" title={t('Сводка')} count={data.count}>
             <Segmented
               label={t('Разрез сводки')}
               value={filters.by}

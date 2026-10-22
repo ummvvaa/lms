@@ -58,7 +58,8 @@ test("учитель профориентации: тест в списке, «�
   await expect(teacher.getByRole("heading", { name: "Профтест", exact: true })).toBeVisible();
   await expect(teacher.getByRole("button", { name: "Загрузить тест" })).toBeVisible();
 
-  const row = teacher.locator("table.tbl tbody tr").filter({ hasText: TEST_TITLE }).first();
+  // с 22.10.2026 тест — карточка в ряду, а не строка таблицы
+  const row = teacher.locator(".ctl-test").filter({ hasText: TEST_TITLE }).first();
   await expect(row).toBeVisible();
   await expect(row).toContainText("включён");
   await row.getByRole("button", { name: "Кому" }).click();

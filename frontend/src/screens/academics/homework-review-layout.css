@@ -1,0 +1,147 @@
+/* --- Проверка ДЗ по макету Homework ------------------------------------------
+   Слева на две трети — задания строками-кнопками: плитка с иконкой, название
+   и откуда задание, справа сдали из скольких полосой, срок и шеврон.
+   Справа — три шага «как дать ДЗ со сдачей». На телефоне — столбиком,
+   полоса уходит под название. */
+.hwr-cols {
+  align-items: start;
+}
+
+/* пустой список — одной высоты с карточкой шагов */
+.hwr-cols:has(> .hwr-empty) {
+  align-items: stretch;
+}
+
+.hwr-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+
+.hwr-item {
+  display: grid;
+  grid-template-columns: calc(var(--space) * 11) minmax(0, 1fr) calc(var(--space) * 60) calc(var(--space) * 6);
+  align-items: center;
+  gap: calc(var(--space) * 4);
+  width: 100%;
+  padding: calc(var(--space) * 4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-inner);
+  background: var(--glass-in);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.hwr-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.hwr-item__ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space) * 11);
+  height: calc(var(--space) * 11);
+  border-radius: var(--radius-inner);
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+}
+
+.hwr-item__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+  min-width: 0;
+}
+
+.hwr-item__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hwr-item__side {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 1.5);
+  min-width: 0;
+}
+
+.hwr-item__line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 2);
+  white-space: nowrap;
+}
+
+.hwr-item__go {
+  display: inline-flex;
+  justify-content: center;
+  color: var(--ink-3);
+}
+
+/* пусто: плитка с иконкой и одна строка по центру карточки */
+.hwr-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space) * 2);
+  text-align: center;
+}
+
+.hwr-steps {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-2);
+  font-size: var(--type-note);
+  line-height: var(--leading-body);
+}
+
+.hwr-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--space) * 3);
+}
+
+.hwr-steps__n {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space) * 6);
+  height: calc(var(--space) * 6);
+  border-radius: var(--radius-pill);
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+@media (max-width: 759px) {
+  .hwr-item {
+    grid-template-columns: calc(var(--space) * 11) minmax(0, 1fr);
+    gap: calc(var(--space) * 3);
+  }
+
+  .hwr-item__side {
+    grid-column: 1 / -1;
+  }
+
+  .hwr-item__go {
+    display: none;
+  }
+}
+
+/* вкладки стоят в общем столбике экрана: разрыв под ними даёт `lay-screen` */
+.hwr-screen .tabs {
+  margin-bottom: 0;
+}

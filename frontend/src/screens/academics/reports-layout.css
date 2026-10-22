@@ -1,0 +1,65 @@
+/* --- Отчёты родителям по макету Reports ---------------------------------------
+   Три вида отчёта карточками в ряд: плитка с иконкой, название, что внутри
+   и «Собрать» внизу — кнопки трёх карточек стоят на одной линии.
+   Отмеченные строки — одной строкой действий над таблицей, а не отдельной
+   карточкой. */
+.rlay-kind {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space) * 2);
+  min-width: 0;
+}
+
+.rlay-kind__ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space) * 11);
+  height: calc(var(--space) * 11);
+  margin-bottom: var(--space);
+  border-radius: var(--radius-inner);
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+}
+
+.rlay-kind__title {
+  margin: 0;
+}
+
+.rlay-kind__note {
+  flex: 1 1 auto;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: var(--type-note);
+  line-height: var(--leading-body);
+}
+
+.rlay-kind__go {
+  margin-top: calc(var(--space) * 2);
+}
+
+.rlay-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  padding-bottom: calc(var(--space) * 3);
+}
+
+.rlay-bulk__count {
+  margin-right: calc(var(--space) * 2);
+  white-space: nowrap;
+}
+
+/* выбор группы в ряду фильтров: свой нижний разрыв `.acad__pick` ряду не нужен */
+.filters .acad__pick {
+  margin-bottom: 0;
+}
+
+@media (max-width: 759px) {
+  /* выбор группы на телефоне — во всю ширину, как остальные фильтры */
+  .filters .acad__pick {
+    max-width: none;
+  }
+}

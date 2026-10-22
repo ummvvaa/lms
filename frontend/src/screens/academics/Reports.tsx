@@ -37,20 +37,28 @@ import {
   type ReportStatus,
   type ReportTemplate,
 } from '../../api/academics'
-import BuildReportDialog, { preferredFormat, TEMPLATE_OPTIONS, type FileType } from '../../components/BuildReportDialog'
+import BuildReportDialog, {
+  preferredFormat,
+  TEMPLATE_OPTIONS,
+  type FileType,
+} from '../../components/BuildReportDialog'
 import DataTable, { type Column } from '../../components/DataTable'
 import EditDrawer from '../../components/EditDrawer'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
-import { ChoiceCard, Row, Rows, Segmented, StatRow } from '../../components/patterns'
+import { Row, Rows, Segmented, StatRow } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Checkbox } from '../../components/ui/checkbox'
 import { t } from '../../i18n'
+import { useAuth } from '../../auth/AuthContext'
+import Icon from '../../layout/icons'
+import { SCHEDULE_EDITORS } from '../../layout/nav'
 import { usePhone } from '../../phone'
 import SchoolReport from './SchoolReport'
 import { GroupPick } from './shared'
 import { formatDate, formatDateTime } from '../../lib/format'
+import './reports-layout.css'
 
 type StatusFilter = ReportStatus | 'all'
 
@@ -68,8 +76,24 @@ function finalOf(value: string): { mark: string; word: string } {
 /** Колонки оценок — функцией: подписи переводятся при показе, язык меняется после загрузки модуля. */
 const markColumns = (): Column<MarkLine>[] => [
   { key: 'subject', title: t('Предмет'), width: '38%', cell: (line) => <b>{line.title}</b> },
-  { key: 'parts', title: t('ФО, СОР, СОЧ'), width: '46%', cell: (line) => <span className="num">{line.note || finalOf(line.value).word || t('нет')}</span> },
-  { key: 'final', title: t('Итог'), width: '16%', align: 'right', cell: (line) => (finalOf(line.value).mark ? <b className="num">{finalOf(line.value).mark}</b> : <span className="t-note">{t('нет')}</span>) },
+  {
+    key: 'parts',
+    title: t('ФО, СОР, СОЧ'),
+    width: '46%',
+    cell: (line) => <span className="num">{line.note || finalOf(line.value).word || t('нет')}</span>,
+  },
+  {
+    key: 'final',
+    title: t('Итог'),
+    width: '16%',
+    align: 'right',
+    cell: (line) =>
+      finalOf(line.value).mark ? (
+        <b className="num">{finalOf(line.value).mark}</b>
+      ) : (
+        <span className="t-note">{t('нет')}</span>
+      ),
+  },
 ]
 
 const when = (value: string | null) => (value ? formatDate(value) : '')
@@ -91,7 +115,10 @@ const FILE_MIME: Record<FileType, string> = {
 
 /** Файл отчёта (PDF или Word): скачать, а на телефоне — отдать в «Поделиться», если умеет. */
 async function takeFile(report: ReportRow, type: FileType, share: boolean): Promise<'shared' | 'saved'> {
-  const file = await fetchFile(`/acad/reports/${report.id}/pdf/?type=${type}`, `${report.student.full_name}.${type}`)
+  const file = await fetchFile(
+    `/acad/reports/${report.id}/pdf/?type=${type}`,
+    `${report.student.full_name}.${type}`,
+  )
   if (share && typeof navigator.canShare === 'function') {
     const pdf = new File([file.blob], file.name, { type: FILE_MIME[type] })
     if (navigator.canShare({ files: [pdf] })) {
@@ -106,6 +133,7 @@ async function takeFile(report: ReportRow, type: FileType, share: boolean): Prom
 export default function Reports() {
   const phone = usePhone()
   const navigate = useNavigate()
+  const { me } = useAuth()
   const [params, setParams] = useSearchParams()
   const group = params.get('group') ?? 'all'
   const period = params.get('period') ?? ''
@@ -119,7 +147,11 @@ export default function Reports() {
     }
     setParams(updated, { replace: true })
   }
-  const list = useReports({ group: group === 'all' ? '' : group, period, status: status === 'all' ? '' : status })
+  const list = useReports({
+    group: group === 'all' ? '' : group,
+    period,
+    status: status === 'all' ? '' : status,
+  })
   const sentMany = useReportsSent()
   const checkMany = useReportsCheck()
   const refreshMany = useReportsRefresh()
@@ -172,7 +204,9 @@ export default function Reports() {
         <Checkbox
           aria-label={t('Отметить: {name}', { name: row.student.full_name })}
           checked={checked.includes(row.id)}
-          onCheckedChange={(value) => setChecked((old) => (value ? [...old, row.id] : old.filter((id) => id !== row.id)))}
+          onCheckedChange={(value) =>
+            setChecked((old) => (value ? [...old, row.id] : old.filter((id) => id !== row.id)))
+          }
         />
       ),
     },
@@ -188,13 +222,34 @@ export default function Reports() {
       ),
       sortBy: (row) => row.student.full_name,
     },
-    { key: 'att', title: t('Посещаемость'), width: '14%', align: 'right', cell: (row) => <span className="num">{row.attendance || t('нет')}</span>, sortBy: (row) => row.attendance },
-    { key: 'grades', title: t('Оценки'), width: '18%', cell: (row) => <Chip tone={row.grades.tone as Tone} size="sm">{t(row.grades.text)}</Chip> },
+    {
+      key: 'att',
+      title: t('Посещаемость'),
+      width: '14%',
+      align: 'right',
+      cell: (row) => <span className="num">{row.attendance || t('нет')}</span>,
+      sortBy: (row) => row.attendance,
+    },
+    {
+      key: 'grades',
+      title: t('Оценки'),
+      width: '18%',
+      cell: (row) => (
+        <Chip tone={row.grades.tone as Tone} size="sm">
+          {t(row.grades.text)}
+        </Chip>
+      ),
+    },
     {
       key: 'phone',
       title: t('Телефон'),
       width: '16%',
-      cell: (row) => (row.phones[0] ? <span className="num">{row.phones[0].phone}</span> : <span className="t-note">{t('нет контакта')}</span>),
+      cell: (row) =>
+        row.phones[0] ? (
+          <span className="num">{row.phones[0].phone}</span>
+        ) : (
+          <span className="t-note">{t('нет контакта')}</span>
+        ),
     },
     {
       key: 'status',
@@ -214,19 +269,31 @@ export default function Reports() {
 
   const statusItems: { value: StatusFilter; label: string }[] = [
     { value: 'all', label: t('Все {count}', { count: data.counts.total }) },
-    // eslint-disable-next-line i18n-concat -- подпись фильтра со счётчиком, как «Все {count}»: название статуса с сервера переведено целиком, число — отдельный счётчик
-    ...data.statuses.map((row) => ({ value: row.code, label: `${t(row.title)} ${data.counts[row.code] ?? 0}` })),
+    ...data.statuses.map((row) => ({
+      value: row.code,
+      // eslint-disable-next-line i18n-concat -- подпись фильтра со счётчиком, как «Все {count}»: название статуса с сервера переведено целиком, число — отдельный счётчик
+      label: `${t(row.title)} ${data.counts[row.code] ?? 0}`,
+    })),
   ]
 
   const allChecked = rows.length > 0 && checked.length === rows.length
 
+  // бегущий свет — у первой карточки вида отчёта, а без них — у списка (макет Reports)
+  const kindsShown = data.may_build
+  const bulk = checked.length > 0 && data.may_write
+
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Отчёты родителям')}
         subtitle={t('Собираются {cadence}', { cadence: t(data.cadence) })}
         actions={
           <>
+            {me && SCHEDULE_EDITORS.includes(me.role) && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/academic-year')}>
+                {t('Когда собирать')}
+              </Button>
+            )}
             {ready.length > 0 && (
               <Button size="sm" disabled={busy} onClick={() => void zip([])}>
                 {t('Скачать все')}
@@ -237,16 +304,38 @@ export default function Reports() {
       />
       {/* вид отчёта выбирается здесь — крупными карточками, а не из меню «⋯»
           (30.09.2026); клик открывает окно: язык, период, кому, формат */}
-      {data.may_build && (
-        <div className="rkinds">
-          {TEMPLATE_OPTIONS.map((kind) => (
-            <ChoiceCard key={kind.value} title={t(kind.title)} note={t(kind.note)} action={t('Собрать')} onClick={() => setBuilding(kind.value)} />
+      {kindsShown && (
+        <div className="lay-3">
+          {TEMPLATE_OPTIONS.map((kind, index) => (
+            <section
+              key={kind.value}
+              className={`card card-pad rlay-kind${index === 0 ? ' card--beam' : ''}`}
+            >
+              <span className="rlay-kind__ico" aria-hidden="true">
+                <Icon name="report" size={20} />
+              </span>
+              <h2 className="rlay-kind__title t-card">{t(kind.title)}</h2>
+              <p className="rlay-kind__note">{t(kind.note)}</p>
+              <Button
+                variant={index === 0 ? 'default' : 'outline'}
+                size="sm"
+                className="rlay-kind__go"
+                onClick={() => setBuilding(kind.value)}
+              >
+                {t('Собрать')}
+              </Button>
+            </section>
           ))}
         </div>
       )}
 
-      <div className="acad__toolbar">
-        <GroupPick groups={data.groups} value={group} onChange={(code) => set({ group: code })} all={t('Все группы')} />
+      <div className="filters">
+        <GroupPick
+          groups={data.groups}
+          value={group}
+          onChange={(code) => set({ group: code })}
+          all={t('Все группы')}
+        />
         {data.periods.length > 0 && (
           <Segmented
             value={data.period?.code ?? ''}
@@ -255,36 +344,121 @@ export default function Reports() {
             items={data.periods.map((row) => ({ value: row.code, label: t(row.title) }))}
           />
         )}
+        {data.period && (
+          <Segmented<StatusFilter>
+            value={status}
+            onChange={(next) => set({ status: next })}
+            label={t('Статус')}
+            items={statusItems}
+          />
+        )}
       </div>
 
       {!data.period && (
-        <DataCard title={t('Отчётов ещё нет')} empty={data.may_build ? t('соберутся сами {cadence} · или выберите вид отчёта выше', { cadence: t(data.cadence) }) : t('соберутся сами {cadence}', { cadence: t(data.cadence) })} />
+        <DataCard
+          title={t('Отчётов ещё нет')}
+          empty={
+            data.may_build
+              ? t('соберутся сами {cadence} · или выберите вид отчёта выше', { cadence: t(data.cadence) })
+              : t('соберутся сами {cadence}', { cadence: t(data.cadence) })
+          }
+        />
       )}
 
       {data.period && (
-        <div className="acad__stack">
+        <>
           <StatRow>
             <Kpi label={t('Всего')} value={data.counts.total} note={t(data.period.title)} />
-            <Kpi label={t('Черновики')} value={data.counts.draft || null} none={t('нет')} tone={data.counts.draft ? 'warn' : undefined} />
-            <Kpi label={t('Проверены')} value={data.counts.checked || null} none={t('нет')} tone={data.counts.checked ? 'info' : undefined} />
+            <Kpi
+              label={t('Черновики')}
+              value={data.counts.draft || null}
+              none={t('нет')}
+              tone={data.counts.draft ? 'warn' : undefined}
+            />
+            <Kpi
+              label={t('Проверены')}
+              value={data.counts.checked || null}
+              none={t('нет')}
+              tone={data.counts.checked ? 'info' : undefined}
+            />
             <Kpi label={t('Выгружены')} value={data.counts.exported || null} none={t('нет')} />
-            <Kpi label={t('Отправлены')} value={data.counts.sent || null} none={t('нет')} tone={data.counts.sent === data.counts.total && data.counts.total ? 'good' : undefined} note={data.counts.no_phone ? t('без телефона {count}', { count: data.counts.no_phone }) : undefined} />
+            <Kpi
+              label={t('Отправлены')}
+              value={data.counts.sent || null}
+              none={t('нет')}
+              tone={data.counts.sent === data.counts.total && data.counts.total ? 'good' : undefined}
+              note={
+                data.counts.no_phone ? t('без телефона {count}', { count: data.counts.no_phone }) : undefined
+              }
+            />
           </StatRow>
-          <div className="acad__toolbar">
-            <Segmented<StatusFilter> value={status} onChange={(next) => set({ status: next })} label={t('Статус')} items={statusItems} />
-            {data.built_at && <span className="t-note">{t('собрано {date}', { date: when(data.built_at) })}</span>}
-          </div>
-          {/* действия для всех отмеченных: проверено, обновить, архивом, отправлены */}
-          {checked.length > 0 && data.may_write && (
-            <DataCard title={t('Отмечено: {count}', { count: checked.length })}>
-              <div className="acad__actions">
-                <Button variant="outline" size="sm" disabled={checkMany.isPending} onClick={() => checkMany.mutate(checked, { onSuccess: (r) => toast.success(t('Проверено: {count}', { count: r.checked })), onError: fail })}>
+          <DataCard
+            className={kindsShown ? undefined : 'card--beam'}
+            title={t(data.period.title)}
+            note={data.built_at ? t('собрано {date}', { date: when(data.built_at) }) : undefined}
+            count={rows.length || undefined}
+            right={
+              rows.length > 0 ? (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => setChecked(allChecked ? [] : rows.map((row) => row.id))}
+                >
+                  {allChecked ? t('Снять все') : t('Отметить все')}
+                </Button>
+              ) : undefined
+            }
+          >
+            {/* действия для всех отмеченных: проверено, обновить, архивом, отправлены —
+                строкой над таблицей, а не отдельной карточкой */}
+            {bulk && (
+              <div className="rlay-bulk">
+                <b className="rlay-bulk__count">{t('Отмечено: {count}', { count: checked.length })}</b>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={checkMany.isPending}
+                  onClick={() =>
+                    checkMany.mutate(checked, {
+                      onSuccess: (r) => toast.success(t('Проверено: {count}', { count: r.checked })),
+                      onError: fail,
+                    })
+                  }
+                >
                   {t('Проверено')}
                 </Button>
-                <Button variant="outline" size="sm" disabled={refreshMany.isPending} onClick={() => refreshMany.mutate(checked, { onSuccess: (r) => toast.success([t('Обновлено: {refreshed} · изменилось {changed}', { refreshed: r.refreshed, changed: r.changed }), r.kept ? t('тексты с правками куратора не тронуты: {count}', { count: r.kept }) : ''].filter(Boolean).join(' · ')), onError: fail })}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={refreshMany.isPending}
+                  onClick={() =>
+                    refreshMany.mutate(checked, {
+                      onSuccess: (r) =>
+                        toast.success(
+                          [
+                            t('Обновлено: {refreshed} · изменилось {changed}', {
+                              refreshed: r.refreshed,
+                              changed: r.changed,
+                            }),
+                            r.kept
+                              ? t('тексты с правками куратора не тронуты: {count}', { count: r.kept })
+                              : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' · '),
+                        ),
+                      onError: fail,
+                    })
+                  }
+                >
                   {t('Обновить данные')}
                 </Button>
-                <Button variant="outline" size="sm" disabled={busy || readyChecked.length === 0} onClick={() => void zip(readyChecked)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={busy || readyChecked.length === 0}
+                  onClick={() => void zip(readyChecked)}
+                >
                   {t('Скачать архивом ({count})', { count: readyChecked.length })}
                 </Button>
                 <Button
@@ -294,7 +468,14 @@ export default function Reports() {
                   onClick={() =>
                     sentMany.mutate(readyChecked, {
                       onSuccess: (r) => {
-                        toast.success([t('Отмечено отправленными: {count}', { count: r.sent }), r.skipped.length ? t('пропущено: {names}', { names: r.skipped.join(', ') }) : ''].filter(Boolean).join(' · '))
+                        toast.success(
+                          [
+                            t('Отмечено отправленными: {count}', { count: r.sent }),
+                            r.skipped.length ? t('пропущено: {names}', { names: r.skipped.join(', ') }) : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' · '),
+                        )
                         setChecked([])
                       },
                       onError: fail,
@@ -307,22 +488,18 @@ export default function Reports() {
                   {t('Снять отметки')}
                 </Button>
               </div>
-            </DataCard>
-          )}
-          <DataCard
-            title={t(data.period.title)}
-            count={rows.length || undefined}
-            right={
-              rows.length > 0 ? (
-                <Button variant="link" size="sm" onClick={() => setChecked(allChecked ? [] : rows.map((row) => row.id))}>
-                  {allChecked ? t('Снять все') : t('Отметить все')}
-                </Button>
-              ) : undefined
-            }
-          >
-            <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={(row) => set({ open: String(row.id) })} selected={(row) => row.id === openRow || checked.includes(row.id)} empty={<span className="t-note">{t('с таким статусом отчётов нет')}</span>} minWidth="820px" />
+            )}
+            <DataTable
+              columns={columns}
+              rows={rows}
+              rowKey={(row) => row.id}
+              onRowClick={(row) => set({ open: String(row.id) })}
+              selected={(row) => row.id === openRow || checked.includes(row.id)}
+              empty={<span className="t-note">{t('с таким статусом отчётов нет')}</span>}
+              minWidth="820px"
+            />
           </DataCard>
-        </div>
+        </>
       )}
 
       {openRow !== null && (
@@ -334,7 +511,15 @@ export default function Reports() {
           onSwitched={(report, period) => set({ open: String(report), period, status: '' })}
         />
       )}
-      {building && <BuildReportDialog template={building} groups={data.groups} group={group} onClose={() => setBuilding(null)} onBuilt={(code) => code && set({ period: code })} />}
+      {building && (
+        <BuildReportDialog
+          template={building}
+          groups={data.groups}
+          group={group}
+          onClose={() => setBuilding(null)}
+          onBuilt={(code) => code && set({ period: code })}
+        />
+      )}
       {exporting && data.period && (
         <ExportDialog
           ids={exporting.ids}
@@ -389,7 +574,13 @@ function ReportDrawer({
     setBusy(true)
     try {
       const outcome = await takeFile(row, type, share)
-      toast.success(outcome === 'shared' ? t('Отчёт передан в «Поделиться»') : type === 'pdf' ? t('PDF скачан') : t('Word скачан'))
+      toast.success(
+        outcome === 'shared'
+          ? t('Отчёт передан в «Поделиться»')
+          : type === 'pdf'
+            ? t('PDF скачан')
+            : t('Word скачан'),
+      )
       void report.refetch()
     } catch (e) {
       if ((e as Error).name !== 'AbortError') fail(e as Error)
@@ -411,18 +602,38 @@ function ReportDrawer({
       {
         onSuccess: (fresh) => {
           if (fresh.needs_confirm) {
-            if (window.confirm(t('Данные обновлены. Тексты отчёта вы уже правили — перезаписать ваши правки новым черновиком ИИ?'))) {
-              refresh.mutate({ id: reportId, overwrite: true }, { onSuccess: () => toast.success(t('ИИ пишет тексты заново по свежим данным')), onError: fail })
+            if (
+              window.confirm(
+                t(
+                  'Данные обновлены. Тексты отчёта вы уже правили — перезаписать ваши правки новым черновиком ИИ?',
+                ),
+              )
+            ) {
+              refresh.mutate(
+                { id: reportId, overwrite: true },
+                {
+                  onSuccess: () => toast.success(t('ИИ пишет тексты заново по свежим данным')),
+                  onError: fail,
+                },
+              )
             } else toast.success(t('Данные обновлены, ваши тексты оставлены как есть'))
             return
           }
-          toast.success(fresh.redrafting ? t('Данные обновлены, ИИ пишет тексты заново') : fresh.changed ? t('Данные обновлены: отчёт снова черновик') : t('Ничего не изменилось'))
+          toast.success(
+            fresh.redrafting
+              ? t('Данные обновлены, ИИ пишет тексты заново')
+              : fresh.changed
+                ? t('Данные обновлены: отчёт снова черновик')
+                : t('Ничего не изменилось'),
+          )
         },
         onError: fail,
       },
     )
   const preferred = preferredFormat()
-  const formats = data ? [...data.formats].sort((a, b) => Number(b === preferred) - Number(a === preferred)) : []
+  const formats = data
+    ? [...data.formats].sort((a, b) => Number(b === preferred) - Number(a === preferred))
+    : []
   const editable = Boolean(data?.may_write) && data?.status !== 'sent'
   const wordChanged = data ? word.trim() !== data.curator_word.trim() : false
   const wordBy = data?.word_by ? `${data.word_by}${data.word_at ? ` · ${whenAt(data.word_at)}` : ''}` : ''
@@ -433,20 +644,41 @@ function ReportDrawer({
       onClose={onClose}
       className="drawer--wide"
       title={data ? data.student.full_name : t('Отчёт')}
-      sub={data ? `${t(data.template_title)} · ${t(data.language_title).toLowerCase()} · ${t(data.title)} · ${data.student.group} · ${t(data.status_title)}` : undefined}
+      sub={
+        data
+          ? `${t(data.template_title)} · ${t(data.language_title).toLowerCase()} · ${t(data.title)} · ${data.student.group} · ${t(data.status_title)}`
+          : undefined
+      }
       footer={
         data ? (
           <>
-            {data.status === 'draft' && data.may_write && formats.map((type, index) => (
-              <Button key={type} variant={index === 0 ? 'default' : 'outline'} disabled={busy || check.isPending} onClick={() => checkAndDownload(data, type)}>
-                {type === 'pdf' ? t('Проверено и скачать PDF') : t('Проверено и скачать Word')}
-              </Button>
-            ))}
-            {data.status !== 'draft' && formats.map((type, index) => (
-              <Button key={type} variant={index === 0 ? 'default' : 'outline'} disabled={busy} onClick={() => void download(data, phone, type)}>
-                {phone ? t('Поделиться {format}', { format: type === 'pdf' ? 'PDF' : 'Word' }) : type === 'pdf' ? t('Скачать PDF') : t('Скачать Word')}
-              </Button>
-            ))}
+            {data.status === 'draft' &&
+              data.may_write &&
+              formats.map((type, index) => (
+                <Button
+                  key={type}
+                  variant={index === 0 ? 'default' : 'outline'}
+                  disabled={busy || check.isPending}
+                  onClick={() => checkAndDownload(data, type)}
+                >
+                  {type === 'pdf' ? t('Проверено и скачать PDF') : t('Проверено и скачать Word')}
+                </Button>
+              ))}
+            {data.status !== 'draft' &&
+              formats.map((type, index) => (
+                <Button
+                  key={type}
+                  variant={index === 0 ? 'default' : 'outline'}
+                  disabled={busy}
+                  onClick={() => void download(data, phone, type)}
+                >
+                  {phone
+                    ? t('Поделиться {format}', { format: type === 'pdf' ? 'PDF' : 'Word' })
+                    : type === 'pdf'
+                      ? t('Скачать PDF')
+                      : t('Скачать Word')}
+                </Button>
+              ))}
             {data.status !== 'draft' && phone && (
               <Button variant="outline" disabled={busy} onClick={() => void download(data, false)}>
                 {t('Скачать PDF')}
@@ -476,10 +708,16 @@ function ReportDrawer({
                 onChange={(template) =>
                   data.may_write &&
                   template !== data.template &&
-                  switcher.mutate({ id: data.id, template, language: template === 'standard' ? 'ru' : data.language }, { onSuccess: (r) => onSwitched(r.report, r.period), onError: fail })
+                  switcher.mutate(
+                    { id: data.id, template, language: template === 'standard' ? 'ru' : data.language },
+                    { onSuccess: (r) => onSwitched(r.report, r.period), onError: fail },
+                  )
                 }
                 label={t('Вид отчёта')}
-                items={TEMPLATE_OPTIONS.map((kind) => ({ value: kind.value, label: t(kind.title.split(' · ')[0]) }))}
+                items={TEMPLATE_OPTIONS.map((kind) => ({
+                  value: kind.value,
+                  label: t(kind.title.split(' · ')[0]),
+                }))}
               />
             </div>
             {data.template !== 'standard' ? (
@@ -491,7 +729,10 @@ function ReportDrawer({
                   onChange={(language) =>
                     data.may_write &&
                     language !== data.language &&
-                    switcher.mutate({ id: data.id, template: data.template, language }, { onSuccess: (r) => onSwitched(r.report, r.period), onError: fail })
+                    switcher.mutate(
+                      { id: data.id, template: data.template, language },
+                      { onSuccess: (r) => onSwitched(r.report, r.period), onError: fail },
+                    )
                   }
                   label={t('Язык')}
                   items={[
@@ -507,44 +748,103 @@ function ReportDrawer({
           </div>
           {(data.checked_at || data.exported_at || data.sent_at) && (
             <Rows>
-              <Row icon="report" tone={reportTone(data.status) as Tone} title={[data.checked_at ? t('проверен {date} {name}', { date: when(data.checked_at), name: data.checked_by }) : '', data.exported_at ? t('выгружен {date}', { date: when(data.exported_at) }) : '', data.sent_at ? t('отправлен {date} {name}', { date: when(data.sent_at), name: data.sent_by }) : ''].filter(Boolean).join(' · ')} />
+              <Row
+                icon="report"
+                tone={reportTone(data.status) as Tone}
+                title={[
+                  data.checked_at
+                    ? t('проверен {date} {name}', { date: when(data.checked_at), name: data.checked_by })
+                    : '',
+                  data.exported_at ? t('выгружен {date}', { date: when(data.exported_at) }) : '',
+                  data.sent_at
+                    ? t('отправлен {date} {name}', { date: when(data.sent_at), name: data.sent_by })
+                    : '',
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              />
             </Rows>
           )}
           {data.school && <SchoolReport report={data} editable={editable} />}
-          {!data.school && data.sections.map((section) =>
-            section.code === 'grades' ? (
-              <DataCard key={section.code} title={t(section.title)}>
-                <DataTable columns={markColumns()} rows={section.lines.map((line, index) => ({ ...line, key: index }))} rowKey={(line) => line.key} />
-              </DataCard>
-            ) : (
-              <DataCard key={section.code} title={t(section.title)}>
-                <Rows>
-                  {section.lines.map((line, index) => (
-                    <Row key={`${section.code}-${index}`} title={line.title} note={line.note || undefined} value={line.value} none={t('нет')} />
-                  ))}
-                </Rows>
-              </DataCard>
-            ),
-          )}
+          {!data.school &&
+            data.sections.map((section) =>
+              section.code === 'grades' ? (
+                <DataCard key={section.code} title={t(section.title)}>
+                  <DataTable
+                    columns={markColumns()}
+                    rows={section.lines.map((line, index) => ({ ...line, key: index }))}
+                    rowKey={(line) => line.key}
+                  />
+                </DataCard>
+              ) : (
+                <DataCard key={section.code} title={t(section.title)}>
+                  <Rows>
+                    {section.lines.map((line, index) => (
+                      <Row
+                        key={`${section.code}-${index}`}
+                        title={line.title}
+                        note={line.note || undefined}
+                        value={line.value}
+                        none={t('нет')}
+                      />
+                    ))}
+                  </Rows>
+                </DataCard>
+              ),
+            )}
           {/* раздел «Слово куратора» выключен в настройках отчётов — блока нет, в PDF слова нет */}
-          {data.word_on && !data.school && (editable ? (
-            <>
-              <Field kind="textarea" name="curator_word" label={t('Слово куратора')} value={word} onChange={setWord} rows={4} hint={wordBy || undefined} />
-              {wordChanged && data.status !== 'draft' && (
-                <Button variant="outline" size="sm" disabled={saveWord.isPending} onClick={() => saveWord.mutate({ id: data.id, curator_word: word }, { onSuccess: () => toast.success(t('Слово сохранено')), onError: fail })}>
-                  {t('Сохранить слово')}
-                </Button>
-              )}
-            </>
-          ) : (
-            <Rows>
-              <Row title={t('Слово куратора')} note={wordBy || undefined} value={data.curator_word || null} none={t('нет')} />
-            </Rows>
-          ))}
+          {data.word_on &&
+            !data.school &&
+            (editable ? (
+              <>
+                <Field
+                  kind="textarea"
+                  name="curator_word"
+                  label={t('Слово куратора')}
+                  value={word}
+                  onChange={setWord}
+                  rows={4}
+                  hint={wordBy || undefined}
+                />
+                {wordChanged && data.status !== 'draft' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={saveWord.isPending}
+                    onClick={() =>
+                      saveWord.mutate(
+                        { id: data.id, curator_word: word },
+                        { onSuccess: () => toast.success(t('Слово сохранено')), onError: fail },
+                      )
+                    }
+                  >
+                    {t('Сохранить слово')}
+                  </Button>
+                )}
+              </>
+            ) : (
+              <Rows>
+                <Row
+                  title={t('Слово куратора')}
+                  note={wordBy || undefined}
+                  value={data.curator_word || null}
+                  none={t('нет')}
+                />
+              </Rows>
+            ))}
           <DataCard title={t('Родителям')}>
             {data.phones.length === 0 && (
               <Rows>
-                <Row icon="person" tone="warn" title={t('Телефона родителя нет')} acts={<Button variant="secondary" size="sm" onClick={() => onStudent(data.student.id)}>{t('Добавить контакт')}</Button>} />
+                <Row
+                  icon="person"
+                  tone="warn"
+                  title={t('Телефона родителя нет')}
+                  acts={
+                    <Button variant="secondary" size="sm" onClick={() => onStudent(data.student.id)}>
+                      {t('Добавить контакт')}
+                    </Button>
+                  }
+                />
               </Rows>
             )}
             <Rows>
@@ -554,13 +854,32 @@ function ReportDrawer({
                   icon="phone"
                   title={phoneRow.phone}
                   note={`${phoneRow.name} · ${phoneRow.relation}${phoneRow.is_primary ? ` · ${t('основной')}` : ''}`}
-                  acts={<Button variant="secondary" size="sm" onClick={() => void copyText(phoneRow.phone, t('Телефон скопирован'))}>{t('Скопировать')}</Button>}
+                  acts={
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void copyText(phoneRow.phone, t('Телефон скопирован'))}
+                    >
+                      {t('Скопировать')}
+                    </Button>
+                  }
                 />
               ))}
             </Rows>
-            <Field kind="textarea" name="message" label={t('Текст сообщения')} value={data.message} rows={3} readOnly />
+            <Field
+              kind="textarea"
+              name="message"
+              label={t('Текст сообщения')}
+              value={data.message}
+              rows={3}
+              readOnly
+            />
             <div className="acad__actions">
-              <Button variant="outline" size="sm" onClick={() => void copyText(data.message, t('Текст скопирован'))}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void copyText(data.message, t('Текст скопирован'))}
+              >
                 {t('Скопировать текст')}
               </Button>
               {data.may_write && data.status !== 'draft' && (
@@ -568,7 +887,18 @@ function ReportDrawer({
                   variant={data.status === 'sent' ? 'outline' : 'secondary'}
                   size="sm"
                   disabled={sent.isPending}
-                  onClick={() => sent.mutate({ id: data.id, sent: data.status !== 'sent' }, { onSuccess: () => toast.success(data.status === 'sent' ? t('Отметка снята') : t('Отмечен отправленным родителям')), onError: fail })}
+                  onClick={() =>
+                    sent.mutate(
+                      { id: data.id, sent: data.status !== 'sent' },
+                      {
+                        onSuccess: () =>
+                          toast.success(
+                            data.status === 'sent' ? t('Отметка снята') : t('Отмечен отправленным родителям'),
+                          ),
+                        onError: fail,
+                      },
+                    )
+                  }
                 >
                   {data.status === 'sent' ? t('Снять отметку «отправлен»') : t('Отправлен родителям')}
                 </Button>
@@ -582,7 +912,17 @@ function ReportDrawer({
 }
 
 /** Архив отчётов по шаблону школы: формат, сборка в очереди с ходом, скачивание. */
-function ExportDialog({ ids, group, period, onClose }: { ids: number[]; group: string; period: string; onClose: () => void }) {
+function ExportDialog({
+  ids,
+  group,
+  period,
+  onClose,
+}: {
+  ids: number[]
+  group: string
+  period: string
+  onClose: () => void
+}) {
   const start = useStartReportsExport()
   const [type, setType] = useState<FileType>(preferredFormat)
   const [job, setJob] = useState<string | null>(null)
@@ -601,10 +941,23 @@ function ExportDialog({ ids, group, period, onClose }: { ids: number[]; group: s
       .catch((e: Error) => toast.error(e.message))
   }, [done, saved, job, state.data, onClose])
   return (
-    <Modal title={t('Скачать архивом')} note={ids.length ? t('Отмечено: {count}', { count: ids.length }) : t('Все проверенные отчёты периода')} onClose={onClose}>
+    <Modal
+      title={t('Скачать архивом')}
+      note={ids.length ? t('Отмечено: {count}', { count: ids.length }) : t('Все проверенные отчёты периода')}
+      onClose={onClose}
+    >
       {!job && (
         <>
-          <Segmented<FileType> usageFilter={false} value={type} onChange={setType} label={t('Формат')} items={[{ value: 'pdf', label: 'PDF' }, { value: 'docx', label: 'Word' }]} />
+          <Segmented<FileType>
+            usageFilter={false}
+            value={type}
+            onChange={setType}
+            label={t('Формат')}
+            items={[
+              { value: 'pdf', label: 'PDF' },
+              { value: 'docx', label: 'Word' },
+            ]}
+          />
           <div className="acad__actions">
             <Button
               disabled={start.isPending}
@@ -631,7 +984,10 @@ function ExportDialog({ ids, group, period, onClose }: { ids: number[]; group: s
             title={
               state.data?.state === 'failed'
                 ? t(state.data.error || 'Архив не собрался')
-                : t('Собирается архив: {done} из {total}', { done: state.data?.done ?? 0, total: state.data?.total ?? ids.length })
+                : t('Собирается архив: {done} из {total}', {
+                    done: state.data?.done ?? 0,
+                    total: state.data?.total ?? ids.length,
+                  })
             }
             note={type === 'pdf' ? t('PDF для группы собирается до минуты') : undefined}
           />
