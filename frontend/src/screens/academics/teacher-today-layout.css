@@ -28,7 +28,7 @@
 /* идущий урок — кромкой акцента и мягким ободком, как `.c-today` макета */
 .tday__lesson--now {
   border-color: var(--accent-2);
-  box-shadow: 0 0 0 4px var(--accent-bg);
+  box-shadow: 0 0 0 var(--space) var(--accent-bg);
 }
 
 .tday__lesson--past .tday__title {
