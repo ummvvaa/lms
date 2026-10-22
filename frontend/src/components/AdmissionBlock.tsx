@@ -491,15 +491,31 @@ function KeeperRow({
   )
 }
 
+/** Сколько значений в блоке заполнено: поля профиля, пароли, документы, срок паспорта, GPA, попытки. */
+export function admissionFilled(block: Block): number {
+  return (
+    [block.student_phone, block.email, block.common_app_email, block.drive_folder_url].filter(Boolean).length +
+    block.credentials.filter((row) => row.present).length +
+    block.documents.filter((doc) => doc.document !== null).length +
+    (block.passport_expires_at !== null ? 1 : 0) +
+    (block.gpa !== null ? 1 : 0) +
+    block.attempts.reduce((sum, slot) => sum + slot.rows.length, 0)
+  )
+}
+
 export default function AdmissionBlock({
   block,
   studentId,
   className,
+  filledOnly = false,
 }: {
   block: Block
   studentId: number
   /** место карточки в раскладке экрана (фаза 77) */
   className?: string
+  /** кабинет куратора (22.10.2026): строк со словом «нет» нет, а блока без единого
+   *  значения нет вовсе — у Асем и администратора блок прежний, с пустыми строками для правки */
+  filledOnly?: boolean
 }) {
   const phone = usePhone()
   const saveProfile = useSaveAdmissionField(studentId)
@@ -553,6 +569,9 @@ export default function AdmissionBlock({
     )
   }
 
+  // блока без единого значения у куратора нет вовсе
+  if (filledOnly && admissionFilled(block) === 0) return null
+
   return (
     <DataCard
       title={t('Поступление')}
@@ -561,7 +580,7 @@ export default function AdmissionBlock({
     >
       {/* порядок и названия строк — колонки таблицы Асем (фаза 73);
           ФИО здесь нет: оно в шапке карточки */}
-      <div className="cadm">
+      <div className={filledOnly ? 'cadm cadm--filled' : 'cadm'}>
         <ProfileRow
           phone={phone}
           label={tk('Номер телефона')}

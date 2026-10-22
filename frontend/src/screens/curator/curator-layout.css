@@ -322,17 +322,12 @@ body .cdisc__send [data-slot='button'][data-variant][data-size] {
   margin-bottom: calc(var(--space) * 3);
 }
 
-/* ---- Посещаемость: листы групп по два, строка ученика плашкой ----
-   Имя и три кнопки в одну строку, комментарий у «нет» и «опоздал» — под ними. */
+/* ---- Посещаемость: листы групп по два ----
+   Строка ученика — как в составе урока у учителя: имя и три кнопки на одной линии
+   по центру, высота `--row-h`, линия сверху; комментарий у «нет» и «опоздал» — под ней. */
 
 .catt__sheets {
   align-items: start;
-}
-
-.catt .cmark {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space) * 2);
 }
 
 .catt .cmark__row {
@@ -340,11 +335,8 @@ body .cdisc__send [data-slot='button'][data-variant][data-size] {
   grid-template-areas: none;
   align-items: center;
   gap: calc(var(--space) * 2) calc(var(--space) * 3);
-  min-height: 0;
-  padding: calc(var(--space) * 2) calc(var(--space) * 3);
-  border-top: 0;
-  border-radius: var(--radius-inner);
-  background: var(--surface-2);
+  min-height: var(--row-h);
+  padding: calc(var(--space) * 2) 0;
 }
 
 /* без именованных областей: нет комментария — нет и строки сетки с её зазором */
@@ -360,6 +352,10 @@ body .cdisc__send [data-slot='button'][data-variant][data-size] {
 
 .catt .cmark__comment:empty {
   display: none;
+}
+
+.catt .cmark__att .segrow {
+  margin: 0;
 }
 
 .catt__pct {
@@ -387,9 +383,18 @@ body .cdisc__send [data-slot='button'][data-variant][data-size] {
 
 @media (max-width: 759px) {
   /* телефон: карточка на ученика — имя сверху, три кнопки во всю ширину по 44 */
+  .catt .cmark {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space) * 2);
+  }
+
   .catt .cmark__row {
     grid-template-columns: minmax(0, 1fr);
     padding: calc(var(--space) * 3);
+    border-top: 0;
+    border-radius: var(--radius-inner);
+    background: var(--surface-2);
   }
 }
 
@@ -501,4 +506,56 @@ body .cdisc__send [data-slot='button'][data-variant][data-size] {
 /* дата и время записи — одним значением, без многоточия */
 .lay-main .squeue__when {
   white-space: nowrap;
+}
+
+/* строка очереди у куратора: имя, группа и дата — одной линией без переноса,
+   признаки — второй строкой, кнопки — справа по центру строки */
+.cqueue .squeue__what {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.cqueue .squeue__what > b,
+.cqueue .squeue__what > [data-slot='badge'] {
+  flex: none;
+}
+
+/* не влезло — сжимается дата, а не имя: полная дата в подсказке */
+.cqueue .squeue__when {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cqueue .squeue__flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 1);
+  margin-top: calc(var(--space) * 1);
+}
+
+.cqueue .squeue__flags:empty {
+  display: none;
+}
+
+/* на телефоне одна линия не помещается: дата переносится под имя, а не режется */
+@media (max-width: 759px) {
+  .cqueue .squeue__what {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  .cqueue .squeue__when {
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 760px) {
+  .cqueue .squeue__actions {
+    align-self: center;
+    flex-wrap: nowrap;
+  }
 }

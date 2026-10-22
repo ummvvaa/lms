@@ -82,7 +82,7 @@ function useRefreshCard(studentId: number) {
 
 /** Вкладка «Экзамены»: официальные попытки, пробники руками и цели с датами. */
 export function ExamsEntry({ card }: { card: Card }) {
-  const rows = useStudentRows(card.id)
+  const rows = useStudentRows(card.id, card.has_admission)
   const goals = useExamGoals(card.id)
   const kinds = useDirectoryEntries('exam-kinds')
   const attempts = useAttemptRows()
@@ -211,7 +211,7 @@ export function ExamsEntry({ card }: { card: Card }) {
 
 /** Вкладка «Вузы»: добавить из каталога, категория, приоритетный, убрать. */
 export function UniversitiesEntry({ card }: { card: Card }) {
-  const rows = useStudentRows(card.id)
+  const rows = useStudentRows(card.id, card.has_admission)
   const list = useCuratorUniversities(card.id)
   const universities = useDirectory()
   const [university, setUniversity] = useState<number | null>(null)
@@ -290,7 +290,7 @@ export function UniversitiesEntry({ card }: { card: Card }) {
 
 /** Вкладка «Портфолио»: достижения и олимпиады, профиль спорта, соревнования. */
 export function PortfolioEntry({ card }: { card: Card }) {
-  const rows = useStudentRows(card.id)
+  const rows = useStudentRows(card.id, card.has_admission)
   const subjects = useDirectoryEntries('subjects')
   const sportTypes = useDirectoryEntries('sport-types')
   const activities = useActivityRows()

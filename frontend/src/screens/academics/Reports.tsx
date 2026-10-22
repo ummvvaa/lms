@@ -370,31 +370,25 @@ export default function Reports() {
           {/* этапы — кнопками того же фильтра статуса, что в ряду над ними (макет отчётов) */}
           <StatRow>
             <Kpi label={t('Всего')} value={data.counts.total} note={t(data.period.title)} onClick={() => set({ status: 'all' })} />
-            <Kpi
-              onClick={() => set({ status: 'draft' })}
-              label={t('Черновики')}
-              value={data.counts.draft || null}
-              none={t('нет')}
-              tone={data.counts.draft ? 'warn' : undefined}
-            />
-            <Kpi
-              onClick={() => set({ status: 'checked' })}
-              label={t('Проверены')}
-              value={data.counts.checked || null}
-              none={t('нет')}
-              tone={data.counts.checked ? 'info' : undefined}
-            />
-            <Kpi onClick={() => set({ status: 'exported' })} label={t('Выгружены')} value={data.counts.exported || null} none={t('нет')} />
+            {/* этап без отчётов плиткой не рисуется — показатель «нет» ничего не говорит */}
+            {data.counts.draft > 0 && (
+              <Kpi onClick={() => set({ status: 'draft' })} label={t('Черновики')} value={data.counts.draft} tone="warn" />
+            )}
+            {data.counts.checked > 0 && (
+              <Kpi onClick={() => set({ status: 'checked' })} label={t('Проверены')} value={data.counts.checked} tone="info" />
+            )}
+            {data.counts.exported > 0 && <Kpi onClick={() => set({ status: 'exported' })} label={t('Выгружены')} value={data.counts.exported} />}
+            {data.counts.sent > 0 && (
             <Kpi
               onClick={() => set({ status: 'sent' })}
               label={t('Отправлены')}
-              value={data.counts.sent || null}
-              none={t('нет')}
+              value={data.counts.sent}
               tone={data.counts.sent === data.counts.total && data.counts.total ? 'good' : undefined}
               note={
                 data.counts.no_phone ? t('без телефона {count}', { count: data.counts.no_phone }) : undefined
               }
             />
+            )}
           </StatRow>
           <DataCard
             className={kindsShown ? undefined : 'card--beam'}

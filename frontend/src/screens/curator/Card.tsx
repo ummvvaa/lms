@@ -23,7 +23,7 @@ import {
   type CuratorCard as Card,
   type DocumentCell,
 } from '../../api/hooks'
-import AdmissionBlock from '../../components/AdmissionBlock'
+import AdmissionBlock, { admissionFilled } from '../../components/AdmissionBlock'
 import MockAttempts from '../MockAttempts'
 import Field from '../../components/Field'
 import Notice from '../../components/Notice'
@@ -576,6 +576,9 @@ export default function CuratorCard() {
 
   // главная карточка «Обзора» со светом: очередь, а без неё — «Что требует внимания»
   const beamQueue = data.queue.length > 0
+  // «Поступление» показывает только заполненное: коротким блоком широкая колонка
+  // кончалась раньше узкой — тогда «Дисциплина» встаёт слева (колонки вровень)
+  const disciplineLeft = junior || admissionFilled(data.admission) <= 6
 
   return (
     <div className="lay-screen">
@@ -642,21 +645,16 @@ export default function CuratorCard() {
 
       {tab === 'overview' && !junior && (
         <StatRow>
-          <Kpi
-            label="IELTS"
-            value={exams.ielts_current}
-            note={exams.ielts_target ? t('цель {score}', { score: exams.ielts_target }) : undefined}
-          />
-          <Kpi
-            label="SAT"
-            value={exams.sat_current}
-            note={exams.sat_target ? t('цель {score}', { score: exams.sat_target }) : undefined}
-          />
-          <Kpi
-            label={t('Mock Test')}
-            value={exams.mocks_total}
-            note={exams.last_mock_date ? t('последний {date}', { date: dateOf(exams.last_mock_date) }) : t('не было')}
-          />
+          {/* показатель без числа плиткой не рисуется — как у ученика и учителя */}
+          {exams.ielts_current !== null && (
+            <Kpi label="IELTS" value={exams.ielts_current} note={exams.ielts_target ? t('цель {score}', { score: exams.ielts_target }) : undefined} />
+          )}
+          {exams.sat_current !== null && (
+            <Kpi label="SAT" value={exams.sat_current} note={exams.sat_target ? t('цель {score}', { score: exams.sat_target }) : undefined} />
+          )}
+          {exams.mocks_total > 0 && (
+            <Kpi label={t('Mock Test')} value={exams.mocks_total} note={exams.last_mock_date ? t('последний {date}', { date: dateOf(exams.last_mock_date) }) : undefined} />
+          )}
           <Kpi
             tone={data.documents.missing.length ? 'bad' : 'good'}
             label={t('Документы')}
@@ -684,10 +682,10 @@ export default function CuratorCard() {
                 в боковой трети они не читались (фаза 77). На ноутбуке блок
                 стоит в широкой колонке сеткой в две плитки, как в макете; на телефоне —
                 на прежнем месте в боковой, чтобы порядок карточек не менялся */}
-            {!phone && !junior && <AdmissionBlock block={data.admission} studentId={data.id} className="cadm-tiles" />}
+            {!phone && !junior && <AdmissionBlock block={data.admission} studentId={data.id} className="cadm-tiles" filledOnly />}
 
-            {/* у 8–10 поступления нет: широкая колонка — дисциплина с пропусками */}
-            {junior && <DisciplineBlock card={data} />}
+            {/* у 8–10 поступления нет, у 11 оно бывает коротким: тогда дисциплина — в широкой колонке */}
+            {disciplineLeft && <DisciplineBlock card={data} />}
           </div>
 
           <div className="lay-stack">
@@ -721,9 +719,9 @@ export default function CuratorCard() {
               </DataCard>
             )}
 
-            {phone && !junior && <AdmissionBlock block={data.admission} studentId={data.id} />}
+            {phone && !junior && <AdmissionBlock block={data.admission} studentId={data.id} filledOnly />}
 
-            {!junior && <DisciplineBlock card={data} />}
+            {!disciplineLeft && <DisciplineBlock card={data} />}
 
             <ContactsBlock card={data} />
           </div>

@@ -88,12 +88,13 @@ export default function GradesTab({ studentId }: { studentId: number }) {
           </Button>
         )}
       </div>
+      {/* показатель без числа плиткой не рисуется — как у ученика и учителя */}
       <StatRow>
-        <Kpi label={t('Посещаемость')} value={data.attendance.pct !== null ? `${data.attendance.pct} %` : null} none={t('уроков с отметкой не было')} note={tn(data.attendance.total, '{n} урок|{n} урока|{n} уроков')} />
-        <Kpi label={t('Без причины')} value={data.attendance.absent || null} none={t('нет')} tone={data.attendance.absent ? 'bad' : undefined} action={data.may_excuse && unexcused.length ? { label: t('Оформить'), onClick: () => setExcusing({ from: unexcused[0], to: unexcused[unexcused.length - 1] }) } : undefined} />
-        <Kpi label={t('По уважительной')} value={data.attendance.excused || null} none={t('нет')} />
-        <Kpi label={t('Опоздания')} value={data.attendance.late || null} none={t('нет')} note={lateTotal(data.attendance)} />
-        <HomeworkKpi homework={data.homework} />
+        {data.attendance.pct !== null && <Kpi label={t('Посещаемость')} value={data.attendance.pct !== null ? `${data.attendance.pct} %` : null} note={tn(data.attendance.total, '{n} урок|{n} урока|{n} уроков')} />}
+        {data.attendance.absent > 0 && <Kpi label={t('Без причины')} value={data.attendance.absent || null} tone={data.attendance.absent ? 'bad' : undefined} action={data.may_excuse && unexcused.length ? { label: t('Оформить'), onClick: () => setExcusing({ from: unexcused[0], to: unexcused[unexcused.length - 1] }) } : undefined} />}
+        {data.attendance.excused > 0 && <Kpi label={t('По уважительной')} value={data.attendance.excused || null} />}
+        {data.attendance.late > 0 && <Kpi label={t('Опоздания')} value={data.attendance.late || null} note={lateTotal(data.attendance)} />}
+        {data.homework && data.homework.total > 0 && data.homework.pct !== null && <HomeworkKpi homework={data.homework} />}
       </StatRow>
       <div className="acad__cols">
         <div className="acad__stack">

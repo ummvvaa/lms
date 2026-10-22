@@ -327,12 +327,14 @@ export default function CuratorHome() {
               </DataCard>
             ),
           },
-          ...academics.filter((card) => card.key !== 'today'),
+          // учебные сводки без строк не показываются вовсе: свёрнутые строки «все справляются»
+          // только удлиняли колонку и ничего не говорили
+          ...academics.filter((card) => card.key !== 'today' && !(['academics-trouble', 'homework-behind'].includes(card.key) && card.folded)),
           {
             key: 'journal',
             // у 8–10 нет очереди и задач: широкая колонка короче — журнал встаёт в неё
             column: admission ? 'aside' : 'main',
-            rows: data.journal.length * 1.5,
+            rows: Math.min(data.journal.length, 3) * 1.5,
             folded: data.journal.length === 0,
             node: (
               <DataCard
@@ -340,7 +342,7 @@ export default function CuratorHome() {
                 empty={data.journal.length === 0 && t('пока ничего не менялось')}
               >
                 <Rows>
-                  <ShowAll>
+                  <ShowAll limit={3} to="/journal">
                     {data.journal.map((entry) => (
                       <Row
                         key={entry.id}

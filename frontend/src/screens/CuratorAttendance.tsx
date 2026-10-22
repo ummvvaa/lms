@@ -259,12 +259,17 @@ function Stats({ group }: { group: string }) {
           </span>
         )}
       </div>
-      <StatRow>
-        <Kpi label={t('Средний процент')} value={data.totals.percent === null ? null : `${data.totals.percent} %`} none={t('нет')} note={rows.length ? tn(rows.length, 'по {n} ученику|по {n} ученикам|по {n} ученикам') : undefined} />
-        <Kpi label={t('Дней отмечено')} value={data.totals.days || null} none={t('нет')} />
-        <Kpi label={t('Отсутствий')} value={data.totals.absent || null} none={t('нет')} note={t('за период')} />
-        <Kpi label={t('Опозданий')} value={data.totals.late || null} none={t('нет')} note={t('за период')} />
-      </StatRow>
+      {/* показатель без числа плиткой не рисуется — как у ученика и учителя */}
+      {(data.totals.percent !== null || data.totals.days > 0) && (
+        <StatRow>
+          {data.totals.percent !== null && (
+            <Kpi label={t('Средний процент')} value={`${data.totals.percent} %`} note={rows.length ? tn(rows.length, 'по {n} ученику|по {n} ученикам|по {n} ученикам') : undefined} />
+          )}
+          {data.totals.days > 0 && <Kpi label={t('Дней отмечено')} value={data.totals.days} />}
+          {data.totals.absent > 0 && <Kpi label={t('Отсутствий')} value={data.totals.absent} note={t('за период')} />}
+          {data.totals.late > 0 && <Kpi label={t('Опозданий')} value={data.totals.late} note={t('за период')} />}
+        </StatRow>
+      )}
       <DataCard className={rows.length ? 'card--beam' : undefined} title={t('По ученикам')} count={rows.length || undefined} empty={rows.length === 0 && t('за период отметок не было')}>
         {rows.length > 0 && <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} onRowClick={(row) => setOpened(row.id)} fit={!phone} />}
       </DataCard>

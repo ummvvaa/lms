@@ -3014,19 +3014,24 @@ export function useAchievementRows(studentId: number | null) {
   })
 }
 
-export function useStudentRows(studentId: number | null) {
+/**
+ * Строки ученика для правки за него. `admission` — ведётся ли поступление: у 8–10
+ * вузов, задач плана и эссе нет, и их ручки отвечают 404 (D108) — их не спрашиваем.
+ */
+export function useStudentRows(studentId: number | null, admission = true) {
   return useQuery({
-    queryKey: ['student-rows', studentId],
+    queryKey: ['student-rows', studentId, admission],
     enabled: studentId !== null,
     queryFn: async (): Promise<StudentRowsBundle> => {
       const query = `?student=${studentId}&page_size=200`
+      const none = <T,>(): Promise<Paginated<T>> => Promise.resolve({ count: 0, next: null, previous: null, results: [] })
       const [universities, attempts, activities, competitions, tasks, essays] = await Promise.all([
-        get<Paginated<StudentRowsBundle['universities'][number]>>(`/student-universities/${query}`),
+        admission ? get<Paginated<StudentRowsBundle['universities'][number]>>(`/student-universities/${query}`) : none<StudentRowsBundle['universities'][number]>(),
         get<Paginated<Attempt>>(`/attempts/${query}`),
         get<Paginated<StudentRowsBundle['activities'][number]>>(`/activities/${query}`),
         get<Paginated<StudentRowsBundle['competitions'][number]>>(`/competitions/${query}`),
-        get<Paginated<Task>>(`/tasks/${query}`),
-        get<Paginated<Essay>>(`/essays/${query}`),
+        admission ? get<Paginated<Task>>(`/tasks/${query}`) : none<Task>(),
+        admission ? get<Paginated<Essay>>(`/essays/${query}`) : none<Essay>(),
       ])
       return {
         universities: universities.results,

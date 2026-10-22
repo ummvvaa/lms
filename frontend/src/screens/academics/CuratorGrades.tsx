@@ -104,11 +104,14 @@ export default function CuratorGrades() {
       />
       {switcher}
       {phone && <div className="acad__toolbar">{periods}</div>}
+      {/* показатель без числа плиткой не рисуется — как у ученика и учителя */}
+      {(data.kpis.attendance !== null || data.kpis.risk > 0 || data.kpis.absent > 0) && (
       <StatRow>
-        <Kpi label={t('Посещаемость')} value={data.kpis.attendance !== null ? `${data.kpis.attendance} %` : null} none={t('нет данных')} />
-        <Kpi label={t('Двойка в прогнозе')} value={data.kpis.risk || null} none={t('нет')} tone={data.kpis.risk ? 'bad' : undefined} note={plural(data.kpis.risk, 'ученик|ученика|учеников')} />
-        <Kpi label={t('Пропуски без причины')} value={data.kpis.absent || null} none={t('нет')} action={data.kpis.absent ? { label: t('Оформить'), to: '/attendance' } : undefined} />
+        {data.kpis.attendance !== null && <Kpi label={t('Посещаемость')} value={`${data.kpis.attendance} %`} />}
+        {data.kpis.risk > 0 && <Kpi label={t('Двойка в прогнозе')} value={data.kpis.risk} tone={data.kpis.risk ? 'bad' : undefined} note={plural(data.kpis.risk, 'ученик|ученика|учеников')} />}
+        {data.kpis.absent > 0 && <Kpi label={t('Пропуски без причины')} value={data.kpis.absent} action={data.kpis.absent ? { label: t('Оформить'), to: '/attendance' } : undefined} />}
       </StatRow>
+      )}
       <div className="lay-main">
         <DataCard className="card--beam" title={t('{group} · по ученикам', { group: picked })} count={data.rows.length}>
           <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={(row) => navigate(`/students/${row.id}?tab=grades`)} fit />

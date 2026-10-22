@@ -70,6 +70,19 @@ export function QueueRow({
       },
     )
 
+  const flags = (
+    <>
+      {row.divergence >= 0.2 && <Chip tone="warn">{t('сильно расходится')}</Chip>}
+      {/* порог скачка считает сервер: у куратора и у владельца домена
+          «резкий скачок» обязан значить одно и то же (фаза 61) */}
+      {row.sharp_jump && <Chip tone="bad">{t('резкий скачок')}</Chip>}
+      {row.document && <Chip tone="neutral">{t('документ')}</Chip>}
+      {person && !row.document && <Chip tone="accent">{t('балл')}</Chip>}
+      {/* переданное куратором — у владельца домена сверху, с его именем и словами (фаза 62) */}
+      {row.escalated && <Chip tone="neutral">{t('от куратора {name}', { name: row.escalated_by_name })}</Chip>}
+    </>
+  )
+
   return (
     <div className="squeue__row" data-suggestion={row.id}>
       {onCheck && (
@@ -86,20 +99,14 @@ export function QueueRow({
           {row.student_group && <Chip tone="neutral">{row.student_group}</Chip>}
           {/* время подачи своим элементом: эталоны раскладки маскируют
               именно его — оно настоящее и меняется каждым прогоном */}
-          <span className="muted squeue__when"> · {formatDateTime(row.created_at)}</span>
-          {row.divergence >= 0.2 && <Chip tone="warn">{t('сильно расходится')}</Chip>}
-          {/* порог скачка считает сервер: у куратора и у владельца домена
-              «резкий скачок» обязан значить одно и то же (фаза 61) */}
-          {row.sharp_jump && <Chip tone="bad">{t('резкий скачок')}</Chip>}
-          {row.document && <Chip tone="neutral">{t('документ')}</Chip>}
-          {person && !row.document && <Chip tone="accent">{t('балл')}</Chip>}
-          {/* переданное куратором — у владельца домена сверху, с его именем и словами (фаза 62) */}
-          {row.escalated && (
-            <Chip tone="neutral">
-              {t('от куратора {name}', { name: row.escalated_by_name })}
-            </Chip>
-          )}
+          <span className="muted squeue__when" title={formatDateTime(row.created_at)}>
+            {' · '}
+            {formatDateTime(row.created_at)}
+          </span>
+          {/* у куратора признаки — второй строкой: имя, группа и дата остаются в одной линии */}
+          {!person && flags}
         </div>
+        {person && <div className="squeue__flags">{flags}</div>}
         {row.escalated && row.escalation_comment && (
           <p className="muted squeue__change">«{row.escalation_comment}»</p>
         )}
