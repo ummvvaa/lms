@@ -44,9 +44,15 @@ const SHOTS: {
     screen: "/import",
     name: "admin_import_admission_rows",
     prepare: async (page) => {
-      // загрузки списков и справочников — вторая вкладка за мастером
-      await page.getByRole("tab", { name: "Списки и справочники" }).click();
-      await page.getByRole("tab", { name: "Требования вузов" }).click();
+      // загрузки списков и справочников — вторая вкладка за мастером; вид
+      // загрузки выбирается кнопкой «Выбрать» в своей строке, своей вкладки
+      // у него нет. Время на клик ограничено: пропавшая кнопка не должна
+      // съедать весь срок снимка
+      await page.getByRole("tab", { name: "Списки и справочники" }).click({ timeout: 10_000 });
+      await page
+        .locator(".rowline", { hasText: "Требования вузов" })
+        .getByRole("button", { name: "Выбрать" })
+        .click({ timeout: 10_000 });
       await page.waitForTimeout(300);
     },
   },
@@ -82,6 +88,9 @@ for (const size of SIZES) {
       await page.goto(shot.screen);
       await page.waitForLoadState("networkidle").catch(() => undefined);
       await page.waitForTimeout(400);
+      // подготовка снимка — клики по экрану; пропавшая кнопка должна упасть
+      // за десять секунд, а не ждать весь срок теста
+      page.setDefaultTimeout(10_000);
       if (shot.prepare) await shot.prepare(page);
       await page.screenshot({
         path: path.join(DIR, size.name, `${shot.name}.png`),

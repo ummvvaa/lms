@@ -264,9 +264,9 @@ test("на 1280 телефон и показанный пароль читают
     await settle(page);
 
     if (role === "curator") {
-      // у куратора блок стоит в широкой колонке, боковая треть его не вмещала
-      await expect(page.locator(".cgrid__main .cadm")).toHaveCount(1);
-      await expect(page.locator(".cgrid__side .cadm")).toHaveCount(0);
+      // у куратора блок стоит в широкой колонке плитками, боковая треть его не вмещала
+      await expect(page.locator(".lay-main > :nth-child(1) .cadm-tiles .cadm")).toHaveCount(1);
+      await expect(page.locator(".lay-main > :nth-child(2) .cadm")).toHaveCount(0);
     }
 
     const phone = line(page, "Номер телефона").locator(".cadm__text");

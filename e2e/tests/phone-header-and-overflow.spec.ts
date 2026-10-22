@@ -380,14 +380,15 @@ test("«Пользователи»: строка в две линии, дейс�
     PHONE.width,
   );
   expect(wide).toBeLessThanOrEqual(0);
-  // главное действие остаётся в строке и на телефоне, остальное — в меню «Ещё»
-  await expect(
-    first.getByRole("button", { name: "Выдать пароль" }),
-  ).toHaveCount(1);
+  // в строке одна кнопка на виду и на телефоне — «…»: у человека с паролем
+  // «Выдать пароль» стоит первым пунктом меню, на виду она только у тех,
+  // кто без неё не войдёт (пароля нет или он сгорел)
+  await expect(first.locator("button:visible")).toHaveCount(1);
+  await expect(first.locator(".rowmenu__button")).toBeVisible();
 
   await first.locator(".rowmenu__button").click();
   const menu = page.locator(".rowmenu__panel");
-  for (const label of ["Изменить", "Удалить"])
+  for (const label of ["Выдать пароль", "Изменить", "Удалить"])
     await expect(menu.getByRole("menuitem", { name: label })).toBeVisible();
   await expect(
     menu.getByRole("menuitem", { name: /видит всю школу/i }),

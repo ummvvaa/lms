@@ -40,7 +40,14 @@ test("«Учителя»: физрук во вкладке «Только рас
 }) => {
   const admin = await as(browser, "admin");
   const diag = watch(admin);
+  // экран строится по списку учителей: ждём его ответа, а не вкладок
+  // загрузочного вида — на медленном контуре вкладки ещё не нарисованы
+  const loaded = admin.waitForResponse(
+    (r) => new URL(r.url()).pathname === "/api/acad/teachers/" && r.request().method() === "GET",
+    { timeout: 30_000 },
+  );
   await admin.goto("/teachers");
+  expect((await loaded).status()).toBe(200);
   await expect(admin.getByRole("tab", { name: /Ведут в LMS/ })).toBeVisible();
   // учителя предметов LMS — в первой вкладке, физрука среди них нет
   await expect(admin.locator("body")).toContainText("Прогон Профориентатор");
@@ -85,7 +92,13 @@ test("«Учителя»: физрук во вкладке «Только рас
 test("«Учебный год» → «Предметы»: признаки, режим SAT, переключатель пишет на сервер", async ({ browser }) => {
   const kymbat = await as(browser, "director_exam");
   const diag = watch(kymbat);
+  // предметы приходят вместе с учебным годом: ждём его ответа до проверок карточки
+  const loaded = kymbat.waitForResponse(
+    (r) => new URL(r.url()).pathname === "/api/acad/year/" && r.request().method() === "GET",
+    { timeout: 30_000 },
+  );
   await kymbat.goto("/academic-year");
+  expect((await loaded).status()).toBe(200);
   const card = kymbat.locator(".datacard", { hasText: "Предметы" }).first();
   await expect(card).toBeVisible();
   await expect(card).toContainText(/ведутся в LMS: \d+ из \d+/);

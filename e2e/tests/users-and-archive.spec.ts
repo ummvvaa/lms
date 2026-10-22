@@ -46,19 +46,23 @@ test("пользователи: учитель заводится в окне, �
   await admin.keyboard.press("Escape");
   await expect(admin.getByText("Ссылка на установку пароля")).toHaveCount(0);
 
-  // фильтр по роли сужает таблицу до учителей
-  await admin.locator(".acad__toolbar").getByLabel("Роль", { exact: true }).selectOption("teacher");
+  // фильтр по роли сужает таблицу до учителей; фильтры — строкой над таблицей
+  await admin.locator(".filters").getByLabel("Роль", { exact: true }).selectOption("teacher");
   await expect(admin).toHaveURL(/role=teacher/);
   const rows = admin.locator("table.tbl tbody tr");
   await expect(rows.filter({ hasText: TEACHER })).toHaveCount(1);
   // роль с 11.10.2026 — подписью под именем, а не выпадающим списком
   await expect(rows.filter({ hasText: "@" }).filter({ hasNotText: "Учитель" })).toHaveCount(0);
 
-  // пароль выдаётся из строки и показывается один раз
+  // пароль выдаётся из строки и показывается один раз. Заведённому учителю
+  // ссылка уже выдана, поэтому «Выдать пароль» у него — пунктом меню строки,
+  // кнопка на виду только у тех, у кого пароля нет или он сгорел
+  const teacherRow = rows.filter({ hasText: TEACHER });
+  await teacherRow.getByRole("button", { name: "Ещё действия" }).click();
   const issued = admin.waitForResponse(
     (r) => r.url().includes("/temp-password/") && r.request().method() === "POST",
   );
-  await rows.filter({ hasText: TEACHER }).getByRole("button", { name: "Выдать пароль" }).click();
+  await admin.getByRole("menuitem", { name: "Выдать пароль" }).click();
   expect((await issued).status()).toBe(200);
   await expect(admin.getByRole("dialog")).toContainText("Временный пароль");
   expect(diag.consoleErrors, "ошибки в консоли").toEqual([]);
