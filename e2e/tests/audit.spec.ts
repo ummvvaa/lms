@@ -71,7 +71,7 @@ const NO_REQUEST_EXPECTED: { match: RegExp; why: string }[] = [
   { match: /^Загрузить файл/, why: "открывает системный диалог выбора файла" },
   {
     match: /^Выбрать файл$/,
-    why: "открывает системный диалог выбора файла (помощник администратора, фаза 35)",
+    why: "открывает системный диалог выбора файла",
   },
   {
     match: /^Привязать$/,
@@ -94,8 +94,6 @@ const ROUTES = [
   "/onboarding",
   "/prep",
   "/table",
-  "/assistant",
-  "/digest",
   "/import",
   "/essays",
   "/my-data",

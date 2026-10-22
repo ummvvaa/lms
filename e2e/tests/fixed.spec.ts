@@ -38,59 +38,6 @@ test.describe("B1 · запись из браузера проходит", () =>
   });
 });
 
-test.describe("B4 · помощник: каждая кнопка что-то делает", () => {
-  test.use({ storageState: statePath("director_admission") });
-
-  test("команды — строки с настоящей кнопкой, а не карточки", async ({ page }) => {
-    await page.goto("/assistant");
-    const rows = page.locator(".rowline--link");
-    await expect(rows.first()).toBeVisible();
-    const count = await rows.count();
-    expect(count).toBeGreaterThan(0);
-    for (let i = 0; i < count; i += 1) {
-      await expect(rows.nth(i)).toHaveJSProperty("tagName", "BUTTON");
-    }
-  });
-
-  test("«Дайджест на сегодня» уводит на дайджест", async ({ page }) => {
-    await page.goto("/assistant");
-    // с фазы 33 на виду две главные кнопки роли, остальные — за «Ещё действия»
-    const more = page.getByRole("button", { name: /Ещё действия/ });
-    // кнопки появляются после ответа реестра команд — ждём, а не проверяем сразу
-    await more.waitFor({ state: "visible", timeout: 10_000 }).catch(() => {});
-    if (await more.count()) await more.click();
-    await page.getByRole("button", { name: /Дайджест на сегодня/ }).click();
-    await page.waitForURL(/\/digest/);
-  });
-
-  test("«Проверить баланс списка» считает по выбранному ученику", async ({
-    page,
-  }) => {
-    const diag = watch(page);
-    await page.goto("/assistant");
-    await page.getByRole("button", { name: /Проверить баланс списка/ }).click();
-
-    const list = await (
-      await page.request.get("/api/students/?page_size=1")
-    ).json();
-    await page
-      .locator("select")
-      .first()
-      .selectOption(String(list.results[0].id));
-
-    await expect
-      .poll(() =>
-        diag.calls.some(
-          (c) => c.url.includes("/api/match/list-balance/") && c.status === 200,
-        ),
-      )
-      .toBe(true);
-    await expect(page.locator(".card").last()).toContainText(
-      /reach|Список пуст/,
-    );
-  });
-});
-
 test.describe("I2 · предложения живут дольше одной вкладки", () => {
   test.use({ storageState: statePath("director_exam") });
 

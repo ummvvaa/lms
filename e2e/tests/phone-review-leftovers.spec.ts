@@ -5,15 +5,13 @@
  *
  * 1. Вкладки: лента начинается с первой вкладки, активная видна; плашка
  *    не тянет страницу вбок (очередь куратора).
- * 2. Помощник: на телефоне герб в шапке, плавающей кнопки нет; окно
- *    открывается из шапки.
- * 3. «Мои документы» у ученика: названия видны; «Профтест» открывается списком тестов;
+ * 2. «Мои документы» у ученика: названия видны; «Профтест» открывается списком тестов;
  *    у Салтанат в таблице подпись статуса, а не код.
- * 4. Очередь на дашборде директора не выше кураторской плотности.
- * 5. Панели фильтров свёрнуты в строку и раскрываются; «Действия» ради
+ * 3. Очередь на дашборде директора не выше кураторской плотности.
+ * 4. Панели фильтров свёрнуты в строку и раскрываются; «Действия» ради
  *    одного пункта нет — вторая кнопка остаётся кнопкой.
- * 6. Цели касания не меньше 44 px: меню строки, малые кнопки, «подробнее».
- * 7. Обрыв связи: экран с сообщением и «Повторить», а не пустота.
+ * 5. Цели касания не меньше 44 px: меню строки, малые кнопки, «подробнее».
+ * 6. Обрыв связи: экран с сообщением и «Повторить», а не пустота.
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
@@ -81,28 +79,6 @@ test("вкладки начинаются с первой, активная ви
   await settle(curator);
   expect(await docWidth(curator), "журнал не шире экрана").toBeLessThanOrEqual(PHONE.width);
   await curator.context().close();
-});
-
-test("помощник на телефоне — в шапке, плавающей кнопки нет", async ({ browser }) => {
-  const page = await as(browser, "director_exam");
-  const diag = watch(page);
-  await page.goto("/dashboard");
-  await settle(page);
-  await expect(page.locator(".aw__fab")).toHaveCount(0);
-  const button = page.locator(".shell__assistbtn");
-  await expect(button).toBeVisible();
-  const box = await button.boundingBox();
-  expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
-  await button.click();
-  await expect(page.locator(".aw")).toBeVisible();
-  await expect(page.locator(".aw__title")).toHaveText("Помощник");
-  // запас снизу — только под бар: кнопки больше нет
-  const pad = await page
-    .locator(".shell__screen")
-    .evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
-  expect(pad).toBeLessThan(120);
-  expect(diag.pageErrors, "исключения").toEqual([]);
-  await page.context().close();
 });
 
 test("названия документов, профтест списком тестов, статус подписью", async ({ browser }) => {

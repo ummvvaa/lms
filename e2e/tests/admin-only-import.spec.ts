@@ -1,5 +1,5 @@
 /**
- * Файлы грузит только администратор: импорт, история загрузок, вставка текста и таблица быстрого ввода после переноса загрузок администратору.
+ * Файлы грузит только администратор: импорт, история загрузок и таблица быстрого ввода после переноса загрузок администратору.
  *
  * Узкая проверка по заданию: экраны, которых касается фаза, под
  * администратором и двумя директорами. Академический директор: «Импорт»
@@ -8,8 +8,7 @@
  * администратора. Директор спорта: ни пункта «Импорт», ни экрана, ни кнопки
  * «История загрузок». Администратор: выбор
  * домена → файл → предпросмотр → применение, запись в журнале помечена
- * доменом. Вставка текста: у администратора с выбором домена, у директора
- * без. Таблица быстрого ввода: Tab, вставка прямоугольником, растягивание,
+ * доменом. Таблица быстрого ввода: Tab, вставка прямоугольником, растягивание,
  * отмена, отказ по ячейке без потери остального.
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
@@ -262,54 +261,6 @@ test("директор видит загрузку администратора 
   // отмена возвращает прежнее значение — каким бы оно ни было (D40)
   expect(profile.ielts_current).toBe(previous);
   await page.context().close();
-});
-
-test("вставка текста: администратор выбирает домен, директору выбирать нечего", async ({
-  browser,
-}) => {
-  const admin = await as(browser, "admin");
-  const list = await students(admin);
-  const person = list[1];
-  const text = `${person.full_name} — 6.5`;
-
-  await admin.goto("/assistant?panel=paste_as_is");
-  await expect(admin.getByLabel("Домен", { exact: true })).toBeVisible();
-  await admin.locator("textarea").fill(text);
-  // без домена разбор не уходит
-  await admin.getByRole("button", { name: "Разобрать" }).click();
-  await expect(admin.getByText("Сначала выберите домен")).toBeVisible();
-  await admin.getByLabel("Домен", { exact: true }).selectOption("exam");
-  await Promise.all([
-    admin.waitForResponse(
-      (r) => r.url().includes("/api/commands/paste/") && r.status() === 202,
-    ),
-    admin.getByRole("button", { name: "Разобрать" }).click(),
-  ]);
-  await expect(admin.getByText(/Разобрано строк/)).toBeVisible({
-    timeout: 30_000,
-  });
-  const latest = await (
-    await admin.request.get("/api/suggestions/?ordering=-id")
-  ).json();
-  const rows = latest.results ?? latest;
-  const mine = rows.find((s: { role: string }) => s.role === "admin");
-  expect(mine.domain_code).toBe("exam");
-  await admin.context().close();
-
-  const director = await as(browser, "director_exam");
-  await director.goto("/assistant?panel=paste_as_is");
-  await expect(director.getByLabel("Домен", { exact: true })).toHaveCount(0);
-  await director.locator("textarea").fill(text);
-  await Promise.all([
-    director.waitForResponse(
-      (r) => r.url().includes("/api/commands/paste/") && r.status() === 202,
-    ),
-    director.getByRole("button", { name: "Разобрать" }).click(),
-  ]);
-  await expect(director.getByText(/Разобрано строк/)).toBeVisible({
-    timeout: 30_000,
-  });
-  await director.context().close();
 });
 
 test("таблица: Tab, вставка прямоугольником, растягивание, отмена, отказ по ячейке", async ({

@@ -1,6 +1,6 @@
 /**
  * Кабинет ученика 8–10: вход логином, меню без поступления, главная
- * про учёбу, олимпиады и спорт, помощник про учёбу, личная почта.
+ * про учёбу, олимпиады и спорт, личная почта.
  * Профтест с 08.10.2026 открыт всем параллелям — кто проходит, решает учитель.
  *
  * Ученик прогона без почты — `probe_junior` (заводит create_probe_users),
@@ -86,20 +86,6 @@ test("олимпиады: запись уходит на проверку и в�
   await page.goto("/sport");
   await expect(page.locator("h1")).toContainText("Спорт");
   await expect(page.locator(".datacard", { hasText: "Соревнования" }).first()).toBeVisible();
-  await page.context().close();
-});
-
-test("помощник: кнопки про учёбу, ответ без поступления", async ({ browser }) => {
-  const page = await asJunior(browser);
-  await page.getByRole("button", { name: "Открыть помощника" }).first().click();
-  const quick = page.locator(".aw__quick");
-  for (const button of ["Что у меня на этой неделе", "Как подтянуть предмет", "Как считается итог четверти", "План подготовки к СОЧ"])
-    await expect(quick, `кнопка «${button}»`).toContainText(button);
-  await expect(quick).not.toContainText("вуз");
-  const answered = page.waitForResponse((r) => r.url().includes("/api/assistant/ask/"));
-  await quick.getByRole("button", { name: "Как считается итог четверти" }).click();
-  expect((await answered).status()).toBe(200);
-  await expect(page.locator(".aw")).toContainText("вес");
   await page.context().close();
 });
 

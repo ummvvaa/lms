@@ -19,9 +19,7 @@ const SCREENS: Record<string, string[]> = {
   director_behavior: [
     "/dashboard",
     "/table",
-    "/assistant",
     "/suggestions",
-    "/digest",
     "/task-templates",
     "/groups",
     "/contacts",
@@ -44,7 +42,6 @@ const SCREENS: Record<string, string[]> = {
     "/dashboard",
     "/table",
     "/import",
-    "/digest",
     "/top30",
     "/mocks",
   ],
@@ -129,7 +126,7 @@ for (const [role, screens] of Object.entries(SCREENS)) {
         try {
           for (const screen of screens) {
             await page.goto(screen);
-            // предел: экран с медленной ручкой (дайджест, D106) иначе съедает весь тест
+            // предел: экран с медленной ручкой иначе съедает весь тест
             await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
             await page.waitForTimeout(400);
             const name = `${role}${screen.replace(/\//g, "_").replace(/[?=]/g, "-")}.png`;

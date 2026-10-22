@@ -6,7 +6,7 @@
  * причина не найдена, снимок помечен и оставлен (отчёт серии 12.10).
  *
  * Узкий набор по заданию: импорт администратора (мастер с файлом-списком),
- * история загрузок и таблица директора, помощник с выбором домена,
+ * история загрузок и таблица директора,
  * соревнования и контакты без кнопки загрузки. Полный набор всех экранов
  * снимает `shots.spec.ts`.
  */
@@ -50,18 +50,8 @@ const SHOTS: {
       await page.waitForTimeout(300);
     },
   },
-  {
-    role: "admin",
-    screen: "/assistant?panel=paste_as_is",
-    name: "admin_assistant_paste",
-  },
   { role: "director_exam", screen: "/import", name: "exam_uploads" },
   { role: "director_exam", screen: "/table", name: "exam_table" },
-  {
-    role: "director_exam",
-    screen: "/assistant?panel=paste_as_is",
-    name: "exam_assistant_paste",
-  },
   {
     role: "director_sport",
     screen: "/competitions",

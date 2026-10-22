@@ -56,7 +56,7 @@ const PHONE_SHOTS: Record<string, string[]> = {
     "/catalog",
     "/career",
   ],
-  director_exam: ["/dashboard", "/table", "/suggestions", "/digest"],
+  director_exam: ["/dashboard", "/table", "/suggestions"],
   director_admission: ["/dashboard", "/table"],
   director_behavior: ["/dashboard", "/table"],
   director_talent: ["/dashboard", "/table"],
