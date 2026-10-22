@@ -62,3 +62,31 @@
 .sched__pairs > .datacard {
   margin: 0;
 }
+
+/* расписание учителя: полоса урока одной строкой с кнопкой в конце,
+   стрелки недели в шапке — высотой кнопок ряда */
+@media (min-width: 760px) {
+  .stusch__now.tsched__now {
+    flex-wrap: nowrap;
+  }
+
+  /* строка урока — целиком, сжимается полоса */
+  .tsched__now .stusch__now-what {
+    flex: 0 0 auto;
+    max-width: 70%;
+  }
+
+  .tsched__now .stusch__now-bar {
+    flex: 1 1 0;
+    min-width: calc(var(--space) * 16);
+  }
+
+  .tsched__now > [data-slot='button'] {
+    flex: none;
+  }
+}
+
+.tsched .head__actions .wknav__group [data-size='icon-sm'] {
+  width: var(--control-h);
+  height: var(--control-h);
+}
