@@ -1,0 +1,50 @@
+/* Вход по макету Login.dc.html: знак 64, под ним название; от бренда до
+   карточки 28, в карточке поля и кнопка через 16, поля карточки 28;
+   «Забыли пароль?» сразу под кнопкой, «Я выпускник» — мелко под карточкой.
+   Классы `login__card`, `login__title` делят экраны смены пароля, поэтому
+   правила здесь — только внутри `.login`. */
+.login {
+  gap: calc(var(--space) * 7);
+}
+
+.login .login__logo {
+  height: calc(var(--space) * 16);
+}
+
+.login .login__card {
+  padding: calc(var(--space) * 7);
+}
+
+.login .login__form {
+  gap: calc(var(--space) * 4);
+}
+
+.login .login__links {
+  margin-top: calc(var(--space) * 2);
+}
+
+/* ссылка выпускника на полотне — над фоном со сферами */
+body [data-slot='button'][data-variant].login__grad {
+  position: relative;
+  z-index: 1;
+  margin-top: calc(var(--space) * -4);
+  white-space: nowrap;
+}
+
+@media (max-width: 759px) {
+  .login {
+    gap: calc(var(--space) * 5);
+  }
+
+  .login .login__logo {
+    height: calc(var(--space) * 12);
+  }
+
+  .login .login__card {
+    padding: calc(var(--space) * 6);
+  }
+
+  body [data-slot='button'][data-variant].login__grad {
+    margin-top: calc(var(--space) * -2);
+  }
+}

@@ -3,7 +3,9 @@
  *
  * Отметка открывает ученику раздел материалов, снятие — закрывает.
  * Правка идёт через журнал изменений, как любое доменное поле.
- * Слева таблица учеников с кнопкой в строке, справа — кто уже в группе.
+ * Раскладка — по образцу макетов Table и Cohorts: шапка с числом в группе
+ * подписью, ряд фильтров во всю ширину, ниже две трети — таблица учеников
+ * с кнопкой в строке, треть — кто уже в группе.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -11,11 +13,12 @@ import { useOlympiadGroup, usePickForGroup, type GroupRow } from '../api/hooks'
 import DataTable, { type Column } from '../components/DataTable'
 import Field from '../components/Field'
 import PhoneFold from '../components/PhoneFold'
-import { Row, Rows, ShowAll } from '../components/patterns'
-import { counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
+import { Avatar, Row, Rows, ShowAll } from '../components/patterns'
+import { Chip, counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
 import './academics/academics.css'
+import './olympiad-group.css'
 
 export default function OlympiadGroup() {
   const [query, setQuery] = useState('')
@@ -39,8 +42,25 @@ export default function OlympiadGroup() {
     )
 
   const columns: Column<GroupRow>[] = [
-    { key: 'name', title: t('Ученик'), width: '40%', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
-    { key: 'group', title: t('Группа'), width: '16%', cell: (row) => row.group || <span className="t-note">{t('без группы')}</span>, sortBy: (row) => row.group },
+    {
+      key: 'name',
+      title: t('Ученик'),
+      width: '38%',
+      cell: (row) => (
+        <span className="personcell">
+          <Avatar name={row.full_name} />
+          <b>{row.full_name}</b>
+        </span>
+      ),
+      sortBy: (row) => row.full_name,
+    },
+    {
+      key: 'group',
+      title: t('Группа'),
+      width: '20%',
+      cell: (row) => (row.group ? <Chip tone="neutral" size="sm" className="olymp__group">{row.group}</Chip> : <span className="t-note">{t('без группы')}</span>),
+      sortBy: (row) => row.group,
+    },
     {
       key: 'materials',
       title: t('Материалов'),
@@ -52,7 +72,7 @@ export default function OlympiadGroup() {
     {
       key: 'pick',
       title: '',
-      width: '24%',
+      width: '22%',
       align: 'right',
       cell: (row) => (
         <Button variant={row.in_group ? 'outline' : 'secondary'} size="sm" disabled={pick.isPending} onClick={() => toggle(row)}>
@@ -65,21 +85,19 @@ export default function OlympiadGroup() {
 
   return (
     <div>
-      <ScreenHead
-        title={t('Олимпиадная группа')}
-        pills={list.data?.members ? [{ label: `${t('В группе')}: ${list.data.members}` }] : undefined}
-      />
+      <ScreenHead title={t('Олимпиадная группа')} subtitle={`${t('В группе')}: ${list.data?.members ?? 0}`} />
 
-      <div className="acad__cols">
-        <div className="acad__stack">
-          <PhoneFold active={filtered}>
-            <div className="acad__toolbar">
-              <Field usageFilter name="q" label={t('Поиск')} value={query} placeholder={t('Фамилия или имя')} onChange={setQuery} />
-              {/* школа ведёт только выпускников: делим по группам, класса в фильтре нет */}
-              <Field usageFilter kind="select" name="group" label={t('Группа')} value={group} onChange={setGroup} options={[{ value: '', title: t('все группы') }, ...(list.data?.groups ?? []).map((code) => ({ value: code, title: code }))]} />
-              <Field usageFilter kind="checkbox" name="members" label={t('только те, кто в группе')} checked={onlyMembers} onChange={setOnlyMembers} />
-            </div>
-          </PhoneFold>
+      <div className="lay-screen">
+        <PhoneFold active={filtered}>
+          <div className="filters">
+            <Field usageFilter className="filters__search" name="q" label={t('Поиск')} value={query} placeholder={t('Фамилия или имя')} onChange={setQuery} />
+            {/* школа ведёт только выпускников: делим по группам, класса в фильтре нет */}
+            <Field usageFilter kind="select" name="group" label={t('Группа')} value={group} onChange={setGroup} options={[{ value: '', title: t('все группы') }, ...(list.data?.groups ?? []).map((code) => ({ value: code, title: code }))]} />
+            <Field usageFilter className="filters__end" kind="checkbox" name="members" label={t('только те, кто в группе')} checked={onlyMembers} onChange={setOnlyMembers} />
+          </div>
+        </PhoneFold>
+
+        <div className="lay-main">
           <DataCard
             title={t('Ученики')}
             count={rows.length || undefined}
@@ -102,9 +120,7 @@ export default function OlympiadGroup() {
           >
             <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} />
           </DataCard>
-        </div>
-        <div className="acad__stack">
-          <DataCard title={t('Кто в группе')} count={inGroup.length || undefined} empty={inGroup.length === 0 && t('пока никого — отметьте первого')}>
+          <DataCard className="olymp__members" title={t('Кто в группе')} count={inGroup.length || undefined} empty={inGroup.length === 0 && t('пока никого — отметьте первого')}>
             <Rows>
               <ShowAll>
                 {inGroup.map((row) => (

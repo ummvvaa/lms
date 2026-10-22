@@ -1,0 +1,17 @@
+/* Олимпиадная группа по образцу макетов Table и Cohorts: код группы — чипом
+   и целиком, без многоточия посреди кода. */
+[data-slot='badge'].olymp__group {
+  white-space: nowrap;
+}
+
+.lay-main > .datacard {
+  min-width: 0;
+}
+
+/* в один столбец «Кто в группе» встаёт над таблицей: под длинным списком
+   учеников его не найти */
+@media (max-width: 1100px) {
+  .lay-main > .olymp__members {
+    order: -1;
+  }
+}

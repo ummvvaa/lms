@@ -4,6 +4,10 @@
  * Библиотека, свои загрузки, запросы, подборки и — у директора талантов —
  * очередь проверки. Ученик вне олимпиадной группы сюда не попадает: сервер
  * отвечает 404 на всё, а маршрут закрыт в `App.tsx` (фаза 19).
+ *
+ * Своего макета у экрана нет — раскладка по образцу макета Archive: шапка,
+ * вкладки, ряд фильтров без карточки, ниже карточка с заголовком и числом,
+ * в ней список. Однотипные карточки (подборки, очередь) — сеткой по две.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -24,9 +28,11 @@ import Empty from '../components/Empty'
 import MaterialCard from '../components/MaterialCard'
 import { Chip, counted, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../components/ui'
 import './materials.css'
+import './materials-layout.css'
 import { t, tk } from '../i18n'
 import { SelectField } from '../components/SelectField'
 import { Input } from '../components/ui/input'
+import Field from '../components/Field'
 import { Checkbox } from '../components/ui/checkbox'
 import { Button } from '../components/ui/button'
 import { Row, Rows } from '../components/patterns'
@@ -105,12 +111,6 @@ export default function Materials() {
         }
       />
 
-      {flash && (
-        <Chip tone="good" className="mat__flash">
-          {flash}
-        </Chip>
-      )}
-
       {/* вкладки раздела — тот же ряд, что на остальных экранах,
           а не ряд кнопок: у вкладок подложка переезжает */}
       <ScreenTabs
@@ -132,78 +132,87 @@ export default function Materials() {
         }))}
       />
 
-      {current === 'library' && (
-        <>
-          <div className="card card-pad mat__filters">
-            <Input
-              usageFilter
-              placeholder={t('Поиск по названию и теме')}
-              value={query}
-              aria-label={t('Поиск материалов')}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-            <SelectField
-              usageFilter
-              value={subject}
-              aria-label={t('Предмет')}
-              onChange={(event) => setSubject(event.target.value)}
-            >
-              <option value="">{t('все предметы')}</option>
-              {(subjects.data?.results ?? []).map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.name}
-                </option>
-              ))}
-            </SelectField>
-          </div>
-          <MaterialGrid
-            rows={library.data?.results ?? []}
-            loading={library.isLoading}
-            onOpen={(row) => navigate(`/materials/${row.id}`)}
-            empty={
-              <Empty
-                icon="openbook"
-                title={t('Библиотека пуста')}
-                what={t(
-                  'Здесь появятся разборы и решения, которые ребята выложили и которые прошли проверку. Начните со своего: то, что вы разобрали для себя, обычно нужно ещё пятерым.',
-                )}
-                action={t('Выложить материал')}
-                onAction={() => setTab('mine')}
+      <div className="lay-screen">
+        {flash && (
+          <Chip tone="good" className="mat__flash">
+            {flash}
+          </Chip>
+        )}
+
+        {current === 'library' && (
+          <>
+            <div className="filters">
+              <Field
+                usageFilter
+                className="filters__search"
+                name="q"
+                label={t('Поиск материалов')}
+                placeholder={t('Поиск по названию и теме')}
+                value={query}
+                onChange={setQuery}
               />
-            }
+              <Field
+                usageFilter
+                kind="select"
+                name="subject"
+                label={t('Предмет')}
+                value={subject}
+                onChange={setSubject}
+                options={[{ value: '', title: t('все предметы') }, ...(subjects.data?.results ?? []).map((row) => ({ value: String(row.id), title: row.name }))]}
+              />
+            </div>
+            <MaterialGrid
+              title={t('Библиотека')}
+              rows={library.data?.results ?? []}
+              loading={library.isLoading}
+              onOpen={(row) => navigate(`/materials/${row.id}`)}
+              empty={
+                <Empty
+                  icon="openbook"
+                  title={t('Библиотека пуста')}
+                  what={t(
+                    'Здесь появятся разборы и решения, которые ребята выложили и которые прошли проверку. Начните со своего: то, что вы разобрали для себя, обычно нужно ещё пятерым.',
+                  )}
+                  action={t('Выложить материал')}
+                  onAction={() => setTab('mine')}
+                />
+              }
+            />
+          </>
+        )}
+
+        {current === 'mine' && (
+          <MyMaterials
+            onDone={(text) => {
+              setFlash(text)
+              setTab('mine')
+            }}
+            onOpen={(row) => navigate(`/materials/${row.id}`)}
           />
-        </>
-      )}
+        )}
 
-      {current === 'mine' && (
-        <MyMaterials
-          onDone={(text) => {
-            setFlash(text)
-            setTab('mine')
-          }}
-          onOpen={(row) => navigate(`/materials/${row.id}`)}
-        />
-      )}
+        {current === 'requests' && <Requests />}
 
-      {current === 'requests' && <Requests />}
+        {current === 'collections' && (
+          <Collections isCurator={isCurator} onOpen={(row) => navigate(`/materials/${row.id}`)} />
+        )}
 
-      {current === 'collections' && (
-        <Collections isCurator={isCurator} onOpen={(row) => navigate(`/materials/${row.id}`)} />
-      )}
-
-      {current === 'queue' && isCurator && (
-        <ReviewQueue onFlash={setFlash} onOpen={(row) => navigate(`/materials/${row.id}`)} />
-      )}
+        {current === 'queue' && isCurator && (
+          <ReviewQueue onFlash={setFlash} onOpen={(row) => navigate(`/materials/${row.id}`)} />
+        )}
+      </div>
     </div>
   )
 }
 
 function MaterialGrid({
+  title,
   rows,
   loading,
   onOpen,
   empty,
 }: {
+  title: string
   rows: Material[]
   loading?: boolean
   onOpen: (row: Material) => void
@@ -212,37 +221,39 @@ function MaterialGrid({
   if (loading) return <Loading />
   if (rows.length === 0) return <>{empty}</>
   return (
-    <Rows>
-      {rows.map((row) => (
-        <Row
-          key={row.id}
-          icon="book"
-          title={row.title}
-          note={[`${row.subject_name} · ${row.topic}`, row.description, row.author_name, row.source_kind_title].filter(Boolean).join(' · ')}
-          right={
-            <span className="acad__inline">
-              {row.files.length > 0 && (
-                <Chip size="sm" className="num">
-                  {counted(row.files.length, 'файл|файла|файлов')}
-                </Chip>
-              )}
-              {row.helpful_count > 0 && (
-                <Chip tone="good" size="sm" className="num">
-                  {t('полезно: {n}', { n: row.helpful_count })}
-                </Chip>
-              )}
-              {row.status !== 'approved' && (
-                <Chip tone="warn" size="sm">
-                  {row.status_title}
-                </Chip>
-              )}
-            </span>
-          }
-          onOpen={() => onOpen(row)}
-          openLabel={t('Открыть')}
-        />
-      ))}
-    </Rows>
+    <DataCard title={title} count={rows.length}>
+      <Rows>
+        {rows.map((row) => (
+          <Row
+            key={row.id}
+            icon="book"
+            title={row.title}
+            note={[`${row.subject_name} · ${row.topic}`, row.description, row.author_name, row.source_kind_title].filter(Boolean).join(' · ')}
+            right={
+              <span className="acad__inline">
+                {row.files.length > 0 && (
+                  <Chip size="sm" className="num">
+                    {counted(row.files.length, 'файл|файла|файлов')}
+                  </Chip>
+                )}
+                {row.helpful_count > 0 && (
+                  <Chip tone="good" size="sm" className="num">
+                    {t('полезно: {n}', { n: row.helpful_count })}
+                  </Chip>
+                )}
+                {row.status !== 'approved' && (
+                  <Chip tone="warn" size="sm">
+                    {row.status_title}
+                  </Chip>
+                )}
+              </span>
+            }
+            onOpen={() => onOpen(row)}
+            openLabel={t('Открыть')}
+          />
+        ))}
+      </Rows>
+    </DataCard>
   )
 }
 
@@ -324,7 +335,7 @@ function MyMaterials({
   }
 
   return (
-    <div>
+    <div className="lay-screen">
       <div className="toolbar">
         <span className="muted">
           {isStudent
@@ -332,9 +343,12 @@ function MyMaterials({
             : t('Ваши разборы: они попадают в библиотеку сразу, без очереди')}
         </span>
         <span className="toolbar__spacer" />
-        <Button size="sm" onClick={() => setOpen(!open)}>
-          {open ? t('Отмена') : t('Выложить материал')}
-        </Button>
+        {/* пока своего нет, «Выложить материал» стоит в заглушке ниже — второй кнопки не нужно */}
+        {(open || rows.length > 0) && (
+          <Button size="sm" onClick={() => setOpen(!open)}>
+            {open ? t('Отмена') : t('Выложить материал')}
+          </Button>
+        )}
       </div>
 
       {open && (
@@ -451,30 +465,31 @@ function MyMaterials({
         </div>
       )}
 
-      <h2 className="section">{t('Загруженное')}</h2>
       {rows.length > 0 && (
-        <ul className="rows__list mat__own">
-          {rows.map((row) => (
-            <li key={row.id} className="rows__item">
-              <div className="rows__body">
-                <Button variant="link" size="sm" onClick={() => onOpen(row)}>
-                  {row.title}
-                </Button>
-                <span className="rows__actions">
-                  <Chip tone="neutral">{row.status_title}</Chip>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={actions.removeMaterial.isPending}
-                    onClick={() => actions.removeMaterial.mutate(row.id)}
-                  >
-                    {t('Убрать')}
+        <DataCard title={t('Загруженное')} count={rows.length}>
+          <ul className="rows__list mat__own">
+            {rows.map((row) => (
+              <li key={row.id} className="rows__item">
+                <div className="rows__body">
+                  <Button variant="link" size="sm" onClick={() => onOpen(row)}>
+                    {row.title}
                   </Button>
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
+                  <span className="rows__actions">
+                    <Chip tone="neutral">{row.status_title}</Chip>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={actions.removeMaterial.isPending}
+                      onClick={() => actions.removeMaterial.mutate(row.id)}
+                    >
+                      {t('Убрать')}
+                    </Button>
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </DataCard>
       )}
       {all.isLoading && <Loading />}
       {rows.length === 0 && !all.isLoading && (
@@ -485,8 +500,8 @@ function MyMaterials({
           hint={t(
             'Здесь будут ваши материалы: и те, что ждут проверки, и те, что её не прошли — вместе с причиной.',
           )}
-          action={t('Выложить материал')}
-          onAction={() => setOpen(true)}
+          action={open ? undefined : t('Выложить материал')}
+          onAction={open ? undefined : () => setOpen(true)}
         />
       )}
       <MyReports />
@@ -543,7 +558,7 @@ function Requests() {
   const rows = list.data?.results ?? []
 
   return (
-    <div>
+    <div className="lay-screen">
       {me?.role === 'student' && (
         <div className="card card-pad mat__form">
           <span className="eyebrow">{t('Попросить разбор')}</span>
@@ -618,7 +633,7 @@ function Requests() {
           )}
         />
       ) : (
-        <div className="card card-pad">
+        <DataCard title={t('Запросы')} count={rows.length}>
           <ul className="rows__list">
             {rows.map((row) => (
               <li key={row.id} className="rows__item">
@@ -633,7 +648,7 @@ function Requests() {
               </li>
             ))}
           </ul>
-        </div>
+        </DataCard>
       )}
       <p className="muted mat__note" hidden={rows.length === 0}>
         {t(
@@ -655,7 +670,7 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
   const rows = list.data?.results ?? []
 
   return (
-    <div>
+    <div className="lay-screen">
       {isCurator && (
         <div className="card card-pad mat__form">
           <span className="eyebrow">{t('Собрать подборку')}</span>
@@ -720,86 +735,88 @@ function Collections({ isCurator, onOpen }: { isCurator: boolean; onOpen: (row: 
           }
         />
       ) : (
-        rows.map((collection) => (
-          <div key={collection.id} className="card card-pad mat__collection">
-            <div className="row-between">
-              <span className="eyebrow">
-                {collection.name}
-                {collection.subject_name ? ` · ${collection.subject_name}` : ''}
-              </span>
+        <div className="lay-2 mat__grid">
+          {rows.map((collection) => (
+            <div key={collection.id} className="card card-pad mat__collection">
+              <div className="row-between">
+                <span className="eyebrow">
+                  {collection.name}
+                  {collection.subject_name ? ` · ${collection.subject_name}` : ''}
+                </span>
+                {isCurator && (
+                  <span className="rows__actions">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const name = window.prompt(t('Новое название подборки'), collection.name)
+                        if (name && name.trim())
+                          actions.updateCollection.mutate({
+                            id: collection.id,
+                            name: name.trim(),
+                            description: collection.description,
+                          })
+                      }}
+                    >
+                      {t('Переименовать')}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => actions.removeCollection.mutate(collection.id)}
+                    >
+                      {t('Убрать подборку')}
+                    </Button>
+                  </span>
+                )}
+              </div>
+              {collection.description && <p className="muted">{collection.description}</p>}
+              <ul className="rows__list">
+                {collection.items.map((item) => (
+                  <li key={item.id} className="rows__item">
+                    <Button variant="link" size="sm" onClick={() => onOpen({ id: item.material } as Material)}>
+                      {item.title}
+                    </Button>
+                    <span className="muted rows__note">
+                      {item.author_name} · {item.subject_name}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {collection.items.length === 0 && <EmptyNote what={t('пока пусто')} />}
               {isCurator && (
-                <span className="rows__actions">
+                <div className="toolbar">
+                  <SelectField
+                    aria-label={t('Материал для подборки')}
+                    value={picked[collection.id] ?? ''}
+                    onChange={(event) => setPicked({ ...picked, [collection.id]: event.target.value })}
+                  >
+                    <option value="">{t('выберите материал')}</option>
+                    {(library.data?.results ?? []).map((row) => (
+                      <option key={row.id} value={row.id}>
+                        {row.title}
+                      </option>
+                    ))}
+                  </SelectField>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      const name = window.prompt(t('Новое название подборки'), collection.name)
-                      if (name && name.trim())
-                        actions.updateCollection.mutate({
-                          id: collection.id,
-                          name: name.trim(),
-                          description: collection.description,
-                        })
-                    }}
+                    disabled={!picked[collection.id]}
+                    onClick={() =>
+                      actions.addToCollection.mutate({
+                        id: collection.id,
+                        material: Number(picked[collection.id]),
+                        position: (collection.items.length + 1) * 10,
+                      })
+                    }
                   >
-                    {t('Переименовать')}
+                    {t('Добавить в подборку')}
                   </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => actions.removeCollection.mutate(collection.id)}
-                  >
-                    {t('Убрать подборку')}
-                  </Button>
-                </span>
+                </div>
               )}
             </div>
-            {collection.description && <p className="muted">{collection.description}</p>}
-            <ul className="rows__list">
-              {collection.items.map((item) => (
-                <li key={item.id} className="rows__item">
-                  <Button variant="link" size="sm" onClick={() => onOpen({ id: item.material } as Material)}>
-                    {item.title}
-                  </Button>
-                  <span className="muted rows__note">
-                    {item.author_name} · {item.subject_name}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {collection.items.length === 0 && <EmptyNote what={t('пока пусто')} />}
-            {isCurator && (
-              <div className="toolbar">
-                <SelectField
-                  aria-label={t('Материал для подборки')}
-                  value={picked[collection.id] ?? ''}
-                  onChange={(event) => setPicked({ ...picked, [collection.id]: event.target.value })}
-                >
-                  <option value="">{t('выберите материал')}</option>
-                  {(library.data?.results ?? []).map((row) => (
-                    <option key={row.id} value={row.id}>
-                      {row.title}
-                    </option>
-                  ))}
-                </SelectField>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!picked[collection.id]}
-                  onClick={() =>
-                    actions.addToCollection.mutate({
-                      id: collection.id,
-                      material: Number(picked[collection.id]),
-                      position: (collection.items.length + 1) * 10,
-                    })
-                  }
-                >
-                  {t('Добавить в подборку')}
-                </Button>
-              </div>
-            )}
-          </div>
-        ))
+          ))}
+        </div>
       )}
     </div>
   )
@@ -823,13 +840,14 @@ function ReviewQueue({
   const pending = queue.data?.pending ?? []
   const reports = queue.data?.reports ?? []
 
-  return (
-    <div>
-      <Chip tone="neutral" className="mat__flash">
-        {queue.data?.summary}
-      </Chip>
+  const nothing = pending.length === 0 && reports.length === 0
 
-      {pending.length === 0 && reports.length === 0 && (
+  return (
+    <div className="lay-screen">
+      {/* пустая очередь говорит о себе один раз — заглушкой, сводка нужна, когда есть что разбирать */}
+      {!nothing && queue.data?.summary && <p className="muted mat__note">{queue.data.summary}</p>}
+
+      {nothing && (
         <Empty
           icon="openbook"
           title={t('Очередь пуста')}
@@ -837,93 +855,99 @@ function ReviewQueue({
         />
       )}
 
-      {pending.map((row) => (
-        <div key={row.id} className="card card-pad mat__review">
-          <span className="eyebrow">
-            {row.subject_name} · {row.topic}
-          </span>
-          <Button variant="link" className="mat__title" onClick={() => onOpen(row)}>
-            {row.title}
-          </Button>
-          <p className="muted">{row.description || t('Без описания')}</p>
-          <div className="mat__meta">
-            <Chip tone="neutral">{row.author_name}</Chip>
-            <Chip tone={row.source_kind === 'third_party' ? 'warn' : 'neutral'}>
-              {row.source_kind_title}
-            </Chip>
-            <Chip tone={row.rights_confirmed ? 'good' : 'bad'}>
-              {row.rights_confirmed ? t('право на публикацию подтверждено') : t('право не подтверждено')}
-            </Chip>
-          </div>
-          <ul className="rows__list">
-            {row.files.map((file) => (
-              <li key={file.id} className="rows__item">
-                <a className="link" href={file.url} target="_blank" rel="noreferrer">
-                  {file.original_name}
-                </a>
-                <span className="muted rows__note">{file.size_human}</span>
-              </li>
-            ))}
-          </ul>
-          {row.files.length === 0 && <EmptyNote what={t('файлов нет — только текст')} />}
+      {pending.length > 0 && (
+        <div className="lay-2 mat__grid">
+          {pending.map((row) => (
+            <div key={row.id} className="card card-pad mat__review">
+              <span className="eyebrow">
+                {row.subject_name} · {row.topic}
+              </span>
+              <Button variant="link" className="mat__title" onClick={() => onOpen(row)}>
+                {row.title}
+              </Button>
+              <p className="muted">{row.description || t('Без описания')}</p>
+              <div className="mat__meta">
+                <Chip tone="neutral">{row.author_name}</Chip>
+                <Chip tone={row.source_kind === 'third_party' ? 'warn' : 'neutral'}>
+                  {row.source_kind_title}
+                </Chip>
+                <Chip tone={row.rights_confirmed ? 'good' : 'bad'}>
+                  {row.rights_confirmed ? t('право на публикацию подтверждено') : t('право не подтверждено')}
+                </Chip>
+              </div>
+              <ul className="rows__list">
+                {row.files.map((file) => (
+                  <li key={file.id} className="rows__item">
+                    <a className="link" href={file.url} target="_blank" rel="noreferrer">
+                      {file.original_name}
+                    </a>
+                    <span className="muted rows__note">{file.size_human}</span>
+                  </li>
+                ))}
+              </ul>
+              {row.files.length === 0 && <EmptyNote what={t('файлов нет — только текст')} />}
 
-          <div className="toolbar">
-            <Button
-              size="sm"
-              onClick={() =>
-                actions.review.mutate(
-                  { id: row.id, decision: 'approve' },
-                  { onSuccess: (answer) => onFlash(answer.detail) },
-                )
-              }
-            >
-              {t('Одобрить')}
-            </Button>
-            <Input
-              placeholder={t('Причина отклонения')}
-              aria-label={t('Причина отклонения материала «{title}»', { title: row.title })}
-              value={reason[row.id] ?? ''}
-              onChange={(event) => setReason({ ...reason, [row.id]: event.target.value })}
-            />
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={!(reason[row.id] ?? '').trim()}
-              onClick={() =>
-                actions.review.mutate(
-                  { id: row.id, decision: 'reject', reason: reason[row.id] },
-                  { onSuccess: (answer) => onFlash(answer.detail) },
-                )
-              }
-            >
-              {t('Отклонить')}
-            </Button>
-          </div>
+              <div className="toolbar">
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    actions.review.mutate(
+                      { id: row.id, decision: 'approve' },
+                      { onSuccess: (answer) => onFlash(answer.detail) },
+                    )
+                  }
+                >
+                  {t('Одобрить')}
+                </Button>
+                <Input
+                  placeholder={t('Причина отклонения')}
+                  aria-label={t('Причина отклонения материала «{title}»', { title: row.title })}
+                  value={reason[row.id] ?? ''}
+                  onChange={(event) => setReason({ ...reason, [row.id]: event.target.value })}
+                />
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={!(reason[row.id] ?? '').trim()}
+                  onClick={() =>
+                    actions.review.mutate(
+                      { id: row.id, decision: 'reject', reason: reason[row.id] },
+                      { onSuccess: (answer) => onFlash(answer.detail) },
+                    )
+                  }
+                >
+                  {t('Отклонить')}
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
 
       {reports.length > 0 && (
         <>
           <h2 className="section">{t('Жалобы')}</h2>
-          {reports.map((row) => (
-            <div key={row.id} className="card card-pad mat__review">
-              <span className="eyebrow">{t('Пожаловался {name}', { name: row.reporter_name })}</span>
-              <p>{row.reason}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  actions.resolveReport.mutate(
-                    // eslint-disable-next-line i18n-text -- пометка решения уходит в базу, одна на все языки
-                    { id: row.id, resolution: 'Разобрано' },
-                    { onSuccess: (answer) => onFlash(answer.detail) },
-                  )
-                }
-              >
-                {t('Пометить разобранной')}
-              </Button>
-            </div>
-          ))}
+          <div className="lay-2 mat__grid">
+            {reports.map((row) => (
+              <div key={row.id} className="card card-pad mat__review">
+                <span className="eyebrow">{t('Пожаловался {name}', { name: row.reporter_name })}</span>
+                <p>{row.reason}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    actions.resolveReport.mutate(
+                      // eslint-disable-next-line i18n-text -- пометка решения уходит в базу, одна на все языки
+                      { id: row.id, resolution: 'Разобрано' },
+                      { onSuccess: (answer) => onFlash(answer.detail) },
+                    )
+                  }
+                >
+                  {t('Пометить разобранной')}
+                </Button>
+              </div>
+            ))}
+          </div>
         </>
       )}
     </div>

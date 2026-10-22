@@ -51,9 +51,9 @@ for (const size of SIZES) {
     await expect(card.locator("button[type='submit']")).toHaveCount(1);
     await expect(page.getByText("Учётные записи заводит администратор")).toHaveCount(0);
 
-    // тихие ссылки под кнопкой
+    // тихие ссылки под кнопкой: «Забыли пароль?» в карточке, «Я выпускник» — под ней (22.10.2026)
     const forgot = card.getByRole("button", { name: "Забыли пароль?" });
-    const alumni = card.getByRole("button", { name: "Я выпускник, у меня нет пароля" });
+    const alumni = page.getByRole("button", { name: "Я выпускник, у меня нет пароля" });
     await expect(forgot).toBeVisible();
     await expect(alumni).toBeVisible();
     const [forgotBox, alumniBox, submitBox] = await Promise.all([

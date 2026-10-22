@@ -3,7 +3,8 @@
  *
  * Логотип и название — над карточкой на полотне, в карточке только форма
  * (макет владельца, 11.10.2026): два поля с глазком у пароля, одна кнопка
- * во всю ширину, под ней тихая ссылка «Забыли пароль?» и мелкая «Я выпускник».
+ * во всю ширину, под ней тихая ссылка «Забыли пароль?»; мелкая «Я выпускник» —
+ * под карточкой на полотне.
  * Справа вверху переключатель языка — тем же механизмом, что в оболочке:
  * выбор запоминается на устройстве. Слева внизу — адрес сайта.
  *
@@ -22,6 +23,7 @@ import Field from '../components/Field'
 import { Chip } from '../components/ui'
 import { deviceLanguage, rememberLanguage, t, type Lang } from '../i18n'
 import { Button } from '../components/ui/button'
+import './login-layout.css'
 
 type Mode = 'password' | 'reset' | 'link'
 
@@ -122,17 +124,12 @@ export default function Login() {
         {note && <Chip tone="good" className="login__hint">{note}</Chip>}
         {error && <Chip tone="bad" className="login__hint">{error}</Chip>}
 
-        {/* одна тихая ссылка без рамки и разделителя; вход выпускника — мелким текстом ниже */}
+        {/* одна тихая ссылка без рамки и разделителя; вход выпускника — под карточкой */}
         <div className="login__links">
           {mode === 'password' ? (
-            <>
-              <Button variant="link" size="sm" className="login__link" onClick={() => switchMode('reset')}>
-                {t('Забыли пароль?')}
-              </Button>
-              <Button variant="link" size="sm" className="login__link login__link--small" onClick={() => switchMode('link')}>
-                {t('Я выпускник, у меня нет пароля')}
-              </Button>
-            </>
+            <Button variant="link" size="sm" className="login__link" onClick={() => switchMode('reset')}>
+              {t('Забыли пароль?')}
+            </Button>
           ) : (
             <Button variant="link" size="sm" className="login__link" onClick={() => switchMode('password')}>
               {t('Назад ко входу')}
@@ -140,6 +137,13 @@ export default function Login() {
           )}
         </div>
       </div>
+
+      {/* вход выпускника — тихой ссылкой под карточкой, как в макете */}
+      {mode === 'password' && (
+        <Button variant="link" size="sm" className="login__link login__link--small login__grad" onClick={() => switchMode('link')}>
+          {t('Я выпускник, у меня нет пароля')}
+        </Button>
+      )}
 
       <span className="login__host t-note">{window.location.host}</span>
     </div>

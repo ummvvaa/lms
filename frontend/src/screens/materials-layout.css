@@ -1,0 +1,47 @@
+/* Материалы по образцу макета Archive: блоки экрана столбиком через один
+   разрыв (`lay-screen`), поэтому свои нижние отступы карточек здесь не нужны. */
+.lay-screen > .mat__flash,
+.lay-screen .mat__form,
+.lay-screen .mat__note {
+  margin: 0;
+}
+
+/* сводка очереди — тихой строкой, не чипом */
+.lay-screen > .mat__note {
+  color: var(--ink-2);
+}
+
+/* однотипные карточки (подборки, очередь, жалобы) — по две в ряд, одной высоты */
+.mat__grid > .mat__collection,
+.mat__grid > .mat__review {
+  margin: 0;
+  align-content: start;
+}
+
+/* у строки своего материала название и действия — по краям строки */
+.mat__own .rows__body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 3);
+  min-width: 0;
+}
+
+.lay-screen > .toolbar {
+  margin: 0;
+}
+
+/* «Жалобы» — подзаголовок между сетками, разрыв даёт `lay-screen` */
+.lay-screen > h2.section {
+  margin: 0;
+}
+
+/* кнопка формы — своей ширины слева, а не полосой во всю карточку */
+.mat__form > [data-slot='button'] {
+  justify-self: start;
+}
+
+/* список в поле формы — во всю ширину своей клетки: иначе стрелка ложится на текст */
+.mat__field [data-slot='native-select-wrapper'] {
+  width: 100%;
+}
