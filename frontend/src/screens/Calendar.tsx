@@ -5,6 +5,10 @@
  * 27.09.2026). События живут у источников — целей, дедлайнов, стипендий,
  * соревнований, задач, СОР и СОЧ, сроков сдачи ДЗ — и по клику ведут туда.
  * На телефоне — лента ближайших, месяц крупными клетками по выбору.
+ *
+ * Раскладка по макету: вид и «Расписание уроков» в шапке справа; месяц — на
+ * две трети с ключом цветов под сеткой, справа — выбранный день или
+ * «Ближайшее» с бегущим светом.
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
@@ -89,19 +93,33 @@ export default function Calendar() {
     />
   )
 
+  // ключ цветов месяца: виды событий, что стоят в нём (СОР и СОЧ — подсветкой дня)
+  const monthPrefix = isoOf(month.getFullYear(), month.getMonth(), 1).slice(0, 7)
+  const legend = new Map<string, { title: string; tone: CalendarCellTone }>()
+  if ((data.assessment_days ?? []).some((row) => row.date.startsWith(monthPrefix))) legend.set('assessment', { title: t('СОР или СОЧ'), tone: 'info' })
+  for (const event of data.events)
+    if (event.date.startsWith(monthPrefix) && !legend.has(event.kind)) legend.set(event.kind, { title: event.kind_title, tone: KIND_TONE[event.kind] ?? 'neutral' })
+
   const monthCard = (
-    <DataCard title={t('Месяц')}>
-      <div className="stucal__head">
-        <Button variant="outline" size="icon-sm" aria-label={t('Прошлый месяц')} onClick={() => { trackFilter(); setShift(shift - 1) }}>
-          <Icon name="chevronLeft" size={15} />
-        </Button>
-        <span className="stucal__title">
-          {formatYearMonth(month.getFullYear(), month.getMonth())}
+    <DataCard
+      className="lay-span2"
+      title={formatYearMonth(month.getFullYear(), month.getMonth())}
+      right={
+        <span className="calx__nav">
+          {shift !== 0 && (
+            <Button variant="link" size="sm" onClick={() => { trackFilter(); setShift(0) }}>
+              {t('К сегодня')}
+            </Button>
+          )}
+          <Button variant="outline" size="icon-sm" aria-label={t('Прошлый месяц')} onClick={() => { trackFilter(); setShift(shift - 1) }}>
+            <Icon name="chevronLeft" size={15} />
+          </Button>
+          <Button variant="outline" size="icon-sm" aria-label={t('Следующий месяц')} onClick={() => { trackFilter(); setShift(shift + 1) }}>
+            <Icon name="chevronRight" size={15} />
+          </Button>
         </span>
-        <Button variant="outline" size="icon-sm" aria-label={t('Следующий месяц')} onClick={() => { trackFilter(); setShift(shift + 1) }}>
-          <Icon name="chevronRight" size={15} />
-        </Button>
-      </div>
+      }
+    >
       <div className="stucal__grid" role="grid" aria-label={formatYearMonth(month.getFullYear(), month.getMonth())}>
         {weekdays().map((day) => (
           <span key={day} className="stucal__weekday t-caps">
@@ -127,29 +145,42 @@ export default function Calendar() {
           )
         })}
       </div>
-      {picked && (
-        <DataCard title={formatDayMonth(picked)} count={dayEvents.length + dayWork.length || undefined} empty={dayEvents.length + dayWork.length === 0 && t('в этот день ничего не намечено')}>
-          <Rows>
-            {dayWork.map((row) => (
-              <Row key={row.title} icon="pencil" tone="info" title={row.title} />
-            ))}
-            {dayEvents.map(eventRow)}
-          </Rows>
-        </DataCard>
+      {legend.size > 0 && (
+        <div className="calx__legend">
+          {[...legend.entries()].map(([kind, row]) => (
+            <Chip key={kind} size="sm" tone={row.tone}>
+              {row.title}
+            </Chip>
+          ))}
+        </div>
       )}
     </DataCard>
   )
 
   const nearestCard = (
-    <DataCard title={t('Ближайшее')} count={upcoming.length || undefined} empty={upcoming.length === 0 && t('впереди пока пусто')}>
+    <DataCard className="card--beam" title={t('Ближайшее')} count={upcoming.length || undefined} empty={upcoming.length === 0 && t('впереди пока пусто')}>
       <Rows>
         <ShowAll>{upcoming.map(eventRow)}</ShowAll>
       </Rows>
     </DataCard>
   )
 
+  // справа — выбранный день, без выбора — ближайшее; бегущий свет у неё одной
+  const sideCard = picked ? (
+    <DataCard className="card--beam" title={formatDayMonth(picked)} count={dayEvents.length + dayWork.length || undefined} empty={dayEvents.length + dayWork.length === 0 && t('в этот день ничего не намечено')}>
+      <Rows>
+        {dayWork.map((row) => (
+          <Row key={row.title} icon="pencil" tone="info" title={row.title} />
+        ))}
+        {dayEvents.map(eventRow)}
+      </Rows>
+    </DataCard>
+  ) : (
+    nearestCard
+  )
+
   return (
-    <div>
+    <div className="lay-screen calx">
       <ScreenHead
         title={t('Календарь')}
         subtitle={
@@ -158,34 +189,29 @@ export default function Calendar() {
             : undefined
         }
         actions={
-          <Button variant="outline" size="sm" onClick={() => navigate('/schedule')}>
-            {t('Расписание уроков')}
-          </Button>
+          <>
+            <Segmented
+              value={view}
+              onChange={setView}
+              label={t('Вид календаря')}
+              items={[
+                { value: 'month', label: t('Месяц') },
+                { value: 'list', label: t('Список') },
+              ]}
+            />
+            <Button variant="outline" size="sm" onClick={() => navigate('/schedule')}>
+              {t('Расписание уроков')}
+            </Button>
+          </>
         }
       />
-      <div className="acad__toolbar">
-        <Segmented
-          value={view}
-          onChange={setView}
-          label={t('Вид календаря')}
-          items={[
-            { value: 'month', label: t('Месяц') },
-            { value: 'list', label: t('Список') },
-          ]}
-        />
-        {view === 'month' && shift !== 0 && (
-          <Button variant="link" size="sm" onClick={() => { trackFilter(); setShift(0) }}>
-            {t('К сегодня')}
-          </Button>
-        )}
-      </div>
-      {phone ? (
-        <div className="acad__stack">{view === 'month' ? monthCard : nearestCard}</div>
-      ) : (
-        <div className="acad__cols">
-          <div className="acad__stack">{view === 'month' ? monthCard : nearestCard}</div>
-          {view === 'month' && <div className="acad__stack">{nearestCard}</div>}
+      {view === 'month' ? (
+        <div className="lay-3 calx__month">
+          {monthCard}
+          {sideCard}
         </div>
+      ) : (
+        nearestCard
       )}
     </div>
   )

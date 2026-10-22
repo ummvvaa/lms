@@ -1,0 +1,53 @@
+/* Оценки ученика по макету: период в шапке справа, таблица предметов во всю
+   ширину с отметками ФО и полосой «сейчас», ниже — две колонки списков. */
+.stugr .head__actions .segrow {
+  margin-bottom: 0;
+}
+
+.stugr .statrow {
+  margin-bottom: 0;
+}
+
+.stugr__subj {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stugr__subj > span {
+  color: var(--ink-3);
+  font-size: var(--type-note);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stugr__marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 1);
+}
+
+.stugr__none {
+  color: var(--ink-3);
+}
+
+.stugr__now {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 3);
+  min-width: 0;
+}
+
+.stugr__bar {
+  flex: 1 1 auto;
+  min-width: calc(var(--space) * 12);
+}
+
+.stugr__now [data-slot='badge'] {
+  flex: none;
+}
+
+.stugr__lists > .datacard {
+  margin: 0;
+}

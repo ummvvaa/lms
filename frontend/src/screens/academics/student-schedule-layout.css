@@ -1,0 +1,75 @@
+/* Расписание ученика по макету: полоса «сейчас / дальше» с бегущим светом,
+   неделя одной карточкой с ключом цветов под сеткой, ниже — две колонки. */
+
+/* стрелки недели в шапке справа — без своего отступа снизу */
+.stusch .head__actions .wknav__group {
+  flex-wrap: nowrap;
+}
+
+.stusch__now {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 3) calc(var(--space) * 4);
+  min-width: 0;
+}
+
+.stusch__now-what {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.stusch__now-next {
+  color: var(--ink-3);
+  font-size: var(--type-note);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.stusch__now-bar {
+  flex: 1 1 calc(var(--space) * 30);
+  min-width: calc(var(--space) * 20);
+}
+
+.stusch__now-count {
+  color: var(--ink-3);
+  font-size: var(--type-note);
+  white-space: nowrap;
+}
+
+/* сетка недели — вложенной подложкой внутри карточки, ключ цветов под ней */
+.stusch__week {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 4);
+  min-width: 0;
+}
+
+.stusch__week .segrow {
+  margin-bottom: calc(var(--space) * 3);
+}
+
+.stusch__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+}
+
+.stusch__lists > .datacard,
+.stusch__lists .lay-stack > .datacard {
+  margin: 0;
+}
+
+@media (max-width: 759px) {
+  .stusch__now-what,
+  .stusch__now-next {
+    flex: 1 1 100%;
+    white-space: normal;
+  }
+}

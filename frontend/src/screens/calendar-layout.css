@@ -1,0 +1,22 @@
+/* Календарь ученика по макету: месяц на две трети, справа — день или
+   «Ближайшее»; стрелки месяца — в шапке карточки, ключ цветов — под сеткой. */
+.calx .head__actions .segrow {
+  margin-bottom: 0;
+}
+
+.calx__month > .datacard {
+  margin: 0;
+}
+
+.calx__nav {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+}
+
+.calx__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 2);
+  margin-top: calc(var(--space) * 4);
+}
