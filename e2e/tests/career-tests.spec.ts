@@ -7,7 +7,7 @@
  * 1. Учитель видит тест в «Профтесте», «Кому» показывает назначение.
  * 2. Ученик проходит тест по пять утверждений, сдаёт, видит баллы по шкалам
  *    и не видит разбора — разборы ученику не отдаются (09.10.2026).
- * 3. Учитель и куратор видят результат по группе; у куратора кнопок записи нет.
+ * 3. Учитель видит результат по группе; у куратора профтеста нет: адрес уводит на главную.
  * 4. Журнал профориентации — без оценок: колонка «Профтест», «сдан DD.MM»
  *    при выключенном правиле «нужен разбор»; у ученика в «Оценках» — чип.
  *
@@ -156,7 +156,7 @@ test("ученик: проходит по пять утверждений, сд�
   await student.context().close();
 });
 
-test("учитель и куратор видят результат по CHICAGO; у куратора кнопок записи нет", async ({ browser }) => {
+test("учитель видит результат по CHICAGO; куратору профтест закрыт — адрес ведёт на главную", async ({ browser }) => {
   const teacher = await asCareerTeacher(browser);
   await teacher.goto("/career-tests?tab=results&group=CHICAGO");
   const results = teacher.locator(".datacard", { hasText: "Результаты" }).first();
@@ -165,11 +165,12 @@ test("учитель и куратор видят результат по CHICAG
   await expect(results).toContainText(/Сдали все открытые тесты: \d+ из \d+/);
   await teacher.context().close();
 
+  // профтест сдают ученики, ведут профориентолог и администратор (22.10.2026):
+  // у куратора нет ни пункта меню, ни экрана — прямой адрес уводит на главную
   const curator = await as(browser, "curator");
   await curator.goto("/career-tests?tab=results&group=CHICAGO");
-  await expect(curator.locator(".datacard", { hasText: "Результаты" }).first()).toContainText(STUDENT_NAME);
-  await expect(curator.getByRole("button", { name: "Загрузить тест" })).toHaveCount(0);
-  await expect(curator.getByRole("button", { name: "Разобрать" })).toHaveCount(0);
+  await expect(curator).toHaveURL(/\/dashboard/);
+  await expect(curator.locator(".shell__nav").getByRole("link", { name: "Профтест" })).toHaveCount(0);
   await curator.context().close();
 });
 

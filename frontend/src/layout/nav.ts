@@ -126,8 +126,12 @@ export function homeworkReviewOpen(role: Role, teaches = false): boolean {
  * на пароль»; `lessonAttendance` — виды «День / Месяц» по отметкам учителей на
  * «Посещаемости»: у куратора вместо них свой экран — отметка утром и аналитика.
  * Серверные ручки открыты: отчёт нужен экрану «Отчёты родителям».
+ * `career` — «Профтест»: пункт, «Ещё», адрес и вкладка карточки ученика (решение
+ * владельца, 22.10.2026: профтест сдают ученики, тесты ведут профориентолог и
+ * администратор). Тут сервер закрыт тоже — куратору ручки профтеста отвечают 403,
+ * так что вернуть раздел одним значением нельзя.
  */
-export const CURATOR_HIDDEN = { homeworkReview: true, cardActions: true, lessonAttendance: true }
+export const CURATOR_HIDDEN = { homeworkReview: true, cardActions: true, lessonAttendance: true, career: true }
 
 /** Аналитика использования доступна администратору и директору школы. */
 export function usageOpen(role: Role): boolean {
@@ -231,7 +235,8 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/students', label: tk('Ученики'), icon: 'people', group: 'work' },
     { path: '/documents', label: tk('Документы'), icon: 'docs', group: 'work' },
     // дисциплина по своим группам: куратор её вносит, а не подтверждает
-    { path: '/attendance', label: tk('Посещаемость'), icon: 'presence', group: 'work' },
+    // в баре телефона — «Посещ.»: утреннюю отметку куратор ставит с телефона
+    { path: '/attendance', label: tk('Посещаемость'), icon: 'presence', group: 'work', short: tk('Посещ.') },
     ...ACADEMICS_CURATOR,
     { path: '/tasks', label: tk('Задачи'), icon: 'checklist', group: 'more' },
     { path: '/journal', label: tk('Журнал изменений'), icon: 'history', group: 'more' },
@@ -288,7 +293,8 @@ export const TABS: Record<Role, string[]> = {
   director_exam: ['/dashboard', '/table', '/suggestions', '/mocks'],
   director_talent: ['/dashboard', '/table', '/suggestions', '/olympiad-group'],
   director_sport: ['/dashboard', '/table', '/suggestions', '/competitions'],
-  curator: ['/dashboard', '/queue', '/students', '/documents'],
+  // у куратора в баре — утренняя отметка, «Документы» уходят в «Ещё» (макет телефона куратора)
+  curator: ['/dashboard', '/queue', '/students', '/attendance'],
   // у учителя четыре раздела: все в баре, профиль — в «Ещё»
   teacher: ['/dashboard', '/schedule', '/journals', '/homework-review'],
   admin: ['/dashboard', '/users', '/table', '/suggestions'],
@@ -386,8 +392,10 @@ export function tabsFor(role: Role, items: NavItem[]): NavItem[] {
 /** Директор, который ведёт уроки (математика у директора талантов): своя неделя
  *  и отметка своих уроков. Кабинета учителя целиком у него нет. */
 const MY_LESSONS: NavItem = { path: '/schedule', label: tk('Мои уроки'), icon: 'schedule', group: 'work' }
-/** Экран «Профтест» сотрудника: тому, кто ведёт тесты, Асем и куратору (результаты своих групп). */
+/** Экран «Профтест» сотрудника: тому, кто ведёт тесты, администратору и Асем (результаты).
+ *  Куратору раздела нет (`CURATOR_HIDDEN.career`). */
 export function careerTestsOpen(me: { role: Role; career_tests: boolean }): boolean {
+  if (me.role === 'curator' && CURATOR_HIDDEN.career) return false
   return me.career_tests || ['admin', 'director_admission', 'curator'].includes(me.role)
 }
 /** Профтест у того, кто ведёт профориентацию при любой роли, и у администратора
@@ -460,7 +468,7 @@ export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = 
     items = [...items, HOMEWORK_REVIEW]
   }
   // ведёт профориентацию или администратор — тесты, результаты и разборы профтеста;
-  // Асем и куратор — результаты и разборы (своих групп) без кнопок записи
+  // Асем — результаты и разборы без кнопок записи; куратору раздела нет
   if (role !== 'student' && careerTestsOpen({ role, career_tests: Boolean(extras.careerTests) }) && !items.some((i) => i.path === '/career-tests')) {
     items = [...items, { ...CAREER_TESTS, group: role === 'curator' ? 'more' : role === 'teacher' || role === 'admin' ? 'work' : 'data' }]
   }

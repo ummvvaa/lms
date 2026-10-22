@@ -14,7 +14,7 @@ import {
 import { profileModelOf, type Domain, type DomainField } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import BuildReportDialog from '../components/BuildReportDialog'
-import { REPORT_ROLES } from '../layout/nav'
+import { careerTestsOpen, REPORT_ROLES } from '../layout/nav'
 import CuratorCard from './curator/Card'
 import CuratorNotesBlock from '../components/CuratorNotesBlock'
 import DeleteButton from '../components/DeleteButton'
@@ -152,8 +152,8 @@ function DirectorStudentCard() {
   const mine = domains.find((d) => d.is_mine)
   // пробники читают руководители; учителю карточка открыта без них
   const seesMocks = me?.role === 'admin' || (me?.role ?? '').startsWith('director_')
-  // профтест читают учитель профориентации, администратор, Асем и куратор своей группы (08.10.2026)
-  const seesCareer = Boolean(me?.career_tests) || ['admin', 'director_admission', 'curator'].includes(me?.role ?? '')
+  // профтест читают учитель профориентации, администратор и Асем; куратору раздела нет (22.10.2026)
+  const seesCareer = Boolean(me && careerTestsOpen(me))
 
   if (student.isLoading || meta.isLoading) return <Loading />
   if (student.error) return <ErrorNote error={student.error} />

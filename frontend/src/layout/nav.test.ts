@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Role } from '../api/types'
-import { CURATOR_HIDDEN, curatorMayOpen, homeworkReviewOpen, navFor, tabsFor, usageOpen } from './nav'
+import { careerTestsOpen, CURATOR_HIDDEN, curatorMayOpen, homeworkReviewOpen, navFor, tabsFor, usageOpen } from './nav'
 
 const reviewPath = '/homework-review'
 const reviewPages = [reviewPath, `${reviewPath}/42`]
@@ -15,12 +15,25 @@ describe('профтест в меню ученика', () => {
   })
 })
 
+describe('профтест у куратора', () => {
+  it('раздела нет ни пунктом, ни адресом; у Асем, администратора и профориентолога — есть', () => {
+    expect(navFor('curator').some((item) => item.path === '/career-tests')).toBe(false)
+    expect(navFor('curator', false, { careerTests: true }).some((item) => item.path === '/career-tests')).toBe(false)
+    expect(careerTestsOpen({ role: 'curator', career_tests: false })).toBe(false)
+    expect(careerTestsOpen({ role: 'curator', career_tests: true })).toBe(false)
+    expect(careerTestsOpen({ role: 'director_admission', career_tests: false })).toBe(true)
+    expect(careerTestsOpen({ role: 'admin', career_tests: false })).toBe(true)
+    expect(careerTestsOpen({ role: 'teacher', career_tests: true })).toBe(true)
+    expect(careerTestsOpen({ role: 'teacher', career_tests: false })).toBe(false)
+  })
+})
+
 describe('проверка ДЗ в навигации', () => {
   it('куратору «Проверка ДЗ» спрятана переключателем, даже со своими уроками', () => {
     const items = navFor('curator', false, { teaches: true })
     expect(items.some((item) => item.path === reviewPath)).toBe(false)
     expect(homeworkReviewOpen('curator', true)).toBe(false)
-    expect(tabsFor('curator', items).map((item) => item.path)).toEqual(['/dashboard', '/queue', '/students', '/documents'])
+    expect(tabsFor('curator', items).map((item) => item.path)).toEqual(['/dashboard', '/queue', '/students', '/attendance'])
   })
 
   it('переключатель возвращает куратору пункт и адрес, не трогая остальных', () => {
