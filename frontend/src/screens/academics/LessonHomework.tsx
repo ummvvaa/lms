@@ -221,7 +221,7 @@ export default function LessonHomeworkCards({
             <Switch checked={requires} onCheckedChange={setRequires} aria-label={t('Нужна сдача в LMS')} />
             <span>
               <b>{t('Нужна сдача в LMS')}</b>
-              <span className="t-note">{t('Ученики загрузят работу в разделе «Домашние задания». Если выключено — ДЗ просто видно в уроке, как сейчас.')}</span>
+              <span className="t-note">{t('ученики сдают работу в «Домашних заданиях»')}</span>
             </span>
           </label>
           {requires && (

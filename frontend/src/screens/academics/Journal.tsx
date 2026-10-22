@@ -667,7 +667,7 @@ export default function Journal() {
           </>
         }
       />
-      <div className="lay-4">
+      <div className={`lay-${kz && !kpiNext && data.kpis.low === 0 ? 3 : 4}`}>
         <Kpi label={t('Уроков проведено')} value={data.kpis.held || null} none={t('ещё не было')} note={t('из {planned} за {period}', { planned: data.kpis.planned, period: data.period.title.toLowerCase() })} />
         <Kpi
           label={t('Не отмечено')}
@@ -678,6 +678,7 @@ export default function Journal() {
         />
         <Kpi label={t('Средний ФО')} value={data.kpis.fo_avg} none={t('оценок нет')} />
         {kz ? (
+          (kpiNext || data.kpis.low > 0) && (
           <Kpi
             label={kpiNext ? t('Следующий {kind}', { kind: kpiNext.kind_label }) : t('Двойки сейчас')}
             value={kpiNext ? dateShort(kpiNext.date) : data.kpis.low || null}
@@ -691,6 +692,7 @@ export default function Journal() {
             }
             tone={!kpiNext && data.kpis.low ? 'bad' : undefined}
           />
+          )
         ) : (
           <Kpi label={t('Учеников')} value={data.rows.length} />
         )}

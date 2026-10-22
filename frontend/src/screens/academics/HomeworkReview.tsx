@@ -52,6 +52,7 @@ export default function HomeworkReview() {
   const submitted = items.reduce((sum, item) => sum + item.submitted, 0)
   const total = items.reduce((sum, item) => sum + item.total, 0)
   const unchecked = items.reduce((sum, item) => sum + item.unchecked, 0)
+  const ring = !wholeSchool && submitted > 0
   const setTab = (next: ReviewTab) => {
     const copy = new URLSearchParams(params)
     copy.set('tab', next)
@@ -123,9 +124,9 @@ export default function HomeworkReview() {
           { value: 'checked', label: tabLabel(t('Всё проверено'), counts.checked) },
         ]}
       />
-      <div className="lay-3 hwr-cols">
+      <div className={ring ? 'lay-3 hwr-cols' : 'hwr-cols'}>
         {items.length === 0 || rows.length === 0 ? (
-          <section className="card card-pad lay-span2 hwr-empty">
+          <section className={`card card-pad hwr-empty${ring ? ' lay-span2' : ''}`}>
             <span className="hwr-item__ico" aria-hidden="true">
               <Icon name="homework" size={20} />
             </span>
@@ -135,16 +136,15 @@ export default function HomeworkReview() {
             </span>
           </section>
         ) : (
-          <DataCard className="lay-span2" title={t('Задания со сдачей')} count={rows.length}>
+          <DataCard className={`hwr-tasks${ring ? ' lay-span2' : ''}`} title={t('Задания со сдачей')} count={rows.length}>
             <div className="hwr-list">
               <ShowAll>{rows.map(itemRow)}</ShowAll>
             </div>
           </DataCard>
         )}
-        <div className="lay-stack">
         {/* учителю — кольцо «Ждут проверки» по своим заданиям: числа те же, что в строках */}
-        {!wholeSchool && submitted > 0 && (
-          <DataCard title={t('Ждут проверки')}>
+        {ring && (
+          <DataCard className="hwr-ring" title={t('Ждут проверки')}>
             <div className="hwr-wait">
               <Ring percent={((submitted - unchecked) / submitted) * 100} size={112}>
                 <b className="num t-value">{unchecked}</b>
@@ -156,25 +156,6 @@ export default function HomeworkReview() {
             </div>
           </DataCard>
         )}
-        <DataCard title={t('Как дать ДЗ со сдачей')}>
-          <ol className="hwr-steps">
-            <li>
-              <span className="hwr-steps__n num">1</span>
-              <span>{t('Учитель открывает урок и записывает домашнее задание')}</span>
-            </li>
-            <li>
-              <span className="hwr-steps__n num">2</span>
-              <span>{t('Включает «Нужна сдача в LMS»')}</span>
-            </li>
-            <li>
-              <span className="hwr-steps__n num">3</span>
-              <span>
-                {t('Ученики загружают работы в разделе «Домашние задания» — задание появляется здесь')}
-              </span>
-            </li>
-          </ol>
-        </DataCard>
-        </div>
       </div>
     </div>
   )

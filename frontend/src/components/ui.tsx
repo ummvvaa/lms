@@ -97,6 +97,8 @@ export interface HeadPill {
   /** выбранная — графитовая */
   on?: boolean
   onClick?: () => void
+  /** состояние чипом: «не отмечен», «идёт сейчас» */
+  tone?: Tone
 }
 
 /**
@@ -143,7 +145,11 @@ export function ScreenHead({
         {pills && pills.length > 0 && (
           <div className="head__pills">
             {pills.map((pill) =>
-              pill.onClick ? (
+              pill.tone ? (
+                <Chip key={pill.label} tone={pill.tone}>
+                  {pill.label}
+                </Chip>
+              ) : pill.onClick ? (
                 <button
                   key={pill.label}
                   type="button"

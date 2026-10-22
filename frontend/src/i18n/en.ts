@@ -3856,6 +3856,7 @@ export const en: Record<string, string> = {
   'ученик подаётся|ученика подаются|учеников подаются': 'student applying|students applying',
   'ученик|ученика|учеников': 'student|students',
   'ученики пока ничего не внесли': 'students have not entered anything yet',
+  'ученики сдают работу в «Домашних заданиях»': 'students hand in their work in Homework',
   'учеников {students} · попыток {attempts} · документов {documents} · паролей {credentials}': 'students: {students} · attempts: {attempts} · documents: {documents} · passwords: {credentials}',
   'учеников без подгруппы по предмету': 'students without a subgroup in a subject',
   'учеников ещё нет — карточки заводит администратор': 'no students yet — the administrator creates student records',

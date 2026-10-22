@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 import { useAcadMeta, useLessonDetail, useRemindLesson, useSaveAttendance, type RosterRow } from '../../api/academics'
 import { useAuth } from '../../auth/AuthContext'
 import { Avatar, Row, Rows, Segmented } from '../../components/patterns'
-import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
+import { Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Textarea } from '../../components/ui/textarea'
 import { SelectField } from '../../components/SelectField'
@@ -234,17 +234,26 @@ export default function LessonScreen() {
   const max = lesson.kind === 'fo' ? (data.scale?.fo_max ?? 10) : (lesson.max_score ?? 10)
   const graded = roster.filter((row) => row.grade !== null)
   const fail = (e: Error) => toast.error(e.message)
-  const statusChip = !lesson.is_live ? (
-    <Chip tone="warn">{lesson.status_title}</Chip>
-  ) : lesson.state === 'now' ? (
-    <Chip tone="accent">{t('идёт сейчас')}</Chip>
-  ) : future ? (
-    <Chip>{t('впереди')}</Chip>
-  ) : lesson.marked ? (
-    <Chip tone="good">{t('отмечен')}</Chip>
-  ) : (
-    <Chip tone="warn">{t('не отмечен')}</Chip>
-  )
+  // состояние урока — чипом в шапке, а не плиткой показателя
+  const status: { label: string; tone: Tone } = !lesson.is_live
+    ? { label: lesson.status_title, tone: 'warn' }
+    : lesson.state === 'now'
+      ? { label: t('идёт сейчас'), tone: 'accent' }
+      : future
+        ? { label: t('впереди'), tone: 'neutral' }
+        : lesson.marked
+          ? { label: t('отмечен'), tone: 'good' }
+          : { label: t('не отмечен'), tone: 'warn' }
+  // показатели — только с числом: пустых плиток «нет» и «не отмечен» не бывает
+  const kpis = [
+    lesson.marked && (
+      <Kpi key="here" label={t('Были')} value={t('{done} из {total}', { done: roster.length - (data.absent?.length ?? 0), total: roster.length })} note={data.absent?.length ? absentWords(data.absent) : t('все на месте')} tone={data.absent?.length ? 'bad' : 'good'} />
+    ),
+    Boolean(data.late?.length) && <Kpi key="late" label={t('Опоздали')} value={data.late?.length} note={data.late?.join(', ') ?? ''} tone="warn" />,
+    graded.length > 0 && (
+      <Kpi key="graded" label={t('Оценок')} value={graded.length} note={t('средняя {value}', { value: (graded.reduce((sum, row) => sum + (row.grade ?? 0), 0) / graded.length).toFixed(1) })} />
+    ),
+  ].filter(Boolean)
   const allPresent = () => attendance.mutate({ lesson: lesson.id, all_present: true }, { onSuccess: () => toast.success(t('Урок отмечен: все были')), onError: fail })
   const saveMarks = () =>
     attendance.mutate(
@@ -293,7 +302,7 @@ export default function LessonScreen() {
       <ScreenHead
         title={lesson.subject.title}
         crumb={back}
-        pills={[{ label: lesson.cohort.name, on: true }, ...(lesson.kind !== 'fo' ? [{ label: `${lesson.kind_label} · ${t('из {max}', { max })}` }] : [])]}
+        pills={[{ label: lesson.cohort.name, on: true }, ...(lesson.kind !== 'fo' ? [{ label: `${lesson.kind_label} · ${t('из {max}', { max })}` }] : []), status]}
         subtitle={[
           `${lesson.weekday}, ${dateWords(lesson.date)}`,
           `${t('{slot} урок', { slot: lesson.slot })}, ${lesson.bell}`,
@@ -334,12 +343,7 @@ export default function LessonScreen() {
           </>
         }
       />
-      <div className="lay-4">
-        <Kpi label={t('Состояние')} value={statusChip} />
-        <Kpi label={t('Были')} value={lesson.marked ? t('{done} из {total}', { done: roster.length - (data.absent?.length ?? 0), total: roster.length }) : null} none={future ? t('урок впереди') : t('не отмечен')} note={data.absent?.length ? absentWords(data.absent) : lesson.marked ? t('все на месте') : t('отметьте тех, кого нет')} tone={data.absent?.length ? 'bad' : lesson.marked ? 'good' : undefined} />
-        <Kpi label={t('Опоздали')} value={data.late?.length || null} none={t('нет')} note={data.late?.join(', ') ?? ''} tone={data.late?.length ? 'warn' : undefined} />
-        <Kpi label={t('Оценок')} value={graded.length || null} none={passOnly ? t('без оценок: сдан или не сдан по профтесту') : lesson.kind === 'fo' ? t('ФО ставится не всем') : t('нет')} note={graded.length ? t('средняя {value}', { value: (graded.reduce((s, r) => s + (r.grade ?? 0), 0) / graded.length).toFixed(1) }) : ''} />
-      </div>
+      {kpis.length > 0 && <div className={`lay-${kpis.length}`}>{kpis}</div>}
       {!lesson.is_live && (
         <Chip tone="warn">
           {`${lesson.status_title}${lesson.reason ? `: ${lesson.reason}` : ''}`}

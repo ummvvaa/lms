@@ -124,9 +124,8 @@ export default function TeacherToday() {
           {unmarkedEarlier.map((lesson) => (
             <Row
               key={lesson.id}
-              lead={<Chip tone="warn">{t('не отмечен')}</Chip>}
               title={lesson.title}
-              note={`${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{slot} урок', { slot: lesson.slot })} · ${t('куратор видит этот урок как неотмеченный')}`}
+              note={`${lesson.weekday}, ${dateWords(lesson.date)}, ${t('{slot} урок', { slot: lesson.slot })}`}
               acts={<OpenLesson lesson={lesson} label={t('Отметить')} primary />}
             />
           ))}
@@ -225,9 +224,11 @@ export default function TeacherToday() {
 
   const cards = [
     { key: 'lessons', side: 'main', live: data.lessons.length > 0, node: lessonsCard },
-    { key: 'unmarked', side: 'main', live: unmarkedEarlier.length > 0, node: unmarkedEarlier.length > 0 ? unmarkedCard : null },
     { key: 'assessments', side: 'aside', live: data.assessments.length > 0, node: assessmentsCard },
-    { key: 'changes', side: 'aside', live: data.changes.length > 0, node: changesCard },
+    // неотмеченные — под СОР и СОЧ справа: колонки кончаются вровень
+    { key: 'unmarked', side: 'aside', live: unmarkedEarlier.length > 0, node: unmarkedEarlier.length > 0 ? unmarkedCard : null },
+    // изменений нет — карточки нет, пустая плашка ничего не сообщает
+    { key: 'changes', side: 'aside', live: data.changes.length > 0, node: data.changes.length > 0 ? changesCard : null },
   ]
   const main = cards.filter((card) => card.live && card.side === 'main').map((card) => ({ key: card.key, folded: false, node: card.node }))
   const aside = cards.filter((card) => card.live && card.side === 'aside').map((card) => ({ key: card.key, folded: false, node: card.node }))
@@ -295,7 +296,9 @@ export default function TeacherToday() {
       {/* две колонки, когда есть что ставить в обе; одна сторона пустая — карточки
           столбиком во всю ширину, без пустой полосы рядом; пустые — строкой ниже */}
       {main.length > 0 && aside.length > 0 ? (
-        <Columns main={main} aside={aside} />
+        <div className="tday__cols">
+          <Columns main={main} aside={aside} />
+        </div>
       ) : (
         [...main, ...aside].map((card) => <Fragment key={card.key}>{card.node}</Fragment>)
       )}
