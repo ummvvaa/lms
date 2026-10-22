@@ -12,8 +12,8 @@ import { Link, useSearchParams } from 'react-router'
 import { useReviewList, type ReviewItem, type ReviewTab } from '../../api/homework'
 import { useAuth } from '../../auth/AuthContext'
 import { ShowAll } from '../../components/patterns'
-import { Bar, Chip, DataCard, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../../components/ui'
-import { t, tk } from '../../i18n'
+import { Bar, Chip, DataCard, ErrorNote, Loading, Ring, ScreenHead, ScreenTabs } from '../../components/ui'
+import { t, tk, tn } from '../../i18n'
 import Icon from '../../layout/icons'
 import { dueWords, firstLine } from './homeworkParts'
 import { dateWords } from './shared'
@@ -49,6 +49,9 @@ export default function HomeworkReview() {
     asked && TABS.includes(asked) ? asked : (TABS.find((code) => counts[code] > 0) ?? 'unchecked')
   const rows = items.filter((item) => item.tab === tab)
   const wholeSchool = me?.role === 'admin' || me?.role === 'director_exam'
+  const submitted = items.reduce((sum, item) => sum + item.submitted, 0)
+  const total = items.reduce((sum, item) => sum + item.total, 0)
+  const unchecked = items.reduce((sum, item) => sum + item.unchecked, 0)
   const setTab = (next: ReviewTab) => {
     const copy = new URLSearchParams(params)
     copy.set('tab', next)
@@ -138,6 +141,21 @@ export default function HomeworkReview() {
             </div>
           </DataCard>
         )}
+        <div className="lay-stack">
+        {/* учителю — кольцо «Ждут проверки» по своим заданиям: числа те же, что в строках */}
+        {!wholeSchool && submitted > 0 && (
+          <DataCard title={t('Ждут проверки')}>
+            <div className="hwr-wait">
+              <Ring percent={((submitted - unchecked) / submitted) * 100} size={112}>
+                <b className="num t-value">{unchecked}</b>
+              </Ring>
+              <span className="hwr-wait__text">
+                <b>{tn(unchecked, '{n} работа|{n} работы|{n} работ')}</b>
+                <span className="t-note num">{t('сдали {done} из {total}', { done: submitted, total })}</span>
+              </span>
+            </div>
+          </DataCard>
+        )}
         <DataCard title={t('Как дать ДЗ со сдачей')}>
           <ol className="hwr-steps">
             <li>
@@ -156,6 +174,7 @@ export default function HomeworkReview() {
             </li>
           </ol>
         </DataCard>
+        </div>
       </div>
     </div>
   )

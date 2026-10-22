@@ -145,3 +145,17 @@
 .hwr-screen .tabs {
   margin-bottom: 0;
 }
+
+/* кольцо «Ждут проверки» у учителя: кольцо слева, число работ и сдачи справа */
+.hwr-wait {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 4);
+}
+
+.hwr-wait__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+  min-width: 0;
+}

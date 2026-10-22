@@ -120,6 +120,7 @@ export const en: Record<string, string> = {
   '{n} пропуск|{n} пропуска|{n} пропусков': '{n} absence|{n} absences',
   '{n} пропущен|{n} пропущено|{n} пропущено': '{n} skipped|{n} skipped',
   '{n} пропущено': '{n} skipped',
+  '{n} работа|{n} работы|{n} работ': '{n} piece of work|{n} pieces of work',
   '{n} разговор|{n} разговора|{n} разговоров': '{n} conversation|{n} conversations',
   '{n} результат ждёт вашего решения. Текущий балл ученика Mock Test онлайн не меняет — отметка говорит, что результат вы сверили.|{n} результата ждут вашего решения. Текущий балл ученика Mock Test онлайн не меняет — отметка говорит, что результат вы сверили.|{n} результатов ждут вашего решения. Текущий балл ученика Mock Test онлайн не меняет — отметка говорит, что результат вы сверили.': '{n} result awaits your decision. Online Mock Tests do not change a student\'s current score — your decision only records that you have checked the result.|{n} results await your decision. Online Mock Tests do not change a student\'s current score — your decision only records that you have checked the result.',
   '{n} с ошибками': '{n} with errors',
