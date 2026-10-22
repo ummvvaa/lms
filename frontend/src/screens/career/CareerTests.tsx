@@ -61,6 +61,8 @@ const CELL: Record<CellStatus, { tone: Tone; label: string }> = {
 // --- Тесты ------------------------------------------------------------------------
 
 function TestsTab({ manage }: { manage: boolean }) {
+  const { me } = useAuth()
+  const phone = usePhone()
   const list = useCareerTests()
   const patch = useCareerTestPatch()
   const [assigning, setAssigning] = useState<number | null>(null)
@@ -82,6 +84,70 @@ function TestsTab({ manage }: { manage: boolean }) {
   const assigned = rows.reduce((sum, row) => sum + row.assigned, 0)
   const going = rows.reduce((sum, row) => sum + row.in_progress, 0)
   const authors = [...new Set(rows.map((row) => row.created_by?.short ?? '').filter(Boolean))]
+  const stateControl = (row: CareerTestRow) =>
+    manage ? (
+      <SelectField
+        className="ctl-test__state"
+        aria-label={t('{test}: включён или выключен', { test: row.title })}
+        value={row.is_active ? 'on' : 'off'}
+        disabled={patch.isPending}
+        onChange={(event) => toggle(row, event.target.value === 'on')}
+      >
+        <option value="on">{t('включён')}</option>
+        <option value="off">{t('выключен')}</option>
+      </SelectField>
+    ) : (
+      <Chip size="sm" tone={row.is_active ? 'good' : 'neutral'}>
+        {row.is_active ? t('включён') : t('выключен')}
+      </Chip>
+    )
+  const actions = (row: CareerTestRow) => (
+    <div className="ctl-test__acts">
+      {manage && (
+        <Button variant="secondary" size="sm" onClick={() => setAssigning(row.id)}>
+          {t('Кому')}
+        </Button>
+      )}
+      <Button variant="outline" size="sm" onClick={() => setOpened(row.id)}>
+        {t('Открыть')}
+      </Button>
+    </div>
+  )
+  // учителю профориентации — тесты таблицей, как в его макете; администратору —
+  // карточками по четыре, как в макете администратора; на телефоне — карточки
+  const asTable = me?.role !== 'admin' && !phone
+  const columns: Column<CareerTestRow>[] = [
+    {
+      key: 'title',
+      title: t('Тест'),
+      width: '38%',
+      cell: (row) => (
+        <span className="ctl-row__text">
+          <b>{row.title}</b>
+          <span className="t-note num">{whoNote(row)}</span>
+        </span>
+      ),
+      sortBy: (row) => row.title,
+    },
+    { key: 'items', title: t('Утверждений'), width: '12%', align: 'right', cell: (row) => <b className="num">{row.items}</b>, sortBy: (row) => row.items },
+    {
+      key: 'done',
+      title: t('Сдали'),
+      width: '18%',
+      cell: (row) =>
+        row.assigned ? (
+          <span className="ctl-row__done">
+            <b className="num">{t('{done} из {total}', { done: row.done, total: row.assigned })}</b>
+            <Bar percent={(row.done / row.assigned) * 100} color="var(--good)" />
+          </span>
+        ) : (
+          <span className="t-note">{t('никому не открыт')}</span>
+        ),
+      sortBy: (row) => row.done,
+    },
+    { key: 'state', title: t('Состояние'), width: '14%', cell: stateControl },
+    { key: 'acts', title: '', width: '18%', align: 'right', cell: actions },
+  ]
 
   return (
     <>
@@ -120,6 +186,12 @@ function TestsTab({ manage }: { manage: boolean }) {
               note={authors.length ? namesLine(authors) : undefined}
             />
           </div>
+          {asTable ? (
+            <DataCard className="card--beam" title={t('Тесты')} count={rows.length}>
+              <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} />
+            </DataCard>
+          ) : (
+          <>
           {/* тесты карточками по четыре в ряд: название, кто и когда загрузил,
               сдали из скольких полосой; внизу «Кому» и «Открыть». Видны два ряда,
               остальные — «Показать все» на месте */}
@@ -131,22 +203,7 @@ function TestsTab({ manage }: { manage: boolean }) {
                     <span className="ctl-test__ico" aria-hidden="true">
                       <Icon name="compass" size={20} />
                     </span>
-                    {manage ? (
-                      <SelectField
-                        className="ctl-test__state"
-                        aria-label={t('{test}: включён или выключен', { test: row.title })}
-                        value={row.is_active ? 'on' : 'off'}
-                        disabled={patch.isPending}
-                        onChange={(event) => toggle(row, event.target.value === 'on')}
-                      >
-                        <option value="on">{t('включён')}</option>
-                        <option value="off">{t('выключен')}</option>
-                      </SelectField>
-                    ) : (
-                      <Chip size="sm" tone={row.is_active ? 'good' : 'neutral'}>
-                        {row.is_active ? t('включён') : t('выключен')}
-                      </Chip>
-                    )}
+                    {stateControl(row)}
                   </header>
                   <div className="ctl-test__text">
                     <b className="ctl-test__title">{row.title}</b>
@@ -169,20 +226,13 @@ function TestsTab({ manage }: { manage: boolean }) {
                     </div>
                     <Bar percent={row.assigned ? (row.done / row.assigned) * 100 : 0} color="var(--good)" />
                   </div>
-                  <div className="ctl-test__acts">
-                    {manage && (
-                      <Button variant="secondary" size="sm" onClick={() => setAssigning(row.id)}>
-                        {t('Кому')}
-                      </Button>
-                    )}
-                    <Button variant="outline" size="sm" onClick={() => setOpened(row.id)}>
-                      {t('Открыть')}
-                    </Button>
-                  </div>
+                  {actions(row)}
                 </section>
               ))}
             </ShowAll>
           </div>
+          </>
+          )}
         </>
       )}
       {assigning !== null && detail.data && (

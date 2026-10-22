@@ -91,3 +91,27 @@
   width: auto;
   min-width: 0;
 }
+
+/* тесты таблицей у учителя профориентации: название с «кто и когда», сдали — числом и полосой */
+.ctl-row__text,
+.ctl-row__done {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+  min-width: 0;
+}
+
+.ctl-row__done .bar {
+  max-width: calc(var(--space) * 32);
+}
+
+.ctl-row__text + *,
+td .ctl-test__acts {
+  justify-content: flex-end;
+}
+
+/* название теста — целиком, переносом, а не многоточием */
+.ctl-row__text b {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

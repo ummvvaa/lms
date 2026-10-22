@@ -6,6 +6,7 @@
  * на телефоне: открыть текущий урок и отметить отсутствующих — кнопка
  * «Отметить N урок» стоит первой.
  */
+import { Fragment } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useTeacherToday } from '../../api/academics'
 import Icon from '../../layout/icons'
@@ -222,6 +223,16 @@ export default function TeacherToday() {
     </DataCard>
   )
 
+  const cards = [
+    { key: 'lessons', side: 'main', live: data.lessons.length > 0, node: lessonsCard },
+    { key: 'unmarked', side: 'main', live: unmarkedEarlier.length > 0, node: unmarkedEarlier.length > 0 ? unmarkedCard : null },
+    { key: 'assessments', side: 'aside', live: data.assessments.length > 0, node: assessmentsCard },
+    { key: 'changes', side: 'aside', live: data.changes.length > 0, node: changesCard },
+  ]
+  const main = cards.filter((card) => card.live && card.side === 'main').map((card) => ({ key: card.key, folded: false, node: card.node }))
+  const aside = cards.filter((card) => card.live && card.side === 'aside').map((card) => ({ key: card.key, folded: false, node: card.node }))
+  const folded = cards.filter((card) => !card.live && card.node)
+
   return (
     <div className="lay-screen">
       <ScreenHead
@@ -281,20 +292,19 @@ export default function TeacherToday() {
           note={data.assessments.length ? t('первый {date}', { date: dateShort(data.assessments[0].date) }) : t('в ближайший месяц')}
         />
       </div>
-      <Columns
-        main={[
-          { key: 'lessons', folded: data.lessons.length === 0, node: lessonsCard },
-          ...(unmarkedEarlier.length > 0 ? [{ key: 'unmarked', folded: false, node: unmarkedCard }] : []),
-        ]}
-        aside={[
-          { key: 'assessments', folded: data.assessments.length === 0, node: assessmentsCard },
-          // пустые «Изменения» — строкой в правой колонке: под ней колонка кончается ближе к левой
-          { key: 'changes', folded: false, node: changesCard },
-        ]}
-      />
+      {/* две колонки, когда есть что ставить в обе; одна сторона пустая — карточки
+          столбиком во всю ширину, без пустой полосы рядом; пустые — строкой ниже */}
+      {main.length > 0 && aside.length > 0 ? (
+        <Columns main={main} aside={aside} />
+      ) : (
+        [...main, ...aside].map((card) => <Fragment key={card.key}>{card.node}</Fragment>)
+      )}
       {/* журналы — во всю ширину под колонками: строка журнала широкая (полоса
           «проведено» и чип), а колонки над ней кончаются вровень */}
       {journalsCard}
+      {folded.map((card) => (
+        <Fragment key={card.key}>{card.node}</Fragment>
+      ))}
     </div>
   )
 }
