@@ -16936,8 +16936,8 @@ msgid "Разборы профтеста"
 msgstr "Career test analyses"
 
 #: career
-msgid "Результаты профтеста читают учитель профориентации, куратор своих групп, директор по поступлению и администратор"
-msgstr "Career test results are read by the career guidance teacher, the curator of their own groups, the admissions director and the administrator"
+msgid "Результаты профтеста читают учитель профориентации, директор по поступлению и администратор"
+msgstr "Career test results are read by the career guidance teacher, the admissions director and the administrator"
 
 #: career
 msgid "Сдан"

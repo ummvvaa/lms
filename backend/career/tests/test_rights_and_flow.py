@@ -246,7 +246,7 @@ def passed(karta, teacher, boston, pupils):
 def test_results_matrix_and_who_reads(
     passed, karta, teacher, curator, asem, admin, kymbat, other_teacher, boston, pupils
 ):
-    for user in (teacher, curator, asem, admin):
+    for user in (teacher, asem, admin):
         response = login(user).get(f"/api/career/results/?group={boston.pk}")
         assert response.status_code == 200, user.email
         rows = {row["id"]: row for row in response.json()["students"]}
@@ -254,15 +254,50 @@ def test_results_matrix_and_who_reads(
         assert response.json()["tests"][0]["assigned"] == 2
     assert login(kymbat).get(f"/api/career/results/?group={boston.pk}").status_code == 403
     assert login(other_teacher).get(f"/api/career/results/?group={boston.pk}").status_code == 403
-    # блок в карточке: куратор BOSTON читает Алию, чужую группу — нет
+    # куратору раздела нет (решение владельца, 22.10.2026): своя группа BOSTON
+    # чтения не открывает — ни результатов, ни блока в карточке
     client = login(curator)
-    block = client.get(f"/api/career/students/{pupils['aliya'].pk}/").json()
-    assert block["attempts"][0]["scores"][0]["score"] == 12
-    assert client.get(f"/api/career/students/{pupils['nurai'].pk}/").status_code == 404
-    assert client.get(f"/api/career/attempts/{passed['aliya']}/").status_code == 200
-    # куратор не ведёт тесты
+    assert client.get(f"/api/career/results/?group={boston.pk}").status_code == 403
+    assert client.get(f"/api/career/students/{pupils['aliya'].pk}/").status_code == 403
+    assert client.get(f"/api/career/attempts/{passed['aliya']}/").status_code == 403
     assert client.post(f"/api/career/attempts/{passed['aliya']}/retake/").status_code == 403
     assert client.put(f"/api/career/tests/{karta.pk}/assignments/", {"groups": []}, format="json").status_code == 403
+
+
+def test_curator_is_refused_on_every_career_route(passed, karta, curator, boston, pupils):
+    """Страж: каждая ручка профтеста сотрудника отвечает куратору 403 (решение владельца, 22.10.2026).
+
+    Список ручек берётся из `career.urls`, а не переписывается: новая ручка
+    без отказа куратору уронит тест. Ученические `career-my*` — не сотрудника.
+    """
+    from django.urls import reverse
+
+    from career import urls
+
+    attempt = passed["aliya"]
+    kwargs = {
+        "career-test": {"pk": karta.pk},
+        "career-test-file": {"pk": karta.pk},
+        "career-test-assignments": {"pk": karta.pk},
+        "career-attempt": {"pk": attempt},
+        "career-attempt-retake": {"pk": attempt},
+        "career-analysis": {"pk": 1},
+        "career-student": {"pk": pupils["aliya"].pk},
+    }
+    client = login(curator)
+    checked = []
+    for pattern in urls.urlpatterns:
+        name = pattern.name
+        if name.startswith("career-my"):
+            continue
+        url = reverse(name, kwargs=kwargs.get(name, {}))
+        query = f"?group={boston.pk}" if name in ("career-results", "career-analyses") else ""
+        methods = [m for m in pattern.callback.cls.http_method_names if m in ("get", "post", "put", "patch", "delete")]
+        for method in methods:
+            response = getattr(client, method)(url + query, {}, format="json")
+            assert response.status_code == 403, f"{method.upper()} {name}: {response.status_code}"
+            checked.append((name, method))
+    assert len({name for name, _ in checked}) == 13
 
 
 def test_tests_list_counts(passed, karta, teacher):
@@ -422,8 +457,8 @@ def test_student_sees_analysis_only_when_shown_and_teacher_edits_text(
     assert len(provider.calls) == 2
     row.refresh_from_db()
     assert row.summary_student == "Своими словами"
-    # куратор читает разбор своей группы, но не правит
-    assert login(curator).get(f"/api/career/analyses/{row.pk}/").status_code == 200
+    # куратору раздела нет (решение владельца, 22.10.2026): ни чтения, ни правки
+    assert login(curator).get(f"/api/career/analyses/{row.pk}/").status_code == 403
     assert login(curator).patch(f"/api/career/analyses/{row.pk}/", {"summary": "x"}, format="json").status_code == 403
 
 

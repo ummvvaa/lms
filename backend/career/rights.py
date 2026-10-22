@@ -8,14 +8,18 @@
 другого — раздел всё равно его): журнал только подсказывает группы по
 умолчанию — свои составы; без журнала учитель выбирает любую группу.
 Администратор — как всегда, за всех. Результаты и разборы читают учитель
-профориентации, администратор, директор по поступлению, куратор — по своим
-группам (решение владельца, 08.10.2026). Граница — группа ученика.
+профориентации, администратор и директор по поступлению. Граница — группа ученика.
+
+Куратору раздела нет (решение владельца, 22.10.2026: профтест сдают ученики;
+тесты добавляют и ведут только профориентолог и администратор; у куратора
+раздела нет): его группы границу чтения не расширяют, и куратор, который сам
+не ведёт профориентацию, получает отказ на каждой ручке. Прежнее чтение
+своих групп (08.10.2026) снято.
 """
 
 from __future__ import annotations
 
-from accounts.curators import curated_group_ids
-from core.domains import ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT
+from core.domains import ROLE_ADMIN, ROLE_STUDENT
 from students.models import StudyGroup
 
 ADMISSION_DIRECTOR = "director_admission"
@@ -80,12 +84,9 @@ def visible_group_ids(user) -> list[int]:
         return _all_group_ids()
     if role == ROLE_STUDENT or not role:
         return []
-    out = taught_group_ids(user)
-    if role == ROLE_CURATOR:
-        for gid in curated_group_ids(user):
-            if gid not in out:
-                out.append(gid)
-    return out
+    # куратор читает только то, что ведёт сам как профориентолог: свои группы
+    # кураторства раздела не открывают (решение владельца, 22.10.2026)
+    return taught_group_ids(user)
 
 
 def reads(user) -> bool:

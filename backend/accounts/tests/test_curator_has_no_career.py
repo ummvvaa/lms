@@ -1,4 +1,9 @@
-"""Профтест у куратора — только чтение своих групп (решение владельца, 19.10.2026)."""
+"""Профтеста у куратора нет (решение владельца, 22.10.2026).
+
+Профтест сдают ученики; тесты добавляют и ведут только профориентолог
+и администратор. Прежнее чтение своих групп (19.10.2026) снято: куратор,
+который сам не ведёт профориентацию, получает отказ и на чтении, и на записи.
+"""
 
 from __future__ import annotations
 
@@ -37,13 +42,21 @@ def client_of(user) -> APIClient:
     return api
 
 
-def test_curator_reads_own_groups_and_results(curator, groups):
-    api = client_of(curator)
-    listed = api.get("/api/career/groups/").json()
-    assert listed["manage"] is False and [g["code"] for g in listed["groups"]] == ["BOSTON"]
-    assert api.get(f"/api/career/results/?group={groups['boston'].pk}").status_code == 200
-    assert api.get(f"/api/career/results/?group={groups['chicago'].pk}").json()["group"] is None
-    assert api.get("/api/career/tests/").status_code == 200
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/career/tests/",
+        "/api/career/groups/",
+        "/api/career/results/?group={boston}",
+        "/api/career/analyses/?group={boston}",
+        "/api/career/students/{student}/",
+    ],
+)
+def test_curator_does_not_read_the_career_section(path, curator, groups):
+    student = Student.objects.get(group=groups["boston"])
+    url = path.format(boston=groups["boston"].pk, student=student.pk)
+    response = client_of(curator).get(url)
+    assert response.status_code == 403, (url, response.status_code)
 
 
 @pytest.mark.parametrize(
