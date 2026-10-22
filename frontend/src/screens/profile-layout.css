@@ -1,0 +1,71 @@
+/* Профиль по макету: карточка с аватаром сверху, две колонки ниже.
+   Цвета — токены, размеры — шаг четыре и переменные плотности. */
+
+.profile__hero {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 5);
+  min-width: 0;
+}
+
+.profile__hero .ava {
+  font-size: var(--type-dialog);
+}
+
+.profile__who {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+  min-width: 0;
+}
+
+.profile__name {
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: var(--type-dialog);
+  line-height: var(--leading-screen);
+  overflow-wrap: anywhere;
+}
+
+.profile__line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 calc(var(--space) * 3);
+  min-width: 0;
+}
+
+.profile__handle {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile__when {
+  white-space: nowrap;
+}
+
+/* колонки заканчиваются по своему содержимому, а не тянутся пустотой */
+.profile__cols {
+  align-items: start;
+}
+
+@media (max-width: 759px) {
+  .profile__hero {
+    gap: calc(var(--space) * 4);
+  }
+
+  .profile__hero .ava {
+    width: calc(var(--space) * 14);
+    height: calc(var(--space) * 14);
+    font-size: var(--type-card);
+  }
+
+  .profile__name {
+    font-size: var(--type-value);
+  }
+
+  .profile__when {
+    white-space: normal;
+  }
+}

@@ -1,11 +1,11 @@
 /**
- * Главная ученика в новом языке.
+ * Главная ученика 11 в новом языке, раскладка по макету.
  *
- * На главной — то, что нужно сегодня (решение владельца, 07.10.2026): слева
- * уроки по звонкам, ДЗ к сдаче, задачи с галочкой, готовность к подаче;
- * справа ближайшие даты и незакрытые места. Баллы, документы, вузы, эссе
- * и подготовка — в своих разделах: каждая карточка в одном месте.
- * Цветных полотен и карусели нет: пояснение — строкой, кнопка — в строке.
+ * Сверху главная карточка — готовность к подаче по доменам, рядом ближайшие
+ * даты; ниже в ряд — что закрыть, задачи с галочкой, ДЗ к сдаче; внизу уроки
+ * дня по звонкам. На телефоне — шапка с аватаром, «следующий урок», два числа
+ * в ряд, уроки дня списком, дальше остальные карточки столбиком.
+ * Баллы, документы, вузы, эссе и подготовка — в своих разделах.
  *
  * Внутренних ярлыков здесь нет — их не отдаёт даже API (инвариант №7).
  */
@@ -14,72 +14,25 @@ import { toast } from 'sonner'
 import { useMyLessons } from '../../api/academics'
 import { useMyHomework } from '../../api/homework'
 import { useCalendar, useGameState, useHomeCues, useMyProfile, useMyTasks, useTaskStatus } from '../../api/hooks'
-import { shortDate } from '../../components/CalendarCard'
+import { useAuth } from '../../auth/AuthContext'
 import { Row, Rows, ShowAll } from '../../components/patterns'
-import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
+import { Bar, Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Checkbox } from '../../components/ui/checkbox'
-import Progress from '../../components/Progress'
 import { t, tk, tn } from '../../i18n'
 import { todayAlmaty } from '../../lib/dates'
+import { usePhone } from '../../phone'
 import { MarkChip } from '../academics/shared'
-import { CabinetBoard } from './cabinet'
-import { formatDate, formatDateTime } from '../../lib/format'
+import { formatDate, formatDateTime, formatDayMonth, formatWeekday } from '../../lib/format'
+import { CardRow, DateBox, findNext, NextLessonCard, PhoneHead, TodayList, type TodayLesson } from './home-today'
 import './student.css'
-
+import './student-home.css'
 
 const MARK_WORDS: Record<string, string> = {
   present: tk('был'),
   absent: tk('не был'),
   late: tk('опоздал'),
   excused: tk('уважительная'),
-}
-
-/** Уроки сегодня по звонкам: предмет, кабинет, учитель, моя отметка. */
-function LessonsToday() {
-  const navigate = useNavigate()
-  const { data } = useMyLessons(todayAlmaty())
-  if (!data) return null
-  const rows = data.lessons
-  const now = data.now_slot
-  return (
-    <DataCard
-      title={t('Уроки сегодня')}
-      count={rows.length || undefined}
-      note={now ? t('идёт {slot} урок', { slot: now }) : undefined}
-      empty={rows.length === 0 && t('уроков сегодня нет')}
-      right={
-        <Button variant="link" size="sm" onClick={() => navigate('/schedule')}>
-          {t('Расписание')}
-        </Button>
-      }
-    >
-      <Rows>
-        {rows.map((lesson) => (
-          <Row
-            key={lesson.id}
-            lead={<b className="num stu__slot">{lesson.slot}</b>}
-            title={`${lesson.subject.title}${lesson.kind !== 'fo' && lesson.subject.in_lms ? ` · ${lesson.kind_label}` : ''}`}
-            note={[lesson.bell, lesson.room, lesson.actual_teacher?.short ?? ''].filter(Boolean).join(' · ')}
-            right={
-              !lesson.is_live ? (
-                <Chip tone="warn" size="sm">
-                  {lesson.status_title}
-                </Chip>
-              ) : lesson.mine?.mark ? (
-                <MarkChip mark={lesson.mine.mark} words={MARK_WORDS} size="sm" lateBy={lesson.mine.late_by} lateAsAbsent={lesson.mine.late_as_absent} />
-              ) : lesson.slot === now ? (
-                <Chip tone="accent" size="sm">
-                  {t('сейчас')}
-                </Chip>
-              ) : undefined
-            }
-            to={lesson.subject.in_lms ? `/lessons/${lesson.id}` : undefined}
-          />
-        ))}
-      </Rows>
-    </DataCard>
-  )
 }
 
 /** ДЗ, которые нужно сдать в LMS: ближайший срок сверху, открываются экраном сдачи. */
@@ -179,8 +132,57 @@ function TasksBlock() {
   )
 }
 
-/** Готовность к подаче по доменам: домен без данных подписан, а не спрятан. */
-function ReadinessBlock() {
+
+/** Уроки дня в общем виде: отметка, «сейчас» или отмена — чипом. */
+function useTodayLessons(): { lessons: TodayLesson[]; nowSlot: number | null; ready: boolean } {
+  const { data } = useMyLessons(todayAlmaty())
+  if (!data) return { lessons: [], nowSlot: null, ready: false }
+  const now = data.now_slot
+  return {
+    ready: true,
+    nowSlot: now,
+    lessons: data.lessons.map((lesson) => ({
+      key: String(lesson.id),
+      slot: lesson.slot,
+      bell: lesson.bell,
+      subject: `${lesson.subject.title}${lesson.kind !== 'fo' && lesson.subject.in_lms ? ` · ${lesson.kind_label}` : ''}`,
+      meta: [lesson.room, lesson.actual_teacher?.short ?? ''].filter(Boolean).join(' · '),
+      chip: !lesson.is_live ? (
+        <Chip tone="warn" size="sm">
+          {lesson.status_title}
+        </Chip>
+      ) : lesson.mine?.mark ? (
+        <MarkChip mark={lesson.mine.mark} words={MARK_WORDS} size="sm" lateBy={lesson.mine.late_by} lateAsAbsent={lesson.mine.late_as_absent} />
+      ) : lesson.slot === now ? (
+        <Chip tone="accent" size="sm">
+          {t('сейчас')}
+        </Chip>
+      ) : undefined,
+      to: lesson.subject.in_lms ? `/lessons/${lesson.id}` : undefined,
+    })),
+  }
+}
+
+/** Уроки дня по звонкам на ноутбуке: предмет, кабинет, учитель, моя отметка. */
+function LessonsToday() {
+  const today = useTodayLessons()
+  if (!today.ready) return null
+  return (
+    <TodayList
+      title={t('Уроки сегодня')}
+      lessons={today.lessons}
+      nowSlot={today.nowSlot}
+      note={today.nowSlot ? t('идёт {slot} урок', { slot: today.nowSlot }) : undefined}
+      empty={t('уроков сегодня нет')}
+    />
+  )
+}
+
+/**
+ * Готовность к подаче по доменам: процент крупно, домены полосами.
+ * Домен без данных подписан, а не спрятан.
+ */
+function ReadinessBlock({ className }: { className?: string }) {
   const { data } = useMyProfile()
   const readiness = data?.readiness
   if (!readiness) return null
@@ -190,21 +192,35 @@ function ReadinessBlock() {
   ]
   return (
     <DataCard
+      className={`stuhome__ready${className ? ` ${className}` : ''}`}
       title={t('Готовность к подаче')}
-      note={readiness.weakest_title ? t('Больше всего сейчас даст: {block}', { block: readiness.weakest_title }) : t('Из чего складывается ваш процент')}
-      right={<b className="num t-value">{readiness.score}%</b>}
+      right={
+        readiness.weakest_title ? (
+          <Chip tone="accent" size="sm" className="stuhome__readychip">
+            {t('Больше всего сейчас даст: {block}', { block: readiness.weakest_title })}
+          </Chip>
+        ) : undefined
+      }
       empty={rows.length === 0 && t('данных пока нет — профиль ещё заполняется')}
     >
-      <Rows>
-        {rows.map((row) => (
-          <Row
-            key={row.code}
-            title={row.title}
-            note={row.value === null ? t('данных пока нет') : undefined}
-            right={row.value === null ? undefined : <span className="prep__rowbar"><Progress percent={row.value} tone={row.code === readiness.weakest ? 'accent' : 'good'} /></span>}
-          />
-        ))}
-      </Rows>
+      <div className="stuhome__readybody">
+        <b className="num stuhome__score">{readiness.score}%</b>
+        <div className="stuhome__bars">
+          {rows.map((row) => (
+            <div key={row.code} className="stuhome__barrow">
+              <span className="stuhome__barname">{row.title}</span>
+              {row.value === null ? (
+                <span className="t-note stuhome__barnone">{t('данных пока нет')}</span>
+              ) : (
+                <>
+                  <Bar percent={row.value} color={row.code === readiness.weakest ? undefined : 'var(--good)'} />
+                  <span className="num stuhome__barval">{row.value}%</span>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
       {readiness.skipped.length > 0 && <p className="t-note">{t('Блоки без данных в процент не входят — он считается по тем, что заполнены.')}</p>}
     </DataCard>
   )
@@ -212,21 +228,94 @@ function ReadinessBlock() {
 
 export default function StudentHome() {
   const navigate = useNavigate()
+  const phone = usePhone()
+  const { me } = useAuth()
   const profile = useMyProfile()
   const calendar = useCalendar()
   const cues = useHomeCues()
+  // те же запросы, что у карточек ниже: по ним решается, какая карточка пуста
+  const tasks = useMyTasks()
+  const homework = useMyHomework()
+  const today = useTodayLessons()
 
   if (profile.isLoading) return <Loading kind="cards" />
   if (profile.error) return <ErrorNote error={profile.error} />
   if (!profile.data) return null
 
   const nearest = calendar.data?.nearest ?? null
-  const today = calendar.data?.today ?? todayAlmaty()
-  const upcoming = (calendar.data?.events ?? []).filter((event) => event.date >= today).slice(0, 6)
+  const day = calendar.data?.today ?? todayAlmaty()
+  const upcoming = (calendar.data?.events ?? []).filter((event) => event.date >= day).slice(0, 6)
   const cueRows = cues.data?.cues ?? []
+  const openTasks = (tasks.data ?? []).filter((task) => task.status !== 'done').length
+  const todo = (homework.data?.items ?? []).filter((item) => item.state === 'todo')
+  const readiness = profile.data.readiness
+
+  const nearestCard = (
+    <DataCard
+      title={t('Ближайшее')}
+      empty={upcoming.length === 0 && t('впереди пока пусто')}
+      right={
+        <Button variant="link" size="sm" onClick={() => navigate('/calendar')}>
+          {t('Календарь')}
+        </Button>
+      }
+    >
+      <Rows>
+        <ShowAll>
+          {upcoming.map((event, index) => (
+            <Row
+              key={`${event.date}-${index}`}
+              lead={<DateBox iso={event.date} today={day} />}
+              title={event.title}
+              note={event.kind_title}
+              right={event.pending ? <Chip size="sm">{t('ждёт проверки')}</Chip> : undefined}
+              to={event.link}
+            />
+          ))}
+        </ShowAll>
+      </Rows>
+    </DataCard>
+  )
+  const cuesCard = (
+    <DataCard title={t('Что закрыть')} count={cueRows.length || undefined} empty={cueRows.length === 0 && t('незакрытых мест нет')}>
+      <div className="stuhome__cues">
+        {cueRows.map((cue) => (
+          <div key={cue.code} className="stuhome__cue">
+            <div className="stuhome__cuetext">
+              <b>{t(cue.title)}</b>
+              <span className="t-note">{t(cue.note)}</span>
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => navigate(cue.path)}>
+              {t(cue.action)}
+            </Button>
+          </div>
+        ))}
+      </div>
+    </DataCard>
+  )
+  const lessonsEmpty = t('уроков сегодня нет')
+
+  if (phone)
+    return (
+      <div className="lay-screen">
+        <PhoneHead name={me?.full_name ?? ''} line={[`${formatWeekday(day)}, ${formatDayMonth(day)}`, me?.group].filter(Boolean).join(' · ')} />
+        {today.ready && <NextLessonCard lessons={today.lessons} nowSlot={today.nowSlot} empty={lessonsEmpty} tiles={false} />}
+        <div className="stuhome__pair">
+          <Kpi label={t('ДЗ к сдаче')} value={String(todo.length)} chip={todo.some((item) => item.past_due) ? { label: t('срок прошёл'), tone: 'bad' } : undefined} to="/homework" />
+          {readiness && <Kpi label={t('Готовность к подаче')} value={`${readiness.score}%`} />}
+        </div>
+        {/* без звонков главный урок не выбрать — уроки дня уже строками в карточке выше */}
+        {today.ready && (findNext(today.lessons, today.nowSlot)?.index ?? -1) >= 0 && <TodayList title={t('Сегодня')} lessons={today.lessons} nowSlot={today.nowSlot} empty={lessonsEmpty} />}
+        {nearestCard}
+        {cuesCard}
+        <TasksBlock />
+        <ReadinessBlock />
+        <HomeworkDue />
+      </div>
+    )
 
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Главная')}
         subtitle={
@@ -240,74 +329,27 @@ export default function StudentHome() {
                 )
             : undefined
         }
+        actions={
+          <Button variant="outline" onClick={() => navigate('/schedule')}>
+            {t('Расписание')}
+          </Button>
+        }
       />
 
-      <CabinetBoard
+      <div className={readiness ? 'lay-3' : 'lay-stack'}>
+        {readiness && <ReadinessBlock className="card--beam lay-span2" />}
+        {nearestCard}
+      </div>
+
+      <CardRow
         cards={[
-          { key: 'lessons', column: 'main', rows: 6, node: <LessonsToday /> },
-          { key: 'homework', column: 'main', rows: 4, node: <HomeworkDue /> },
-          { key: 'tasks', column: 'main', rows: 5, node: <TasksBlock /> },
-          { key: 'readiness', column: 'main', rows: 5, node: <ReadinessBlock /> },
-          {
-            key: 'nearest',
-            column: 'aside',
-            rows: upcoming.length,
-            folded: upcoming.length === 0,
-            node: (
-              <DataCard
-                title={t('Ближайшее')}
-                empty={upcoming.length === 0 && t('впереди пока пусто')}
-                right={
-                  <Button variant="link" size="sm" onClick={() => navigate('/calendar')}>
-                    {t('Календарь')}
-                  </Button>
-                }
-              >
-                <Rows>
-                  <ShowAll>
-                    {upcoming.map((event, index) => (
-                      <Row
-                        key={`${event.date}-${index}`}
-                        lead={<span className="stu__when num">{shortDate(event.date, today)}</span>}
-                        title={event.title}
-                        note={event.kind_title}
-                        right={event.pending ? <Chip size="sm">{t('ждёт проверки')}</Chip> : undefined}
-                        to={event.link}
-                      />
-                    ))}
-                  </ShowAll>
-                </Rows>
-              </DataCard>
-            ),
-          },
-          {
-            key: 'cues',
-            column: 'aside',
-            rows: cueRows.length,
-            folded: cueRows.length === 0,
-            node: (
-              <DataCard title={t('Что закрыть')} empty={cueRows.length === 0 && t('незакрытых мест нет')}>
-                <Rows>
-                  {cueRows.map((cue) => (
-                    <Row
-                      key={cue.code}
-                      icon="bulb"
-                      tone="accent"
-                      title={t(cue.title)}
-                      note={t(cue.note)}
-                      acts={
-                        <Button variant="secondary" size="sm" onClick={() => navigate(cue.path)}>
-                          {t(cue.action)}
-                        </Button>
-                      }
-                    />
-                  ))}
-                </Rows>
-              </DataCard>
-            ),
-          },
+          { key: 'cues', folded: cueRows.length === 0, node: cuesCard },
+          { key: 'tasks', folded: openTasks === 0, node: <TasksBlock /> },
+          { key: 'homework', folded: todo.length === 0, node: <HomeworkDue /> },
         ]}
       />
+
+      <LessonsToday />
     </div>
   )
 }

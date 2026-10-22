@@ -411,7 +411,8 @@ button.head__pill:hover:not(.head__pill--on) {
   flex-wrap: wrap;
   align-items: center;
   gap: calc(var(--space) * 4);
-  margin-bottom: calc(var(--space) * 4);
+  /* тот же разрыв, что между блоками экрана: баннер стоит в общей сетке */
+  margin-bottom: var(--gap-block);
   border-color: var(--accent);
   background: var(--accent-bg);
 }
@@ -2882,11 +2883,56 @@ body [data-slot='button'][data-variant].notice__more {
   gap: calc(var(--space) * 2) calc(var(--space) * 3);
 }
 
+/* Баннер одной строкой по макету главной: слева текст и подсказка под ним,
+   справа поле и кнопки в ряд; сообщение об ошибке — строкой на всю ширину.
+   Пустоты между формой и подсказкой справа больше нет. */
 .banner .notice__text {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: calc(var(--space) * 4);
+  gap: calc(var(--space) * 2) calc(var(--space) * 4);
+}
+
+.banner .notice__text > .banner__text {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.banner .notice__text > .banner__form {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.banner .notice__text > .banner__form [data-slot='input'] {
+  width: calc(var(--space) * 60);
+}
+
+.banner .notice__text > .banner__note {
+  grid-column: 1;
+  margin: 0;
+}
+
+.banner .notice__text > .badge--sentence {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+@media (max-width: 1100px) {
+  .banner .notice__text {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .banner .notice__text > .banner__form {
+    grid-column: 1;
+    grid-row: auto;
+    flex-wrap: wrap;
+  }
+
+  .banner .notice__text > .banner__form [data-slot='input'] {
+    width: 100%;
+  }
 }
 
 /* История загрузок на телефоне (фаза 75): строка «кто и когда» с чипами

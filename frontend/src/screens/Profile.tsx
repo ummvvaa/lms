@@ -1,9 +1,10 @@
 /**
  * Личная страница: учётная запись, тема и смена пароля.
  *
- * Открывается из меню по аватару. Одна узкая колонка, три карточки
- * (решение владельца, 27.09.2026): пояснений о правах и подсказок нет —
- * что доступно, видно по меню. У учителя в учётной записи ещё предметы,
+ * Открывается из меню по аватару. Раскладка по макету: сверху карточка
+ * с аватаром, именем и последним входом, ниже две колонки — учётная запись
+ * с языком и темой слева, смена пароля справа. Пояснений о правах и
+ * подсказок нет — что доступно, видно по меню. У учителя в учётной записи ещё предметы,
  * кабинет и нагрузка; у ученика после пяти шагов — возврат «Моего пути».
  * Язык и тема хранятся в профиле на сервере — те же, что в меню по аватару.
  */
@@ -17,13 +18,14 @@ import Field from '../components/Field'
 import PersonalEmail from '../components/PersonalEmail'
 import PasswordRules, { passwordProblem } from '../components/PasswordRules'
 import { languagesOf, offeredLanguage, THEMES } from '../components/ProfileMenu'
-import { Row, Rows, Segmented } from '../components/patterns'
+import { Avatar, Row, Rows, Segmented } from '../components/patterns'
 import { Chip, counted, DataCard, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
 import { t } from '../i18n'
 import { applyTheme } from '../theme'
 import { formatDateTimeLong } from '../lib/format'
 import './academics/academics.css'
+import './profile-layout.css'
 
 function formatWhen(value: string | null): string {
   if (!value) return t('ещё не входили')
@@ -35,23 +37,28 @@ function SettingsBlock() {
   const { me } = useAuth()
   const prefs = useUpdatePreferences()
   if (!me) return null
+  const several = languagesOf(me).length > 1
+  const theme = (
+    <Segmented
+      usageFilter={false}
+      value={me.theme}
+      onChange={(value) => {
+        applyTheme(value)
+        prefs.mutate({ theme: value })
+      }}
+      label={t('Тема')}
+      items={THEMES.map((item) => ({ value: item.value, label: t(item.label) }))}
+    />
+  )
   return (
-    <DataCard title={t('Тема')}>
-      {languagesOf(me).length > 1 && (
+    <DataCard title={several ? t('Язык и тема') : t('Тема')}>
+      {several && (
         <Field.Static label={t('Язык')}>
           <Segmented usageFilter={false} value={offeredLanguage(me)} onChange={(value) => prefs.mutate({ language: value })} label={t('Язык')} items={languagesOf(me).map((item) => ({ value: item.value, label: item.label }))} />
         </Field.Static>
       )}
-      <Segmented
-        usageFilter={false}
-        value={me.theme}
-        onChange={(value) => {
-          applyTheme(value)
-          prefs.mutate({ theme: value })
-        }}
-        label={t('Тема')}
-        items={THEMES.map((item) => ({ value: item.value, label: t(item.label) }))}
-      />
+      {/* при выборе языка у темы своя подпись, иначе её называет заголовок карточки */}
+      {several ? <Field.Static label={t('Тема')}>{theme}</Field.Static> : theme}
     </DataCard>
   )
 }
@@ -130,28 +137,37 @@ function PasswordBlock() {
 export default function Profile() {
   const { me } = useAuth()
   if (!me) return null
+  // логин или почта — в главной карточке; вторая из них, если есть обе, — строкой ниже
+  const handle = me.login || me.email || ''
 
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead title={t('Профиль')} subtitle={`${me.role_title}${me.role === 'student' && me.group ? ` · ${me.group}` : ''}`} />
-      <div className="acad__cols acad__cols--even">
-        <DataCard title={t('Учётная запись')}>
-          <Rows>
-            <Row title={t('Имя')} value={me.full_name || null} none={t('не указано')} />
-            {me.email && <Row title={t('Почта')} value={me.email} />}
-            {me.login && <Row title={t('Логин')} value={me.login} />}
-            <Row title={t('Роль')} value={me.role_title} />
-            {me.role === 'student' && <Row title={t('Группа')} value={me.group || null} none={t('не указана')} />}
-            {me.role === 'teacher' && <TeacherRows />}
-            <Row title={t('Последний вход')} value={formatWhen(me.last_login)} />
-            {/* личная почта — вход и «Забыли пароль» после подтверждения письмом */}
-            {me.role === 'student' && <PersonalEmail identities={me.identities} />}
-          </Rows>
-        </DataCard>
-        <div className="acad__stack">
-          <SettingsBlock />
-          <PasswordBlock />
+      <section className="card card-pad card--beam profile__hero">
+        <Avatar name={me.full_name || handle} size={72} />
+        <div className="profile__who">
+          <span className="profile__name">{me.full_name || t('не указано')}</span>
+          <span className="t-note profile__line">
+            {handle && <span className="profile__handle">{handle}</span>}
+            <span className="profile__when">{`${t('Последний вход')}: ${formatWhen(me.last_login)}`}</span>
+          </span>
         </div>
+      </section>
+      <div className="lay-2 profile__cols">
+        <div className="lay-stack">
+          <DataCard title={t('Учётная запись')}>
+            <Rows>
+              {me.email && me.login && <Row title={t('Почта')} value={me.email} />}
+              <Row title={t('Роль')} value={me.role_title} />
+              {me.role === 'student' && <Row title={t('Группа')} value={me.group || null} none={t('не указана')} />}
+              {me.role === 'teacher' && <TeacherRows />}
+              {/* личная почта — вход и «Забыли пароль» после подтверждения письмом */}
+              {me.role === 'student' && <PersonalEmail identities={me.identities} />}
+            </Rows>
+          </DataCard>
+          <SettingsBlock />
+        </div>
+        <PasswordBlock />
       </div>
     </div>
   )
