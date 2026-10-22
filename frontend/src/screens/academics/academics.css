@@ -570,30 +570,132 @@ body [data-slot='button'][data-variant].acad__heatcell {
 
 /* «Учебный год»: звонки рядом по три на всю ширину, строка «не назначены
    звонки» над рядом без своей карточки (13.10.2026) */
-.year__bells {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--gap-block);
-  margin-bottom: var(--gap-block);
-}
-
 .year__bells > .datacard {
   margin: 0;
 }
 
-.year__nobells {
+/* Полоса года: отрезок на четверть шириной по её длине, идущая заполнена
+   до сегодняшнего дня */
+.year__track {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(var(--space) * 1) calc(var(--space) * 2);
-  margin: 0 0 var(--gap-block);
-  color: var(--bad);
-  font-size: var(--type-body);
-  line-height: var(--leading-body);
+  gap: calc(var(--space) * 1.5);
 }
 
-.year__nobells > svg {
-  flex: none;
+.year__track > .bar {
+  min-width: 0;
+}
+
+/* четверти плитками в ряд: название с чипом, даты, каникулы после неё */
+.year__quarters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: calc(var(--space) * 3);
+}
+
+.year__quarter {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 1);
+  min-width: 0;
+  padding: calc(var(--space) * 3);
+  border-radius: var(--radius-inner);
+  background: var(--surface-2);
+}
+
+.year__quarter--now {
+  background: var(--accent-bg);
+}
+
+.year__qhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 2);
+}
+
+.year__dates {
+  white-space: nowrap;
+}
+
+.year__rest {
+  color: var(--ink-3);
+}
+
+.year__holidays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 1.5);
+}
+
+/* дата итогов крупно: главное число карточки */
+.year__big {
+  font-family: var(--font-head);
+  font-size: var(--type-figure);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* кнопка карточки — внизу, вровень с соседней карточкой ряда */
+.year__push {
+  margin-top: auto;
+}
+
+.year__weights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: calc(var(--space) * 2);
+}
+
+.year__weights > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.year__weights b {
+  font-family: var(--font-head);
+  font-size: var(--type-value);
+  font-weight: 700;
+}
+
+.year__lead {
+  font-weight: 600;
+}
+
+.year__names {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+
+.year__nameshead {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(var(--space) * 2);
+  font-size: var(--type-note);
+}
+
+/* Звонки двумя столбцами времени, номер урока мелко слева */
+.year__slots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: calc(var(--space) * 4);
+}
+
+.year__slot {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  height: calc(var(--space) * 8);
+  border-bottom: 1px solid var(--line);
+  font-size: var(--type-note);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.year__slotn {
+  width: calc(var(--space) * 3);
+  color: var(--ink-3);
+  font-weight: 500;
 }
 
 /* --- Общее ------------------------------------------------------------------- */
@@ -735,18 +837,8 @@ body [data-slot='button'][data-variant].acad__heatcell {
     align-items: stretch;
   }
 
-  .year__bells {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  /* столбиком: четверти, итоги, шкала, отчёты, названия — колонки раскрываются
-     в один ряд карточек, и названия встают после отчётов */
-  .year__cols > .acad__stack {
-    display: contents;
-  }
-
-  .year__names {
-    order: 1;
+  .year__quarters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .acad__cols > *,

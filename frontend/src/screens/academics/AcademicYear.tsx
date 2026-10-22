@@ -5,14 +5,15 @@
  * оценивания, настройки отчётов родителям, закрытие четверти.
  * Казахские названия предметов — для отчётов родителям на казахском (30.09.2026).
  *
- * Раскладка (решение владельца, 13.10.2026): две колонки близкой высоты —
- * четверти, итоги и названия предметов слева, шкала и отчёты справа (на проде
- * с названиями справа левая колонка была вдвое ниже); ниже звонки рядом по
- * три на всю ширину, строка «не назначены звонки» над ними без своей
- * карточки; внизу таблица предметов. На телефоне столбиком: четверти, итоги,
- * шкала, отчёты, названия — названиям свой порядок через CSS `order`.
+ * Раскладка по макету (22.10.2026): ряд «четверти и каникулы» на две трети
+ * с итогами четверти рядом; ряд из трёх карточек — шкала, отчёты родителям,
+ * названия предметов; тихая строка «не назначены звонки»; звонки по четыре
+ * в ряд, внутри время двумя столбцами; внизу таблица предметов. Каникулы —
+ * подписью под своей четвертью, праздники — чипами под четвертями.
+ * На телефоне — всё столбиком в том же порядке.
  */
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useCloseQuarter, useSaveYear, useSubjectInLms, useYear, type BellSchedule, type SubjectRow, type YearScreen } from '../../api/academics'
 import { useStudyGroups } from '../../api/hooks'
@@ -23,11 +24,11 @@ import Modal from '../../components/Modal'
 import { SelectField } from '../../components/SelectField'
 import RowMenu, { RowMenuItem } from '../../components/RowMenu'
 import { Row, Rows } from '../../components/patterns'
-import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
-import Icon from '../../layout/icons'
+import { Bar, Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tk, tn } from '../../i18n'
-import { dateFull, dateWords } from './shared'
+import { dateShort, dateWords } from './shared'
+import { todayAlmaty } from '../../lib/dates'
 
 function QuartersDialog({ year, onClose }: { year: YearScreen; onClose: () => void }) {
   const save = useSaveYear()
@@ -428,30 +429,30 @@ function BellsCard({ schedule, onEdit, onDrop }: { schedule: BellSchedule; onEdi
       title={schedule.name ?? schedule.title}
       note={schedule.groups.length ? schedule.groups.join(', ') : t('группы не назначены')}
       right={
-        <span className="acad__inline">
-          <Button variant="link" size="sm" onClick={onEdit}>
-            {t('Изменить')}
-          </Button>
+        <RowMenu>
+          <RowMenuItem onClick={onEdit}>{t('Изменить')}</RowMenuItem>
           {onDrop && (
-            <RowMenu>
-              <RowMenuItem risk onClick={onDrop}>
-                {t('Удалить расписание звонков')}
-              </RowMenuItem>
-            </RowMenu>
+            <RowMenuItem risk onClick={onDrop}>
+              {t('Удалить расписание звонков')}
+            </RowMenuItem>
           )}
-        </span>
+        </RowMenu>
       }
     >
-      <Rows>
+      <div className="year__slots">
         {schedule.bells.map((b) => (
-          <Row key={b.number} lead={<b className="num">{b.number}</b>} title={`${b.starts.slice(0, 5)}–${b.ends.slice(0, 5)}`} />
+          <div key={b.number} className="year__slot">
+            <span className="num year__slotn">{b.number}</span>
+            <span className="num">{`${b.starts.slice(0, 5)}–${b.ends.slice(0, 5)}`}</span>
+          </div>
         ))}
-      </Rows>
+      </div>
     </DataCard>
   )
 }
 
 export default function AcademicYear() {
+  const navigate = useNavigate()
   const { data, isLoading, error } = useYear()
   const close = useCloseQuarter()
   const save = useSaveYear()
@@ -470,98 +471,140 @@ export default function AcademicYear() {
     )
   const current = data.quarters.find((q) => q.current) ?? data.quarters.find((q) => !q.past) ?? data.quarters[data.quarters.length - 1]
   const schedules = data.bell_schedules ?? []
+  const first = data.quarters[0]
+  const last = data.quarters[data.quarters.length - 1]
+  // каникулы — подписью под своей четвертью: те, что начинаются после её конца и до следующей
+  const breakAfter = (index: number) => {
+    const quarter = data.quarters[index]
+    const next = data.quarters[index + 1]
+    return data.breaks.find((b) => b.starts > quarter.ends && (!next || b.starts < next.starts))
+  }
+  const days = (from: string, to: string) => Math.max(1, (Date.parse(to) - Date.parse(from)) / 86_400_000)
+  const today = todayAlmaty()
+  const filled = (q: YearScreen['quarters'][number]) =>
+    q.past || q.closed ? 100 : q.current ? Math.round((Math.min(days(q.starts, today), days(q.starts, q.ends)) / days(q.starts, q.ends)) * 100) : 0
+  const named = (total: number, n: number) => (total ? Math.round((n / total) * 100) : 0)
+  const kk = data.subjects.filter((x) => x.title_kk).length
+  const en = data.subjects.filter((x) => x.title_en).length
   return (
-    <div>
+    <div className="lay-screen">
       <ScreenHead
         title={t('Учебный год {title}', { title: data.year.title })}
+        subtitle={
+          first && last
+            ? `${dateWords(first.starts)} – ${dateWords(last.ends)}${current?.current ? ` · ${t('идёт {quarter}', { quarter: (current.name ?? current.title).toLowerCase() })}` : ''}`
+            : undefined
+        }
         actions={
-          <Button size="sm" onClick={() => setDialog({ bells: null })}>
-            {t('Добавить расписание звонков')}
-          </Button>
+          <>
+            <Button variant="outline" size="sm" onClick={() => navigate('/school-settings')}>
+              {t('Настройки школы')}
+            </Button>
+            <Button size="sm" onClick={() => setDialog({ bells: null })}>
+              {t('Добавить расписание звонков')}
+            </Button>
+          </>
         }
       />
-      <div className="acad__cols acad__cols--even year__cols">
-        <div className="acad__stack">
-          <DataCard className="card--beam" title={t('Четверти')} right={<Button variant="link" size="sm" onClick={() => setDialog('quarters')}>{t('Изменить')}</Button>}>
-            <Rows>
-              {data.quarters.map((q) => (
-                <Row
-                  key={q.id}
-                  lead={<b className="num">{q.number}</b>}
-                  title={q.name ?? q.title}
-                  note={`${dateFull(q.starts)} — ${dateFull(q.ends)}`}
-                  right={q.closed ? <Chip tone="good">{t('итоги закрыты')}</Chip> : q.current ? <Chip tone="accent">{t('идёт')}</Chip> : q.past ? <Chip tone="neutral">{t('прошла')}</Chip> : undefined}
-                />
-              ))}
-              {data.breaks.map((b) => (
-                <Row key={b.id} icon="calendar" title={b.name ?? b.title} note={`${dateWords(b.starts)} — ${dateWords(b.ends)}`} />
-              ))}
-              {data.holidays.map((h) => (
-                <Row key={h.id} icon="star" title={h.name ?? h.title} note={dateWords(h.date)} />
-              ))}
-            </Rows>
-          </DataCard>
-          {current && (
-            <DataCard title={t('Итоги четверти')}>
-              <Rows>
-                <Row title={t('Четверть')} value={current.name ?? current.title} />
-                <Row title={t('Итоги в журнале до')} value={dateWords(current.ends)} />
-              </Rows>
-              <div className="acad__actions">
-                <Button variant={current.closed ? 'outline' : 'default'} size="sm" onClick={() => (current.closed ? close.mutate({ id: current.id, closed: false }, { onSuccess: () => toast.success(t('Приём итогов открыт')) }) : setClosing(current))}>
-                  {current.closed ? t('Открыть приём итогов') : t('Закрыть приём итогов')}
-                </Button>
+      <div className="lay-3">
+        <DataCard className="card--beam lay-span2" title={t('Четверти и каникулы')} right={<Button variant="link" size="sm" onClick={() => setDialog('quarters')}>{t('Изменить')}</Button>}>
+          <div className="year__track" aria-hidden="true">
+            {data.quarters.map((q) => (
+              <div key={q.id} className="bar bar--accent" style={{ flex: days(q.starts, q.ends) }}>
+                <i style={{ width: `${filled(q)}%`, background: 'var(--accent-grad)' }} />
               </div>
-            </DataCard>
+            ))}
+          </div>
+          <div className="year__quarters">
+            {data.quarters.map((q, index) => {
+              const rest = breakAfter(index)
+              return (
+                <div key={q.id} className={`year__quarter${q.current ? ' year__quarter--now' : ''}`}>
+                  <span className="year__qhead">
+                    <b>{q.name ?? q.title}</b>
+                    {q.closed ? <Chip tone="good" size="sm">{t('итоги закрыты')}</Chip> : q.current ? <Chip tone="accent" size="sm">{t('идёт')}</Chip> : q.past ? <Chip size="sm">{t('прошла')}</Chip> : null}
+                  </span>
+                  <span className="num t-note year__dates">{`${dateShort(q.starts)} – ${dateShort(q.ends)}`}</span>
+                  {rest && <span className="t-note year__rest">{`${rest.name ?? rest.title}: ${dateWords(rest.starts)} — ${dateWords(rest.ends)}`}</span>}
+                </div>
+              )
+            })}
+          </div>
+          {(data.holidays.length > 0 || data.breaks.some((b) => !data.quarters.some((_, i) => breakAfter(i) === b))) && (
+            <div className="year__holidays">
+              {data.breaks
+                .filter((b) => !data.quarters.some((_, i) => breakAfter(i) === b))
+                .map((b) => (
+                  <Chip key={`b${b.id}`} size="sm">{`${b.name ?? b.title} · ${dateWords(b.starts)} — ${dateWords(b.ends)}`}</Chip>
+                ))}
+              {data.holidays.map((h) => (
+                <Chip key={`h${h.id}`} size="sm">{`${h.name ?? h.title} · ${dateWords(h.date)}`}</Chip>
+              ))}
+            </div>
           )}
-          <DataCard className="year__names" title={t('Названия предметов на других языках')} right={<Button variant="link" size="sm" onClick={() => setDialog('subjects')}>{t('Изменить')}</Button>}>
-            <Rows>
-              <Row
-                title={t('На казахском')}
-                note={t('{filled} из {total} заполнено', { filled: data.subjects.filter((s) => s.title_kk).length, total: data.subjects.length })}
-              />
-              <Row
-                title={t('На английском')}
-                note={t('{filled} из {total} заполнено', { filled: data.subjects.filter((s) => s.title_en).length, total: data.subjects.length })}
-              />
-            </Rows>
+        </DataCard>
+        {current && (
+          <DataCard title={t('Итоги четверти')} right={current.closed ? <Chip tone="good" size="sm">{t('итоги закрыты')}</Chip> : <Chip tone="accent" size="sm">{current.name ?? current.title}</Chip>}>
+            <span className="year__big num">{dateWords(current.ends)}</span>
+            <span className="t-note">{t('Итоги в журнале до этой даты')}</span>
+            <div className="acad__actions year__push">
+              <Button variant={current.closed ? 'outline' : 'default'} size="sm" onClick={() => (current.closed ? close.mutate({ id: current.id, closed: false }, { onSuccess: () => toast.success(t('Приём итогов открыт')) }) : setClosing(current))}>
+                {current.closed ? t('Открыть приём итогов') : t('Закрыть приём итогов')}
+              </Button>
+            </div>
           </DataCard>
-        </div>
-        <div className="acad__stack">
-          <DataCard title={t('Шкала оценивания')} right={<Button variant="link" size="sm" onClick={() => setDialog('scale')}>{t('Изменить')}</Button>}>
-            <Rows>
-              <Row title={t('ФО')} note={t('от 1 до {max}', { max: data.scale.fo_max })} value={`${data.scale.weight_fo} %`} />
-              <Row title={t('СОР')} value={`${data.scale.weight_sor} %`} />
-              <Row title={t('СОЧ')} value={`${data.scale.weight_soch} %`} />
-              <Row title={t('Перевод в оценку')} note={t('5: от {five} % · 4: от {four} % · 3: от {three} %', {
-                  five: data.scale.threshold_5,
-                  four: data.scale.threshold_4,
-                  three: data.scale.threshold_3,
-                })} />
-              <Row title={t('Правка оценок учителем')} value={tn(data.scale.edit_days, '{n} день|{n} дня|{n} дней')} />
-            </Rows>
-          </DataCard>
-          <DataCard title={t('Отчёты родителям')} right={<Button variant="link" size="sm" onClick={() => setDialog('reports')}>{t('Изменить')}</Button>}>
-            <Rows>
-              <Row title={t('Когда собираются')} note={data.reports.cadence_title} />
-              <Row title={t('Что входит')} note={SECTIONS.filter((s) => data.reports.sections[s.key]).map((s) => t(s.label).toLowerCase()).join(', ')} />
-            </Rows>
-          </DataCard>
-        </div>
+        )}
+      </div>
+      <div className="lay-3">
+        <DataCard title={t('Шкала оценивания')} right={<Button variant="link" size="sm" onClick={() => setDialog('scale')}>{t('Изменить')}</Button>}>
+          <div className="shares" aria-hidden="true">
+            <i style={{ flex: data.scale.weight_fo, background: 'var(--glint)' }} />
+            <i style={{ flex: data.scale.weight_sor, background: 'var(--accent-2)' }} />
+            <i style={{ flex: data.scale.weight_soch, background: 'var(--accent)' }} />
+          </div>
+          <div className="year__weights">
+            <span><b className="num">{`${data.scale.weight_fo} %`}</b><span className="t-note">{t('ФО · 1–{max}', { max: data.scale.fo_max })}</span></span>
+            <span><b className="num">{`${data.scale.weight_sor} %`}</b><span className="t-note">{t('СОР')}</span></span>
+            <span><b className="num">{`${data.scale.weight_soch} %`}</b><span className="t-note">{t('СОЧ')}</span></span>
+          </div>
+          <Rows>
+            <Row title={t('Перевод в оценку')} note={t('5: от {five} % · 4: от {four} % · 3: от {three} %', {
+                five: data.scale.threshold_5,
+                four: data.scale.threshold_4,
+                three: data.scale.threshold_3,
+              })} />
+            <Row title={t('Правка оценок учителем')} value={tn(data.scale.edit_days, '{n} день|{n} дня|{n} дней')} />
+          </Rows>
+        </DataCard>
+        <DataCard title={t('Отчёты родителям')} right={<Button variant="link" size="sm" onClick={() => setDialog('reports')}>{t('Изменить')}</Button>}>
+          <span className="year__lead">{data.reports.cadence_title}</span>
+          <div className="year__holidays">
+            {SECTIONS.filter((x) => data.reports.sections[x.key]).map((x) => (
+              <Chip key={x.key} size="sm">{t(x.label).toLowerCase()}</Chip>
+            ))}
+          </div>
+        </DataCard>
+        <DataCard title={t('Названия предметов')} right={<Button variant="link" size="sm" onClick={() => setDialog('subjects')}>{t('Изменить')}</Button>}>
+          <div className="year__names">
+            <span className="year__nameshead"><span>{t('На казахском')}</span><span className="t-note num">{t('{filled} из {total}', { filled: kk, total: data.subjects.length })}</span></span>
+            <Bar percent={named(data.subjects.length, kk)} />
+            <span className="year__nameshead"><span>{t('На английском')}</span><span className="t-note num">{t('{filled} из {total}', { filled: en, total: data.subjects.length })}</span></span>
+            <Bar percent={named(data.subjects.length, en)} />
+          </div>
+        </DataCard>
       </div>
       {/* общей сетки нет: группе без звонков негде взять время урока — это ошибка,
-          и она названа одной строкой над рядом звонков, без своей карточки */}
+          и она названа одной тихой строкой над рядом звонков, без своей карточки */}
       {data.groups_without_bells.length > 0 && (
-        <p className="year__nobells">
-          <Icon name="alert" size={16} />
-          <b>{t('Не назначены звонки: {groups}', { groups: data.groups_without_bells.join(', ') })}</b>
+        <p className="warnline">
+          <span className="warnline__what">{t('Не назначены звонки: {groups}', { groups: data.groups_without_bells.join(', ') })}</span>
           <span>{t('У уроков этих групп нет времени начала. Отметьте группы в расписании звонков или добавьте новое.')}</span>
         </p>
       )}
       {schedules.length === 0 ? (
         <DataCard title={t('Звонки')} empty={t('расписаний звонков нет')} emptyAction={<Button variant="secondary" size="sm" onClick={() => setDialog({ bells: null })}>{t('Добавить расписание звонков')}</Button>} />
       ) : (
-        <div className="year__bells">
+        <div className="lay-4 year__bells">
           {schedules.map((schedule) => (
             <BellsCard
               key={schedule.id}
