@@ -51,7 +51,7 @@ export default function EssayReview() {
 
   return (
     <div className="lay-screen">
-      <ScreenHead title={t('Эссе учеников')} subtitle={t('законченные эссе 11 классов · ученик отправил на проверку')} />
+      <ScreenHead title={t('Эссе учеников')} subtitle={t('законченные эссе 11 параллели · ученик отправил на проверку')} />
       <div className="filters">
         <Segmented
           value={filter}
@@ -74,7 +74,7 @@ export default function EssayReview() {
           label={t('Группа')}
           value={group}
           onChange={setGroup}
-          placeholder={t('Все 11 классы')}
+          placeholder={t('Вся 11 параллель')}
           options={data.groups.map((code) => ({ value: code, title: code }))}
         />
       </div>

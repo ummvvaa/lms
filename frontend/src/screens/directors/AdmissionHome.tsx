@@ -39,7 +39,7 @@ export default function AdmissionHome() {
     <div className="lay-screen">
       <ScreenHead
         title={greeting}
-        subtitle={todayLine(t('11 классы, поступление'))}
+        subtitle={todayLine(t('11 параллель, поступление'))}
         actions={<Button onClick={() => navigate('/essay-review')}>{t('Эссе учеников')}</Button>}
       />
       <div className="lay-4">

@@ -43,6 +43,7 @@ import { Row, Rows } from '../components/patterns'
 import { AddRowForm, ProfileCard, ProposeForm } from '../components/PortfolioForms'
 import { DateTile, EntryList, Medal, WhoConfirms, ownerOf, waitingState } from './PortfolioEntries'
 import { modelOf, pendingByField, pendingNewRows } from './portfolioData'
+import StudentSport from './directors/StudentSport'
 import './portfolio.css'
 import './portfolio-layout.css'
 import { Button } from '../components/ui/button'
@@ -623,6 +624,8 @@ export default function MyData() {
         </div>
       )}
 
+      {/* мероприятия школы и свои заявки (24.10.2026) — у 11 здесь, у 8–10 в разделе «Спорт» */}
+      {tab === 'sport' && <StudentSport />}
       {tab === 'sport' && (
         <div className="lay-3 pfl-tab">
           <div className="lay-span2">

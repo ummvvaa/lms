@@ -116,6 +116,15 @@ SCREENS = (
     Screen("/achievements", gettext_noop("Достижения"), (ROLE_STUDENT,)),
     Screen("/badges", gettext_noop("Достижения школы"), (ROLE_ADMIN,)),
     Screen("/usage", gettext_noop("Использование"), USAGE_READERS),
+    # кабинеты директоров по макету (24.10.2026)
+    Screen("/school-reports", gettext_noop("Отчёты"), (ROLE_ADMIN, "director_behavior", "director_exam")),
+    Screen("/parents", gettext_noop("Родители"), (ROLE_ADMIN, "director_behavior")),
+    Screen("/staff-tasks", gettext_noop("Задачи сотрудникам"), SCHOOL),
+    Screen("/exam-results", gettext_noop("Результаты экзаменов"), SCHOOL),
+    Screen("/essay-review", gettext_noop("Эссе учеников"), (ROLE_ADMIN, "director_admission")),
+    Screen("/olympiad-events", gettext_noop("Олимпиады школы"), (ROLE_ADMIN, "director_talent")),
+    Screen("/releases", gettext_noop("Освобождения от уроков"), (ROLE_ADMIN, "director_talent")),
+    Screen("/sport-events", gettext_noop("Мероприятия"), (ROLE_ADMIN, "director_sport")),
 )
 SCREENS_BY_KEY = {screen.key: screen for screen in SCREENS}
 

@@ -10,7 +10,7 @@ import SchoolHome from '../directors/SchoolHome'
 import AdmissionHome from '../directors/AdmissionHome'
 import ExamHome from '../directors/ExamHome'
 import TalentHome from '../directors/TalentHome'
-import SportDashboard from './SportDashboard'
+import SportHome from '../directors/SportHome'
 import AdminDashboard from './AdminDashboard'
 import CuratorHome from '../curator/Home'
 import StudentHome from './StudentHome'
@@ -35,7 +35,7 @@ export default function Dashboard() {
     case 'director_talent':
       return <TalentHome />
     case 'director_sport':
-      return <SportDashboard />
+      return <SportHome />
     case 'curator':
       return <CuratorHome />
     case 'teacher':

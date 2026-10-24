@@ -97,7 +97,12 @@
   gap: calc(var(--space) * 2);
 }
 
-.dir__tile {
+.dir__tile[data-variant][data-size] {
+  /* плитка — кнопка реестра: высота по содержимому, текст слева и переносится */
+  height: auto;
+  justify-content: stretch;
+  justify-items: start;
+  white-space: normal;
   display: grid;
   gap: calc(var(--space) * 1);
   padding: calc(var(--space) * 3);
@@ -113,16 +118,16 @@
   transition: background-color var(--dur-fast) var(--ease-out);
 }
 
-.dir__tile:hover {
+.dir__tile[data-variant][data-size]:hover {
   background: var(--accent-bg);
 }
 
-.dir__tile b {
+.dir__tile[data-variant][data-size] b {
   font-family: var(--font-head);
   font-weight: 600;
 }
 
-.dir__tile .t-note {
+.dir__tile[data-variant][data-size] .t-note {
   overflow-wrap: anywhere;
 }
 

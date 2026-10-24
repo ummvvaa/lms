@@ -85,7 +85,7 @@ function Today() {
               value: String(p),
               label: (
                 <>
-                  {t('{n} классы', { n: p })} <span className="tabs__n num">{data.groups.filter((g) => g.parallel === p).length}</span>
+                  {t('{n} параллель', { n: p })} <span className="tabs__n num">{data.groups.filter((g) => g.parallel === p).length}</span>
                 </>
               ),
             })),
@@ -105,7 +105,7 @@ function Today() {
       >
         <div className="dir__tiles">
           {shown.map((group) => (
-            <button key={group.id} type="button" className="dir__tile" onClick={() => setOpened(group)}>
+            <Button key={group.id} variant="ghost" className="dir__tile" onClick={() => setOpened(group)}>
               <b>{group.code}</b>
               <span className="t-note">{[group.curator || t('куратор не назначен'), group.marked ? group.at : ''].filter(Boolean).join(' · ')}</span>
               <span className="dir__tilechips">
@@ -125,13 +125,13 @@ function Today() {
                   </>
                 )}
               </span>
-            </button>
+            </Button>
           ))}
         </div>
       </DataCard>
       {opened && (
         <Modal
-          title={t('{group} · {n} класс', { group: opened.code, n: opened.parallel })}
+          title={t('{group} · {n} параллель', { group: opened.code, n: opened.parallel })}
           note={[t('Куратор {name}', { name: opened.curator || t('не назначен') }), opened.marked ? t('отмечено в {time}', { time: opened.at }) : t('не отметились')].join(' · ')}
           onClose={() => setOpened(null)}
         >
@@ -231,7 +231,7 @@ function Stats() {
                 .sort((a, b) => a[0] - b[0])
                 .map(([p, cell]) => (
                   <div key={p} className="dir__line">
-                    <span>{t('{n} классы', { n: p })}</span>
+                    <span>{t('{n} параллель', { n: p })}</span>
                     <b className="num">{`${Math.round((cell.present * 100) / cell.days)} %`}</b>
                   </div>
                 ))}

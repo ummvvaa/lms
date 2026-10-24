@@ -7,6 +7,7 @@
  * Участники и результаты видны академ директору и кураторам.
  */
 import { useState } from 'react'
+import { todayAlmaty } from '../../lib/dates'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router'
 import {
@@ -21,7 +22,7 @@ import DataTable, { type Column } from '../../components/DataTable'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
 import { Segmented, ShowAll } from '../../components/patterns'
-import { Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
+import { EmptyNote, Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tk } from '../../i18n'
 import { formatDayMonth } from '../../lib/format'
@@ -42,7 +43,7 @@ export function olympiadDates(row: Pick<OlympiadRow, 'starts' | 'ends'>): string
   return row.starts === row.ends ? formatDayMonth(row.starts) : `${formatDayMonth(row.starts)} – ${formatDayMonth(row.ends)}`
 }
 
-export default function Olympiads() {
+export default function OlympiadEvents() {
   const { data, isLoading, error } = useOlympiadEvents()
   const [params, setParams] = useSearchParams()
   const [when, setWhen] = useState<'soon' | 'past'>('soon')
@@ -51,7 +52,7 @@ export default function Olympiads() {
   if (error) return <ErrorNote error={error} />
   if (!data) return null
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayAlmaty()
   const soon = data.rows.filter((row) => row.ends >= today)
   const past = data.rows.filter((row) => row.ends < today).reverse()
   const rows = when === 'soon' ? soon : past
@@ -161,7 +162,7 @@ function Participants({ id, olympiads }: { id: number; olympiads: OlympiadRow[] 
       }
     >
       {entries.length === 0 ? (
-        <p className="t-note">{t('участников пока нет — добавьте учеников')}</p>
+        <EmptyNote what={tk('участников пока нет')} who={tk('добавляет директор талантов')} />
       ) : (
         <DataTable columns={columns} rows={entries} rowKey={(row) => row.id} limit={8} fit={!phone} />
       )}

@@ -14,22 +14,15 @@ import { Segmented } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { shiftDay } from '../../lib/dates'
+import { mondayOf, shiftDay, todayAlmaty } from '../../lib/dates'
 import { formatDayMonth, weekdayName } from '../../lib/format'
 import { ReleaseDialog } from './talent'
 import './directors.css'
 
-const iso = (date: Date) => date.toISOString().slice(0, 10)
-
-function monday(day: string): string {
-  const date = new Date(`${day}T12:00:00`)
-  return shiftDay(day, -((date.getDay() + 6) % 7))
-}
-
 export default function Releases() {
-  const today = iso(new Date())
+  const today = todayAlmaty()
   const [week, setWeek] = useState<'this' | 'next'>('this')
-  const from = week === 'this' ? monday(today) : shiftDay(monday(today), 7)
+  const from = week === 'this' ? mondayOf(today) : shiftDay(mondayOf(today), 7)
   const to = shiftDay(from, 4)
   const { data, isLoading, error } = useReleases(from, to)
   const olympiads = useOlympiadEvents()
@@ -78,7 +71,7 @@ export default function Releases() {
                 </span>
                 {found.length === 0 && <span className="t-note">{t('все на уроках')}</span>}
                 {found.map((row) => (
-                  <button key={row.id} type="button" className="dir__tile" onClick={() => setOpened(row)}>
+                  <Button key={row.id} variant="ghost" className="dir__tile" onClick={() => setOpened(row)}>
                     <b>{row.reason}</b>
                     <span className="t-note">{row.all_day ? t('весь день') : t('уроки {a}–{b}', { a: row.slot_from ?? '', b: row.slot_to ?? '' })}</span>
                     <span className="dir__chip-list">
@@ -89,7 +82,7 @@ export default function Releases() {
                       ))}
                       {row.students.length > 3 && <Chip size="sm">{t('ещё {n}', { n: row.students.length - 3 })}</Chip>}
                     </span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             )

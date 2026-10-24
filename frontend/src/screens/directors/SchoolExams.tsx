@@ -14,9 +14,9 @@ import DataTable, { type Column } from '../../components/DataTable'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
 import { Segmented } from '../../components/patterns'
-import { Bar, Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
+import { EmptyNote, Bar, Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
-import { t } from '../../i18n'
+import { t, tk } from '../../i18n'
 import { formatDate, formatDayMonth } from '../../lib/format'
 import { usePhone } from '../../phone'
 import './directors.css'
@@ -40,7 +40,7 @@ const BUCKETS: Record<Exam, { label: string; test: (v: number) => boolean }[]> =
   ],
 }
 
-export default function ExamResults() {
+export default function SchoolExams() {
   const phone = usePhone()
   const [exam, setExam] = useState<Exam>('IELTS')
   const [group, setGroup] = useState('')
@@ -101,7 +101,7 @@ export default function ExamResults() {
     <div className="lay-screen">
       <ScreenHead
         title={t('Результаты экзаменов')}
-        subtitle={last ? t('11 классы · последний Mock Test {date}', { date: formatDayMonth(last) }) : t('11 классы')}
+        subtitle={last ? t('11 параллель · последний Mock Test {date}', { date: formatDayMonth(last) }) : t('11 параллель')}
         actions={
           <Button
             variant="outline"
@@ -127,7 +127,7 @@ export default function ExamResults() {
           label={t('Группа')}
           value={group}
           onChange={setGroup}
-          placeholder={t('Все группы 11 класса')}
+          placeholder={t('Все группы 11 параллели')}
           options={data.groups.map((code) => ({ value: code, title: code }))}
         />
       </div>
@@ -143,7 +143,7 @@ export default function ExamResults() {
         />
       </div>
       <div className="lay-main lay-main--even">
-        <DataCard className="card--beam" title={t('Ученики')} count={data.rows.length} empty={data.rows.length === 0 && t('учеников 11 класса нет')}>
+        <DataCard className="card--beam" title={t('Ученики')} count={data.rows.length} empty={data.rows.length === 0 && t('учеников 11 параллели нет')}>
           <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={setOpened} limit={8} fit={!phone} />
         </DataCard>
         <div className="lay-stack">
@@ -177,7 +177,7 @@ function HistoryDialog({ row, onClose }: { row: ExamResultRow; onClose: () => vo
       {error && <ErrorNote error={error} />}
       {data && (
         <div className="dir__lines">
-          {data.attempts.length === 0 && <p className="t-note">{t('попыток пока нет')}</p>}
+          {data.attempts.length === 0 && <EmptyNote what={tk('попыток пока нет')} />}
           {data.attempts.map((attempt) => (
             <div key={attempt.id} className="dir__line">
               <span>

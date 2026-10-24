@@ -18139,3 +18139,35 @@ msgstr "lessons: {l} · homework: {h}"
 #: directors
 msgid "Утренние отметки по школе читает директор школы"
 msgstr "School-wide morning checks are read by the school director"
+
+#: directors
+msgid "{n} параллель"
+msgstr "Grade {n}"
+
+#: directors
+msgid "IELTS и SAT · 11 параллель · сдавали {n}"
+msgstr "IELTS and SAT · grade 11 · took it: {n}"
+
+#: directors
+msgid "Олимпиады школы"
+msgstr "School olympiads"
+
+#: directors
+msgid "Мероприятия"
+msgstr "Events"
+
+#: directors
+msgid "Отчёты"
+msgstr "Reports"
+
+#: directors
+msgid "Результаты экзаменов"
+msgstr "Exam results"
+
+#: directors
+msgid "Родители"
+msgstr "Parents"
+
+#: directors
+msgid "Эссе учеников"
+msgstr "Student essays"

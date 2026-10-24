@@ -4,6 +4,7 @@
  * вне уроков. Числа — из тех же отчётов, что на экране «Отчёты».
  */
 import { useState } from 'react'
+import { todayAlmaty } from '../../lib/dates'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router'
 import {
@@ -22,15 +23,13 @@ import { formatDayMonth } from '../../lib/format'
 import { ReportDialog, ReportLine, todayLine, useGreeting } from './parts'
 import { StaffTaskDialog } from './StaffTasks'
 
-const iso = (date: Date) => date.toISOString().slice(0, 10)
-
 export default function ExamHome() {
   const navigate = useNavigate()
   const greeting = useGreeting()
   const reports = useSchoolReports()
   const tasks = useStaffTasks()
   const remind = useStaffTaskAction()
-  const today = iso(new Date())
+  const today = todayAlmaty()
   const released = useReleases(today, today)
   const [opened, setOpened] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -133,7 +132,7 @@ export default function ExamHome() {
             <div className="dir__bars">
               {(grades?.parallels ?? []).map((row) => (
                 <div key={row.parallel} className="dir__bar">
-                  <span>{t('{n} классы', { n: row.parallel })}</span>
+                  <span>{t('{n} параллель', { n: row.parallel })}</span>
                   <Bar percent={row.fo} />
                   <b className="num">{`${row.fo} %`}</b>
                 </div>

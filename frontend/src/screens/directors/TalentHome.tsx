@@ -11,19 +11,16 @@ import { Avatar, ShowAll } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { shiftDay } from '../../lib/dates'
-import { LEVEL_TONE, olympiadDates } from './Olympiads'
+import { mondayOf, shiftDay, todayAlmaty } from '../../lib/dates'
+import { LEVEL_TONE, olympiadDates } from './OlympiadEvents'
 import { MyStaffTasksCard, todayLine, useGreeting } from './parts'
 import { OlympiadDialog } from './talent'
-
-const iso = (date: Date) => date.toISOString().slice(0, 10)
 
 export default function TalentHome() {
   const navigate = useNavigate()
   const greeting = useGreeting()
-  const today = iso(new Date())
-  const weekday = (new Date().getDay() + 6) % 7
-  const from = shiftDay(today, -weekday)
+  const today = todayAlmaty()
+  const from = mondayOf(today)
   const olympiads = useOlympiadEvents()
   const releases = useReleases(from, shiftDay(from, 4))
   const [creating, setCreating] = useState(false)

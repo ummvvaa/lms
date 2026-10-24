@@ -14,6 +14,7 @@ import { DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { t } from '../i18n'
 import { modelOf, pendingByField, pendingNewRows } from './portfolioData'
 import { formatMonthYear } from '../lib/format'
+import StudentSport from './directors/StudentSport'
 import './portfolio.css'
 import './portfolio-layout.css'
 
@@ -43,14 +44,16 @@ export default function Sport() {
 
   return (
     <div className="lay-screen">
-      <ScreenHead title={t('Спорт')} subtitle={owner ? t('Вносите сами, подтверждает {owner}', { owner }) : t('Вносите сами')} />
+      <ScreenHead title={t('Спорт')} subtitle={t('соревнования и мероприятия школы · записывайся участвовать или смотреть')} />
+      {/* мероприятия школы и свои заявки — сверху, как в макете (24.10.2026) */}
+      <StudentSport />
       <div className="lay-3 pfl-top">
         {/* вид спорта и уровень — главная карточка раздела, со светом по рамке */}
         <div className="pfl-beam pfl-beam--card card--beam">
           <ProfileCard code="sport" domains={domains} card={card} pending={pendingByField(myProposals)} />
         </div>
         <div className="lay-span2">
-          <DataCard title={t('Соревнования')} count={competitions.length + waiting.length}>
+          <DataCard title={t('Мои соревнования')} note={owner ? t('Вносите сами, подтверждает {owner}', { owner }) : t('Вносите сами')} count={competitions.length + waiting.length}>
             <EntryList
               rows={[
                 ...waiting.map((row, index) => ({

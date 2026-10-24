@@ -6,6 +6,7 @@
  * или возвращают с причиной. Открытой — «Напомнить» уведомлением.
  */
 import { useState } from 'react'
+import { daysFromToday } from '../../lib/dates'
 import { toast } from 'sonner'
 import {
   useSetStaffTask,
@@ -224,7 +225,7 @@ export function StaffTaskDialog({ assignee, onClose }: { assignee?: { id: number
   const save = useSetStaffTask()
   const [who, setWho] = useState(assignee ? String(assignee.id) : '')
   const [title, setTitle] = useState('')
-  const week = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
+  const week = daysFromToday(7)
   const [due, setDue] = useState(week)
   const options = (people.data?.rows ?? []).map((row) => ({ value: String(row.id), title: `${row.name} · ${row.role_title}` }))
   return (

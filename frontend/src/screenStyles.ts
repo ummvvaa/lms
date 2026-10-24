@@ -17,6 +17,8 @@ import './screens/curator/curator.css'
 import './screens/curator/curator-layout.css'
 import './screens/academics/homework-review.css'
 import './screens/attendance.css'
+// кабинеты директоров (24.10.2026): строки, плитки, неделя освобождений
+import './screens/directors/directors.css'
 import './screens/mocks/mocks.css'
 import './components/queue.css'
 import './screens/dashboards/cabinet.css'

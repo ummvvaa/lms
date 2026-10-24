@@ -389,7 +389,7 @@ def grades_parallels(period: str = "") -> Report:
     lines = []
     for parallel in sorted(by_parallel):
         values = by_parallel[parallel]
-        lines.append((_("{n} классы").format(n=parallel), f"{round(sum(values) / len(values))} %"))
+        lines.append((_("{n} параллель").format(n=parallel), f"{round(sum(values) / len(values))} %"))
     every = [v for values in by_parallel.values() for v in values]
     bars = [
         {
@@ -547,7 +547,7 @@ def mock(period: str = "") -> Report:
     return Report(
         kind="mock",
         title=_("Mock Test {date}").format(date=f"{day:%d.%m}"),
-        source=_("IELTS и SAT · 11 классы · сдавали {n}").format(n=len(took)),
+        source=_("IELTS и SAT · 11 параллель · сдавали {n}").format(n=len(took)),
         period=day.isoformat(),
         period_title=f"{day:%d.%m.%Y}",
         summary=_("сдавали {n}").format(n=len(took)),

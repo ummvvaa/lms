@@ -18058,3 +18058,35 @@ msgstr "сабақтар: {l} · ҮЖ: {h}"
 #: directors
 msgid "Утренние отметки по школе читает директор школы"
 msgstr "Мектеп бойынша таңғы белгілерді мектеп директоры оқиды"
+
+#: directors
+msgid "{n} параллель"
+msgstr "{n}-параллель"
+
+#: directors
+msgid "IELTS и SAT · 11 параллель · сдавали {n}"
+msgstr "IELTS және SAT · 11-параллель · тапсырғандар {n}"
+
+#: directors
+msgid "Олимпиады школы"
+msgstr "Мектеп олимпиадалары"
+
+#: directors
+msgid "Мероприятия"
+msgstr "Іс-шаралар"
+
+#: directors
+msgid "Отчёты"
+msgstr "Есептер"
+
+#: directors
+msgid "Результаты экзаменов"
+msgstr "Емтихан нәтижелері"
+
+#: directors
+msgid "Родители"
+msgstr "Ата-аналар"
+
+#: directors
+msgid "Эссе учеников"
+msgstr "Оқушылар эссесі"
