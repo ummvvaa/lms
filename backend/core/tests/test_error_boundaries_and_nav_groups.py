@@ -119,7 +119,7 @@ def test_nav_items_are_grouped():
     Пункт без группы в меню не встаёт вовсе — это и проверяем.
     """
     nav = (FRONTEND / "layout" / "nav.ts").read_text(encoding="utf-8")
-    groups = "main|achievements|admission|work|academics|data|settings|more"
+    groups = "main|achievements|admission|work|academics|exams|data|settings|more"
     items = re.findall(
         rf"\{{ path: '[^']+', label: tk\('[^']*'\), icon: '[a-zA-Z]+'(, group: '({groups})')?[^}}]*\}}", nav
     )

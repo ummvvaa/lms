@@ -21,6 +21,8 @@ import {
   CURATOR_ONLY,
   curatorMayOpen,
   DOMAIN_ONLY,
+  directorHidden,
+  SCREEN_ROLES,
   homeworkReviewOpen,
   careerTestsOpen,
   IMPORT_ROLES,
@@ -126,6 +128,9 @@ const MyHomeworkDetailScreen = lazy(() => import('./screens/homework/MyHomeworkD
 const OverviewDashboard = lazy(() => import('./screens/dashboards/OverviewDashboard'))
 const Groups = lazy(() => import('./screens/sections/Groups'))
 const Risks = lazy(() => import('./screens/sections/Risks'))
+const SchoolReports = lazy(() => import('./screens/directors/SchoolReports'))
+const Parents = lazy(() => import('./screens/directors/Parents'))
+const StaffTasks = lazy(() => import('./screens/directors/StaffTasks'))
 const Deadlines = lazy(() => import('./screens/sections/Deadlines'))
 const Top30 = lazy(() => import('./screens/sections/Top30'))
 const Mocks = lazy(() => import('./screens/sections/Mocks'))
@@ -205,6 +210,9 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
     // раздел домена — только у его директора: пункта меню у остальных нет,
     // и прямой адрес возвращает туда же, куда ведёт отсутствующий пункт
     (DOMAIN_ONLY[location.pathname] !== undefined && me.role !== DOMAIN_ONLY[location.pathname]) ||
+    (SCREEN_ROLES[location.pathname] !== undefined && !SCREEN_ROLES[location.pathname].includes(me.role)) ||
+    // убранное у директоров (решение владельца, 24.10.2026): адрес ведёт на главную
+    directorHidden(me.role, location.pathname) ||
     (location.pathname === '/overview' && !me.can_see_whole_school) ||
     // куратору открыт короткий список экранов — тот же, что и на сервере (фаза 60)
     (me.role === 'curator' && !curatorMayOpen(location.pathname, me.has_admission)) ||
@@ -357,6 +365,10 @@ function Routing() {
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/task-templates" element={<TaskTemplates />} />
         <Route path="/risks" element={<Risks />} />
+        {/* кабинеты директоров по макету (24.10.2026) */}
+        <Route path="/school-reports" element={<SchoolReports />} />
+        <Route path="/parents" element={<Parents />} />
+        <Route path="/staff-tasks" element={<StaffTasks />} />
         <Route path="/overview" element={<OverviewDashboard />} />
         <Route path="/deadlines" element={<Deadlines />} />
         <Route path="/top30" element={<Top30 />} />

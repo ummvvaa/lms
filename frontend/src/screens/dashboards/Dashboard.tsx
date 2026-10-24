@@ -6,7 +6,7 @@
  * короткие сводки со ссылкой. Прокрутки к секции здесь больше нет.
  */
 import { useAuth } from '../../auth/AuthContext'
-import BehaviorDashboard from './BehaviorDashboard'
+import SchoolHome from '../directors/SchoolHome'
 import AdmissionDashboard from './AdmissionDashboard'
 import ExamDashboard from './ExamDashboard'
 import TalentDashboard from './TalentDashboard'
@@ -26,7 +26,8 @@ export default function Dashboard() {
       // главная 8–10 — учёба; главная 11 не меняется (`core/parallels.py`)
       return me.has_admission === false ? <JuniorHome /> : <StudentHome />
     case 'director_behavior':
-      return <BehaviorDashboard />
+      // главная по макету кабинетов директоров (24.10.2026); прежний `BehaviorDashboard` остался в коде
+      return <SchoolHome />
     case 'director_admission':
       return <AdmissionDashboard />
     case 'director_exam':

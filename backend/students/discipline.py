@@ -214,11 +214,24 @@ def day_sheet(*, group, date: dt.date) -> dict:
     Пустой день — это «все в школе», а не «никого не отмечали»: куратору
     проще нажать трёх, чем двадцать. Что день уже отмечали, видно по `saved`.
     """
+    from directors.services import release_label, released_map, released_on
+
     students = list(Student.objects.filter(group=group, is_active=True).order_by("last_name", "first_name"))
     marks = {
         row.student_id: row
         for row in AttendanceDay.objects.filter(student__in=students, date=date).select_related("noted_by")
     }
+    # освобождённые от уроков (олимпиада, соревнование): у куратора — чип вместо трёх кнопок
+    released = released_map([s.pk for s in students], date, date)
+
+    def row_of(student: Student) -> dict:
+        found = released_on(released, student.pk, date)
+        return {
+            **_row_dict(student, marks.get(student.pk)),
+            "released": release_label(found) if found else "",
+            "released_by": found.created_by_title if found else "",
+        }
+
     return {
         "group": group.pk,
         "group_code": group.code,
@@ -226,7 +239,7 @@ def day_sheet(*, group, date: dt.date) -> dict:
         "saved": bool(marks),
         "late": _is_late(date),
         "noted": _noted(marks),
-        "rows": [_row_dict(s, marks.get(s.pk)) for s in students],
+        "rows": [row_of(s) for s in students],
         "absent": sum(1 for row in marks.values() if row.mark == AttendanceDay.Mark.ABSENT),
         "late_count": sum(1 for row in marks.values() if row.mark == AttendanceDay.Mark.LATE),
         "total": len(students),

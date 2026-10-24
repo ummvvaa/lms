@@ -5,6 +5,7 @@ from directors import views
 urlpatterns = [
     # директор школы: обзвон и история звонков
     path("directors/calls/today/", views.calls_today, name="cabinet-calls-today"),
+    path("directors/morning/", views.morning, name="cabinet-morning"),
     path("directors/calls/", views.calls, name="cabinet-calls"),
     path("directors/calls/export/", views.calls_export, name="cabinet-calls-export"),
     # отчёты одного места: директор школы и академический директор

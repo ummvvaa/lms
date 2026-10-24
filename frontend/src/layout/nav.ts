@@ -24,7 +24,7 @@ import { tk } from '../i18n'
  *
  * Порядок здесь и есть порядок групп на экране; пустая не рисуется.
  */
-export type NavGroup = 'main' | 'achievements' | 'admission' | 'work' | 'academics' | 'data' | 'settings' | 'more'
+export type NavGroup = 'main' | 'achievements' | 'admission' | 'work' | 'academics' | 'exams' | 'data' | 'settings' | 'more'
 
 export const NAV_GROUPS: { key: NavGroup; label: string }[] = [
   { key: 'main', label: tk('Основное') },
@@ -32,6 +32,7 @@ export const NAV_GROUPS: { key: NavGroup; label: string }[] = [
   { key: 'admission', label: tk('Поступление') },
   { key: 'work', label: tk('Работа') },
   { key: 'academics', label: tk('Учёба') },
+  { key: 'exams', label: tk('Экзамены') },
   { key: 'data', label: tk('Данные') },
   { key: 'settings', label: tk('Настройки') },
   { key: 'more', label: tk('Ещё') },
@@ -51,11 +52,18 @@ export interface NavItem {
   short?: string
 }
 
+const TABLE: NavItem = { path: '/table', label: tk('Таблица'), icon: 'table', group: 'work' }
+const SUGGESTIONS: NavItem = { path: '/suggestions', label: tk('Предложения'), icon: 'bulb', group: 'work' }
+
+/** Сводная троица администратора: дашборд, таблица, предложения. */
 const DIRECTOR_COMMON: NavItem[] = [
   { path: '/dashboard', label: tk('Дашборд'), icon: 'home', group: 'work' },
-  { path: '/table', label: tk('Таблица'), icon: 'table', group: 'work' },
-  { path: '/suggestions', label: tk('Предложения'), icon: 'bulb', group: 'work' },
+  TABLE,
+  SUGGESTIONS,
 ]
+
+/** Главная директора — «Главная», как у ученика и куратора (макет кабинетов директоров). */
+const HOME: NavItem = { path: '/dashboard', label: tk('Главная'), icon: 'home', group: 'work' }
 
 /**
  * «Учёба» у Кымбат и администратора: расписание с правкой уроков, подгруппы
@@ -112,6 +120,7 @@ const HOMEWORK_REVIEW: NavItem = { path: '/homework-review', label: tk('Пров
  * ограничивает проверку его уроками (`homework.services.may_check`).
  */
 export function homeworkReviewOpen(role: Role, teaches = false): boolean {
+  if (directorHidden(role, '/homework-review')) return false
   if (['teacher', 'director_exam', 'admin'].includes(role)) return true
   // куратору «Проверка ДЗ» спрятана переключателем (решение владельца, 19.10.2026)
   if (role === 'curator' && CURATOR_HIDDEN.homeworkReview) return false
@@ -133,9 +142,49 @@ export function homeworkReviewOpen(role: Role, teaches = false): boolean {
  */
 export const CURATOR_HIDDEN = { homeworkReview: true, cardActions: true, lessonAttendance: true, career: true }
 
+/** Разделы, которые у всех пяти директоров убраны (решение владельца, 24.10.2026); «Сводный вид» — тоже: его нет в макете. */
+const DIRECTOR_GONE = [
+  '/suggestions',
+  '/homework-review',
+  '/resources',
+  '/import',
+  '/career-tests',
+  '/overview',
+]
+
+/**
+ * Что спрятано у директоров — по роли, как `CURATOR_HIDDEN` у куратора: пункта нет
+ * ни в меню, ни в «Ещё», адрес ведёт на главную, код экранов и ручки сервера
+ * остаются. Вернуть раздел — убрать адрес из списка роли. `/schedule` у Асем
+ * и Нурлыбека — «Мои уроки»; профтест у Асем закрыт и на сервере, пробники
+ * файлом у Кымбат — тоже: их грузит только администратор.
+ */
+export const DIRECTOR_HIDDEN: Partial<Record<Role, string[]>> = {
+  director_behavior: [...DIRECTOR_GONE, '/usage', '/task-templates', '/groups'],
+  director_exam: [...DIRECTOR_GONE, '/mock-imports'],
+  director_admission: [...DIRECTOR_GONE, '/schedule', '/task-templates', '/essay-content'],
+  director_talent: [...DIRECTOR_GONE, '/task-templates', '/materials'],
+  director_sport: [...DIRECTOR_GONE, '/schedule', '/task-templates', '/competitions'],
+}
+
+/**
+ * Разделы, которые ушли из меню директора, но открываются с его экранов:
+ * отчёты родителям — из «Отчётов», контакты и правила обзвона — вкладками
+ * «Родителей» (решение владельца, 24.10.2026).
+ */
+const DIRECTOR_FOLDED: Partial<Record<Role, string[]>> = {
+  director_behavior: ['/reports', '/contacts', '/call-rules'],
+  director_exam: ['/reports'],
+}
+
+/** Спрятан ли раздел у роли: пункт, «Ещё» и адрес вместе с вложенными. */
+export function directorHidden(role: Role, pathname: string): boolean {
+  return (DIRECTOR_HIDDEN[role] ?? []).some((path) => pathname === path || pathname.startsWith(`${path}/`))
+}
+
 /** Аналитика использования доступна администратору и директору школы. */
 export function usageOpen(role: Role): boolean {
-  return role === 'admin' || role === 'director_behavior'
+  return role === 'admin' || (role === 'director_behavior' && !directorHidden(role, '/usage'))
 }
 const USAGE: NavItem = { path: '/usage', label: tk('Использование'), icon: 'usage', group: 'data' }
 
@@ -174,57 +223,78 @@ export const NAV: Record<Role, NavItem[]> = {
     // достижения-бейджи
     { path: '/achievements', label: tk('Достижения'), icon: 'star', group: 'work' },
   ],
+  // директора — по макету кабинетов (решение владельца, 24.10.2026); прежние
+  // разделы стоят в списке и прячутся переключателем `DIRECTOR_HIDDEN`
   director_behavior: [
+    HOME,
+    // утренние отметки кураторов на чтение — школа целиком
+    { path: '/attendance', label: tk('Посещаемость'), icon: 'presence', group: 'work' },
+    // все отчёты школы в одном месте: отметки, СБ, отчёты родителям, звонки
+    { path: '/school-reports', label: tk('Отчёты'), icon: 'report', group: 'work' },
+    // позвонить сегодня, контакты, история звонков и правила обзвона — вкладками
+    { path: '/parents', label: tk('Родители'), icon: 'phone', group: 'work' },
+    { path: '/risks', label: tk('Риски'), icon: 'alert', group: 'work' },
+    { ...TABLE, group: 'data' },
     USAGE,
-    ...DIRECTOR_COMMON,
+    SUGGESTIONS,
     TEMPLATES,
     RESOURCES,
-    // правила обзвона (фаза 49): из них живёт список «кому позвонить»
-    { path: '/call-rules', label: tk('Правила обзвона'), icon: 'list', group: 'data' },
-    // посещаемость по дням (фаза 66): тот же экран, что у куратора,
-    // только без границы групп — школа целиком
-    { path: '/attendance', label: tk('Посещаемость'), icon: 'presence', group: 'work' },
-    // отчёты родителям по всем группам (решение владельца, 27.09.2026)
-    { path: '/reports', label: tk('Отчёты родителям'), icon: 'report', group: 'work', short: tk('Отчёты') },
     { path: '/groups', label: tk('Группы'), icon: 'people', group: 'data' },
-    { path: '/contacts', label: tk('Контакты родителей'), icon: 'phone', group: 'data', short: tk('Контакты') },
-    { path: '/risks', label: tk('Риски'), icon: 'alert', group: 'data' },
   ],
   director_admission: [
-    ...DIRECTOR_COMMON,
+    HOME,
+    // законченные эссе: «Норм / Не норм» и комментарий ученику
+    { path: '/essay-review', label: tk('Эссе учеников'), icon: 'doc', group: 'work' },
+    TABLE,
+    { path: '/directory', label: tk('Справочник вузов'), icon: 'building', group: 'data', short: tk('Вузы') },
+    { path: '/deadlines', label: tk('Дедлайны'), icon: 'clock', group: 'data' },
+    SUGGESTIONS,
     TEMPLATES,
     RESOURCES,
-    { path: '/directory', label: tk('Справочник'), icon: 'building', group: 'data' },
-    { path: '/deadlines', label: tk('Дедлайны'), icon: 'clock', group: 'data' },
     // конструктор эссе: типы, гайды, проверка, примеры (фаза 43)
     { path: '/essay-content', label: tk('Конструктор эссе'), icon: 'doc', group: 'data' },
-    // справочник стипендий: ведёт он же, ученик видит его у себя (фаза 44)
   ],
   director_exam: [
-    ...DIRECTOR_COMMON,
-    IMPORT,
+    HOME,
+    { path: '/school-reports', label: tk('Отчёты'), icon: 'report', group: 'work' },
+    // задачи учителям, кураторам и директорам: срок, статус, приёмка
+    { path: '/staff-tasks', label: tk('Задачи сотрудникам'), icon: 'check', group: 'work', short: tk('Задачи') },
+    TABLE,
     ...ACADEMICS,
-    TEMPLATES,
-    RESOURCES,
-    { path: '/top30', label: tk('ТОП-30'), icon: 'star', group: 'data' },
-    { path: '/mocks', label: tk('Mock Test онлайн'), icon: 'stopwatch', group: 'data', short: tk('Mock Test') },
-    // пробники школы файлом от учителя — не то же, что пробные платформы (фаза 63)
-    { path: '/mock-imports', label: tk('Mock Test'), icon: 'clipboard', group: 'data' },
+    // Mock Test и официальные IELTS/SAT по ученикам 11 — на чтение
+    { path: '/exam-results', label: tk('Результаты экзаменов'), icon: 'cap', group: 'exams', short: tk('Экзамены') },
+    { path: '/mocks', label: tk('Mock Test онлайн'), icon: 'stopwatch', group: 'exams', short: tk('Mock Test') },
+    { path: '/top30', label: tk('ТОП-30'), icon: 'star', group: 'exams' },
     // справочник экзаменов: из него ученик выбирает экзамен для цели (фаза 39)
-    { path: '/exam-kinds', label: tk('Экзамены'), icon: 'cap', group: 'data' },
+    { path: '/exam-kinds', label: tk('Справочник экзаменов'), icon: 'list', group: 'exams' },
+    { ...TEMPLATES, group: 'exams' },
+    SUGGESTIONS,
+    IMPORT,
+    RESOURCES,
+    // пробники школы файлом — с 24.10.2026 грузит только администратор
+    { path: '/mock-imports', label: tk('Mock Test'), icon: 'clipboard', group: 'data' },
   ],
   director_talent: [
-    ...DIRECTOR_COMMON,
+    HOME,
+    { path: '/olympiad-events', label: tk('Олимпиады'), icon: 'medal', group: 'work' },
+    // освобождения от уроков: видят Кымбат в расписании и кураторы в утренней отметке
+    { path: '/releases', label: tk('Освобождения'), icon: 'calendar', group: 'work' },
+    { ...TABLE, group: 'data' },
+    // предметы и треки — один раздел двумя вкладками
+    { path: '/subjects', label: tk('Предметы и треки'), icon: 'book', group: 'data', short: tk('Предметы') },
+    SUGGESTIONS,
     TEMPLATES,
     RESOURCES,
-    { path: '/subjects', label: tk('Предметы'), icon: 'book', group: 'data' },
-    { path: '/tracks', label: tk('Треки'), icon: 'branch', group: 'data' },
   ],
   director_sport: [
-    ...DIRECTOR_COMMON,
+    HOME,
+    // соревнования и мероприятия школы, заявки учеников
+    { path: '/sport-events', label: tk('Мероприятия'), icon: 'trophy', group: 'work' },
+    { path: '/sport-types', label: tk('Виды спорта'), icon: 'ball', group: 'data' },
+    { ...TABLE, group: 'data' },
+    SUGGESTIONS,
     TEMPLATES,
     RESOURCES,
-    { path: '/sport-types', label: tk('Виды спорта'), icon: 'ball', group: 'data' },
     { path: '/competitions', label: tk('Соревнования'), icon: 'trophy', group: 'data' },
   ],
   // куратор: каждый день — главная, очередь, ученики, документы
@@ -256,12 +326,16 @@ export const NAV: Record<Role, NavItem[]> = {
     USAGE,
     ...DIRECTOR_COMMON,
     IMPORT,
+    // задачи сотрудникам ставят Кымбат и администратор
+    { path: '/staff-tasks', label: tk('Задачи сотрудникам'), icon: 'check', group: 'work', short: tk('Задачи') },
     ...ACADEMICS,
     // карусель на главной ученика — настройка школы, а не домен директора
     { path: '/home-cues', label: tk('Сюжеты главной'), icon: 'megaphone', group: 'settings' },
     // бейджи учеников — настройка школы (с 28.09.2026 у администратора)
     { path: '/badges', label: tk('Достижения школы'), icon: 'star', group: 'settings' },
     { path: '/users', label: tk('Пользователи'), icon: 'person', group: 'settings' },
+    // группы и их кураторы — у администратора с 24.10.2026, у директора школы раздела нет
+    { path: '/groups', label: tk('Группы'), icon: 'people', group: 'settings' },
     { path: '/archive', label: tk('Архив'), icon: 'box', group: 'settings' },
     { path: '/spend', label: tk('Расходы на ИИ'), icon: 'card', group: 'settings' },
     // пороги и окна школы — настройка администратора, а не константа (30.09.2026)
@@ -288,11 +362,12 @@ export const TABS: Record<Role, string[]> = {
   // у ученика в баре — главная, расписание, ДЗ и вузы: ДЗ открывают каждый день,
   // оценки реже — они в «Ещё»; у 8–10 вузов нет, их место добирают оценки
   student: ['/dashboard', '/schedule', '/homework', '/catalog'],
-  director_behavior: ['/dashboard', '/attendance', '/risks', '/suggestions'],
-  director_admission: ['/dashboard', '/table', '/suggestions', '/directory'],
-  director_exam: ['/dashboard', '/table', '/suggestions', '/mocks'],
-  director_talent: ['/dashboard', '/table', '/suggestions', '/olympiad-group'],
-  director_sport: ['/dashboard', '/table', '/suggestions', '/competitions'],
+  // у директоров — главная и три раздела своей работы из макета; «Предложений» нет
+  director_behavior: ['/dashboard', '/attendance', '/school-reports', '/parents'],
+  director_admission: ['/dashboard', '/essay-review', '/table', '/directory'],
+  director_exam: ['/dashboard', '/school-reports', '/staff-tasks', '/exam-results'],
+  director_talent: ['/dashboard', '/olympiad-events', '/releases', '/olympiad-group'],
+  director_sport: ['/dashboard', '/sport-events', '/table', '/sport-types'],
   // у куратора в баре — утренняя отметка, «Документы» уходят в «Ещё» (макет телефона куратора)
   curator: ['/dashboard', '/queue', '/students', '/attendance'],
   // у учителя четыре раздела: все в баре, профиль — в «Ещё»
@@ -396,7 +471,9 @@ const MY_LESSONS: NavItem = { path: '/schedule', label: tk('Мои уроки'),
  *  Куратору раздела нет (`CURATOR_HIDDEN.career`). */
 export function careerTestsOpen(me: { role: Role; career_tests: boolean }): boolean {
   if (me.role === 'curator' && CURATOR_HIDDEN.career) return false
-  return me.career_tests || ['admin', 'director_admission', 'curator'].includes(me.role)
+  // у директоров профтеста нет (решение владельца, 24.10.2026), даже у Асем
+  if (directorHidden(me.role, '/career-tests')) return false
+  return me.career_tests || ['admin', 'curator'].includes(me.role)
 }
 /** Профтест у того, кто ведёт профориентацию при любой роли, и у администратора
  *  (`/auth/me/` → `career_tests`): тесты файлом, результаты, разборы. */
@@ -455,10 +532,10 @@ export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = 
   }
   if (extras.curator) {
     // в баре телефона — «Олимпиада»: первое слово «Олимпиадная» само по себе ничего не значит
-    items = [
-      ...items,
-      { path: '/olympiad-group', label: tk('Олимпиадная группа'), icon: 'medal', group: 'data', short: tk('Олимпиада') },
-    ]
+    const group: NavItem = { path: '/olympiad-group', label: tk('Олимпиадная группа'), icon: 'people', group: 'data', short: tk('Олимпиада') }
+    // у директора талантов группа стоит первой в «Данных», как в макете
+    const at = role === 'director_talent' ? items.findIndex((item) => item.path === '/subjects') : -1
+    items = at < 0 ? [...items, group] : [...items.slice(0, at), group, ...items.slice(at)]
   }
   if (extras.teaches && role !== 'student' && !items.some((i) => i.path === '/schedule')) {
     items = [...items, MY_LESSONS]
@@ -479,6 +556,9 @@ export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = 
   if (role === 'curator' && extras.admission === false) {
     items = items.filter((item) => !CURATOR_ADMISSION_ONLY.includes(item.path))
   }
+  // у директоров — состав меню по макету: спрятанное и свёрнутое в экраны не показывается
+  const off = [...(DIRECTOR_HIDDEN[role] ?? []), ...(DIRECTOR_FOLDED[role] ?? [])]
+  if (off.length) items = items.filter((item) => !off.includes(item.path))
   if (role === 'student' && extras.sections) {
     const open = extras.sections
     items = items.filter((item) => studentMayOpen(open, item.path))
@@ -558,6 +638,15 @@ export const STAFF_ONLY = [
   '/spend',
   '/usage',
   '/school-settings',
+  // кабинеты директоров по макету (24.10.2026)
+  '/school-reports',
+  '/parents',
+  '/staff-tasks',
+  '/exam-results',
+  '/essay-review',
+  '/olympiad-events',
+  '/releases',
+  '/sport-events',
 ]
 
 /** Экраны администратора: люди, архив, расходы и настройка главной ученика. */
@@ -573,7 +662,6 @@ export const IMPORT_ROLES: Role[] = ['admin', 'director_exam']
  * в `Protected`: пункта нет — значит и экрана быть не должно.
  */
 export const DOMAIN_ONLY: Record<string, Role> = {
-  '/groups': 'director_behavior',
   '/contacts': 'director_behavior',
   '/risks': 'director_behavior',
   '/deadlines': 'director_admission',
@@ -584,4 +672,21 @@ export const DOMAIN_ONLY: Record<string, Role> = {
   '/competitions': 'director_sport',
   '/essay-content': 'director_admission',
   '/call-rules': 'director_behavior',
+  '/parents': 'director_behavior',
+  '/essay-review': 'director_admission',
+  '/olympiad-events': 'director_talent',
+  '/releases': 'director_talent',
+  '/sport-events': 'director_sport',
+  '/exam-results': 'director_exam',
+}
+
+/**
+ * Экраны нескольких ролей (кабинеты директоров, 24.10.2026): «Отчёты» —
+ * у директора школы и Кымбат, задачи сотрудникам — у Кымбат и администратора,
+ * «Группы» — у администратора.
+ */
+export const SCREEN_ROLES: Record<string, Role[]> = {
+  '/school-reports': ['director_behavior', 'director_exam'],
+  '/staff-tasks': ['director_exam', 'admin'],
+  '/groups': ['admin'],
 }

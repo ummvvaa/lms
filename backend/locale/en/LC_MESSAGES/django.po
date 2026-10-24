@@ -18135,3 +18135,7 @@ msgstr "no lessons"
 #: directors
 msgid "уроков: {l} · ДЗ: {h}"
 msgstr "lessons: {l} · homework: {h}"
+
+#: directors
+msgid "Утренние отметки по школе читает директор школы"
+msgstr "School-wide morning checks are read by the school director"

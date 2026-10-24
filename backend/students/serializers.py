@@ -218,6 +218,8 @@ class ParentContactSerializer(DomainModelSerializer):
     #: имя ученика рядом со строкой: отдельный список контактов без него
     #: превращается в перечень телефонов без хозяев
     student_name = serializers.CharField(source="student.full_name", read_only=True, default="")
+    #: группа ученика — колонка списка контактов у директора школы (24.10.2026)
+    student_group = serializers.CharField(source="student.group.code", read_only=True, default="")
     relation_title = serializers.CharField(source="get_relation_display", read_only=True, default="")
     channel_title = serializers.CharField(source="get_preferred_channel_display", read_only=True, default="")
 
@@ -227,6 +229,7 @@ class ParentContactSerializer(DomainModelSerializer):
             "id",
             "student",
             "student_name",
+            "student_group",
             "full_name",
             "relation",
             "relation_title",

@@ -673,7 +673,7 @@ class ParentContactViewSet(StudentScopedViewSet):
     """
 
     audience = Audience.OWN_OR_SCOPED
-    queryset = ParentContact.objects.select_related("student").all()
+    queryset = ParentContact.objects.select_related("student", "student__group").all()
     serializer_class = ParentContactSerializer
     domain_model_label = "students.ParentContact"
     filterset_fields = ("student", "relation", "is_primary")

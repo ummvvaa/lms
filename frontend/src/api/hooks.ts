@@ -3606,6 +3606,8 @@ export interface ParentContact {
   id: number
   student: number
   student_name: string
+  /** группа ученика: колонка списка контактов у директора школы */
+  student_group?: string
   full_name: string
   relation: string
   relation_title: string

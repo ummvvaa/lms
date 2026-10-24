@@ -37,6 +37,7 @@ import { absentWords, dateShort, dateWords, GroupPick, lateAsAbsentWords } from 
 import { formatMonthYear, formatTime } from '../lib/format'
 import { useAuth } from '../auth/AuthContext'
 import { CURATOR_HIDDEN } from '../layout/nav'
+import SchoolAttendance from './directors/SchoolAttendance'
 import CuratorAttendance from './CuratorAttendance'
 import { useTrack } from '../usage/context'
 import './attendance.css'
@@ -97,6 +98,8 @@ const monthTitle = (month: string): string => {
 export default function AttendanceScreen() {
   const { me } = useAuth()
   if (me?.role === 'curator' && CURATOR_HIDDEN.lessonAttendance) return <CuratorAttendance />
+  // директор школы читает утренние отметки кураторов (решение владельца, 24.10.2026)
+  if (me?.role === 'director_behavior') return <SchoolAttendance />
   return <LessonAttendance />
 }
 
