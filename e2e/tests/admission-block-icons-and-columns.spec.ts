@@ -283,7 +283,8 @@ test("на 1280 телефон и показанный пароль читают
 
     // окно прокручивается внутри каркаса, поэтому «вся страница» — это
     // окно; сетка карточек снимается отдельно, целиком
-    const grid = page.locator(role === "curator" ? ".cgrid" : ".card__domains");
+    // у куратора карточка — раскладка «две трети — треть» (коралловый макет, 22.10.2026)
+    const grid = page.locator(role === "curator" ? ".lay-main" : ".card__domains").first();
     await page.screenshot({ path: `${dir}/${role}-1280.png` });
     await grid.screenshot({ path: `${dir}/${role}-1280-grid.png` });
     await page.setViewportSize(LAPTOP);

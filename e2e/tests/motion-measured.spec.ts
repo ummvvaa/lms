@@ -324,12 +324,16 @@ test.describe("движение", () => {
 });
 
 test.describe("всплывающее ничего не сдвигает", () => {
-  test.use({ storageState: statePath("director_exam") });
+  test.use({ storageState: statePath("director_behavior") });
 
   test("колокольчик и меню профиля не двигают шапку", async ({ page }) => {
     await page.goto("/dashboard");
     await expect(page.locator(".pmenu__username")).toBeVisible();
     await expect(page.locator(".head__title")).toBeVisible();
+    // главная собирается из нескольких ответов и появляется ступенькой (`motion.css`):
+    // замер — когда шапка встала, а не посреди появления
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1200);
     const snapshot = async () =>
       JSON.stringify(
         await page
@@ -368,7 +372,7 @@ test.describe("всплывающее ничего не сдвигает", () =>
 });
 
 test.describe("ошибка — сообщение, а не белый экран", () => {
-  test.use({ storageState: statePath("director_exam") });
+  test.use({ storageState: statePath("director_behavior") });
 
   test("упавший экран показывает сообщение и кнопку, меню остаётся", async ({
     page,
@@ -408,7 +412,7 @@ test.describe("ошибка — сообщение, а не белый экра�
 });
 
 test.describe("переделка ничего не сломала", () => {
-  test.use({ storageState: statePath("director_exam") });
+  test.use({ storageState: statePath("director_behavior") });
 
   test("правка в таблице сохраняется и переживает перезагрузку", async ({
     page,
@@ -537,7 +541,7 @@ test.describe("кабинет ученика", () => {
     expect(await page.getAttribute("html", "data-density")).toBeNull();
     const student = await rowOf(page);
     const context = await browser.newContext({
-      storageState: statePath("director_exam"),
+      storageState: statePath("director_behavior"),
     });
     const staff = await context.newPage();
     await staff.goto("/dashboard");
@@ -549,7 +553,7 @@ test.describe("кабинет ученика", () => {
 });
 
 test.describe("тёмная тема", () => {
-  test.use({ storageState: statePath("director_exam") });
+  test.use({ storageState: statePath("director_behavior") });
 
   test("на каждом экране текст читается на своём фоне", async ({ page }) => {
     await apiPatch(page, "/api/auth/me/preferences/", { theme: "dark" }).catch(

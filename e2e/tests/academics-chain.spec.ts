@@ -107,7 +107,8 @@ test("куратор: уважительная причина за период 
   expect(diag.consoleErrors, "ошибки в консоли").toEqual([]);
 
   const teacher = await as(browser, "teacher");
-  await teacher.goto(`/journals/${courseId}`);
+  // месяц урока, а не «текущая четверть»: в каникулы она — следующая, и урока в ней нет
+  await teacher.goto(`/journals/${courseId}?period=${lessonDate.slice(0, 7)}`);
   await expect(teacher.locator(".matrix")).toBeVisible();
   const row = teacher.locator(".matrix tr", { hasText: studentName }).first();
   const cells = (mark: RegExp) => row.locator("[data-col]").filter({ hasText: mark });

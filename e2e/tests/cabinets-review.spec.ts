@@ -26,7 +26,6 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { exportThroughPreview } from "../helpers/export";
 import { apiDelete, apiPatch, apiPost, watch } from "../helpers/session";
-import { daysAgo, lessonsBetween } from "../helpers/academics";
 import { probeEmail } from "../helpers/roles";
 
 test.describe.configure({ mode: "serial", timeout: 300_000 });
@@ -216,10 +215,12 @@ test("класса нет в формах; шаблон задач — по гр
   }
   await expect(arman.locator("thead")).not.toContainText("Класс");
 
-  // шаблон задач: галочки групп, «всем» по умолчанию
-  await arman.goto("/task-templates");
-  await arman.getByRole("button", { name: /Завести шаблон|Добавить шаблон/ }).first().click();
-  const form = arman.getByRole("dialog");
+  // шаблон задач: галочки групп, «всем» по умолчанию; у Армана шаблонов нет с 24.10.2026 —
+  // их ведёт Кымбат
+  const kymbat = await as(browser, "director_exam");
+  await kymbat.goto("/task-templates");
+  await kymbat.getByRole("button", { name: /Завести шаблон|Добавить шаблон/ }).first().click();
+  const form = kymbat.getByRole("dialog");
   await expect(form.getByText("Для класса")).toHaveCount(0);
   await expect(form.getByText("Для выпуска")).toHaveCount(0);
   await expect(form.getByRole("group", { name: "Кому: группы" })).toBeVisible();
@@ -229,7 +230,7 @@ test("класса нет в формах; шаблон задач — по гр
   // число галочек запоминаем до отправки: после неё окна уже нет
   const offered = await boxes.count();
   if (offered > 0) await boxes.first().click();
-  const created = arman.waitForResponse(
+  const created = kymbat.waitForResponse(
     (r) => r.url().includes("/task-templates/") && r.request().method() === "POST",
   );
   await form.getByRole("button", { name: "Завести" }).click();
@@ -238,8 +239,9 @@ test("класса нет в формах; шаблон задач — по гр
   const made = (await answer.json()) as { id: number; groups: number[]; group_codes: string[] };
   expect(made.groups.length, "группа ушла на сервер").toBe(offered > 0 ? 1 : 0);
   if (made.group_codes.length > 0)
-    await expect(arman.locator("tr", { hasText: TEMPLATE })).toContainText(made.group_codes[0]);
-  await apiDelete(arman, `/api/task-templates/${made.id}/`);
+    await expect(kymbat.locator("tr", { hasText: TEMPLATE })).toContainText(made.group_codes[0]);
+  await apiDelete(kymbat, `/api/task-templates/${made.id}/`);
+  await kymbat.context().close();
   await arman.context().close();
 });
 
@@ -444,15 +446,13 @@ test("соревнование: отмеченное видно в карточ�
   ).json()) as { results: { name: string }[] };
   expect(hidden.results.map((row) => row.name)).not.toContain(COMPETITION);
 
-  // Нурлыбек ставит отметку переключателем на своём экране
-  await sport.goto("/competitions");
-  const row = sport.locator("tr", { hasText: COMPETITION });
-  await expect(row).toBeVisible();
-  const patched = sport.waitForResponse(
-    (r) => r.url().includes(`/api/competitions/${made.id}/`) && r.request().method() === "PATCH",
-  );
-  await row.getByRole("switch").click();
-  expect((await patched).status()).toBe(200);
+  // Нурлыбек ставит отметку «в карточке»; экрана «Соревнования» у него нет с 24.10.2026
+  // (его заменили «Мероприятия») — отметка идёт той же ручкой, право прежнее
+  const patched = await sport.request.patch(`/api/competitions/${made.id}/`, {
+    data: { show_in_card: true },
+    headers: { "X-CSRFToken": (await sport.context().cookies()).find((c) => c.name === "csrftoken")?.value ?? "" },
+  });
+  expect(patched.status()).toBe(200);
 
   // вкладки «Строки и записи» в карточке директора больше нет (27.09.2026):
   // соревнование ученика Асем читает по API, как и её экраны
@@ -466,123 +466,40 @@ test("соревнование: отмеченное видно в карточ�
 
 // --- 10, 14: Салтанат --------------------------------------------------------------------
 
-test("посещаемость у Салтанат на чтение: день матрицей, месяц с процентом, выгрузка", async ({
+test("посещаемость у Салтанат на чтение: утренние отметки по группам, аналитика, выгрузка", async ({
   browser,
 }) => {
+  // с 24.10.2026 у директора школы «Посещаемость» — утренние отметки кураторов
+  // на чтение (макет кабинетов): плитки групп, окно группы, аналитика за период
   const page = await as(browser, "director_behavior");
   const diag = watch(page);
   await page.goto("/dashboard");
   await expect(page.getByRole("button", { name: "Внести посещаемость" })).toHaveCount(0);
-  // группы — строками правой колонки
-  await expect(page.locator(".datacard", { hasText: "Учебные группы" }).locator(".rowline").first()).toBeVisible();
 
   await page.goto("/attendance");
   await expect(page.locator("h1")).toContainText("Посещаемость");
-  // групп больше пяти — список, меньше — сегменты (05.10.2026): выбираем первую
-  const combo = page.getByRole("combobox", { name: "Группа" });
-  if (await combo.count()) await combo.selectOption({ index: 1 });
-  else await page.getByRole("group", { name: "Группа" }).getByRole("button", { name: "CHICAGO" }).click();
-  // день — последний учебный с уроками: сегодня их может ещё не быть
-  const past = (await lessonsBetween(page, daysAgo(10), daysAgo(1))).map((row) => row.date).sort();
-  if (past.length) await page.getByLabel("День").fill(past[past.length - 1]);
-  await expect(page.locator(".matrix").first()).toBeVisible();
-  // оформить причину и напомнить Салтанат нечем
-  await expect(page.getByRole("button", { name: "Оформить" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Напомнить" })).toHaveCount(0);
-
-  await page.getByRole("button", { name: "Месяц", exact: true }).click();
-  await expect(page).toHaveURL(/view=month/);
-  await expect(page.locator(".matrix").first()).toBeVisible();
-  await expect(page.locator(".statrow")).toContainText("Дни без причины");
-
-  // утренняя отметка куратора — третьим видом, у Салтанат на чтение:
-  // ни флажков «Нет в школе», ни «Сохранить», у ученика словами «был / не был / опоздал»
-  await page.getByRole("button", { name: "Отметка куратора" }).click();
-  await expect(page).toHaveURL(/view=mark/);
-  const markRow = page.locator(".rowline").filter({ has: page.locator(".rowline__value") }).first();
-  await expect(markRow.locator(".rowline__value")).toHaveText(/^(был|не был|опоздал)$/);
-  await expect(page.getByRole("checkbox", { name: "Нет в школе" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /^Сохранить/ })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Внести посещаемость" })).toHaveCount(0);
+  const tiles = page.locator(".dir__tile");
+  await expect(tiles.first()).toBeVisible();
+  await tiles.first().click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  // отмечать и оформлять причину Салтанат нечем: ни кнопок отметки, ни «Сохранить»
+  await expect(dialog.getByRole("button", { name: /^(в школе|нет|опоздал)$/ })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: /^Сохранить/ })).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Закрыть" }).first().click();
 
   // и сервер отвечает отказом, если обойти экран
-  const sheet = (await (await page.request.get("/api/attendance/")).json()) as {
-    may_mark: boolean;
-  };
+  const sheet = (await (await page.request.get("/api/attendance/")).json()) as { may_mark: boolean };
   expect(sheet.may_mark).toBe(false);
 
-  await page.getByRole("button", { name: "Месяц", exact: true }).click();
-  const exportButton = page.getByRole("button", { name: "Выгрузить" });
-  if (await exportButton.isEnabled()) {
-    const exported = await exportThroughPreview(page, exportButton);
-    expect(exported.columns[0]).toBe("Ученик");
-  }
-  expect(diag.pageErrors, "исключения").toEqual([]);
+  await page.getByRole("tab", { name: "Аналитика" }).click();
+  await expect(page.locator(".kpi").filter({ hasText: "Средняя посещаемость" })).toBeVisible();
+  const exportButton = page.getByRole("button", { name: "Выгрузить xlsx" });
+  const exported = await exportThroughPreview(page, exportButton);
+  expect(exported.columns[0]).toBe("Ученик");
+
+  expect(diag.consoleErrors).toEqual([]);
   await page.context().close();
-
-  // у куратора вместо матрицы — утренний лист, а дни без причины с «Оформить» —
-  // в карточке ученика, «Дни с пропусками». День без причины — не меньше двух
-  // «н» и 60 % уроков дня (правило школы), а в посеве
-  // пропуски по одному уроку: такого дня нет ни у кого. Заводим его сами:
-  // администратор отмечает ученику прогона «н» на всех уроках одного дня
-  const admin = await as(browser, "admin");
-  const pupils = (await (
-    await admin.request.get("/api/students/?page_size=500")
-  ).json()) as { results: { id: number; email: string }[] };
-  const pupil = pupils.results.find((row) => row.email === probeEmail("student"));
-  expect(pupil, "ученик прогона заведён").toBeTruthy();
-  const month = daysAgo(0).slice(0, 7);
-  const lessons = (await lessonsBetween(admin, `${month}-01`, daysAgo(1)))
-    .filter((row) => row.in_lms !== false && row.subject.in_lms !== false && row.is_live !== false);
-  const byDay = new Map<string, typeof lessons>();
-  for (const row of lessons) byDay.set(row.date, [...(byDay.get(row.date) ?? []), row]);
-  // уроки дня берутся по ученику: подгруппы и потоки тоже считаются в его день
-  let day: string | null = null;
-  let dayLessons: typeof lessons = [];
-  for (const [date] of [...byDay.entries()].sort((a, b) => b[0].localeCompare(a[0]))) {
-    const own = (await (
-      await admin.request.get(`/api/acad/lessons/?from=${date}&to=${date}&student=${pupil!.id}`)
-    ).json()) as { lessons?: typeof lessons };
-    // предмет «только расписание» отметок не принимает — его уроки не в счёт
-    const rows = (own.lessons ?? []).filter(
-      (row) => row.in_lms !== false && row.subject.in_lms !== false && row.is_live !== false,
-    );
-    if (rows.length >= 2) {
-      day = date;
-      dayLessons = rows;
-      break;
-    }
-  }
-  expect(day, "в этом месяце есть день с двумя и больше уроками ученика прогона").toBeTruthy();
-  for (const row of dayLessons) {
-    await apiPost(admin, `/api/acad/lessons/${row.id}/attendance/`, {
-      rows: [{ student: pupil!.id, mark: "absent" }],
-    });
-  }
-  await admin.context().close();
-
-  const curator = await as(browser, "curator");
-  await curator.goto(`/students/${pupil!.id}?tab=grades`);
-  const days = curator.locator(".datacard").filter({
-    has: curator.locator(".datacard__title", { hasText: /^Дни с пропусками$/ }),
-  });
-  // строка дня — с числом дня слева, «н» по урокам и «Оформить» у куратора
-  const unexcused = days.locator(".rowline").filter({
-    has: curator.locator(".num", { hasText: new RegExp(`^${Number(day!.slice(8))}$`) }),
-  });
-  await expect(unexcused).toHaveCount(1);
-  await expect(unexcused).toContainText(" н");
-  await expect(unexcused.getByRole("button", { name: "Оформить", exact: true })).toBeVisible();
-  await curator.context().close();
-
-  // возвращаем отметки: «н» целого дня не должно уехать в другие сценарии
-  const cleanup = await as(browser, "admin");
-  for (const row of dayLessons) {
-    await apiPost(cleanup, `/api/acad/lessons/${row.id}/attendance/`, {
-      rows: [{ student: pupil!.id, mark: "present" }],
-    });
-  }
-  await cleanup.context().close();
 });
 
 // --- 12, 13: карточки справочников --------------------------------------------------------

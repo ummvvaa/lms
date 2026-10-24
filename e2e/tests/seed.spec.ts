@@ -1437,7 +1437,7 @@ test("кабинеты директоров: эссе, олимпиады, ос�
   const arman = await as(browser, "director_talent");
   const today = daysAgo(0);
   const olympiads = [
-    { title: "Городская олимпиада по математике", level: "city", starts: today, ends: daysAhead(1), place: "Дворец школьников" },
+    { title: "Городская олимпиада по математике", level: "city", starts: daysAhead(1), ends: daysAhead(2), place: "Дворец школьников" },
     { title: "Республиканская олимпиада по физике", level: "national", starts: daysAhead(14), ends: daysAhead(16), place: "НИШ ФМН" },
   ];
   const listed = (await (await arman.request.get("/api/directors/olympiads/")).json()) as { rows: { id: number; title: string }[] };
@@ -1445,10 +1445,13 @@ test("кабинеты директоров: эссе, олимпиады, ос�
     const found = listed.rows.find((o) => o.title === row.title) ?? (await apiPost<{ id: number }>(arman, "/api/directors/olympiads/", row));
     await apiPost(arman, `/api/directors/olympiads/${found.id}/entries/`, { students: chicago.slice(index, index + 3).map((p) => p.id) });
     if (index === 0) {
-      const week = (await (await arman.request.get(`/api/directors/releases/?from=${today}&to=${daysAhead(1)}`)).json()) as { rows: unknown[] };
+      const week = (await (await arman.request.get(`/api/directors/releases/?from=${today}&to=${daysAhead(3)}`)).json()) as { rows: unknown[] };
       if (week.rows.length === 0) {
-        await apiPost(arman, "/api/directors/releases/", { olympiad: found.id, students: [chicago[0].id], starts: today, ends: today, slot_from: 3, slot_to: 4 });
-        await apiPost(arman, "/api/directors/releases/", { olympiad: found.id, students: [chicago[1].id, chicago[2].id], starts: daysAhead(1), ends: daysAhead(1) });
+        // освобождения — только вперёд (завтра, послезавтра): прошедшие и сегодняшние уроки
+        // размечают сценарии учебной части, и «н» там читалось бы «у»
+        const tokyo = [6, 7, 8].map((n) => byEmail(probeEmail(`pupil0${n}`)).id);
+        await apiPost(arman, "/api/directors/releases/", { olympiad: found.id, students: [tokyo[0]], starts: daysAhead(2), ends: daysAhead(2), slot_from: 3, slot_to: 4 });
+        await apiPost(arman, "/api/directors/releases/", { olympiad: found.id, students: [tokyo[1], tokyo[2]], starts: daysAhead(1), ends: daysAhead(1) });
       }
     }
   }
