@@ -308,13 +308,13 @@ test.describe("экраны разбора кабинетов", () => {
 
 /**
  * Дашборды Кымбат, Асем и куратора после посева (фаза 80): две колонки
- * примерно одной высоты, «мок просел» один раз, у куратора число в заголовке
+ * примерно одной высоты, «Балл Mock Test просел» один раз, у куратора число в заголовке
  * очереди. Пустое состояние тех же экранов снимает `seed-baseline.spec.ts`.
  */
 test("дашборды с данными: колонки ровные, дублей нет", async ({ browser }) => {
   await shootDashboards(browser, "filled", async (page, role, phone) => {
     if (role === "director_exam")
-      await expect(page.getByText("Мок просел", { exact: true })).toHaveCount(
+      await expect(page.getByText("Балл Mock Test просел", { exact: true })).toHaveCount(
         1,
       );
     if (role === "curator")
