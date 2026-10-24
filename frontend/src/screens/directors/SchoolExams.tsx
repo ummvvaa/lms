@@ -19,6 +19,7 @@ import { Button } from '../../components/ui/button'
 import { t, tk } from '../../i18n'
 import { formatDate, formatDayMonth } from '../../lib/format'
 import { usePhone } from '../../phone'
+import { kpiRow } from './parts'
 import './directors.css'
 
 type Exam = 'IELTS' | 'SAT'
@@ -174,7 +175,7 @@ export default function SchoolExams() {
           options={data.groups.map((code) => ({ value: code, title: code }))}
         />
       </div>
-      <div className="lay-4">
+      <div className={kpiRow(1 + (s.average ? 1 : 0) + (s.with_goal > 0 ? 2 : 0))}>
         <Kpi label={t('Сдавали Mock Test')} value={s.took} note={t('из {n} учеников', { n: s.students })} />
         {/* показатель без числа и «0 из 0» без целей плиткой не рисуются */}
         {s.average && <Kpi label={t('Средний балл')} value={s.average} note={t('по последнему Mock Test')} />}

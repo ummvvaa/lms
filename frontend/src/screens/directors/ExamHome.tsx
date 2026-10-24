@@ -16,12 +16,10 @@ import {
 } from '../../api/directors'
 import { Avatar, ShowAll } from '../../components/patterns'
 import { Bar, Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
-import OnboardingQueue from '../../components/OnboardingQueue'
-import PendingQueue from '../../components/PendingQueue'
 import { Button } from '../../components/ui/button'
 import { t, tn } from '../../i18n'
 import { formatDayMonth } from '../../lib/format'
-import { HomeColumns, ReportDialog, ReportLine, todayLine, useGreeting } from './parts'
+import { HomeColumns, kpiRow, ReportDialog, ReportLine, todayLine, useGreeting } from './parts'
 import { StaffTaskDialog } from './StaffTasks'
 
 export default function ExamHome() {
@@ -64,7 +62,7 @@ export default function ExamHome() {
           </>
         }
       />
-      <div className="lay-4">
+      <div className={kpiRow(2 + (grades?.fo != null ? 1 : 0) + (mock?.date ? 1 : 0))}>
         {/* показатель без числа плиткой не рисуется */}
         {grades?.fo != null && (
           <Kpi
@@ -95,10 +93,8 @@ export default function ExamHome() {
           to="/staff-tasks"
         />
       </div>
-      {/* что внесли ученики — решение прямо в строке: раздела «Предложения» нет (24.10.2026) */}
-      <PendingQueue fold hideEmpty />
-      {/* ответы анкеты первого входа ждут подтверждения; пустая очередь не рисуется */}
-      <OnboardingQueue />
+      {/* очередей подтверждения у Кымбат нет: ученические правки подтверждают кураторы,
+          ей некогда (решение владельца, 25.10.2026) */}
       <HomeColumns
         main={[
           <DataCard

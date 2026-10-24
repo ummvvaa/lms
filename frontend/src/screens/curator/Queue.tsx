@@ -25,7 +25,7 @@ import { QueueRow } from '../../components/StudentQueue'
 import { DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tk } from '../../i18n'
-import { EscalateRowDialog, OWNER_OF } from './Dialogs'
+import { EscalateRowDialog, HANDOVER_DOMAINS, OWNER_OF } from './Dialogs'
 import DocumentPreview, { type PreviewTarget } from './DocumentPreview'
 import GroupSwitch from './GroupSwitch'
 import { useGroup } from './state'
@@ -167,7 +167,11 @@ export default function CuratorQueue() {
             person
             reasons={REASONS.map((reason) => t(reason))}
             onPreview={openDocument}
-            escalate={(item) => <EscalateRowDialog id={item.id} domain={item.domain} />}
+            escalate={(item) =>
+              HANDOVER_DOMAINS.includes(item.domain) ? (
+                <EscalateRowDialog id={item.id} domain={item.domain} />
+              ) : null
+            }
             checked={checked.includes(row.id)}
             onCheck={(value) =>
               setChecked((prev) => (value ? [...prev, row.id] : prev.filter((id) => id !== row.id)))
@@ -179,10 +183,7 @@ export default function CuratorQueue() {
       {/* переданное владельцу домена: ушло из очереди, но видно, и можно вернуть, пока не решено */}
       {escalated.length > 0 && (
         <div>
-          <DataCard
-            title={t('Передано владельцу')}
-            count={escalated.length}
-          >
+          <DataCard title={t('Передано владельцу')} count={escalated.length}>
             <Rows>
               {escalated.map((row) => (
                 <Row
@@ -192,7 +193,10 @@ export default function CuratorQueue() {
                   title={`${row.student_name} · ${row.document ? row.document.doc_type_title : row.changes.map((c) => c.field_title).join(', ')}`}
                   note={
                     OWNER_OF[row.domain]
-                      ? t('у {owner} · «{comment}»', { owner: t(OWNER_OF[row.domain]), comment: row.escalation_comment })
+                      ? t('у {owner} · «{comment}»', {
+                          owner: t(OWNER_OF[row.domain]),
+                          comment: row.escalation_comment,
+                        })
                       : t('у владельца · «{comment}»', { comment: row.escalation_comment })
                   }
                   acts={

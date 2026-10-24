@@ -14,15 +14,16 @@ import { Segmented } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { mondayOf, shiftDay, todayAlmaty } from '../../lib/dates'
+import { shiftDay, todayAlmaty } from '../../lib/dates'
 import { formatDayMonth, weekdayName } from '../../lib/format'
+import { schoolWeekStart } from './parts'
 import { ReleaseDialog } from './talent'
 import './directors.css'
 
 export default function Releases() {
   const today = todayAlmaty()
   const [week, setWeek] = useState<'this' | 'next'>('this')
-  const from = week === 'this' ? mondayOf(today) : shiftDay(mondayOf(today), 7)
+  const from = week === 'this' ? schoolWeekStart(today) : shiftDay(schoolWeekStart(today), 7)
   const to = shiftDay(from, 4)
   const { data, isLoading, error } = useReleases(from, to)
   const olympiads = useOlympiadEvents()

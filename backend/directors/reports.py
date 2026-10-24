@@ -611,7 +611,8 @@ def mock(period: str = "") -> Report:
         source=_("IELTS и SAT · 11 параллель · сдавали {n}").format(n=len(took)),
         period=day.isoformat(),
         period_title=f"{day:%d.%m.%Y}",
-        summary=_("сдавали {n}").format(n=len(took)),
+        # «сдавали N» уже стоит в источнике — подпись строки его не повторяет
+        summary=_("достигли цели {n}").format(n=reached) if rows else "",
         figures={"took": len(took), "date": day.isoformat() if attempts else None, "reached": reached},
         lines=[
             (_("IELTS — средний балл"), average("IELTS")),

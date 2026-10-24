@@ -11,16 +11,16 @@ import { Avatar, ShowAll } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { mondayOf, shiftDay, todayAlmaty } from '../../lib/dates'
+import { shiftDay, todayAlmaty } from '../../lib/dates'
 import { LEVEL_TONE, olympiadDates } from './OlympiadEvents'
-import { HomeColumns, MyStaffTasksCard, todayLine, useGreeting } from './parts'
+import { HomeColumns, MyStaffTasksCard, schoolWeekStart, todayLine, useGreeting } from './parts'
 import { OlympiadDialog } from './talent'
 
 export default function TalentHome() {
   const navigate = useNavigate()
   const greeting = useGreeting()
   const today = todayAlmaty()
-  const from = mondayOf(today)
+  const from = schoolWeekStart(today)
   const olympiads = useOlympiadEvents()
   const releases = useReleases(from, shiftDay(from, 4))
   const [creating, setCreating] = useState(false)

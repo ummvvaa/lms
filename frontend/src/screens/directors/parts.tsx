@@ -24,6 +24,7 @@ import { Chip, DataCard, ErrorNote, Loading } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tk } from '../../i18n'
 import { formatDate, formatDayMonth, formatWeekday } from '../../lib/format'
+import { mondayOf, shiftDay } from '../../lib/dates'
 import { firstNameOf } from '../dashboards/home-today'
 import './directors.css'
 
@@ -303,4 +304,15 @@ export function HomeColumns({ main, aside }: { main: ReactNode[]; aside: ReactNo
       <div className="lay-stack">{list(right)}</div>
     </div>
   )
+}
+
+/** Понедельник учебной недели: в субботу и воскресенье — следующей, прошедшая уже не нужна. */
+export function schoolWeekStart(today: string): string {
+  const monday = mondayOf(today)
+  return today >= shiftDay(monday, 5) ? shiftDay(monday, 7) : monday
+}
+
+/** Ряд показателей по их числу: плитка без числа не рисуется, и ряд на четыре не оставляет дыру. */
+export function kpiRow(count: number): string {
+  return count >= 4 ? 'lay-4' : count === 3 ? 'lay-3' : 'lay-2'
 }

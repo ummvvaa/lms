@@ -4315,7 +4315,6 @@ export const en: Record<string, string> = {
   'предстоящих олимпиад нет': 'no upcoming olympiads',
   'участники и результаты видны академ директору и кураторам': 'participants and results are visible to the academic director and curators',
   'участников: {n}': 'participants: {n}',
-  '{c} соревнований · {e} мероприятий': '{c} competitions · {e} events',
   'Без вида спорта': 'No sport',
   'Ближайшее мероприятие': 'Next event',
   'Ближайшие': 'Upcoming',
@@ -4390,4 +4389,6 @@ export const en: Record<string, string> = {
   'Последний Mock': 'Last Mock',
   'от куратора {name} · «{comment}»': 'from curator {name} · “{comment}”',
   'Вернуть сможет администратор.': 'The administrator can restore it.',
+  '{n} соревнование|{n} соревнования|{n} соревнований': '{n} competition|{n} competitions',
+  '{n} мероприятие|{n} мероприятия|{n} мероприятий': '{n} event|{n} events',
 }

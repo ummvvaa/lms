@@ -24,6 +24,10 @@ import { t, tk } from '../../i18n'
  *  Имя — ключ перевода: показывается через `t()`. */
 export const OWNER_OF: Record<string, string> = { exam: tk('Кымбат'), documents: tk('Асем') }
 
+/** Кому куратор передаёт строку очереди: только документы — Асем. Экзамены подтверждает
+ *  сам куратор, Кымбат ученические правки не разбирает (решение владельца, 25.10.2026). */
+export const HANDOVER_DOMAINS = ['documents']
+
 /** Состояние окна снаружи или внутри: снаружи — когда кнопка в меню «Действия» (фаза 75). */
 function useOpenState(outside: boolean | undefined, onChange?: (open: boolean) => void) {
   const [inside, setInside] = useState(false)
