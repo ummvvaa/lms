@@ -7,6 +7,7 @@
  * человек получает два выхода: скрыть из списка выбора или заменить
  * на другую запись вместе со всеми ссылками (фаза 18).
  */
+import type { ReactNode } from 'react'
 import { useState } from 'react'
 import {
   useDirectoryEntries,
@@ -29,6 +30,8 @@ import { Button } from '../components/ui/button'
 
 /** Подписи настройки — ключи перевода (`tk()` у экрана-владельца), переводятся здесь при показе. */
 export interface DirectorySetup {
+  /** вкладки раздела под заголовком: «Предметы и треки» у директора талантов */
+  tabs?: ReactNode
   kind: DirectoryKind
   title: string
   subtitle: string
@@ -137,6 +140,7 @@ export default function DirectoryList({ setup }: { setup: DirectorySetup }) {
   return (
     <div>
       <ScreenHead title={t(setup.title)} subtitle={t(setup.subtitle)} />
+      {setup.tabs}
 
       {flash && (
         <Chip tone="good" className="dir__flash">

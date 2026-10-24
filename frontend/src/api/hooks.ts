@@ -5233,6 +5233,9 @@ export interface AttendanceRow {
   /** комментарий куратора у «нет» и «опоздал» */
   reason: string
   marked: boolean
+  /** освобождён от уроков (олимпиада, соревнование): у куратора чип вместо трёх кнопок */
+  released?: string
+  released_by?: string
 }
 
 export interface AttendanceSheet {

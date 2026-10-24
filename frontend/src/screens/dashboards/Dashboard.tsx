@@ -9,7 +9,7 @@ import { useAuth } from '../../auth/AuthContext'
 import SchoolHome from '../directors/SchoolHome'
 import AdmissionHome from '../directors/AdmissionHome'
 import ExamHome from '../directors/ExamHome'
-import TalentDashboard from './TalentDashboard'
+import TalentHome from '../directors/TalentHome'
 import SportDashboard from './SportDashboard'
 import AdminDashboard from './AdminDashboard'
 import CuratorHome from '../curator/Home'
@@ -33,7 +33,7 @@ export default function Dashboard() {
     case 'director_exam':
       return <ExamHome />
     case 'director_talent':
-      return <TalentDashboard />
+      return <TalentHome />
     case 'director_sport':
       return <SportDashboard />
     case 'curator':

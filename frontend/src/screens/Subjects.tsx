@@ -1,6 +1,8 @@
 /** Предметы олимпиад — справочник директора талантов. */
 import { t } from '../i18n'
 import DirectoryList, { type DirectorySetup } from './DirectoryList'
+import { useAuth } from '../auth/AuthContext'
+import TalentTabs from './directors/TalentTabs'
 
 /** Настройка справочника — при отрисовке: подписи переводятся на текущий язык. */
 function setup(): DirectorySetup {
@@ -37,5 +39,7 @@ function setup(): DirectorySetup {
 }
 
 export default function Subjects() {
-  return <DirectoryList setup={setup()} />
+  const { me } = useAuth()
+  // у директора талантов предметы и треки — один пункт меню двумя вкладками
+  return <DirectoryList setup={{ ...setup(), tabs: me?.role === 'director_talent' ? <TalentTabs /> : undefined }} />
 }

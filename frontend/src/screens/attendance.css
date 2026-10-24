@@ -168,3 +168,15 @@ td.matrix__cell--neutral .att__plate {
 td[class*='matrix__cell--'] .att__plate :is(.att__mark, .num) {
   color: inherit;
 }
+
+/* освобождён от уроков: чип с олимпиадой или соревнованием вместо трёх кнопок
+   отметки — длинный текст переносится внутри чипа, а не растягивает строку */
+[data-slot='badge'].cmark__free {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  padding: calc(var(--space) * 1) calc(var(--space) * 3);
+  border-radius: var(--radius-row);
+  white-space: normal;
+  line-height: 1.4;
+}

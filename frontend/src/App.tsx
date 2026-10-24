@@ -133,6 +133,8 @@ const Parents = lazy(() => import('./screens/directors/Parents'))
 const StaffTasks = lazy(() => import('./screens/directors/StaffTasks'))
 const ExamResults = lazy(() => import('./screens/directors/ExamResults'))
 const EssayReview = lazy(() => import('./screens/directors/EssayReview'))
+const OlympiadEvents = lazy(() => import('./screens/directors/Olympiads'))
+const Releases = lazy(() => import('./screens/directors/Releases'))
 const Deadlines = lazy(() => import('./screens/sections/Deadlines'))
 const Top30 = lazy(() => import('./screens/sections/Top30'))
 const Mocks = lazy(() => import('./screens/sections/Mocks'))
@@ -373,6 +375,8 @@ function Routing() {
         <Route path="/staff-tasks" element={<StaffTasks />} />
         <Route path="/exam-results" element={<ExamResults />} />
         <Route path="/essay-review" element={<EssayReview />} />
+        <Route path="/olympiad-events" element={<OlympiadEvents />} />
+        <Route path="/releases" element={<Releases />} />
         <Route path="/overview" element={<OverviewDashboard />} />
         <Route path="/deadlines" element={<Deadlines />} />
         <Route path="/top30" element={<Top30 />} />

@@ -93,6 +93,12 @@ function MarkRow({ group, row, onSaved }: { group: number; row: AttendanceRow; o
         {saved && !save.isPending && <div className="cmark__note">{t('сохранено')}</div>}
       </div>
       <div className="cmark__att">
+        {/* освобождён директором талантов или спорта (24.10.2026): отмечать нечего — чип и кто отпустил */}
+        {row.released ? (
+          <Chip tone="info" className="cmark__free">
+            {row.released_by ? `${row.released} · ${row.released_by}` : row.released}
+          </Chip>
+        ) : (
         <Segmented<DayMark>
           usageFilter={false}
           value={mark}
@@ -104,9 +110,10 @@ function MarkRow({ group, row, onSaved }: { group: number; row: AttendanceRow; o
             { value: 'late', label: t(MARK_WORDS.late) },
           ]}
         />
+        )}
       </div>
       <div className="cmark__comment">
-        {mark !== 'present' && (
+        {mark !== 'present' && !row.released && (
           <Input
             value={reason}
             placeholder={t('Комментарий, если знаете причину')}

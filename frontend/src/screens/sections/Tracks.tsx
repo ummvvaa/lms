@@ -5,6 +5,7 @@ import EmptyDashboard, { useSchoolIsEmpty } from '../../components/EmptyDashboar
 import { Bar, ErrorNote, ListPanel, Loading, ScreenHead } from '../../components/ui'
 import { t } from '../../i18n'
 import { TRACK_TITLES, type TalentData } from './data'
+import TalentTabs from '../directors/TalentTabs'
 
 export default function Tracks() {
   const navigate = useNavigate()
@@ -33,6 +34,7 @@ export default function Tracks() {
       <ScreenHead
         title={t('Треки')}
       />
+      <TalentTabs />
 
       <div className="card card-pad">
         <span className="eyebrow">{t('Сколько учеников в каждом треке')}</span>
