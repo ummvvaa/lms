@@ -77,6 +77,8 @@ const weigh = (card: BoardCard) => (card.folded ? 1 : HEAD_ROWS + Math.min(card.
  * - живые карточки стоят в своей колонке в порядке важности;
  * - колонка без живых карточек не остаётся: направо переезжает последняя
  *   из тех, что читаются в узкой колонке, налево — первая из правых;
+ * - правая колонка не длиннее левой больше чем в полтора раза: иначе
+ *   узкая карточка справа переезжает налево следом за живыми;
  * - пустые карточки (одна строка) уходят вниз той колонки, что короче:
  *   они наименее важны и заодно подравнивают высоту.
  *
@@ -102,6 +104,15 @@ export function CabinetBoard({ cards }: { cards: (BoardCard | null | false | und
   }
 
   const height = (column: BoardCard[]) => column.reduce((sum, card) => sum + weigh(card), 0)
+  // справа длинный список, слева одна короткая карточка: правая колонка
+  // уходила на экран ниже левой (у куратора — очередь из двух строк слева,
+  // задачи и «Кого дёргать» справа)
+  while (aside.length > 1 && height(aside) > height(main) * 1.5) {
+    const moved = aside.find((card) => card.narrow)
+    if (!moved) break
+    aside = aside.filter((card) => card !== moved)
+    main = [...main, moved]
+  }
   for (const card of all.filter((item) => item.folded)) {
     if (height(aside) < height(main)) aside = [...aside, card]
     else main = [...main, card]
