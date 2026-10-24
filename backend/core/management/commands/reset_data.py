@@ -149,6 +149,34 @@ def wipe_catalog() -> None:
     mark_audit_deleted(CATALOG_LABELS)
 
 
+def wipe_cabinets() -> None:
+    """Записи кабинетов директоров (24.10.2026) — раньше справочников.
+
+    Олимпиада держит предмет, мероприятие — вид спорта ссылкой PROTECT:
+    без этого «полное» обнуление падало на справочниках. Тип ссылки не меняем —
+    удалить предмет, на который смотрит олимпиада, нельзя и в обычной работе.
+    """
+    from directors.models import (
+        LessonRelease,
+        Olympiad,
+        OlympiadEntry,
+        ParentCall,
+        ReportSeen,
+        SportApplication,
+        SportEvent,
+        StaffTask,
+    )
+
+    LessonRelease.all_objects.all().delete()
+    OlympiadEntry.all_objects.all().delete()
+    Olympiad.all_objects.all().delete()
+    SportApplication.objects.all().delete()
+    SportEvent.all_objects.all().delete()
+    ParentCall.all_objects.all().delete()
+    StaffTask.all_objects.all().delete()
+    ReportSeen.objects.all().delete()
+
+
 @transaction.atomic
 def wipe_school_directories() -> None:
     """Снести банк заданий и справочники школы. Только вместе с `--all`:
@@ -160,6 +188,7 @@ def wipe_school_directories() -> None:
     from materials.models import MaterialCollection, Resource, StudyMaterial
     from prep.models import MockExam, Question
 
+    wipe_cabinets()
     MockExam.objects.all().delete()
     Question.objects.all().delete()
     # подборки материалов принадлежат сотруднику, а не ученику, поэтому
