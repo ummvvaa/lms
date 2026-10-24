@@ -547,7 +547,8 @@ test("журнал: только чтение, по группе, выгрузк
   await expect(page.locator("h1")).toContainText("Журнал");
   const rows = page.locator("table.tbl tbody tr");
   await expect(rows.first()).toBeVisible();
-  await expect(page.locator("body")).toContainText("Передано владельцу домена");
+  // событие из сценария выше — звонок родителям (передачи Кымбат нет с 25.10.2026)
+  await expect(page.locator("body")).toContainText("Звонок родителям");
   // ни одной кнопки правки в таблице — журнал не редактируется; кнопки
   // в строках — только ссылки на карточку ученика
   await expect(page.locator("table.tbl button:not([data-variant='link'])")).toHaveCount(0);
