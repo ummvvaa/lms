@@ -39,7 +39,9 @@
     flex-direction: column;
   }
 
-  .scard__col {
+  /* вес выше `.lay-stack` из coral.css: тот идёт в каскаде позже и держал
+     столбцы стопками — общий порядок блоков на телефоне не работал */
+  .scard__cols > .scard__col {
     display: contents;
   }
 

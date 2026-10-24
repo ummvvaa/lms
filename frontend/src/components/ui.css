@@ -2818,9 +2818,11 @@ body [data-slot='button'][data-variant].notif__all {
   .cadm-tiles .cadm__pair--edit {
     grid-column: auto;
     grid-template-columns: minmax(0, 1fr) auto;
+    /* значение — во всю ширину плитки под названием и значками: на 1280 три значка
+       съедали место, и показанный пароль обрезался многоточием */
     grid-template-areas:
       'k acts'
-      'v acts';
+      'v v';
     align-items: center;
     gap: 0 calc(var(--space) * 2);
     min-height: 0;
@@ -2829,7 +2831,10 @@ body [data-slot='button'][data-variant].notif__all {
     background: var(--surface-2);
   }
 
-  .cadm-tiles .cadm__pair--edit {
+  /* правка и показанный пароль — во всю ширину блока: длинный пароль в половине
+     плитки на 1280 обрезался многоточием */
+  .cadm-tiles .cadm__pair--edit,
+  .cadm-tiles .cadm__pair--wide {
     grid-column: 1 / -1;
   }
 
