@@ -15,6 +15,7 @@ import {
 } from '../../api/directors'
 import { Avatar, ShowAll } from '../../components/patterns'
 import { Bar, Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
+import PendingQueue from '../../components/PendingQueue'
 import { Button } from '../../components/ui/button'
 import { t, tn } from '../../i18n'
 import { formatDayMonth } from '../../lib/format'
@@ -71,6 +72,8 @@ export default function ExamHome() {
           to="/staff-tasks"
         />
       </div>
+      {/* что внесли ученики — решение прямо в строке: раздела «Предложения» нет (24.10.2026) */}
+      <PendingQueue fold />
       <div className="lay-main lay-main--even">
         <div className="lay-stack">
           <DataCard

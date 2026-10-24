@@ -57,7 +57,7 @@ interface AdmissionCabinet {
  * не значение поля, а сама строка «подаюсь сюда». Пока она не
  * подтверждена, это пометка ученика, а не решение школы.
  */
-function PendingAdditions() {
+export function PendingAdditions() {
   const pending = usePendingAdditions()
   const review = useReviewAddition()
   const rows = pending.data ?? []

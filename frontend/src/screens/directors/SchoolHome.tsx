@@ -9,6 +9,7 @@ import { useAcadRisks } from '../../api/academics'
 import { useCallsToday, useMorning, useSchoolReports } from '../../api/directors'
 import { Avatar } from '../../components/patterns'
 import { DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
+import PendingQueue from '../../components/PendingQueue'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { CallDialog, MyStaffTasksCard, ReportDialog, ReportLine, todayLine, useGreeting } from './parts'
@@ -63,6 +64,8 @@ export default function SchoolHome() {
         </div>
       )}
       <MyStaffTasksCard />
+      {/* что внесли ученики — решение прямо в строке: раздела «Предложения» нет (24.10.2026) */}
+      <PendingQueue fold />
       <div className="lay-main lay-main--even">
         <DataCard
           className="card--beam"

@@ -7,7 +7,7 @@
  */
 import { useAuth } from '../../auth/AuthContext'
 import SchoolHome from '../directors/SchoolHome'
-import AdmissionDashboard from './AdmissionDashboard'
+import AdmissionHome from '../directors/AdmissionHome'
 import ExamHome from '../directors/ExamHome'
 import TalentDashboard from './TalentDashboard'
 import SportDashboard from './SportDashboard'
@@ -29,7 +29,7 @@ export default function Dashboard() {
       // главная по макету кабинетов директоров (24.10.2026); прежний `BehaviorDashboard` остался в коде
       return <SchoolHome />
     case 'director_admission':
-      return <AdmissionDashboard />
+      return <AdmissionHome />
     case 'director_exam':
       return <ExamHome />
     case 'director_talent':
