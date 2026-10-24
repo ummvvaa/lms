@@ -34,7 +34,8 @@ const DESKTOP_SCREENS: { role: string; path: string }[] = [
   { role: "student", path: "/calendar" },
   { role: "director_exam", path: "/dashboard" },
   { role: "director_exam", path: "/table" },
-  { role: "director_exam", path: "/suggestions" },
+  // «Предложений» у директоров нет с 24.10.2026 — на их месте результаты экзаменов
+  { role: "director_exam", path: "/exam-results" },
   { role: "director_admission", path: "/dashboard" },
   { role: "director_behavior", path: "/dashboard" },
   { role: "director_talent", path: "/dashboard" },
@@ -251,14 +252,12 @@ const REVIEW_SCREENS: {
   { role: "curator", path: "/students/{id}?tab=notes", tag: "card-notes" },
   { role: "admin", path: "/home-cues", tag: "home-cues" },
   { role: "admin", path: "/badges", tag: "badges" },
-  {
-    role: "director_behavior",
-    path: "/attendance?view=journal",
-    tag: "attendance-journal",
-  },
+  // у директора школы «Посещаемость» — утренние отметки кураторов (24.10.2026)
+  { role: "director_behavior", path: "/attendance", tag: "attendance" },
   { role: "director_exam", path: "/exam-kinds", tag: "exam-kinds" },
   { role: "director_talent", path: "/subjects", tag: "subjects" },
-  { role: "director_talent", path: "/task-templates", tag: "task-templates" },
+  // шаблонов задач у Армана нет с 24.10.2026 — на их месте освобождения от уроков
+  { role: "director_talent", path: "/releases", tag: "releases" },
   { role: "student", path: "/my-data", tab: "Документы", tag: "my-documents" },
 ];
 
@@ -314,9 +313,8 @@ test.describe("экраны разбора кабинетов", () => {
 test("дашборды с данными: колонки ровные, дублей нет", async ({ browser }) => {
   await shootDashboards(browser, "filled", async (page, role, phone) => {
     if (role === "director_exam")
-      await expect(page.getByText("Балл Mock Test просел", { exact: true })).toHaveCount(
-        1,
-      );
+      // главная Кымбат по макету кабинетов (24.10.2026): отчёты недели, без дублей
+      await expect(page.getByText("Отчёты за неделю", { exact: true })).toHaveCount(1);
     if (role === "curator")
       await expect(
         page
@@ -325,12 +323,14 @@ test("дашборды с данными: колонки ровные, дубл�
           .first(),
       ).toHaveText("2");
     if (phone) return;
-    // правая колонка не кончается на трети левой — и наоборот
+    // правая колонка не кончается на трети левой — и наоборот; у директоров колонки —
+    // «две трети — треть», и пустая правая не рисуется вовсе (тогда сравнивать нечего)
+    const pair = role.startsWith("director_")
+      ? [".lay-main > :nth-child(1)", ".lay-main > :nth-child(2)"]
+      : [".cabinet__main", ".cabinet__aside"];
+    if (!(await page.locator(pair[1]).count())) return;
     const [main, aside] = await Promise.all(
-      [".cabinet__main", ".cabinet__aside"].map(
-        async (selector) =>
-          (await page.locator(selector).boundingBox())!.height,
-      ),
+      pair.map(async (selector) => (await page.locator(selector).first().boundingBox())!.height),
     );
     expect(
       Math.min(main, aside) / Math.max(main, aside),

@@ -169,6 +169,14 @@ test("пустые дашборды: карточка без данных — о
   // так выглядит кабинет нового куратора и директоров в первый день (фаза 80)
   await shootDashboards(browser, "empty", async (page, role, phone) => {
     const folded = page.locator(".datacard--folded");
+    if (role.startsWith("director_")) {
+      // главные директоров по макету (24.10.2026): пустых карточек нет вовсе — ни свёрнутых
+      // строк, ни очереди без записей; экран — приветствие и то, где есть данные
+      await expect(page.locator("h1")).toContainText("Добрый день");
+      await expect(folded).toHaveCount(0);
+      await expect(page.locator("#student-queue")).toHaveCount(0);
+      return;
+    }
     await expect(folded.first()).toBeVisible();
     for (const card of await folded.all()) {
       const box = await card.boundingBox();
@@ -176,11 +184,6 @@ test("пустые дашборды: карточка без данных — о
       // на телефоне причина может уйти на вторую строку — заголовок остаётся один
       expect(box!.height, `пустая карточка — одна строка: ${role} «${title}»`).toBeLessThanOrEqual(phone ? 80 : 56);
       await expect(card.locator("table, .rowlist")).toHaveCount(0);
-    }
-    if (role === "director_exam") {
-      // карточка называется «Балл Mock Test просел» (слово «пробник» не используется)
-      await expect(page.getByText("Балл Mock Test просел", { exact: true })).toHaveCount(1);
-      await expect(folded.filter({ hasText: "Балл Mock Test просел" })).toContainText("ни у кого балл не просел");
     }
     if (role === "curator") {
       await expect(folded.filter({ hasText: "Очередь подтверждений" })).toContainText("всё подтверждено");
@@ -369,12 +372,12 @@ test("ученик: два документа — подтверждённый �
   await curator.context().close();
 });
 
-test("Кымбат: пробник файлом с секциями", async ({ browser }) => {
+test("администратор: пробник файлом с секциями", async ({ browser }) => {
   // Экран «Пробники» на эталонах не должен быть пустым: пустая таблица
   // одинакова и в исправной системе, и в сломанной. Дата закреплена —
   // иначе снимок менялся бы каждый день
-  // пробники файлом грузят Кымбат и администратор: куратору маршрут закрыт
-  const curator = await as(browser, "director_exam");
+  // пробники файлом грузит администратор (с 24.10.2026 у Кымбат результаты на чтение)
+  const curator = await as(browser, "admin");
   const csrf =
     (await curator.context().cookies()).find((c) => c.name === "csrftoken")
       ?.value ?? "";
