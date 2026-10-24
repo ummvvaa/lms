@@ -118,6 +118,10 @@ def test_one_absent_lesson_of_two_is_not_a_missed_day(two_days, pupils, teacher,
 @pytest.fixture
 def grades(year, subjects, teacher, cohorts, calendar, pupils):
     scale = scale_of(calendar.year)
+    # окно правки оценок шире недели: «за 6 учебных дней» в субботу и после каникул —
+    # больше 7 календарных, а тест не про окно правки (до 24.10.2026 падал по выходным)
+    type(scale).objects.filter(pk=scale.pk).update(edit_days=30)
+    scale.refresh_from_db()
     one = lesson_on(subjects, teacher, cohorts["boston"], school_day(-6, calendar), 2)
     two = lesson_on(subjects, teacher, cohorts["boston"], school_day(-4, calendar), 2)
     sor = lesson_on(
