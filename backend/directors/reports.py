@@ -43,6 +43,8 @@ class Report:
     rows: list = field(default_factory=list)
     #: короткая сводка в строку списка: «12 нет · 7 опоздали»
     summary: str = ""
+    #: числа для показателей главной: «средний ФО», «уроков не отмечено» — без разбора строк
+    figures: dict = field(default_factory=dict)
 
     def payload(self, *, seen: bool) -> dict:
         return {
@@ -53,6 +55,7 @@ class Report:
             "period_title": self.period_title,
             "summary": self.summary,
             "lines": [{"label": label, "value": value} for label, value in self.lines],
+            "figures": self.figures,
             "seen": seen,
         }
 
@@ -388,6 +391,14 @@ def grades_parallels(period: str = "") -> Report:
         values = by_parallel[parallel]
         lines.append((_("{n} классы").format(n=parallel), f"{round(sum(values) / len(values))} %"))
     every = [v for values in by_parallel.values() for v in values]
+    bars = [
+        {
+            "parallel": parallel,
+            "fo": round(sum(values) / len(values)),
+            "below": sum(1 for r in below if r["student"].group.parallel == parallel),
+        }
+        for parallel, values in sorted(by_parallel.items())
+    ]
     lines.append((_("Ниже {n} % по ФО").format(n=FO_BELOW), tn(len(below), "{n} ученик|{n} ученика|{n} учеников")))
     return Report(
         kind="grades_parallels",
@@ -396,6 +407,7 @@ def grades_parallels(period: str = "") -> Report:
         period=monday.isoformat(),
         period_title=_span(monday, end),
         summary=_("средний ФО {pct}").format(pct=f"{round(sum(every) / len(every))} %" if every else "—"),
+        figures={"fo": round(sum(every) / len(every)) if every else None, "below": len(below), "parallels": bars},
         lines=lines,
         columns=[
             Column(_("Ученик"), lambda r: r["student"].full_name, 30),
@@ -473,6 +485,7 @@ def teachers(period: str = "") -> Report:
         period=monday.isoformat(),
         period_title=_span(monday, monday + dt.timedelta(days=4)),
         summary=_("уроков: {l} · ДЗ: {h}").format(l=lessons, h=homework),
+        figures={"lessons": lessons, "homework": homework, "teachers": sum(1 for r in rows if r["lessons"])},
         lines=lines,
         columns=[
             Column(_("Учитель"), lambda r: r["teacher"], 28),
@@ -538,6 +551,7 @@ def mock(period: str = "") -> Report:
         period=day.isoformat(),
         period_title=f"{day:%d.%m.%Y}",
         summary=_("сдавали {n}").format(n=len(took)),
+        figures={"took": len(took), "date": day.isoformat() if attempts else None, "reached": reached},
         lines=[
             (_("IELTS — средний балл"), average("IELTS")),
             (_("SAT — средний балл"), average("SAT")),

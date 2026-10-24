@@ -8,7 +8,7 @@
 import { useAuth } from '../../auth/AuthContext'
 import SchoolHome from '../directors/SchoolHome'
 import AdmissionDashboard from './AdmissionDashboard'
-import ExamDashboard from './ExamDashboard'
+import ExamHome from '../directors/ExamHome'
 import TalentDashboard from './TalentDashboard'
 import SportDashboard from './SportDashboard'
 import AdminDashboard from './AdminDashboard'
@@ -31,7 +31,7 @@ export default function Dashboard() {
     case 'director_admission':
       return <AdmissionDashboard />
     case 'director_exam':
-      return <ExamDashboard />
+      return <ExamHome />
     case 'director_talent':
       return <TalentDashboard />
     case 'director_sport':

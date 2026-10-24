@@ -131,6 +131,7 @@ const Risks = lazy(() => import('./screens/sections/Risks'))
 const SchoolReports = lazy(() => import('./screens/directors/SchoolReports'))
 const Parents = lazy(() => import('./screens/directors/Parents'))
 const StaffTasks = lazy(() => import('./screens/directors/StaffTasks'))
+const ExamResults = lazy(() => import('./screens/directors/ExamResults'))
 const Deadlines = lazy(() => import('./screens/sections/Deadlines'))
 const Top30 = lazy(() => import('./screens/sections/Top30'))
 const Mocks = lazy(() => import('./screens/sections/Mocks'))
@@ -369,6 +370,7 @@ function Routing() {
         <Route path="/school-reports" element={<SchoolReports />} />
         <Route path="/parents" element={<Parents />} />
         <Route path="/staff-tasks" element={<StaffTasks />} />
+        <Route path="/exam-results" element={<ExamResults />} />
         <Route path="/overview" element={<OverviewDashboard />} />
         <Route path="/deadlines" element={<Deadlines />} />
         <Route path="/top30" element={<Top30 />} />

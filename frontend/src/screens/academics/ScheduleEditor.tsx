@@ -21,7 +21,8 @@ import EditDrawer from '../../components/EditDrawer'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
 import RowMenu, { RowMenuItem } from '../../components/RowMenu'
-import { Row, Rows, Segmented, ShowAll } from '../../components/patterns'
+import { namesLine, Row, Rows, Segmented, ShowAll } from '../../components/patterns'
+import { useReleases, type ReleaseRow } from '../../api/directors'
 import { counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tn } from '../../i18n'
@@ -175,6 +176,7 @@ export default function ScheduleEditor() {
   const setKey = (next: string) => patch({ key: next || null, clash: null })
   const from = start || (today ? weekStart(today) : '')
   const week = useScheduleWeek({ from: from || undefined, view, key: key || undefined })
+  const releases = useReleases(from, from ? shiftDay(from, 6) : '', Boolean(from))
   const clashing = week.data ? clashOf(week.data.conflicts, clash) : null
   const clashIds = clashing ? [clashing.lesson, clashing.other].filter((id): id is number => id !== null) : []
   useEffect(() => {
@@ -267,6 +269,8 @@ export default function ScheduleEditor() {
   )
 
   const lists: { key: string; empty: boolean; node: ReactNode }[] = [
+    // освобождения от уроков (олимпиады, мероприятия) — список недели (24.10.2026)
+    { key: 'releases', empty: (releases.data?.rows.length ?? 0) === 0, node: <WeekReleases rows={releases.data?.rows ?? []} /> },
     {
       key: 'conflicts',
       empty: data.conflicts.length === 0,
@@ -516,6 +520,31 @@ export default function ScheduleEditor() {
         {importing && <ScheduleImport />}
       </EditDrawer>
     </div>
+  )
+}
+
+/** Освобождения недели: кто, куда, на какие уроки и кто освободил. */
+function WeekReleases({ rows }: { rows: ReleaseRow[] }) {
+  return (
+    <DataCard
+      title={t('Освобождения на неделе')}
+      count={rows.reduce((sum, row) => sum + row.students.length, 0) || undefined}
+      empty={rows.length === 0 && t('на этой неделе освобождений нет')}
+    >
+      <Rows>
+        <ShowAll>
+          {rows.map((row) => (
+            <Row
+              key={row.id}
+              icon={row.kind === 'olympiad' ? 'medal' : 'trophy'}
+              tone="info"
+              title={`${row.reason} · ${row.span}`}
+              note={`${namesLine(row.students.map((s) => s.short_name))} · ${t('освободил: {by}', { by: row.by })}`}
+            />
+          ))}
+        </ShowAll>
+      </Rows>
+    </DataCard>
   )
 }
 

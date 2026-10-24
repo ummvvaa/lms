@@ -98,6 +98,27 @@ def cohort_bells(request):
     )
 
 
+def _released_on_lessons(lessons, start: dt.date, end: dt.date) -> dict[int, int]:
+    """Урок → сколько учеников его состава освобождены (олимпиада, мероприятие).
+
+    Состав считается только у уроков, где есть кто-то освобождённый: освобождений
+    на неделе единицы, а составы всех уроков недели — сотни запросов.
+    """
+    from directors.services import releases_between
+
+    rows = list(releases_between(start, end))
+    if not rows:
+        return {}
+    out: dict[int, int] = {}
+    for lesson in lessons:
+        free = {s.pk for row in rows if row.covers(lesson.date, lesson.slot) for s in row.students.all()}
+        if free:
+            found = len(free & set(member_ids(lesson.course.cohort, lesson.date)))
+            if found:
+                out[lesson.pk] = found
+    return out
+
+
 @extend_schema(responses={200: dict})
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -139,6 +160,7 @@ def schedule_week(request):
     for lesson in shown:
         if lesson.course.cohort_id not in counts:
             counts[lesson.course.cohort_id] = len(member_ids(lesson.course.cohort, lesson.date))
+    released = _released_on_lessons(shown, start, end)
     pending = LessonRequest.objects.filter(status=RequestStatus.PENDING).select_related(
         "teacher", "lesson", "lesson__course", "lesson__course__subject", "lesson__course__cohort", "lesson__teacher"
     )
@@ -166,7 +188,12 @@ def schedule_week(request):
                 for day in school_calendar.days_between(start, end)
             ],
             "lessons": [
-                lesson_dict(lesson, calendar, students=counts.get(lesson.course.cohort_id)) for lesson in shown
+                {
+                    **lesson_dict(lesson, calendar, students=counts.get(lesson.course.cohort_id)),
+                    # освобождены от урока (олимпиада, мероприятие): метка на уроке у Кымбат
+                    "released": released.get(lesson.pk, 0),
+                }
+                for lesson in shown
             ],
             "ghosts": schedule.moved_ghosts(start, end, calendar, keep),
             "conflicts": conflicts,

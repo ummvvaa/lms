@@ -67,8 +67,9 @@ def test_journal_reads_only_its_own_lessons_and_lists_them_briefly(
 
 
 def test_school_grades_read_the_school_once_not_per_course(busy_school, as_kymbat, django_assert_max_num_queries):
-    # 40 запросов на два курса — прежний путь давал по два-три на курс и по одному на урок
-    with django_assert_max_num_queries(45):
+    # 40 запросов на два курса — прежний путь давал по два-три на курс и по одному на урок;
+    # +1 — освобождения от уроков одним запросом на период (24.10.2026)
+    with django_assert_max_num_queries(46):
         answer = as_kymbat.get("/api/acad/grades/school/?period=q1")
     assert answer.status_code == 200
     body = answer.json()

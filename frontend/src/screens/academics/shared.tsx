@@ -139,6 +139,12 @@ export function LessonChip({
           {t('не отмечен')}
         </Chip>
       )}
+      {/* освобождены от урока (олимпиада, мероприятие) — метка у Кымбат в правке недели */}
+      {(lesson.released ?? 0) > 0 && (
+        <Chip tone="info" size="sm">
+          {tn(lesson.released ?? 0, '{n} вне урока|{n} вне урока|{n} вне урока')}
+        </Chip>
+      )}
     </Button>
   )
 }

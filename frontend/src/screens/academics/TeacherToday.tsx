@@ -13,6 +13,7 @@ import Icon from '../../layout/icons'
 import { Row, Rows, ShowAll } from '../../components/patterns'
 import { Bar, Chip, counted, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
+import { MyStaffTasksCard } from '../directors/parts'
 import { t, tn } from '../../i18n'
 import { Columns } from '../dashboards/home-today'
 import { absentWords, dateShort, dateWords, OpenLesson } from './shared'
@@ -261,6 +262,8 @@ export default function TeacherToday() {
           </>
         }
       />
+      {/* задачи от академического директора (24.10.2026): исполнитель отмечает «Выполнено» */}
+      <MyStaffTasksCard />
       <div className="lay-4">
         {/* урок без звонков своей группы приходит с пустым `bell`: подпись «с — по»
             только когда время есть у обоих крайних уроков (D88) */}

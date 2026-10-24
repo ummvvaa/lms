@@ -23,6 +23,7 @@ import { CabinetBoard, type BoardCard } from '../dashboards/cabinet'
 import GroupSwitch from './GroupSwitch'
 import TaskDialog from './TaskDialog'
 import { useGroup } from './state'
+import { MyStaffTasksCard } from '../directors/parts'
 import { formatDate, formatDateTime } from '../../lib/format'
 import './curator.css'
 import './curator-layout.css'
@@ -225,6 +226,8 @@ export default function CuratorHome() {
         actions={admission ? <TaskDialog groups={groups} defaultGroup={group} /> : undefined}
       />
       <GroupSwitch groups={groups} value={group} onChange={setGroup} />
+      {/* задачи от академического директора (24.10.2026): исполнитель отмечает «Выполнено» */}
+      <MyStaffTasksCard />
 
       {data.numbers.length > 0 && (
         <StatRow>

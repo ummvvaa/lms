@@ -26,6 +26,8 @@ export interface SchoolReport {
   period_title: string
   summary: string
   lines: { label: string; value: string }[]
+  /** числа для показателей главной — у каждого вида свои */
+  figures: Record<string, unknown>
   seen: boolean
   topic: ReportTopic
 }

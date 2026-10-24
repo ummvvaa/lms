@@ -117,6 +117,8 @@ export interface AcadLesson {
   marked_by: AcadPerson | null
   state: 'past' | 'now' | 'future'
   title: string
+  /** освобождены от урока: олимпиада, мероприятие (только в неделе правки) */
+  released?: number
 }
 
 export interface AcadStudent {
