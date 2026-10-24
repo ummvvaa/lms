@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "academics",
     "homework",
     "career",
+    "directors",
 ]
 
 MIDDLEWARE = [

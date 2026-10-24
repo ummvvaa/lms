@@ -1360,6 +1360,52 @@ SHARED_WRITERS: dict[str, tuple[str, ...]] = {
     "materials.ResourceCategory": ALL_DIRECTORS,
 }
 
+#: Записи кабинетов директоров (решение владельца, 24.10.2026, приложение `directors`):
+#: поля ученика с владельцем-доменом у них нет — пишет роль кабинета, администратор —
+#: как везде. Звонок записывает и куратор своих групп: он тоже звонит родителям.
+#: Освобождение ставит директор талантов (олимпиада) и директор спорта (принятым
+#: участникам мероприятия); заявку на мероприятие подаёт ученик, решает директор спорта.
+CABINET_WRITERS: dict[str, tuple[str, ...]] = {
+    "directors.ParentCall": ("director_behavior", ROLE_CURATOR, ROLE_ADMIN),
+    "directors.StaffTask": ("director_exam", ROLE_ADMIN),
+    "directors.Olympiad": ("director_talent", ROLE_ADMIN),
+    "directors.OlympiadEntry": ("director_talent", ROLE_ADMIN),
+    "directors.LessonRelease": ("director_talent", "director_sport", ROLE_ADMIN),
+    "directors.SportEvent": ("director_sport", ROLE_ADMIN),
+    "directors.SportApplication": ("director_sport", ROLE_ADMIN),
+    # эссе: решение «Норм / Не норм» и комментарий ученику — у Асем; текст правит только ученик
+    "roadmap.Essay.verdict": ("director_admission", ROLE_ADMIN),
+}
+
+#: Кто читает записи кабинетов. Освобождения — руководители школы целиком,
+#: куратор — по своим группам (`core.scope`), учитель — в составе своего урока.
+CABINET_READERS: dict[str, tuple[str, ...]] = {
+    "directors.ParentCall": ("director_behavior", ROLE_CURATOR, ROLE_ADMIN),
+    "directors.LessonRelease": (*ALL_DIRECTORS, ROLE_CURATOR, ROLE_ADMIN),
+    "directors.Olympiad": (*ALL_DIRECTORS, ROLE_CURATOR, ROLE_ADMIN),
+    "directors.SportEvent": (*ALL_DIRECTORS, ROLE_CURATOR, ROLE_ADMIN, ROLE_STUDENT),
+}
+
+#: Кому ставят задачи сотрудникам: учителя, кураторы и директора (кроме самой себя)
+STAFF_TASK_ASSIGNEES: tuple[str, ...] = (ROLE_TEACHER, ROLE_CURATOR, *ALL_DIRECTORS)
+
+#: Отчёты одного места у директора школы и академического директора
+SCHOOL_REPORT_READERS: dict[str, tuple[str, ...]] = {
+    "director_behavior": ("morning", "security", "parent_reports", "calls", "attendance_week"),
+    "director_exam": ("grades_parallels", "teachers", "mock", "parent_reports"),
+}
+
+
+def can_write_cabinet(role: str, model_label: str) -> bool:
+    """Может ли роль заводить и править записи кабинета директора."""
+    return role in CABINET_WRITERS.get(model_label, ())
+
+
+def can_read_cabinet(role: str, model_label: str) -> bool:
+    """Может ли роль читать записи кабинета; граница учеников — `core.scope`."""
+    return role in CABINET_READERS.get(model_label, ()) or can_write_cabinet(role, model_label)
+
+
 #: Кто загружает файлы с данными — любые: поля учеников, контакты,
 #: выступления, требования вузов, банк заданий. С фазы 35 это только
 #: администратор: формат выгрузок у всех разный, и разбираться с чужими

@@ -17286,3 +17286,771 @@ msgstr "куратор-катысуы-{since}-{until}.xlsx"
 #: students/discipline_views.py
 msgid "свой период"
 msgstr "өз кезеңі"
+
+#: directors
+msgid "IELTS и SAT · 11 классы · сдавали {n}"
+msgstr "IELTS және SAT · 11-сыныптар · тапсырғандар {n}"
+
+#: directors
+msgid "IELTS — средний балл"
+msgstr "IELTS — орташа балл"
+
+#: directors
+msgid "Mock Test {date}"
+msgstr "Mock Test {date}"
+
+#: directors
+msgid "Mock Test загружают куратор и администратор"
+msgstr "Mock Test-ті куратор мен әкімші жүктейді"
+
+#: directors
+msgid "SAT — средний балл"
+msgstr "SAT — орташа балл"
+
+#: directors
+msgid "{days}, весь день"
+msgstr "{days}, күні бойы"
+
+#: directors
+msgid "{days}, уроки {lessons}"
+msgstr "{days}, сабақтар {lessons}"
+
+#: directors
+msgid "{n} · учителей: {t}"
+msgstr "{n} · мұғалімдер: {t}"
+
+#: directors
+msgid "{n} звонок|{n} звонка|{n} звонков"
+msgstr "{n} қоңырау"
+
+#: directors
+msgid "{n} классы"
+msgstr "{n}-сыныптар"
+
+#: directors
+msgid "{n} отсутствует|{n} отсутствуют|{n} отсутствуют"
+msgstr "{n} жоқ"
+
+#: directors
+msgid "{n} работа|{n} работы|{n} работ"
+msgstr "{n} жұмыс"
+
+#: directors
+msgid "Больше всего — {name}"
+msgstr "Ең көбі — {name}"
+
+#: directors
+msgid "Вернуть можно только выполненную задачу"
+msgstr "Тек орындалған тапсырманы қайтаруға болады"
+
+#: directors
+msgid "Возвращена"
+msgstr "Қайтарылды"
+
+#: directors
+msgid "Все места для участников заняты"
+msgstr "Қатысушыларға арналған барлық орын бос емес"
+
+#: directors
+msgid "Выберите итог звонка"
+msgstr "Қоңырау нәтижесін таңдаңыз"
+
+#: directors
+msgid "Выберите олимпиаду"
+msgstr "Олимпиаданы таңдаңыз"
+
+#: directors
+msgid "Выберите олимпиаду или мероприятие"
+msgstr "Олимпиаданы немесе іс-шараны таңдаңыз"
+
+#: directors
+msgid "Выберите результат"
+msgstr "Нәтижені таңдаңыз"
+
+#: directors
+msgid "Выберите решение"
+msgstr "Шешімді таңдаңыз"
+
+#: directors
+msgid "Выберите тип"
+msgstr "Түрін таңдаңыз"
+
+#: directors
+msgid "Выберите уровень"
+msgstr "Деңгейді таңдаңыз"
+
+#: directors
+msgid "Выберите: норм или не норм"
+msgstr "Таңдаңыз: жарайды немесе жарамайды"
+
+#: directors
+msgid "Выберите: участвовать или смотреть"
+msgstr "Таңдаңыз: қатысу немесе көру"
+
+#: directors
+msgid "Вымышленная"
+msgstr "Ойдан шығарылған"
+
+#: directors
+msgid "Вымышленное"
+msgstr "Ойдан шығарылған"
+
+#: directors
+msgid "Выполнена"
+msgstr "Орындалды"
+
+#: directors
+msgid "Городская"
+msgstr "Қалалық"
+
+#: directors
+msgid "Готово к отправке"
+msgstr "Жіберуге дайын"
+
+#: directors
+msgid "Групп в отчёте"
+msgstr "Есептегі топтар"
+
+#: directors
+msgid "Групп отметились"
+msgstr "Белгі қойған топтар"
+
+#: directors
+msgid "ДЗ не проверено"
+msgstr "Үй жұмысы тексерілмеген"
+
+#: directors
+msgid "Дата и время"
+msgstr "Күні мен уақыты"
+
+#: directors
+msgid "До цели"
+msgstr "Мақсатқа дейін"
+
+#: directors
+msgid "Добавлен"
+msgstr "Қосылды"
+
+#: directors
+msgid "Добавлена"
+msgstr "Қосылды"
+
+#: directors
+msgid "Добавлено"
+msgstr "Қосылды"
+
+#: directors
+msgid "Дозвонились"
+msgstr "Хабарласты"
+
+#: directors
+msgid "Достигли цели"
+msgstr "Мақсатқа жеткендер"
+
+#: directors
+msgid "Ждём"
+msgstr "Күтеміз"
+
+#: directors
+msgid "Задача от академического директора"
+msgstr "Академиялық директордан тапсырма"
+
+#: directors
+msgid "Задача сотруднику"
+msgstr "Қызметкерге тапсырма"
+
+#: directors
+msgid "Задача уже выполнена"
+msgstr "Тапсырма орындалып қойған"
+
+#: directors
+msgid "Задача уже отмечена выполненной"
+msgstr "Тапсырма орындалды деп белгіленген"
+
+#: directors
+msgid "Задачи сотрудникам"
+msgstr "Қызметкерлерге тапсырмалар"
+
+#: directors
+msgid "Задачи сотрудникам ставит академический директор"
+msgstr "Қызметкерлерге тапсырманы академиялық директор береді"
+
+#: directors
+msgid "Задачу ставят учителю, куратору или директору"
+msgstr "Тапсырма мұғалімге, кураторға немесе директорға беріледі"
+
+#: directors
+msgid "Заявка на мероприятие"
+msgstr "Іс-шараға өтінім"
+
+#: directors
+msgid "Заявка на это мероприятие уже подана"
+msgstr "Бұл іс-шараға өтінім берілген"
+
+#: directors
+msgid "Заявки на мероприятия"
+msgstr "Іс-шараларға өтінімдер"
+
+#: directors
+msgid "Заявки решает директор спорта"
+msgstr "Өтінімдерді спорт директоры шешеді"
+
+#: directors
+msgid "Заявку подаёт ученик"
+msgstr "Өтінімді оқушы береді"
+
+#: directors
+msgid "Звонки записывают директор школы и кураторы"
+msgstr "Қоңырауларды мектеп директоры мен кураторлар жазады"
+
+#: directors
+msgid "Звонки родителям"
+msgstr "Ата-аналарға қоңыраулар"
+
+#: directors
+msgid "Звонки родителям за неделю"
+msgstr "Аптадағы ата-аналарға қоңыраулар"
+
+#: directors
+msgid "Звонки родителям.xlsx"
+msgstr "Ата-аналарға қоңыраулар.xlsx"
+
+#: directors
+msgid "Звонков"
+msgstr "Қоңыраулар"
+
+#: directors
+msgid "Звонок родителю"
+msgstr "Ата-анаға қоңырау"
+
+#: directors
+msgid "Зрителей на это мероприятие не пускают"
+msgstr "Бұл іс-шараға көрермендер кірмейді"
+
+#: directors
+msgid "Исполнитель"
+msgstr "Орындаушы"
+
+#: directors
+msgid "Историю звонков читают директор школы и кураторы"
+msgstr "Қоңыраулар тарихын мектеп директоры мен кураторлар оқиды"
+
+#: directors
+msgid "Итоги"
+msgstr "Қорытынды"
+
+#: directors
+msgid "Кабинеты директоров"
+msgstr "Директорлар кабинеттері"
+
+#: directors
+msgid "Когда решили"
+msgstr "Қашан шешілді"
+
+#: directors
+msgid "Комментарий директору"
+msgstr "Директорға пікір"
+
+#: directors
+msgid "Кому звонили"
+msgstr "Кімге қоңырау шалынды"
+
+#: directors
+msgid "Кто звонил"
+msgstr "Кім хабарласты"
+
+#: directors
+msgid "Кто звонил на момент звонка"
+msgstr "Қоңырау кезінде кім хабарласты"
+
+#: directors
+msgid "Кто освободил"
+msgstr "Кім босатты"
+
+#: directors
+msgid "Кто освободил на момент записи"
+msgstr "Жазба кезінде кім босатты"
+
+#: directors
+msgid "Кто поставил на момент постановки"
+msgstr "Тапсырма берілген кезде кім берді"
+
+#: directors
+msgid "Международная"
+msgstr "Халықаралық"
+
+#: directors
+msgid "Мероприятие"
+msgstr "Іс-шара"
+
+#: directors
+msgid "Мероприятие уже прошло"
+msgstr "Іс-шара өтіп кетті"
+
+#: directors
+msgid "Мероприятия ведёт директор спорта"
+msgstr "Іс-шараларды спорт директоры жүргізеді"
+
+#: directors
+msgid "Мероприятия добавляет директор спорта"
+msgstr "Іс-шараларды спорт директоры қосады"
+
+#: directors
+msgid "Мест для участников"
+msgstr "Қатысушыларға орын"
+
+#: directors
+msgid "Место"
+msgstr "Орны"
+
+#: directors
+msgid "Можно прийти зрителем"
+msgstr "Көрермен ретінде келуге болады"
+
+#: directors
+msgid "На проверке у кураторов"
+msgstr "Кураторлардың тексеруінде"
+
+#: directors
+msgid "Напишите задачу"
+msgstr "Тапсырманы жазыңыз"
+
+#: directors
+msgid "Напишите название"
+msgstr "Атауын жазыңыз"
+
+#: directors
+msgid "Напишите название олимпиады"
+msgstr "Олимпиада атауын жазыңыз"
+
+#: directors
+msgid "Напишите ученику, что поправить"
+msgstr "Оқушыға не түзету керегін жазыңыз"
+
+#: directors
+msgid "Напишите, что доделать"
+msgstr "Не істеу керегін жазыңыз"
+
+#: directors
+msgid "Напоминание о задаче до {due}: {title}"
+msgstr "{due} дейінгі тапсырма туралы еске салу: {title}"
+
+#: directors
+msgid "Напомнили"
+msgstr "Еске салынды"
+
+#: directors
+msgid "Не ответили"
+msgstr "Жауап бермеді"
+
+#: directors
+msgid "Не отметились"
+msgstr "Белгі қоймағандар"
+
+#: directors
+msgid "Не пришли"
+msgstr "Келмегендер"
+
+#: directors
+msgid "Не собраны"
+msgstr "Жиналмаған"
+
+#: directors
+msgid "Нет"
+msgstr "Жоқ"
+
+#: directors
+msgid "Нет в школе"
+msgstr "Мектепте жоқ"
+
+#: directors
+msgid "Ниже {n} %"
+msgstr "{n} %-дан төмен"
+
+#: directors
+msgid "Ниже {n} % по ФО"
+msgstr "ҚБ бойынша {n} %-дан төмен"
+
+#: directors
+msgid "Ниже цели на 1.0 / 150+"
+msgstr "Мақсаттан 1.0 / 150+ төмен"
+
+#: directors
+msgid "Обзвон ведёт директор школы"
+msgstr "Қоңырау шалуды мектеп директоры жүргізеді"
+
+#: directors
+msgid "Олимпиады ведёт директор талантов"
+msgstr "Олимпиадаларды таланттар директоры жүргізеді"
+
+#: directors
+msgid "Опоздали"
+msgstr "Кешіккендер"
+
+#: directors
+msgid "Освободить можно только принятого участника"
+msgstr "Тек қабылданған қатысушыны босатуға болады"
+
+#: directors
+msgid "Освобождение"
+msgstr "Босату"
+
+#: directors
+msgid "Освобождение от уроков"
+msgstr "Сабақтан босату"
+
+#: directors
+msgid "Освобождение от уроков отменено"
+msgstr "Сабақтан босату тоқтатылды"
+
+#: directors
+msgid "Освобождение отменено"
+msgstr "Босату тоқтатылды"
+
+#: directors
+msgid "Освобождение отменяет тот, кто его поставил"
+msgstr "Босатуды оны қойған адам тоқтатады"
+
+#: directors
+msgid "Освобождение участнику ставит директор спорта"
+msgstr "Қатысушыны спорт директоры босатады"
+
+#: directors
+msgid "Освобождения видят руководители школы и кураторы"
+msgstr "Босатуларды мектеп басшылары мен кураторлар көреді"
+
+#: directors
+msgid "Освобождения от уроков"
+msgstr "Сабақтан босатулар"
+
+#: directors
+msgid "Освобождения по олимпиадам ставит директор талантов"
+msgstr "Олимпиада бойынша босатуды таланттар директоры қояды"
+
+#: directors
+msgid "Освобождён от уроков"
+msgstr "Сабақтан босатылды"
+
+#: directors
+msgid "Отклонена"
+msgstr "Қабылданбады"
+
+#: directors
+msgid "Открыта"
+msgstr "Ашық"
+
+#: directors
+msgid "Отметьте учеников"
+msgstr "Оқушыларды белгілеңіз"
+
+#: directors
+msgid "Отмечено в"
+msgstr "Белгіленген уақыты"
+
+#: directors
+msgid "Отсутствуют"
+msgstr "Жоқтар"
+
+#: directors
+msgid "Отчёт для службы безопасности"
+msgstr "Қауіпсіздік қызметіне есеп"
+
+#: directors
+msgid "Отчёт по учителям"
+msgstr "Мұғалімдер бойынша есеп"
+
+#: directors
+msgid "Отчёты родителям за {month}"
+msgstr "{month} айына ата-аналарға есептер"
+
+#: directors
+msgid "Отчёты — у директора школы и академического директора"
+msgstr "Есептер — мектеп директоры мен академиялық директорда"
+
+#: directors
+msgid "Перезвонить"
+msgstr "Қайта хабарласу"
+
+#: directors
+msgid "По урок"
+msgstr "Сабаққа дейін"
+
+#: directors
+msgid "Победитель"
+msgstr "Жеңімпаз"
+
+#: directors
+msgid "Подробно"
+msgstr "Толығырақ"
+
+#: directors
+msgid "Показатель"
+msgstr "Көрсеткіш"
+
+#: directors
+msgid "Посещаемость за неделю"
+msgstr "Аптадағы қатысу"
+
+#: directors
+msgid "Почему вернули"
+msgstr "Неге қайтарылды"
+
+#: directors
+msgid "Приду смотреть"
+msgstr "Көруге келемін"
+
+#: directors
+msgid "Призёр"
+msgstr "Жүлдегер"
+
+#: directors
+msgid "Принята"
+msgstr "Қабылданды"
+
+#: directors
+msgid "Принятую заявку отменяет директор спорта"
+msgstr "Қабылданған өтінімді спорт директоры тоқтатады"
+
+#: directors
+msgid "Принять можно только выполненную задачу"
+msgstr "Тек орындалған тапсырманы қабылдауға болады"
+
+#: directors
+msgid "Проверьте даты"
+msgstr "Күндерді тексеріңіз"
+
+#: directors
+msgid "Пропусков без причины"
+msgstr "Себепсіз жіберілгендер"
+
+#: directors
+msgid "Просмотр отчёта"
+msgstr "Есепті қарау"
+
+#: directors
+msgid "Просмотры отчётов"
+msgstr "Есептерді қарау"
+
+#: directors
+msgid "Раздел — у ученика"
+msgstr "Бөлім — оқушыда"
+
+#: directors
+msgid "Результат олимпиады"
+msgstr "Олимпиада нәтижесі"
+
+#: directors
+msgid "Результаты экзаменов {exam}.xlsx"
+msgstr "Емтихан нәтижелері {exam}.xlsx"
+
+#: directors
+msgid "Результаты экзаменов читает академический директор"
+msgstr "Емтихан нәтижелерін академиялық директор оқиды"
+
+#: directors
+msgid "Республиканская"
+msgstr "Республикалық"
+
+#: directors
+msgid "Решение по эссе"
+msgstr "Эссе бойынша шешім"
+
+#: directors
+msgid "С комментарием куратора"
+msgstr "Куратор пікірімен"
+
+#: directors
+msgid "С урока"
+msgstr "Сабақтан бастап"
+
+#: directors
+msgid "Себе задачу не ставят"
+msgstr "Өзіңізге тапсырма берілмейді"
+
+#: directors
+msgid "Секции"
+msgstr "Бөлімдер"
+
+#: directors
+msgid "Спортивное мероприятие"
+msgstr "Спорттық іс-шара"
+
+#: directors
+msgid "Спортивные мероприятия"
+msgstr "Спорттық іс-шаралар"
+
+#: directors
+msgid "Средняя"
+msgstr "Орташа"
+
+#: directors
+msgid "Строка портфолио"
+msgstr "Портфолио жолы"
+
+#: directors
+msgid "Укажите дату и время"
+msgstr "Күні мен уақытын көрсетіңіз"
+
+#: directors
+msgid "Укажите место"
+msgstr "Орнын көрсетіңіз"
+
+#: directors
+msgid "Укажите срок"
+msgstr "Мерзімін көрсетіңіз"
+
+#: directors
+msgid "Укажите уроки «с» и «по» или весь день"
+msgstr "«Бастап» және «дейін» сабақтарын немесе күні бойы деп көрсетіңіз"
+
+#: directors
+msgid "Уроков не отмечено"
+msgstr "Белгіленбеген сабақтар"
+
+#: directors
+msgid "Успеваемость по параллелям"
+msgstr "Параллельдер бойынша үлгерім"
+
+#: directors
+msgid "Утренняя отметка кураторов"
+msgstr "Кураторлардың таңғы белгісі"
+
+#: directors
+msgid "Участвовать"
+msgstr "Қатысу"
+
+#: directors
+msgid "Участник"
+msgstr "Қатысушы"
+
+#: directors
+msgid "Участник олимпиады"
+msgstr "Олимпиада қатысушысы"
+
+#: directors
+msgid "Участники олимпиад"
+msgstr "Олимпиада қатысушылары"
+
+#: directors
+msgid "Участников олимпиады отмечает директор талантов"
+msgstr "Олимпиада қатысушыларын таланттар директоры белгілейді"
+
+#: directors
+msgid "ФО по урокам · {span}"
+msgstr "Сабақтар бойынша ҚБ · {span}"
+
+#: directors
+msgid "ФО, %"
+msgstr "ҚБ, %"
+
+#: directors
+msgid "Что сказали родители"
+msgstr "Ата-аналар не айтты"
+
+#: directors
+msgid "Школьная"
+msgstr "Мектептік"
+
+#: directors
+msgid "Эссе ещё не отправлено на проверку"
+msgstr "Эссе әлі тексеруге жіберілмеген"
+
+#: directors
+msgid "Эссе учеников проверяет директор по поступлению"
+msgstr "Оқушылар эссесін түсу жөніндегі директор тексереді"
+
+#: directors
+msgid "Это контакт другого ученика"
+msgstr "Бұл басқа оқушының байланысы"
+
+#: directors
+msgid "весь день"
+msgstr "күні бойы"
+
+#: directors
+msgid "вы и кураторы · {span}"
+msgstr "сіз және кураторлар · {span}"
+
+#: directors
+msgid "группы кураторов"
+msgstr "кураторлар топтары"
+
+#: directors
+msgid "журналы и ДЗ · {span}"
+msgstr "журналдар мен ҮЖ · {span}"
+
+#: directors
+msgid "к отправке: {n}"
+msgstr "жіберуге: {n}"
+
+#: directors
+msgid "кураторы · проверено {n} из {total} групп"
+msgstr "кураторлар · {total} топтың {n} тексерілді"
+
+#: directors
+msgid "на олимпиаде"
+msgstr "олимпиадада"
+
+#: directors
+msgid "на соревновании"
+msgstr "жарыста"
+
+#: directors
+msgid "не сдавали"
+msgstr "тапсырмаған"
+
+#: directors
+msgid "не собран"
+msgstr "жиналмаған"
+
+#: directors
+msgid "отметились {marked} из {total}"
+msgstr "{total} ішінен {marked} белгі қойды"
+
+#: directors
+msgid "отправлен"
+msgstr "жіберілді"
+
+#: directors
+msgid "по урокам учителей · {span}"
+msgstr "мұғалімдер сабақтары бойынша · {span}"
+
+#: directors
+msgid "проверен куратором"
+msgstr "куратор тексерді"
+
+#: directors
+msgid "сдавали {n}"
+msgstr "тапсырғандар {n}"
+
+#: directors
+msgid "собран"
+msgstr "жиналды"
+
+#: directors
+msgid "собран из утренних отметок"
+msgstr "таңғы белгілерден жиналды"
+
+#: directors
+msgid "средний ФО {pct}"
+msgstr "орташа ҚБ {pct}"
+
+#: directors
+msgid "средняя {pct}"
+msgstr "орташа {pct}"
+
+#: directors
+msgid "урок {n}"
+msgstr "{n}-сабақ"
+
+#: directors
+msgid "уроки {a}–{b}"
+msgstr "{a}–{b} сабақтар"
+
+#: directors
+msgid "уроков не было"
+msgstr "сабақ болған жоқ"
+
+#: directors
+msgid "уроков: {l} · ДЗ: {h}"
+msgstr "сабақтар: {l} · ҮЖ: {h}"

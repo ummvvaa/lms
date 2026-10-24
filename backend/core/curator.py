@@ -881,7 +881,6 @@ def parent_call(request, pk: int):
     if denied:
         return denied
 
-    from core.audit import record_event
     from students.models import CuratorNote
 
     student = _own_student(request, pk)
@@ -894,8 +893,17 @@ def parent_call(request, pk: int):
             # текст заметки хранится в базе и читается как данные — не переводится
             text=f"Звонок родителям: {text}",  # i18n-skip: текст заметки в базе
         )
-    record_event(
-        student=student, code="parent_call", text=text or "без записи", actor=request.user  # i18n-skip: запись журнала
+    # строка истории звонков (24.10.2026): звонки кураторов видит директор школы в «Отчётах»;
+    # событие журнала пишет `record_call`
+    from directors.models import CallOutcome
+    from directors.services import record_call
+
+    outcome = str(request.data.get("outcome") or CallOutcome.REACHED)
+    record_call(
+        student=student,
+        outcome=outcome if outcome in CallOutcome.values else CallOutcome.REACHED,
+        note=text,
+        actor=request.user,
     )
     return Response({"noted": bool(text)})
 

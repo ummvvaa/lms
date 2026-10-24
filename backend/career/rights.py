@@ -8,21 +8,20 @@
 другого — раздел всё равно его): журнал только подсказывает группы по
 умолчанию — свои составы; без журнала учитель выбирает любую группу.
 Администратор — как всегда, за всех. Результаты и разборы читают учитель
-профориентации, администратор и директор по поступлению. Граница — группа ученика.
+профориентации и администратор. Граница — группа ученика.
 
 Куратору раздела нет (решение владельца, 22.10.2026: профтест сдают ученики;
 тесты добавляют и ведут только профориентолог и администратор; у куратора
 раздела нет): его группы границу чтения не расширяют, и куратор, который сам
 не ведёт профориентацию, получает отказ на каждой ручке. Прежнее чтение
-своих групп (08.10.2026) снято.
+своих групп (08.10.2026) снято. У директора по поступлению раздела тоже нет
+(решение владельца, 24.10.2026): чтение результатов у Асем снято так же.
 """
 
 from __future__ import annotations
 
 from core.domains import ROLE_ADMIN, ROLE_STUDENT
 from students.models import StudyGroup
-
-ADMISSION_DIRECTOR = "director_admission"
 
 
 def career_courses(user):
@@ -80,7 +79,7 @@ def taught_group_ids(user) -> list[int]:
 def visible_group_ids(user) -> list[int]:
     """Группы, чьи результаты и разборы человек читает. Ученику — пусто."""
     role = getattr(user, "role", "")
-    if role in (ROLE_ADMIN, ADMISSION_DIRECTOR):
+    if role == ROLE_ADMIN:
         return _all_group_ids()
     if role == ROLE_STUDENT or not role:
         return []
@@ -91,7 +90,7 @@ def visible_group_ids(user) -> list[int]:
 
 def reads(user) -> bool:
     """Открыт ли человеку раздел результатов вообще: роль или хотя бы одна группа."""
-    if getattr(user, "role", "") in (ROLE_ADMIN, ADMISSION_DIRECTOR):
+    if getattr(user, "role", "") == ROLE_ADMIN:
         return True
     return bool(visible_group_ids(user))
 
@@ -105,6 +104,6 @@ def sees_student(user, student) -> bool:
     if student is None:
         return False
     role = getattr(user, "role", "")
-    if role in (ROLE_ADMIN, ADMISSION_DIRECTOR):
+    if role == ROLE_ADMIN:
         return True
     return sees_group(user, student.group_id)

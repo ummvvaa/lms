@@ -43,6 +43,15 @@ EXTRA_TITLES: dict[str, tuple[Any, Any]] = {
     # события кабинета куратора (фаза 62): не правки полей, а действия,
     # которые тоже должны читаться в журнале словами
     "students.Student.parent_call": (gettext_lazy("Звонок родителям"), gettext_lazy("Звонок")),
+    # кабинеты директоров (24.10.2026): олимпиада, освобождение, заявка, эссе
+    "students.Student.olympiad_result": (gettext_lazy("Результат олимпиады"), gettext_lazy("Олимпиада")),
+    "students.Student.lesson_release": (gettext_lazy("Освобождён от уроков"), gettext_lazy("Освобождение")),
+    "students.Student.lesson_release_cancelled": (
+        gettext_lazy("Освобождение от уроков отменено"),
+        gettext_lazy("Освобождение отменено"),
+    ),
+    "students.Student.sport_application": (gettext_lazy("Заявка на мероприятие"), gettext_lazy("Заявка")),
+    "students.Student.essay_verdict": (gettext_lazy("Решение по эссе"), gettext_lazy("Эссе")),
     "students.Student.escalation": (gettext_lazy("Передано владельцу домена"), gettext_lazy("Передано")),
     "students.Student.escalation_returned": (gettext_lazy("Возвращено себе из передачи"), gettext_lazy("Возвращено")),
     "students.Student.document_reminder": (gettext_lazy("Напоминание о документах"), gettext_lazy("Напоминание")),

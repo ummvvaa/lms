@@ -304,6 +304,8 @@ class Notification(models.Model):
         LESSON_REQUEST = "lesson_request", gettext_lazy("Просьба учителя о переносе")
         LESSON_REQUEST_DECIDED = "lesson_request_decided", gettext_lazy("Ответ на просьбу о переносе")
         REPORTS_BUILT = "reports_built", gettext_lazy("Отчёты родителям собраны")
+        # задачи сотрудникам (24.10.2026): напоминание исполнителю
+        STAFF_TASK = "staff_task", gettext_lazy("Задача от академического директора")
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,

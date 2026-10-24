@@ -433,6 +433,10 @@ def _lesson_for(user, pk: int) -> Lesson | None:
     return None
 
 
+def _released_text(row, label) -> str:
+    return label(row) if row is not None else ""
+
+
 def _roster(lesson: Lesson, calendar, scale) -> list[dict]:
     """Ученики урока с отметкой, оценкой и короткой статистикой по журналу."""
     from academics.results import course_context
@@ -449,6 +453,10 @@ def _roster(lesson: Lesson, calendar, scale) -> list[dict]:
     start = quarter.starts if quarter else lesson.date - dt.timedelta(days=60)
     context = course_context(lesson.course, start, min(lesson.date, today()), scale, quarter=quarter)
     excused = marking.excuses_of(ids, lesson.date, lesson.date)
+    # освобождённые от урока (олимпиада, мероприятие): пометка в составе, пропуск — «у»
+    from directors.services import release_label, released_map, released_on
+
+    released = released_map(ids, lesson.date, lesson.date)
     out = []
     for sid in ids:
         student = students.get(sid)
@@ -466,6 +474,7 @@ def _roster(lesson: Lesson, calendar, scale) -> list[dict]:
                 "grade": grade.value if grade else None,
                 "comment": grade.comment if grade else "",
                 "excused": marking.is_excused(excused, sid, lesson.date),
+                "released": _released_text(released_on(released, sid, lesson.date, lesson.slot), release_label),
                 "absences": stats.absent + stats.excused,
                 "fo_avg": stats.fo_avg,
             }

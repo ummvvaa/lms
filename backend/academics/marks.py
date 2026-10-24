@@ -85,6 +85,36 @@ def is_excused(periods: dict[int, list[tuple[dt.date, dt.date]]], student_id: in
     return any(starts <= day <= ends for starts, ends in periods.get(student_id, ()))
 
 
+#: освобождение ученика: дни и уроки «с–по» (пусто — весь день)
+Release = tuple[dt.date, dt.date, int | None, int | None]
+
+
+def releases_of(student_ids: Iterable[int], start: dt.date, end: dt.date) -> dict[int, list[Release]]:
+    """Освобождения от уроков (олимпиада, мероприятие), пересекающие отрезок.
+
+    Пропуск освобождённого урока читается как «у», как и пропуск при причине
+    за период (решение владельца, 24.10.2026): ученик был там, куда его
+    отпустила школа.
+    """
+    from directors.models import LessonRelease
+
+    wanted = list(student_ids)
+    out: dict[int, list[Release]] = {}
+    rows = LessonRelease.objects.filter(starts__lte=end, ends__gte=start, students__in=wanted).values_list(
+        "students", "starts", "ends", "slot_from", "slot_to"
+    )
+    for sid, starts, ends, slot_from, slot_to in rows:
+        out.setdefault(sid, []).append((starts, ends, slot_from, slot_to))
+    return out
+
+
+def is_released(found: dict[int, list[Release]], student_id: int, day: dt.date, slot: int) -> bool:
+    return any(
+        starts <= day <= ends and (slot_from is None or slot_from <= slot <= slot_to)
+        for starts, ends, slot_from, slot_to in found.get(student_id, ())
+    )
+
+
 @transaction.atomic
 def add_excuse(*, student, starts: dt.date, ends: dt.date, reason: str, document: str, file=None, actor=None) -> Excuse:
     """Оформить причину за период: пропуски «н» в эти дни станут «у» во всех журналах."""
@@ -150,6 +180,7 @@ def marks_map(lessons: list[Lesson], student_ids: Iterable[int], *, raw: bool = 
     start = min(lesson.date for lesson in lessons)
     end = max(lesson.date for lesson in lessons)
     periods = excuses_of(ids, start, end)
+    released = releases_of(ids, start, end)
     store = cache.current()
     if store is not None:
         rows = store.attendance_rows(start, end)
@@ -183,7 +214,9 @@ def marks_map(lessons: list[Lesson], student_ids: Iterable[int], *, raw: bool = 
                 and late_counts_absent(lesson, arrivals.get((lesson.pk, sid)), late_rules)
             ):
                 mark = Mark.ABSENT
-            if mark == Mark.ABSENT and is_excused(periods, sid, lesson.date):
+            if mark == Mark.ABSENT and (
+                is_excused(periods, sid, lesson.date) or is_released(released, sid, lesson.date, lesson.slot)
+            ):
                 mark = EXCUSED
             out[(lesson.pk, sid)] = mark
     return out

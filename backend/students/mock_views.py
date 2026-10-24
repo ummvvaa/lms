@@ -35,12 +35,13 @@ from core.phrasing import counted
 from students import mocks
 from students.models import IELTS_SECTIONS, ExamType, MockImport, StudyGroup
 
-#: Кто вправе загружать пробники и решать их судьбу.
-UPLOADERS = (ROLE_CURATOR, "director_exam", ROLE_ADMIN)
+#: Кто вправе загружать пробники и решать их судьбу. Кымбат — нет: с 24.10.2026
+#: она результаты читает, а файлом грузит администратор (решение владельца).
+UPLOADERS = (ROLE_CURATOR, ROLE_ADMIN)
 
 #: Кто возвращает загрузку из архива. Куратор — нет: он её и убрал,
 #: а «убрал и сам вернул» — это не архив, это правка задним числом.
-RESTORERS = ("director_exam", ROLE_ADMIN)
+RESTORERS = (ROLE_ADMIN,)
 
 #: Ученику раздел закрыт целиком — отказ словами, а не «не найдено»:
 #: 404 говорил бы, что такой пробник, может быть, где-то и есть
@@ -153,7 +154,7 @@ def _wizard_input(request) -> tuple[dict | None, Response | None]:
     if not is_staff_here(request.user):
         return None, _forbidden(STUDENT_REFUSAL)
     if request.user.role not in UPLOADERS:
-        return None, _forbidden(_("Mock Test загружают куратор и академический директор"))
+        return None, _forbidden(_("Mock Test загружают куратор и администратор"))
 
     exam_type = (request.data.get("exam_type") or "").strip()
     if exam_type not in mocks.MOCK_EXAMS:
@@ -392,7 +393,7 @@ def mock_template(request):
     if exam_type not in mocks.MOCK_EXAMS:
         return _bad(_("Шаблон есть для IELTS и SAT"))
     if not may_upload(request.user):
-        return _forbidden(_("Mock Test загружают куратор и академический директор"))
+        return _forbidden(_("Mock Test загружают куратор и администратор"))
 
     from students.models import Student
 

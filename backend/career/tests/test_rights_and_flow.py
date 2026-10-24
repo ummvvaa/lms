@@ -246,13 +246,15 @@ def passed(karta, teacher, boston, pupils):
 def test_results_matrix_and_who_reads(
     passed, karta, teacher, curator, asem, admin, kymbat, other_teacher, boston, pupils
 ):
-    for user in (teacher, asem, admin):
+    for user in (teacher, admin):
         response = login(user).get(f"/api/career/results/?group={boston.pk}")
         assert response.status_code == 200, user.email
         rows = {row["id"]: row for row in response.json()["students"]}
         assert rows[pupils["aliya"].pk]["cells"][str(karta.pk)]["status"] == "done"
         assert response.json()["tests"][0]["assigned"] == 2
     assert login(kymbat).get(f"/api/career/results/?group={boston.pk}").status_code == 403
+    # у Асем раздела нет с 24.10.2026 (решение владельца): профтест — профориентолог и администратор
+    assert login(asem).get(f"/api/career/results/?group={boston.pk}").status_code == 403
     assert login(other_teacher).get(f"/api/career/results/?group={boston.pk}").status_code == 403
     # куратору раздела нет (решение владельца, 22.10.2026): своя группа BOSTON
     # чтения не открывает — ни результатов, ни блока в карточке
@@ -264,8 +266,9 @@ def test_results_matrix_and_who_reads(
     assert client.put(f"/api/career/tests/{karta.pk}/assignments/", {"groups": []}, format="json").status_code == 403
 
 
-def test_curator_is_refused_on_every_career_route(passed, karta, curator, boston, pupils):
-    """Страж: каждая ручка профтеста сотрудника отвечает куратору 403 (решение владельца, 22.10.2026).
+@pytest.mark.parametrize("who", ["curator", "asem"])
+def test_curator_and_asem_are_refused_on_every_career_route(request, who, passed, karta, boston, pupils):
+    """Страж: каждая ручка профтеста сотрудника отвечает куратору (22.10.2026) и Асем (24.10.2026) 403.
 
     Список ручек берётся из `career.urls`, а не переписывается: новая ручка
     без отказа куратору уронит тест. Ученические `career-my*` — не сотрудника.
@@ -284,7 +287,7 @@ def test_curator_is_refused_on_every_career_route(passed, karta, curator, boston
         "career-analysis": {"pk": 1},
         "career-student": {"pk": pupils["aliya"].pk},
     }
-    client = login(curator)
+    client = login(request.getfixturevalue(who))
     checked = []
     for pattern in urls.urlpatterns:
         name = pattern.name

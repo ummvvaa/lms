@@ -69,6 +69,8 @@ class MustChangePasswordMiddleware:
 CURATOR_READ_ROUTES = frozenset(
     {
         "usage-registry",
+        # задачи от академического директора — на главной исполнителя (24.10.2026)
+        "staff-tasks-mine",
         # помощник в углу: кнопки под куратора и история своих диалогов
         "assistant-quick",
         "assistant-threads",
@@ -217,6 +219,7 @@ CURATOR_READ_ROUTES = frozenset(
 CURATOR_WRITE_ROUTES = frozenset(
     {
         "usage",
+        "staff-task-done",
         # вопрос помощнику и новый диалог; ученики — только своих групп
         "assistant-ask",
         "assistant-threads",
@@ -390,6 +393,10 @@ ADMIN_CLOSED_ROUTES: dict[str, str] = {
     "acad-my-home": STUDENT_CABINET,
     # раздел ученика «Домашние задания»: его задания и его сдача
     "homework-my": STUDENT_CABINET,
+    # «Спорт» ученика: мероприятия и свои заявки (24.10.2026)
+    "my-sport-events": STUDENT_CABINET,
+    "my-sport-apply": STUDENT_CABINET,
+    "my-sport-application": STUDENT_CABINET,
     "homework-my-detail": STUDENT_CABINET,
     "homework-my-submit": STUDENT_CABINET,
     # кабинет куратора (фазы 60–63): свои группы, свой журнал
@@ -554,6 +561,8 @@ def curator_leads_admission(request) -> bool:
 TEACHER_READ_ROUTES = frozenset(
     {
         "usage-registry",
+        # задачи от академического директора — на «Сегодня» учителя (24.10.2026)
+        "staff-tasks-mine",
         # кабинет учителя: сегодня, расписание, журналы, урок, ученик глазами учителя
         "acad-meta",
         "acad-teacher-today",
@@ -606,6 +615,7 @@ TEACHER_READ_ROUTES = frozenset(
 TEACHER_WRITE_ROUTES = frozenset(
     {
         "usage",
+        "staff-task-done",
         "assistant-ask",
         "assistant-threads",
         "acad-lesson-attendance",

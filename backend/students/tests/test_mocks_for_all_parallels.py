@@ -96,10 +96,10 @@ def mock_body(student, **extra) -> dict:
 
 
 @pytest.mark.django_db
-def test_kymbat_uploads_a_mock_file_for_a_ninth_grade_group(ninth, kymbat, chicago):
+def test_admin_uploads_a_mock_file_for_a_ninth_grade_group(ninth, make_user, chicago):
     """Файл пробника на группу 9 параллели: группа в выборе, попытки легли пробниками."""
     student, _ = ninth
-    boss = login(kymbat)
+    boss = login(make_user("admin", "admin.mocks@example.kz", full_name="Администратор"))
 
     listing = boss.get("/api/mock-imports/").json()
     assert {row["code"]: row["parallel"] for row in listing["groups"]} == {"LISBON": 9, "CHICAGO": 11}
@@ -167,6 +167,17 @@ def test_curator_of_another_group_gets_404(tenth, chicago_curator):
     assert other.post("/api/attempts/", mock_body(student, attempt_format="official"), format="json").status_code == 404
     assert other.get(f"/api/curator/students/{student.pk}/").status_code == 404
     assert not ExamAttempt.objects.exists()
+
+
+@pytest.mark.django_db
+def test_kymbat_reads_mock_files_but_does_not_upload(ninth, kymbat, chicago):
+    """Пробники файлом с 24.10.2026 грузит администратор, у Кымбат — чтение (решение владельца)."""
+    boss = login(kymbat)
+    assert boss.get("/api/mock-imports/").status_code == 200
+    rows = [["Сериков Данияр", 6.5, 7.0, 6.0, 6.5, 6.5, ""]]
+    refused = wizard(boss, file=ielts_file(rows), group="LISBON")
+    assert refused.status_code == 403
+    assert not ExamAttempt.objects.filter(student=ninth[0]).exists()
 
 
 @pytest.mark.django_db

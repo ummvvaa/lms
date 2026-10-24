@@ -17367,3 +17367,771 @@ msgstr "curator-attendance-{since}-{until}.xlsx"
 #: students/discipline_views.py
 msgid "свой период"
 msgstr "custom period"
+
+#: directors
+msgid "IELTS и SAT · 11 классы · сдавали {n}"
+msgstr "IELTS and SAT · grade 11 · took it: {n}"
+
+#: directors
+msgid "IELTS — средний балл"
+msgstr "IELTS — average score"
+
+#: directors
+msgid "Mock Test {date}"
+msgstr "Mock Test {date}"
+
+#: directors
+msgid "Mock Test загружают куратор и администратор"
+msgstr "Mock Tests are uploaded by the curator and the administrator"
+
+#: directors
+msgid "SAT — средний балл"
+msgstr "SAT — average score"
+
+#: directors
+msgid "{days}, весь день"
+msgstr "{days}, all day"
+
+#: directors
+msgid "{days}, уроки {lessons}"
+msgstr "{days}, lessons {lessons}"
+
+#: directors
+msgid "{n} · учителей: {t}"
+msgstr "{n} · teachers: {t}"
+
+#: directors
+msgid "{n} звонок|{n} звонка|{n} звонков"
+msgstr "{n} call|{n} calls"
+
+#: directors
+msgid "{n} классы"
+msgstr "Grade {n}"
+
+#: directors
+msgid "{n} отсутствует|{n} отсутствуют|{n} отсутствуют"
+msgstr "{n} absent|{n} absent"
+
+#: directors
+msgid "{n} работа|{n} работы|{n} работ"
+msgstr "{n} piece of work|{n} pieces of work"
+
+#: directors
+msgid "Больше всего — {name}"
+msgstr "Most — {name}"
+
+#: directors
+msgid "Вернуть можно только выполненную задачу"
+msgstr "Only a completed task can be returned"
+
+#: directors
+msgid "Возвращена"
+msgstr "Returned"
+
+#: directors
+msgid "Все места для участников заняты"
+msgstr "All participant places are taken"
+
+#: directors
+msgid "Выберите итог звонка"
+msgstr "Choose the call outcome"
+
+#: directors
+msgid "Выберите олимпиаду"
+msgstr "Choose an olympiad"
+
+#: directors
+msgid "Выберите олимпиаду или мероприятие"
+msgstr "Choose an olympiad or an event"
+
+#: directors
+msgid "Выберите результат"
+msgstr "Choose the result"
+
+#: directors
+msgid "Выберите решение"
+msgstr "Choose a decision"
+
+#: directors
+msgid "Выберите тип"
+msgstr "Choose the type"
+
+#: directors
+msgid "Выберите уровень"
+msgstr "Choose the level"
+
+#: directors
+msgid "Выберите: норм или не норм"
+msgstr "Choose: fine or not fine"
+
+#: directors
+msgid "Выберите: участвовать или смотреть"
+msgstr "Choose: take part or watch"
+
+#: directors
+msgid "Вымышленная"
+msgstr "Fictional"
+
+#: directors
+msgid "Вымышленное"
+msgstr "Fictional"
+
+#: directors
+msgid "Выполнена"
+msgstr "Done"
+
+#: directors
+msgid "Городская"
+msgstr "City"
+
+#: directors
+msgid "Готово к отправке"
+msgstr "Ready to send"
+
+#: directors
+msgid "Групп в отчёте"
+msgstr "Groups in the report"
+
+#: directors
+msgid "Групп отметились"
+msgstr "Groups marked"
+
+#: directors
+msgid "ДЗ не проверено"
+msgstr "Homework not checked"
+
+#: directors
+msgid "Дата и время"
+msgstr "Date and time"
+
+#: directors
+msgid "До цели"
+msgstr "To the goal"
+
+#: directors
+msgid "Добавлен"
+msgstr "Added"
+
+#: directors
+msgid "Добавлена"
+msgstr "Added"
+
+#: directors
+msgid "Добавлено"
+msgstr "Added"
+
+#: directors
+msgid "Дозвонились"
+msgstr "Reached"
+
+#: directors
+msgid "Достигли цели"
+msgstr "Reached the goal"
+
+#: directors
+msgid "Ждём"
+msgstr "Waiting"
+
+#: directors
+msgid "Задача от академического директора"
+msgstr "Task from the academic director"
+
+#: directors
+msgid "Задача сотруднику"
+msgstr "Staff task"
+
+#: directors
+msgid "Задача уже выполнена"
+msgstr "The task is already done"
+
+#: directors
+msgid "Задача уже отмечена выполненной"
+msgstr "The task is already marked done"
+
+#: directors
+msgid "Задачи сотрудникам"
+msgstr "Staff tasks"
+
+#: directors
+msgid "Задачи сотрудникам ставит академический директор"
+msgstr "Staff tasks are set by the academic director"
+
+#: directors
+msgid "Задачу ставят учителю, куратору или директору"
+msgstr "Tasks are set for a teacher, a curator or a director"
+
+#: directors
+msgid "Заявка на мероприятие"
+msgstr "Event application"
+
+#: directors
+msgid "Заявка на это мероприятие уже подана"
+msgstr "An application for this event has already been sent"
+
+#: directors
+msgid "Заявки на мероприятия"
+msgstr "Event applications"
+
+#: directors
+msgid "Заявки решает директор спорта"
+msgstr "Applications are decided by the sports director"
+
+#: directors
+msgid "Заявку подаёт ученик"
+msgstr "The application is sent by the student"
+
+#: directors
+msgid "Звонки записывают директор школы и кураторы"
+msgstr "Calls are recorded by the school director and curators"
+
+#: directors
+msgid "Звонки родителям"
+msgstr "Calls to parents"
+
+#: directors
+msgid "Звонки родителям за неделю"
+msgstr "Calls to parents this week"
+
+#: directors
+msgid "Звонки родителям.xlsx"
+msgstr "Calls to parents.xlsx"
+
+#: directors
+msgid "Звонков"
+msgstr "Calls"
+
+#: directors
+msgid "Звонок родителю"
+msgstr "Call to a parent"
+
+#: directors
+msgid "Зрителей на это мероприятие не пускают"
+msgstr "Spectators are not allowed at this event"
+
+#: directors
+msgid "Исполнитель"
+msgstr "Assignee"
+
+#: directors
+msgid "Историю звонков читают директор школы и кураторы"
+msgstr "The call history is read by the school director and curators"
+
+#: directors
+msgid "Итоги"
+msgstr "Summary"
+
+#: directors
+msgid "Кабинеты директоров"
+msgstr "Director offices"
+
+#: directors
+msgid "Когда решили"
+msgstr "Decided at"
+
+#: directors
+msgid "Комментарий директору"
+msgstr "Comment to the director"
+
+#: directors
+msgid "Кому звонили"
+msgstr "Who was called"
+
+#: directors
+msgid "Кто звонил"
+msgstr "Called by"
+
+#: directors
+msgid "Кто звонил на момент звонка"
+msgstr "Caller at the time of the call"
+
+#: directors
+msgid "Кто освободил"
+msgstr "Released by"
+
+#: directors
+msgid "Кто освободил на момент записи"
+msgstr "Released by at the time of the record"
+
+#: directors
+msgid "Кто поставил на момент постановки"
+msgstr "Set by at the time of setting"
+
+#: directors
+msgid "Международная"
+msgstr "International"
+
+#: directors
+msgid "Мероприятие"
+msgstr "Event"
+
+#: directors
+msgid "Мероприятие уже прошло"
+msgstr "The event is over"
+
+#: directors
+msgid "Мероприятия ведёт директор спорта"
+msgstr "Events are run by the sports director"
+
+#: directors
+msgid "Мероприятия добавляет директор спорта"
+msgstr "Events are added by the sports director"
+
+#: directors
+msgid "Мест для участников"
+msgstr "Participant places"
+
+#: directors
+msgid "Место"
+msgstr "Place"
+
+#: directors
+msgid "Можно прийти зрителем"
+msgstr "Spectators allowed"
+
+#: directors
+msgid "На проверке у кураторов"
+msgstr "Being checked by curators"
+
+#: directors
+msgid "Напишите задачу"
+msgstr "Write the task"
+
+#: directors
+msgid "Напишите название"
+msgstr "Write the title"
+
+#: directors
+msgid "Напишите название олимпиады"
+msgstr "Write the olympiad title"
+
+#: directors
+msgid "Напишите ученику, что поправить"
+msgstr "Tell the student what to fix"
+
+#: directors
+msgid "Напишите, что доделать"
+msgstr "Write what to finish"
+
+#: directors
+msgid "Напоминание о задаче до {due}: {title}"
+msgstr "Reminder about the task due {due}: {title}"
+
+#: directors
+msgid "Напомнили"
+msgstr "Reminded"
+
+#: directors
+msgid "Не ответили"
+msgstr "No answer"
+
+#: directors
+msgid "Не отметились"
+msgstr "Not marked"
+
+#: directors
+msgid "Не пришли"
+msgstr "Did not come"
+
+#: directors
+msgid "Не собраны"
+msgstr "Not built"
+
+#: directors
+msgid "Нет"
+msgstr "Absent"
+
+#: directors
+msgid "Нет в школе"
+msgstr "Not at school"
+
+#: directors
+msgid "Ниже {n} %"
+msgstr "Below {n} %"
+
+#: directors
+msgid "Ниже {n} % по ФО"
+msgstr "Below {n} % in formative assessment"
+
+#: directors
+msgid "Ниже цели на 1.0 / 150+"
+msgstr "Below the goal by 1.0 / 150+"
+
+#: directors
+msgid "Обзвон ведёт директор школы"
+msgstr "Calls are run by the school director"
+
+#: directors
+msgid "Олимпиады ведёт директор талантов"
+msgstr "Olympiads are run by the talent director"
+
+#: directors
+msgid "Опоздали"
+msgstr "Late"
+
+#: directors
+msgid "Освободить можно только принятого участника"
+msgstr "Only an accepted participant can be released"
+
+#: directors
+msgid "Освобождение"
+msgstr "Release"
+
+#: directors
+msgid "Освобождение от уроков"
+msgstr "Release from lessons"
+
+#: directors
+msgid "Освобождение от уроков отменено"
+msgstr "Release from lessons cancelled"
+
+#: directors
+msgid "Освобождение отменено"
+msgstr "Release cancelled"
+
+#: directors
+msgid "Освобождение отменяет тот, кто его поставил"
+msgstr "A release is cancelled by whoever set it"
+
+#: directors
+msgid "Освобождение участнику ставит директор спорта"
+msgstr "Participants are released by the sports director"
+
+#: directors
+msgid "Освобождения видят руководители школы и кураторы"
+msgstr "Releases are seen by school leaders and curators"
+
+#: directors
+msgid "Освобождения от уроков"
+msgstr "Releases from lessons"
+
+#: directors
+msgid "Освобождения по олимпиадам ставит директор талантов"
+msgstr "Olympiad releases are set by the talent director"
+
+#: directors
+msgid "Освобождён от уроков"
+msgstr "Released from lessons"
+
+#: directors
+msgid "Отклонена"
+msgstr "Declined"
+
+#: directors
+msgid "Открыта"
+msgstr "Open"
+
+#: directors
+msgid "Отметьте учеников"
+msgstr "Select students"
+
+#: directors
+msgid "Отмечено в"
+msgstr "Marked at"
+
+#: directors
+msgid "Отсутствуют"
+msgstr "Absent"
+
+#: directors
+msgid "Отчёт для службы безопасности"
+msgstr "Security report"
+
+#: directors
+msgid "Отчёт по учителям"
+msgstr "Teachers report"
+
+#: directors
+msgid "Отчёты родителям за {month}"
+msgstr "Parent reports for {month}"
+
+#: directors
+msgid "Отчёты — у директора школы и академического директора"
+msgstr "Reports are for the school director and the academic director"
+
+#: directors
+msgid "Перезвонить"
+msgstr "Call back"
+
+#: directors
+msgid "По урок"
+msgstr "To lesson"
+
+#: directors
+msgid "Победитель"
+msgstr "Winner"
+
+#: directors
+msgid "Подробно"
+msgstr "Details"
+
+#: directors
+msgid "Показатель"
+msgstr "Indicator"
+
+#: directors
+msgid "Посещаемость за неделю"
+msgstr "Attendance this week"
+
+#: directors
+msgid "Почему вернули"
+msgstr "Why returned"
+
+#: directors
+msgid "Приду смотреть"
+msgstr "I'll come to watch"
+
+#: directors
+msgid "Призёр"
+msgstr "Prize winner"
+
+#: directors
+msgid "Принята"
+msgstr "Accepted"
+
+#: directors
+msgid "Принятую заявку отменяет директор спорта"
+msgstr "An accepted application is cancelled by the sports director"
+
+#: directors
+msgid "Принять можно только выполненную задачу"
+msgstr "Only a completed task can be accepted"
+
+#: directors
+msgid "Проверьте даты"
+msgstr "Check the dates"
+
+#: directors
+msgid "Пропусков без причины"
+msgstr "Unexcused absences"
+
+#: directors
+msgid "Просмотр отчёта"
+msgstr "Report view"
+
+#: directors
+msgid "Просмотры отчётов"
+msgstr "Report views"
+
+#: directors
+msgid "Раздел — у ученика"
+msgstr "This section is for students"
+
+#: directors
+msgid "Результат олимпиады"
+msgstr "Olympiad result"
+
+#: directors
+msgid "Результаты экзаменов {exam}.xlsx"
+msgstr "Exam results {exam}.xlsx"
+
+#: directors
+msgid "Результаты экзаменов читает академический директор"
+msgstr "Exam results are read by the academic director"
+
+#: directors
+msgid "Республиканская"
+msgstr "National"
+
+#: directors
+msgid "Решение по эссе"
+msgstr "Essay decision"
+
+#: directors
+msgid "С комментарием куратора"
+msgstr "With a curator comment"
+
+#: directors
+msgid "С урока"
+msgstr "From lesson"
+
+#: directors
+msgid "Себе задачу не ставят"
+msgstr "You cannot set a task for yourself"
+
+#: directors
+msgid "Секции"
+msgstr "Sections"
+
+#: directors
+msgid "Спортивное мероприятие"
+msgstr "Sports event"
+
+#: directors
+msgid "Спортивные мероприятия"
+msgstr "Sports events"
+
+#: directors
+msgid "Средняя"
+msgstr "Average"
+
+#: directors
+msgid "Строка портфолио"
+msgstr "Portfolio row"
+
+#: directors
+msgid "Укажите дату и время"
+msgstr "Set the date and time"
+
+#: directors
+msgid "Укажите место"
+msgstr "Set the place"
+
+#: directors
+msgid "Укажите срок"
+msgstr "Set the due date"
+
+#: directors
+msgid "Укажите уроки «с» и «по» или весь день"
+msgstr "Set lessons “from” and “to” or all day"
+
+#: directors
+msgid "Уроков не отмечено"
+msgstr "Lessons not marked"
+
+#: directors
+msgid "Успеваемость по параллелям"
+msgstr "Performance by grade"
+
+#: directors
+msgid "Утренняя отметка кураторов"
+msgstr "Curators’ morning check"
+
+#: directors
+msgid "Участвовать"
+msgstr "Take part"
+
+#: directors
+msgid "Участник"
+msgstr "Participant"
+
+#: directors
+msgid "Участник олимпиады"
+msgstr "Olympiad participant"
+
+#: directors
+msgid "Участники олимпиад"
+msgstr "Olympiad participants"
+
+#: directors
+msgid "Участников олимпиады отмечает директор талантов"
+msgstr "Olympiad participants are selected by the talent director"
+
+#: directors
+msgid "ФО по урокам · {span}"
+msgstr "Formative assessment by lessons · {span}"
+
+#: directors
+msgid "ФО, %"
+msgstr "FA, %"
+
+#: directors
+msgid "Что сказали родители"
+msgstr "What the parents said"
+
+#: directors
+msgid "Школьная"
+msgstr "School"
+
+#: directors
+msgid "Эссе ещё не отправлено на проверку"
+msgstr "The essay has not been sent for review yet"
+
+#: directors
+msgid "Эссе учеников проверяет директор по поступлению"
+msgstr "Student essays are reviewed by the admissions director"
+
+#: directors
+msgid "Это контакт другого ученика"
+msgstr "This is another student’s contact"
+
+#: directors
+msgid "весь день"
+msgstr "all day"
+
+#: directors
+msgid "вы и кураторы · {span}"
+msgstr "you and curators · {span}"
+
+#: directors
+msgid "группы кураторов"
+msgstr "curators’ groups"
+
+#: directors
+msgid "журналы и ДЗ · {span}"
+msgstr "journals and homework · {span}"
+
+#: directors
+msgid "к отправке: {n}"
+msgstr "to send: {n}"
+
+#: directors
+msgid "кураторы · проверено {n} из {total} групп"
+msgstr "curators · {n} of {total} groups checked"
+
+#: directors
+msgid "на олимпиаде"
+msgstr "at an olympiad"
+
+#: directors
+msgid "на соревновании"
+msgstr "at a competition"
+
+#: directors
+msgid "не сдавали"
+msgstr "nobody took it"
+
+#: directors
+msgid "не собран"
+msgstr "not built"
+
+#: directors
+msgid "отметились {marked} из {total}"
+msgstr "{marked} of {total} marked"
+
+#: directors
+msgid "отправлен"
+msgstr "sent"
+
+#: directors
+msgid "по урокам учителей · {span}"
+msgstr "by teachers’ lessons · {span}"
+
+#: directors
+msgid "проверен куратором"
+msgstr "checked by the curator"
+
+#: directors
+msgid "сдавали {n}"
+msgstr "took it: {n}"
+
+#: directors
+msgid "собран"
+msgstr "built"
+
+#: directors
+msgid "собран из утренних отметок"
+msgstr "built from morning checks"
+
+#: directors
+msgid "средний ФО {pct}"
+msgstr "average FA {pct}"
+
+#: directors
+msgid "средняя {pct}"
+msgstr "average {pct}"
+
+#: directors
+msgid "урок {n}"
+msgstr "lesson {n}"
+
+#: directors
+msgid "уроки {a}–{b}"
+msgstr "lessons {a}–{b}"
+
+#: directors
+msgid "уроков не было"
+msgstr "no lessons"
+
+#: directors
+msgid "уроков: {l} · ДЗ: {h}"
+msgstr "lessons: {l} · homework: {h}"
