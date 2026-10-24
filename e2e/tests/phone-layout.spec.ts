@@ -57,7 +57,7 @@ const PHONE_SHOTS: Record<string, string[]> = {
     "/catalog",
     "/career",
   ],
-  director_exam: ["/dashboard", "/table", "/suggestions"],
+  director_exam: ["/dashboard", "/table", "/exam-results"],
   director_admission: ["/dashboard", "/table"],
   director_behavior: ["/dashboard", "/table"],
   director_talent: ["/dashboard", "/table"],
@@ -70,11 +70,12 @@ test.describe("телефон 390×844", () => {
   const TABS: Record<string, string[]> = {
     // подписи бара — короткие имена пунктов (`short` в `nav.ts`)
     student: ["Главная", "Уроки", "ДЗ", "Вузы"],
-    director_behavior: ["Дашборд", "Посещаемость", "Риски", "Предложения"],
-    director_admission: ["Дашборд", "Таблица", "Предложения", "Справочник"],
-    director_exam: ["Дашборд", "Таблица", "Предложения", "Mock Test"],
-    director_talent: ["Дашборд", "Таблица", "Предложения", "Олимпиада"],
-    director_sport: ["Дашборд", "Таблица", "Предложения", "Соревнования"],
+    // директора — по макету кабинетов (24.10.2026): «Предложений» в баре нет
+    director_behavior: ["Главная", "Посещаемость", "Отчёты", "Родители"],
+    director_admission: ["Главная", "Эссе учеников", "Таблица", "Вузы"],
+    director_exam: ["Главная", "Отчёты", "Задачи", "Экзамены"],
+    director_talent: ["Главная", "Олимпиады", "Освобождения", "Олимпиада"],
+    director_sport: ["Главная", "Мероприятия", "Таблица", "Виды спорта"],
     admin: ["Дашборд", "Пользователи", "Таблица", "Предложения"],
     // куратор групп 11: очередь есть только у групп с поступлением
     curator: ["Главная", "Очередь", "Ученики", "Посещ."],

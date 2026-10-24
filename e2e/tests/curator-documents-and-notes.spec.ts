@@ -11,7 +11,7 @@
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
-import { apiPost, watch } from "../helpers/session";
+import { apiPost, watch, openDirectorQueue } from "../helpers/session";
 import { exportThroughPreview } from "../helpers/export";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
@@ -503,9 +503,9 @@ test("передача Кымбат: строка уходит к владель
   // Кымбат: строка сверху её очереди, с именем куратора и его словами
   const kymbat = await as(browser, "director_exam");
   const kdiag = watch(kymbat);
-  await kymbat.goto("/suggestions");
-  const queue = kymbat.locator("#student-queue");
-  const first = queue.locator(".squeue__row").first();
+  // очередь решений — на главной Кымбат (раздела «Предложения» нет с 24.10.2026)
+  const queue = await openDirectorQueue(kymbat);
+  const first = queue.locator("[data-suggestion]").first();
   await expect(first).toHaveAttribute("data-suggestion", String(suggestion));
   await expect(first).toContainText("от куратора Асель");
   await expect(first).toContainText(HANDOVER);

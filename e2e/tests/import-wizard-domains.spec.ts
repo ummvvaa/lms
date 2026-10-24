@@ -151,9 +151,9 @@ test("снятый домен не пишется и не попадает в о
 test("CSV с нераспознанной колонкой: группа на первом шаге, колонка названа", async ({
   browser,
 }) => {
-  // раньше сценарий шёл под Асем; мастер у неё закрыт, из владельцев доменов
-  // он остался у Кымбат — её домен «Экзамены», остальное в файле чужое
-  const page = await as(browser, "director_exam");
+  // мастер импорта — у администратора (с 24.10.2026 у Кымбат его нет):
+  // он пишет все домены, «чужих» колонок у него не бывает
+  const page = await as(browser, "admin");
   const diag = watch(page);
   await page.goto("/import");
 
@@ -181,26 +181,24 @@ test("CSV с нераспознанной колонкой: группа на п
     domains: string[];
     writable_domains: string[];
   };
-  // в файле найдены поступление и экзамены, писать Кымбат вправе только своё
+  // в файле найдены поступление и экзамены, администратор пишет оба
   expect(preview.domains).toEqual(["admission", "exam"]);
-  expect(preview.writable_domains).toEqual(["exam"]);
+  expect(preview.writable_domains).toEqual(expect.arrayContaining(["admission", "exam"]));
   // группа распознана: плашка «Группы:» на первом шаге
   await expect(page.getByText(/Группы:/)).toContainText("CHICAGO");
 
   await wizardNext(page).click();
   // неузнанные колонки — таблицей под подсказкой (07.10.2026): колонка названа, место выбирают
   await expect(page.locator("table.tbl").filter({ hasText: "Любимый цвет" }).first()).toBeVisible();
-  // GPA — её домен: чип доступен; «Поступление» — чужой: чип закрыт,
-  // а строка телефона подписана «домен не ваш, будет пропущен»
+  // у администратора чипы обоих доменов доступны, пометки «домен не ваш» нет
   const chips = page.locator(".wizard__chips [data-slot='button']");
   await expect(chips.filter({ hasText: "Экзамены" })).toBeEnabled();
-  await expect(chips.filter({ hasText: "Поступление" })).toBeDisabled();
+  await expect(chips.filter({ hasText: "Поступление" })).toBeEnabled();
   const phone = page
     .locator("table.tbl tbody tr")
     .filter({ hasText: "Номер телефона" })
     .first();
-  // чужой домен подписан плашкой в строке (07.10.2026), отдельного класса строки нет
-  await expect(phone).toContainText("домен не ваш, будет пропущен");
+  await expect(phone).not.toContainText("домен не ваш");
   const gpa = page
     .locator("table.tbl tbody tr")
     .filter({ hasText: "Средний GPA" })
@@ -226,7 +224,7 @@ test("остальным директорам мастер закрыт: ни м
     await page.goto("/dashboard");
     const nav = sidebar(page);
     await expect(
-      nav.getByRole("link", { name: "Дашборд", exact: true }),
+      nav.getByRole("link", { name: "Главная", exact: true }),
       role,
     ).toBeVisible();
     await expect(

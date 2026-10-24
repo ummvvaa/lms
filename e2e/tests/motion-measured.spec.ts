@@ -94,7 +94,7 @@ const between = (samples: string[]) =>
   );
 
 test.describe("движение", () => {
-  test.use({ storageState: statePath("director_behavior") });
+  test.use({ storageState: statePath("director_exam") });
 
   // свёрнутость меню хранится на сервере: упавший тест не должен оставить
   // его свёрнутым соседним проверкам шапки
@@ -295,7 +295,7 @@ test.describe("движение", () => {
     browser,
   }) => {
     const context = await browser.newContext({
-      storageState: statePath("director_behavior"),
+      storageState: statePath("director_exam"),
       reducedMotion: "reduce",
     });
     const page = await context.newPage();
@@ -324,7 +324,7 @@ test.describe("движение", () => {
 });
 
 test.describe("всплывающее ничего не сдвигает", () => {
-  test.use({ storageState: statePath("director_behavior") });
+  test.use({ storageState: statePath("director_exam") });
 
   test("колокольчик и меню профиля не двигают шапку", async ({ page }) => {
     await page.goto("/dashboard");
@@ -368,7 +368,7 @@ test.describe("всплывающее ничего не сдвигает", () =>
 });
 
 test.describe("ошибка — сообщение, а не белый экран", () => {
-  test.use({ storageState: statePath("director_behavior") });
+  test.use({ storageState: statePath("director_exam") });
 
   test("упавший экран показывает сообщение и кнопку, меню остаётся", async ({
     page,
@@ -408,7 +408,7 @@ test.describe("ошибка — сообщение, а не белый экра�
 });
 
 test.describe("переделка ничего не сломала", () => {
-  test.use({ storageState: statePath("director_behavior") });
+  test.use({ storageState: statePath("director_exam") });
 
   test("правка в таблице сохраняется и переживает перезагрузку", async ({
     page,
@@ -537,7 +537,7 @@ test.describe("кабинет ученика", () => {
     expect(await page.getAttribute("html", "data-density")).toBeNull();
     const student = await rowOf(page);
     const context = await browser.newContext({
-      storageState: statePath("director_behavior"),
+      storageState: statePath("director_exam"),
     });
     const staff = await context.newPage();
     await staff.goto("/dashboard");
@@ -549,7 +549,7 @@ test.describe("кабинет ученика", () => {
 });
 
 test.describe("тёмная тема", () => {
-  test.use({ storageState: statePath("director_behavior") });
+  test.use({ storageState: statePath("director_exam") });
 
   test("на каждом экране текст читается на своём фоне", async ({ page }) => {
     await apiPatch(page, "/api/auth/me/preferences/", { theme: "dark" }).catch(

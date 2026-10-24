@@ -26,7 +26,20 @@ function csrf(page: Page): Promise<string> {
     .then((c) => c.find((x) => x.name === "csrftoken")?.value ?? "");
 }
 
-test("директор пишет памятку с экрана", async ({ browser }) => {
+test("«Ресурсов» у директоров нет: ни пункта, ни адреса", async ({ browser }) => {
+  // раздел спрятан переключателем `DIRECTOR_HIDDEN` (решение владельца, 24.10.2026)
+  const director = await as(browser, "director_exam");
+  await director.goto("/dashboard");
+  await expect(director.locator("nav.shell__menu")).toBeVisible();
+  await expect(director.locator("nav.shell__menu")).not.toContainText("Ресурсы");
+  await director.goto("/resources");
+  await director.waitForURL(/\/dashboard/, { timeout: 15_000 });
+  await director.context().close();
+});
+
+// раздел спрятан у директоров и не открыт никому (решение владельца, 24.10.2026):
+// сценарий остаётся до возврата раздела
+test.skip("директор пишет памятку с экрана", async ({ browser }) => {
   const director = await as(browser, "director_exam");
   const diag = watch(director);
   await director.goto("/resources");

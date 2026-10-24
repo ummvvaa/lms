@@ -5,7 +5,7 @@
  * ответ пришёл со статусом 2xx и в консоли не появилось ошибок —
  * поэтому слушатели вешаются до первой навигации.
  */
-import type { ConsoleMessage, Page, Request, Response } from "@playwright/test";
+import type { ConsoleMessage, Locator, Page, Request, Response } from "@playwright/test";
 import { russianOnServer } from "./language";
 import type { RoleAccount } from "./roles";
 
@@ -193,4 +193,17 @@ export async function unlockTable(page: Page): Promise<void> {
     .locator("input.cell:not([readonly])")
     .first()
     .waitFor({ timeout: 20_000 });
+}
+
+/**
+ * Очередь «Ждут вашего решения» на главной директора (с 24.10.2026 раздела
+ * «Предложения» у директоров нет): открыть главную и развернуть очередь целиком.
+ */
+export async function openDirectorQueue(page: Page): Promise<Locator> {
+  await page.goto("/dashboard");
+  const queue = page.locator("#student-queue");
+  await queue.waitFor({ state: "visible", timeout: 15_000 });
+  const more = queue.getByRole("button", { name: /Показать все/ });
+  if (await more.count()) await more.click();
+  return queue;
 }

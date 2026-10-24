@@ -8,6 +8,7 @@
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
+import { openDirectorQueue } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
@@ -134,7 +135,8 @@ test("соревнование уходит директору спорта, а 
   expect(propose.status()).toBe(201);
 
   const sport = await as(browser, "director_sport");
-  await sport.goto("/suggestions");
+  // очередь решений — на главной директора (раздела «Предложения» нет с 24.10.2026)
+  await openDirectorQueue(sport);
   await expect(
     sport.locator("#student-queue").getByText(COMPETITION),
   ).toBeVisible();
@@ -143,13 +145,12 @@ test("соревнование уходит директору спорта, а 
   ).toHaveCount(0);
 
   const arman = await as(browser, "director_talent");
-  await arman.goto("/suggestions");
-  const queue = arman.locator("#student-queue");
+  const queue = await openDirectorQueue(arman);
   await expect(queue.getByText(ACHIEVEMENT)).toBeVisible();
   await expect(queue.getByText(COMPETITION)).toHaveCount(0);
 
   // Арман подтверждает — достижение становится записью
-  const row = queue.locator(".squeue__row", { hasText: ACHIEVEMENT }).first();
+  const row = queue.locator("[data-suggestion]", { hasText: ACHIEVEMENT }).first();
   const [review] = await Promise.all([
     arman.waitForResponse((r) => r.url().includes("/review/")),
     row.getByRole("button", { name: "Подтвердить", exact: true }).click(),

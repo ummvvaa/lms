@@ -321,6 +321,8 @@ test("таблица директора открывается на чтение
 test("у пяти директоров очередь решений, у администратора — свои действия", async ({
   browser,
 }) => {
+  // очередь на главной директора есть, когда ученики что-то внесли в его домен;
+  // пустая не рисуется вовсе (24.10.2026) — число строк берём у той же ручки
   for (const role of [
     "director_exam",
     "director_admission",
@@ -329,11 +331,12 @@ test("у пяти директоров очередь решений, у адм�
     "director_sport",
   ]) {
     const page = await as(browser, role);
+    const queued = ((await (await page.request.get("/api/suggestions/from-students/")).json()) as { results: unknown[] }).results.length;
     await page.goto("/dashboard");
-    await expect(
-      page.locator("#student-queue"),
-      `${role}: нет очереди подтверждений`,
-    ).toBeVisible();
+    await expect(page.locator("h1")).toContainText("Добрый день");
+    if (queued)
+      await expect(page.locator("#student-queue"), `${role}: нет очереди при ${queued} строках`).toBeVisible();
+    else await expect(page.locator("#student-queue"), `${role}: пустая очередь не рисуется`).toHaveCount(0);
     await page.close();
   }
 
@@ -373,9 +376,14 @@ test("правая треть не пустует ни на одном каби�
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/dashboard");
     await page.waitForTimeout(600);
-    // у директоров — колонка кабинета, у администратора — вторая колонка
-    // раскладки «две трети — треть» по макету
+    // у администратора — вторая колонка «две трети — треть»; у директоров (24.10.2026)
+    // пустая правая колонка не рисуется и отдаёт ширину левой — проверяем, что
+    // если колонка есть, она не пустая
     const aside = page.locator(".cabinet__aside, .lay-main > :nth-child(2)").first();
+    if (role.startsWith("director_") && !(await aside.count())) {
+      await page.close();
+      continue;
+    }
     await expect(aside, `${role}: нет вспомогательной колонки`).toBeVisible();
     const box = await aside.boundingBox();
     expect(

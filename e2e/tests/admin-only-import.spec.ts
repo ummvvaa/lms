@@ -52,14 +52,26 @@ let uploadedFor: Row;
 let previous: string | null = null;
 let batchId = 0;
 
-test("директор: «Импорт» с мастером, в таблице кнопки нет, прежнего пути по API нет", async ({
+test("администратор: «Импорт» с мастером, у Кымбат пункта нет, в таблице кнопки нет, прежнего пути по API нет", async ({
   browser,
 }) => {
-  const page = await as(browser, "director_exam");
+  // у Кымбат «Импорта» нет с 24.10.2026: ни пункта, ни адреса; в таблице кнопки
+  // импорта нет, подсказка «файлы загружает администратор» — без «Истории загрузок»
+  const kymbat = await as(browser, "director_exam");
+  await expect(sidebar(kymbat).getByRole("link", { name: "Импорт", exact: true })).toHaveCount(0);
+  await kymbat.goto("/table");
+  await expect(kymbat.locator("h1")).toContainText("Таблица");
+  await expect(kymbat.getByRole("button", { name: "Импорт из файла" })).toHaveCount(0);
+  await expect(kymbat.locator(".manual-note")).toContainText("файлы загружает администратор");
+  await expect(kymbat.locator(".manual-note").getByRole("button", { name: "История загрузок" })).toHaveCount(0);
+  await kymbat.goto("/import");
+  await kymbat.waitForURL(/\/dashboard/, { timeout: 15_000 });
+  await kymbat.context().close();
+
+  const page = await as(browser, "admin");
   const diag = watch(page);
 
-  // меню: пункт «Импорт» с мастером — у администратора и у Кымбат (у остальных
-  // директоров его нет, см. ниже); отдельной «Истории загрузок» в меню нет
+  // меню: пункт «Импорт» с мастером — у администратора; отдельной «Истории загрузок» в меню нет
   const nav = sidebar(page);
   await expect(
     nav.getByRole("link", { name: "Импорт", exact: true }),
@@ -68,27 +80,10 @@ test("директор: «Импорт» с мастером, в таблице 
     0,
   );
 
-  // таблица: кнопки импорта нет, подсказка есть
-  await page.goto("/table");
-  await expect(page.locator("h1")).toContainText("Таблица");
-  await expect(
-    page.getByRole("button", { name: "Импорт из файла" }),
-  ).toHaveCount(0);
-  await expect(page.locator(".manual-note")).toContainText(
-    "файлы загружает администратор",
-  );
-  // «История загрузок» в подсказке — только у тех, у кого есть экран «Импорт»
-  await expect(
-    page
-      .locator(".manual-note")
-      .getByRole("button", { name: "История загрузок" }),
-  ).toBeVisible();
-
   // экран /import — мастер с файлом и история под ним (фаза 72)
   await page.goto("/import");
   await expect(page.locator("h1")).toContainText("Импорт");
   await expect(page.locator("input[type=file]")).toHaveCount(1);
-  await expect(page.locator(".manual-note")).toBeVisible();
 
   // прежнего пути с ручным сопоставлением колонок больше нет: поля грузит мастер
   const csrf = await csrfOf(page);
@@ -110,28 +105,21 @@ test("директор: «Импорт» с мастером, в таблице 
   await page.context().close();
 });
 
-test("директор спорта: соревнования без «Загрузить файлом», отказ на файл выступлений", async ({
+test("директор спорта: «Соревнований» и «Импорта» нет, отказ на файл выступлений", async ({
   browser,
 }) => {
+  // «Соревнования» у Нурлыбека заменены «Мероприятиями» (24.10.2026): ни пункта, ни адреса
   const page = await as(browser, "director_sport");
-  await page.goto("/competitions");
-  await expect(page.locator("h1")).toContainText("Соревнования");
-  await expect(
-    page.getByRole("button", { name: "Загрузить файлом" }),
-  ).toHaveCount(0);
-  await expect(page.locator(".manual-note")).toBeVisible();
-  // экрана «Импорт» у директора спорта нет — и кнопки «История загрузок»
-  // в подсказке нет: она вела бы в никуда; пункта меню тоже нет
-  await expect(
-    page
-      .locator(".manual-note")
-      .getByRole("button", { name: "История загрузок" }),
-  ).toHaveCount(0);
+  await page.goto("/dashboard");
+  await expect(sidebar(page).getByRole("link", { name: "Мероприятия", exact: true })).toBeVisible();
+  await expect(sidebar(page).getByRole("link", { name: "Соревнования", exact: true })).toHaveCount(0);
   await expect(
     sidebar(page).getByRole("link", { name: "Импорт", exact: true }),
   ).toHaveCount(0);
-  await page.goto("/import");
-  await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+  for (const path of ["/competitions", "/import"]) {
+    await page.goto(path);
+    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+  }
 
   const csrf = await csrfOf(page);
   const refused = await page.request.post("/api/competitions/import/preview/", {
@@ -237,7 +225,8 @@ test("директор видит загрузку администратора 
   expect(foreign.map((b: { id: number }) => b.id)).not.toContain(batchId);
   await talent.context().close();
 
-  const page = await as(browser, "director_exam");
+  // историю загрузок и отмену ведёт администратор: «Импорта» у Кымбат нет с 24.10.2026
+  const page = await as(browser, "admin");
   await page.goto("/import");
   const row = page
     .locator("table.tbl tbody tr")

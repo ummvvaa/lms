@@ -10,6 +10,7 @@
  */
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
+import { openDirectorQueue } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
@@ -65,9 +66,10 @@ test("ученик вносит балл IELTS — сразу видно «на 
 test("директор спорта не видит балл экзамена в своей очереди", async ({
   browser,
 }) => {
+  // очередь решений — на главной директора (раздела «Предложения» нет с 24.10.2026)
   const page = await as(browser, "director_sport");
-  await page.goto("/suggestions");
-  await expect(page.getByText("Предложения").first()).toBeVisible();
+  await page.goto("/dashboard");
+  await expect(page.locator("h1")).toContainText("Добрый день");
   await expect(
     page.locator("#student-queue").getByText("Текущий балл IELTS"),
   ).toHaveCount(0);
@@ -77,12 +79,10 @@ test("академический директор видит строку и п�
   browser,
 }) => {
   const page = await as(browser, "director_exam");
-  await page.goto("/suggestions");
-
-  const queue = page.locator("#student-queue");
+  const queue = await openDirectorQueue(page);
   await expect(queue).toBeVisible();
   const row = queue
-    .locator(".squeue__row", { hasText: "Текущий балл IELTS" })
+    .locator("[data-suggestion]", { hasText: "Текущий балл IELTS" })
     .first();
   await expect(row).toBeVisible();
 

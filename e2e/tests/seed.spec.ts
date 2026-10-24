@@ -84,6 +84,10 @@ async function as(browser: Browser, role: string): Promise<Page> {
   return page;
 }
 
+async function csrfOf(page: Page): Promise<string> {
+  return (await page.context().cookies()).find((c) => c.name === "csrftoken")?.value ?? "";
+}
+
 async function students(page: Page): Promise<Row[]> {
   const list = await (
     await page.request.get("/api/students/?page_size=500")
@@ -983,8 +987,12 @@ async function uploadMock(
 test("пробники: две загрузки с секциями, три пробника у одного, один в архиве", async ({
   browser,
 }) => {
-  // пробники файлом грузят Кымбат и администратор: куратору маршрут закрыт
-  const kymbat = await as(browser, "director_exam");
+  // пробники файлом грузит администратор (решение владельца, 24.10.2026):
+  // у Кымбат результаты на чтение, загрузка ей закрыта — это и закрепляем
+  const kymbat = await as(browser, "admin");
+  const reader = await as(browser, "director_exam");
+  expect((await reader.request.get("/api/mock-imports/?group=all")).status(), "Кымбат читает пробники").toBe(200);
+  await reader.context().close();
   const IELTS_HEADER = [
     "ФИО",
     "Listening",
@@ -1367,6 +1375,130 @@ test("профтест: учитель профориентации грузит
   });
   expect(assigned.status(), await assigned.text()).toBe(200);
   await teacher.context().close();
+});
+
+/**
+ * Кабинеты директоров (24.10.2026): эссе на проверке, олимпиады с участниками,
+ * освобождения этой недели, «Кубок BHS по волейболу» с заявками, звонки
+ * за неделю, дедлайны вузов в ближайшие 30 дней. Всё — на учениках прогона.
+ */
+test("кабинеты директоров: эссе, олимпиады, освобождения, мероприятия, звонки, дедлайны", async ({ browser }) => {
+  const admin = await as(browser, "admin");
+  const rows = await students(admin);
+  const byEmail = (email: string) => rows.find((row) => row.email === email)!;
+  const chicago = [1, 2, 3, 4].map((n) => byEmail(probeEmail(`pupil0${n}`)));
+
+  // эссе: четверо отправили на проверку, одно «Норм», одно «Не норм»
+  const essays: number[] = [];
+  for (const [index, pupil] of chicago.entries()) {
+    const page = await asPupil(browser, admin, pupil.email);
+    const mine = (await (await page.request.get("/api/essays/")).json()) as { results: { id: number; title: string; status: string }[] };
+    const title = ["Personal Statement", "Why us", "Supplement", "Activity essay"][index];
+    let essay = mine.results.find((row) => row.title === title)
+    if (!essay) {
+      essay = await apiPost<{ id: number; title: string; status: string }>(page, "/api/essays/", { title });
+      await apiPost(page, `/api/essays/${essay.id}/versions/`, { text: `Когда мне было двенадцать, я собрал радио. ${"Слово ".repeat(120 + index * 40)}` });
+      await apiPost(page, `/api/essays/${essay.id}/submit/`, {});
+    }
+    essays.push(essay.id);
+    await page.context().close();
+  }
+  const asem = await as(browser, "director_admission");
+  const verdicts: [number, string, string][] = [
+    [essays[2], "ok", "Хорошо, отправляй."],
+    [essays[3], "not_ok", "Нет своей истории, перепиши вступление."],
+  ];
+  for (const [id, verdict, comment] of verdicts) {
+    const answer = await asem.request.post(`/api/directors/essays/${id}/verdict/`, {
+      data: { verdict, comment },
+      headers: { "X-CSRFToken": await csrfOf(asem) },
+    });
+    expect([200, 400], await answer.text()).toContain(answer.status());
+  }
+
+  // дедлайны вузов: два раунда в ближайшие 30 дней с подающими
+  const programs = (await (await asem.request.get("/api/programs/?page_size=2")).json()) as { results: { id: number }[] };
+  for (const [index, program] of programs.results.entries()) {
+    const round = await apiPost<{ id: number }>(asem, "/api/rounds/", {
+      program: program.id,
+      round_type: index ? "RD" : "EA",
+      deadline: daysAhead(10 + index * 9),
+    });
+    for (const pupil of chicago.slice(index, index + 2)) {
+      await asem.request.post("/api/student-universities/", {
+        data: { student: pupil.id, program: program.id, admission_round: round.id, tier: "target" },
+        headers: { "X-CSRFToken": await csrfOf(asem) },
+      });
+    }
+  }
+  await asem.context().close();
+
+  // олимпиады: две, у каждой участники; освобождения этой недели — через них
+  const arman = await as(browser, "director_talent");
+  const today = daysAgo(0);
+  const olympiads = [
+    { title: "Городская олимпиада по математике", level: "city", starts: today, ends: daysAhead(1), place: "Дворец школьников" },
+    { title: "Республиканская олимпиада по физике", level: "national", starts: daysAhead(14), ends: daysAhead(16), place: "НИШ ФМН" },
+  ];
+  const listed = (await (await arman.request.get("/api/directors/olympiads/")).json()) as { rows: { id: number; title: string }[] };
+  for (const [index, row] of olympiads.entries()) {
+    const found = listed.rows.find((o) => o.title === row.title) ?? (await apiPost<{ id: number }>(arman, "/api/directors/olympiads/", row));
+    await apiPost(arman, `/api/directors/olympiads/${found.id}/entries/`, { students: chicago.slice(index, index + 3).map((p) => p.id) });
+    if (index === 0) {
+      const week = (await (await arman.request.get(`/api/directors/releases/?from=${today}&to=${daysAhead(1)}`)).json()) as { rows: unknown[] };
+      if (week.rows.length === 0) {
+        await apiPost(arman, "/api/directors/releases/", { olympiad: found.id, students: [chicago[0].id], starts: today, ends: today, slot_from: 3, slot_to: 4 });
+        await apiPost(arman, "/api/directors/releases/", { olympiad: found.id, students: [chicago[1].id, chicago[2].id], starts: daysAhead(1), ends: daysAhead(1) });
+      }
+    }
+  }
+  await arman.context().close();
+
+  // «Кубок BHS по волейболу»: участвовать и смотреть; одному — освобождение
+  const nurlybek = await as(browser, "director_sport");
+  const events = (await (await nurlybek.request.get("/api/directors/sport-events/")).json()) as { rows: { id: number; title: string }[] };
+  const cup =
+    events.rows.find((row) => row.title === "Кубок BHS по волейболу") ??
+    (await apiPost<{ id: number }>(nurlybek, "/api/directors/sport-events/", {
+      title: "Кубок BHS по волейболу",
+      kind: "competition",
+      starts_at: `${daysAhead(2)}T10:00:00`,
+      place: "Спортзал BHS",
+      seats: 12,
+      spectators: true,
+    }));
+  for (const [index, email] of [5, 6, 7].map((n) => probeEmail(`pupil0${n}`)).entries()) {
+    const page = await asPupil(browser, admin, email);
+    await page.request.post(`/api/my/sport-events/${cup.id}/apply/`, {
+      data: { kind: index === 2 ? "watch" : "play", comment: index === 0 ? "Капитан команды" : "" },
+      headers: { "X-CSRFToken": await csrfOf(page) },
+    });
+    await page.context().close();
+  }
+  const applications = (await (await nurlybek.request.get(`/api/directors/sport-events/${cup.id}/applications/`)).json()) as {
+    rows: { id: number; kind: string; status: string }[]
+  };
+  const player = applications.rows.find((row) => row.kind === "play" && row.status === "pending");
+  if (player) {
+    await apiPatch(nurlybek, `/api/directors/sport-applications/${player.id}/`, { status: "accepted" });
+    await apiPost(nurlybek, `/api/directors/sport-applications/${player.id}/release/`, { slot_from: 1, slot_to: 3 });
+  }
+  await nurlybek.context().close();
+
+  // звонки родителям за неделю — директор школы
+  const saltanat = await as(browser, "director_behavior");
+  const calls = (await (await saltanat.request.get("/api/directors/calls/?days=7")).json()) as { total: number };
+  if (calls.total < 2) {
+    for (const [pupil, outcome, note] of [
+      [chicago[0], "reached", "Болеет, справка будет в понедельник"],
+      [chicago[1], "call_back", "Просили перезвонить после 18:00"],
+      [byEmail(probeEmail("pupil05")), "no_answer", ""],
+    ] as const) {
+      await apiPost(saltanat, "/api/directors/calls/", { student: pupil.id, outcome, note });
+    }
+  }
+  await saltanat.context().close();
+  await admin.context().close();
 });
 
 test("посев помечает свои карточки вымышленными", async () => {

@@ -12,7 +12,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { statePath } from "../helpers/auth-state";
-import { apiDelete, apiPatch } from "../helpers/session";
+import { apiDelete, apiPatch, openDirectorQueue } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 240_000 });
 
@@ -96,9 +96,9 @@ test("цель видна в календаре с пометкой, после 
   await expect(pendingRow.getByText("ждёт проверки")).toBeVisible();
 
   const director = await as(browser, "director_exam");
-  await director.goto("/suggestions");
-  const row = director
-    .locator("#student-queue .squeue__row", {
+  const queue = await openDirectorQueue(director);
+  const row = queue
+    .locator("[data-suggestion]", {
       hasText: "Целевой балл экзамена",
     })
     .first();

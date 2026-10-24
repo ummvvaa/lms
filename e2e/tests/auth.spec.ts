@@ -51,7 +51,8 @@ test.describe("вход", () => {
     // что произошло уже в сессии
     diag.reset();
 
-    await expect(page.locator("h1")).toContainText("Экзамены");
+    // главная директора по макету кабинетов (24.10.2026): приветствие, а не название домена
+    await expect(page.locator("h1")).toContainText("Добрый день");
     // с фазы 48 роль стоит в блоке пользователя внизу меню, а не в шапке
     await expect(page.locator(".pmenu__userrole")).toContainText(
       "Академический директор",
@@ -190,7 +191,8 @@ test.describe("администратор заводит человека", () =
     await invited.getByRole("button", { name: "Сохранить пароль" }).click();
 
     await invited.waitForURL(/\/dashboard/);
-    await expect(invited.locator("h1")).toContainText("Спорт");
+    // главная директора по макету кабинетов (24.10.2026): приветствие, а не название домена
+    await expect(invited.locator("h1")).toContainText("Добрый день");
     await fresh.close();
   });
 
@@ -283,7 +285,8 @@ test.describe("обязательная смена пароля", () => {
       .fill("Свой!Собственный2026");
     await page.getByRole("button", { name: "Сохранить и продолжить" }).click();
 
-    await expect(page.locator("h1")).toContainText("Экзамены");
+    // главная директора по макету кабинетов (24.10.2026): приветствие, а не название домена
+    await expect(page.locator("h1")).toContainText("Добрый день");
     expect((await page.request.get("/api/students/")).status()).toBe(200);
   });
 });

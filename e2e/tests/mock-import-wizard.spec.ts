@@ -87,7 +87,7 @@ async function clearMock(
 test("мастер: три беды в файле, две исправлены, одна пропущена", async ({
   browser,
 }) => {
-  const page = await as(browser, "director_exam");
+  const page = await as(browser, "admin");
   await clearMock(page, "CHICAGO", MOCK_DATE);
   const diag = watch(page);
   await page.goto("/mock-imports?group=all");
@@ -190,7 +190,7 @@ test("мастер: три беды в файле, две исправлены, 
 test("результаты: сдавали, средний, ниже цели, напоминание и выгрузка", async ({
   browser,
 }) => {
-  const page = await as(browser, "director_exam");
+  const page = await as(browser, "admin");
   const diag = watch(page);
   await page.goto("/mock-imports?group=CHICAGO");
   await page
@@ -236,8 +236,8 @@ test("результаты: сдавали, средний, ниже цели, �
 test("карточка: секции последнего пробника, искры и кто загрузил", async ({
   browser,
 }) => {
-  // пробник файлом грузят Кымбат и администратор; куратор смотрит карточку
-  const kymbat = await as(browser, "director_exam");
+  // пробник файлом грузит администратор (решение владельца, 24.10.2026); куратор смотрит карточку
+  const kymbat = await as(browser, "admin");
   const page = await as(browser, "curator");
   // свой свежий пробник: у загрузок прошлых прогонов автор удалён вместе
   // с одноразовой записью, и «кто загрузил» там честно пусто
@@ -351,10 +351,10 @@ test("ученик: пробник помечен, править нечем, о
   await page.context().close();
 });
 
-test("Кымбат: грузит в чужую группу и возвращает пробник из архива", async ({
+test("администратор: грузит в любую группу и возвращает пробник из архива", async ({
   browser,
 }) => {
-  const page = await as(browser, "director_exam");
+  const page = await as(browser, "admin");
   await clearMock(page, "BOSTON", SAT_DATE);
   const diag = watch(page);
   await page.goto("/mock-imports?group=all");
@@ -390,7 +390,7 @@ test("Кымбат: грузит в чужую группу и возвраща�
   // в архив и обратно
   await page.getByRole("button", { name: "В архив" }).click();
   const ask = page.getByRole("dialog");
-  await expect(ask).toContainText("Вернуть сможет Кымбат или администратор");
+  await expect(ask).toContainText("Вернуть сможет администратор");
   const archiveMark = diag.mark();
   await ask.getByRole("button", { name: "В архив", exact: true }).click();
   await expect(page).toHaveURL(/\/mock-imports$|\/mock-imports\?/);
@@ -423,11 +423,23 @@ test("Кымбат: грузит в чужую группу и возвраща�
 });
 
 test("телефон: список пробников читается карточками", async ({ browser }) => {
-  const page = await as(browser, "director_exam", PHONE);
+  const page = await as(browser, "admin", PHONE);
   await page.goto("/mock-imports?group=all");
   await expect(page.locator("h1")).toContainText("Mock Test");
   // таблица на телефоне становится карточками: заголовок строки — экзамен
   await expect(page.locator("table.tbl tbody tr").first()).toBeVisible();
   await expect(page.locator(".tabbar")).toBeVisible();
+  await page.context().close();
+});
+
+test("Кымбат: пробники читает, файлом не грузит — ни пункта, ни адреса, API отвечает 403", async ({ browser }) => {
+  const page = await as(browser, "director_exam");
+  await expect(page.locator("nav.shell__menu").getByRole("link", { name: "Mock Test", exact: true })).toHaveCount(0);
+  await page.goto("/mock-imports");
+  await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+  expect((await page.request.get("/api/mock-imports/?group=all")).status()).toBe(200);
+  const csrf = (await page.context().cookies()).find((c) => c.name === "csrftoken")?.value ?? "";
+  const refused = await page.request.post("/api/mock-imports/preview/", { multipart: { exam_type: "IELTS", group: "CHICAGO" }, headers: { "X-CSRFToken": csrf } });
+  expect(refused.status()).toBe(403);
   await page.context().close();
 });

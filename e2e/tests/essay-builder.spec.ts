@@ -23,7 +23,20 @@ function csrf(page: Page): Promise<string> {
     .then((c) => c.find((x) => x.name === "csrftoken")?.value ?? "");
 }
 
-test("директор ведёт тип с гайдом и проверкой", async ({ browser }) => {
+test("конструктора эссе у директора по поступлению нет: ни пункта, ни адреса", async ({ browser }) => {
+  // раздел спрятан переключателем `DIRECTOR_HIDDEN` (решение владельца, 24.10.2026)
+  const director = await as(browser, "director_admission");
+  await director.goto("/dashboard");
+  await expect(director.locator("nav.shell__menu")).toBeVisible();
+  await expect(director.locator("nav.shell__menu")).not.toContainText("Конструктор эссе");
+  await director.goto("/essay-content");
+  await director.waitForURL(/\/dashboard/, { timeout: 15_000 });
+  await director.context().close();
+});
+
+// раздел спрятан у Асем и не открыт никому (решение владельца, 24.10.2026, `DIRECTOR_HIDDEN`):
+// сценарий остаётся до возврата раздела
+test.skip("директор ведёт тип с гайдом и проверкой", async ({ browser }) => {
   const director = await as(browser, "director_admission");
   const token = await csrf(director);
 
