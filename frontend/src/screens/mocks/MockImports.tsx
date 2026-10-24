@@ -300,7 +300,7 @@ export function MockResults() {
         open={asking}
         title={t('Убрать Mock Test в архив')}
         what={t('Файл и результаты не удаляются — уходят в архив. У учеников баллы этого Mock Test скроются, из корзин он тоже пропадёт.')}
-        consequences={[t('Вернуть сможет Кымбат или администратор.')]}
+        consequences={[t('Вернуть сможет администратор.')]}
         confirmLabel={t('В архив')}
         busy={archive.isPending}
         onCancel={() => setAsking(false)}

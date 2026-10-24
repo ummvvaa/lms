@@ -493,7 +493,6 @@ export const en: Record<string, string> = {
   'Вернуть как было': 'Restore original',
   'Вернуть на чтение': 'Back to read-only',
   'Вернуть себе': 'Take back',
-  'Вернуть сможет Кымбат или администратор.': 'Kymbat or an administrator can restore it.',
   'Вернуть текст': 'Restore text',
   'Вернуться в профиль': 'Back to profile',
   'Верный вариант': 'Correct option',
@@ -4389,4 +4388,6 @@ export const en: Record<string, string> = {
   '{goal} · до цели −{gap}': '{goal} · to the goal −{gap}',
   '{goal} · достигнута': '{goal} · reached',
   'Последний Mock': 'Last Mock',
+  'от куратора {name} · «{comment}»': 'from curator {name} · “{comment}”',
+  'Вернуть сможет администратор.': 'The administrator can restore it.',
 }

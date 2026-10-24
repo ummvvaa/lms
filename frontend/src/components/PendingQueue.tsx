@@ -80,6 +80,14 @@ function QueueRow({
           {row.student_group ? ` · ${row.student_group}` : ''}
         </b>
         <span className="muted">{change ? change.field_title : row.domain_title}</span>
+        {/* передал куратор: кто и его слова — владелец решает с ними (фаза 62) */}
+        {row.escalated && (
+          <span className="muted">
+            {row.escalation_comment
+              ? t('от куратора {name} · «{comment}»', { name: row.escalated_by_name, comment: row.escalation_comment })
+              : t('от куратора {name}', { name: row.escalated_by_name })}
+          </span>
+        )}
       </span>
 
       <span className="pqueue__values">

@@ -10,7 +10,7 @@
 import { useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
 import { t } from '../i18n'
-import { IMPORT_ROLES } from '../layout/nav'
+import { directorHidden, IMPORT_ROLES } from '../layout/nav'
 import Notice from './Notice'
 import { Button } from './ui/button'
 
@@ -24,7 +24,8 @@ export default function ManualEntryNote({
   const { me } = useAuth()
   // история загрузок живёт на экране «Импорт»; у кого экрана нет, тому
   // и кнопка вела бы в никуда
-  const seesHistory = history && me !== null && me !== undefined && IMPORT_ROLES.includes(me.role)
+  // у Кымбат «Импорт» спрятан (24.10.2026): кнопка вела бы на главную
+  const seesHistory = history && me !== null && me !== undefined && IMPORT_ROLES.includes(me.role) && !directorHidden(me.role, '/import')
   return (
     <Notice icon="upload" className="manual-note" summary={t('Файлы загружает администратор')}>
       <span className="manual-note__text">

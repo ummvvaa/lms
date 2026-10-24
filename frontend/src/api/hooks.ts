@@ -6132,7 +6132,7 @@ export function useArchiveMock() {
   })
 }
 
-/** Вернуть из архива — Кымбат или администратор. */
+/** Вернуть из архива — администратор (с 24.10.2026 пробники файлом ведёт он). */
 export function useRestoreMock() {
   const queryClient = useQueryClient()
   return useMutation({
