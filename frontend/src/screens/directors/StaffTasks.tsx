@@ -55,7 +55,11 @@ const whoOf = (task: StaffTask): Who =>
 function stateOf(task: StaffTask): { label: string; tone: Tone } {
   if (task.status === 'accepted') return { label: t('принято'), tone: 'good' }
   if (task.status === 'done') return { label: t('ждёт приёмки'), tone: 'info' }
-  if (task.late) return { label: tn(task.days_late, 'просрочено {n} день|просрочено {n} дня|просрочено {n} дней'), tone: 'bad' }
+  if (task.late)
+    return {
+      label: tn(task.days_late, 'просрочено {n} день|просрочено {n} дня|просрочено {n} дней'),
+      tone: 'bad',
+    }
   if (task.status === 'returned') return { label: t('возвращена'), tone: 'warn' }
   return { label: t('в работе'), tone: 'neutral' }
 }
@@ -76,7 +80,12 @@ export default function StaffTasks() {
   const open = data.rows.filter(isOpen)
   const byPerson = Object.values(
     open.reduce<Record<number, { name: string; role: string; n: number; late: number }>>((acc, task) => {
-      const row = (acc[task.assignee.id] ??= { name: task.assignee.name, role: task.assignee.role_title, n: 0, late: 0 })
+      const row = (acc[task.assignee.id] ??= {
+        name: task.assignee.name,
+        role: task.assignee.role_title,
+        n: 0,
+        late: 0,
+      })
       row.n += 1
       if (task.late) row.late += 1
       return acc
@@ -84,7 +93,10 @@ export default function StaffTasks() {
   ).sort((a, b) => b.n - a.n)
 
   const remind = (task: StaffTask) =>
-    action.mutate({ id: task.id, action: 'remind' }, { onSuccess: () => toast.success(t('Напоминание отправлено — {name}', { name: task.assignee.name })) })
+    action.mutate(
+      { id: task.id, action: 'remind' },
+      { onSuccess: () => toast.success(t('Напоминание отправлено — {name}', { name: task.assignee.name })) },
+    )
 
   return (
     <div className="lay-screen">
@@ -103,12 +115,19 @@ export default function StaffTasks() {
             label: (
               <>
                 {t(item.label)}
-                <span className="tabs__n num">{data.rows.filter((task) => matches(item.value, task)).length}</span>
+                <span className="tabs__n num">
+                  {data.rows.filter((task) => matches(item.value, task)).length}
+                </span>
               </>
             ),
           }))}
         />
-        <Segmented value={who} onChange={setWho} label={t('Кому')} items={WHO.map((item) => ({ value: item.value, label: t(item.label) }))} />
+        <Segmented
+          value={who}
+          onChange={setWho}
+          label={t('Кому')}
+          items={WHO.map((item) => ({ value: item.value, label: t(item.label) }))}
+        />
       </div>
       <div className="lay-main lay-main--even">
         <DataCard
@@ -135,7 +154,20 @@ export default function StaffTasks() {
                     <span className="dir__acts">
                       {task.status === 'done' ? (
                         <>
-                          <Button variant="outline" size="sm" disabled={action.isPending} onClick={() => action.mutate({ id: task.id, action: 'accept' }, { onSuccess: () => toast.success(t('Задача принята — {name}', { name: task.assignee.name })) })}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={action.isPending}
+                            onClick={() =>
+                              action.mutate(
+                                { id: task.id, action: 'accept' },
+                                {
+                                  onSuccess: () =>
+                                    toast.success(t('Задача принята — {name}', { name: task.assignee.name })),
+                                },
+                              )
+                            }
+                          >
                             {t('Принять')}
                           </Button>
                           <RowMenu>
@@ -143,7 +175,12 @@ export default function StaffTasks() {
                           </RowMenu>
                         </>
                       ) : isOpen(task) ? (
-                        <Button variant="ghost" size="sm" disabled={action.isPending} onClick={() => remind(task)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={action.isPending}
+                          onClick={() => remind(task)}
+                        >
                           {t('Напомнить')}
                         </Button>
                       ) : null}
@@ -155,7 +192,11 @@ export default function StaffTasks() {
           </div>
         </DataCard>
         <div className="lay-stack">
-          <DataCard title={t('Открыто по сотрудникам')} count={open.length || undefined} empty={byPerson.length === 0 && t('открытых задач нет')}>
+          <DataCard
+            title={t('Открыто по сотрудникам')}
+            count={open.length || undefined}
+            empty={byPerson.length === 0 && t('открытых задач нет')}
+          >
             <div className="dir__lines">
               {byPerson.slice(0, 5).map((row) => (
                 <div key={row.name} className="dir__line">
@@ -163,11 +204,22 @@ export default function StaffTasks() {
                     {row.name}
                     <span className="t-note">{` · ${row.role}`}</span>
                   </span>
-                  <b className="num">{row.late ? t('{n} · просрочено {late}', { n: row.n, late: row.late }) : row.n}</b>
+                  <b className="num">
+                    <span className="dir__count">
+                      {row.n}
+                      {row.late > 0 && (
+                        <Chip tone="bad" size="sm">
+                          {t('просрочено {n}', { n: row.late })}
+                        </Chip>
+                      )}
+                    </span>
+                  </b>
                 </div>
               ))}
             </div>
-            {byPerson.length > 5 && <span className="t-note">{t('ещё {n}', { n: byPerson.length - 5 })}</span>}
+            {byPerson.length > 5 && (
+              <span className="t-note">{t('ещё {n}', { n: byPerson.length - 5 })}</span>
+            )}
           </DataCard>
           <DataCard title={t('За месяц')}>
             <div className="dir__lines">
@@ -198,7 +250,15 @@ function ReturnDialog({ task, onClose }: { task: StaffTask; onClose: () => void 
   const [note, setNote] = useState('')
   return (
     <Modal title={t('Вернуть на доработку')} note={`${task.title} · ${task.assignee.name}`} onClose={onClose}>
-      <Field kind="textarea" name="return-note" label={t('Что доделать')} value={note} onChange={setNote} rows={3} autoFocus />
+      <Field
+        kind="textarea"
+        name="return-note"
+        label={t('Что доделать')}
+        value={note}
+        onChange={setNote}
+        rows={3}
+        autoFocus
+      />
       <div className="acad__actions">
         <Button variant="outline" onClick={onClose}>
           {t('Отмена')}
@@ -208,7 +268,12 @@ function ReturnDialog({ task, onClose }: { task: StaffTask; onClose: () => void 
           onClick={() =>
             action.mutate(
               { id: task.id, action: 'return', note },
-              { onSuccess: () => { toast.success(t('Задача возвращена на доработку — {name}', { name: task.assignee.name })); onClose() } },
+              {
+                onSuccess: () => {
+                  toast.success(t('Задача возвращена на доработку — {name}', { name: task.assignee.name }))
+                  onClose()
+                },
+              },
             )
           }
         >
@@ -220,20 +285,53 @@ function ReturnDialog({ task, onClose }: { task: StaffTask; onClose: () => void 
 }
 
 /** Новая задача сотруднику: кому, что, срок. Из «Отчётов» открывается сразу на учителя. */
-export function StaffTaskDialog({ assignee, onClose }: { assignee?: { id: number; name: string }; onClose: () => void }) {
+export function StaffTaskDialog({
+  assignee,
+  onClose,
+}: {
+  assignee?: { id: number; name: string }
+  onClose: () => void
+}) {
   const people = useStaffPeople()
   const save = useSetStaffTask()
   const [who, setWho] = useState(assignee ? String(assignee.id) : '')
   const [title, setTitle] = useState('')
   const week = daysFromToday(7)
   const [due, setDue] = useState(week)
-  const options = (people.data?.rows ?? []).map((row) => ({ value: String(row.id), title: `${row.name} · ${row.role_title}` }))
+  const options = (people.data?.rows ?? []).map((row) => ({
+    value: String(row.id),
+    title: `${row.name} · ${row.role_title}`,
+  }))
   return (
     <Modal title={t('Новая задача')} note={assignee?.name} onClose={onClose}>
       <div className="dir__form">
-        <Field className="dir__wide" kind="select" name="assignee" label={t('Кому')} value={who} onChange={setWho} options={options} placeholder={t('Выберите сотрудника')} />
-        <Field className="dir__wide" kind="textarea" name="title" label={t('Задача')} value={title} onChange={setTitle} rows={3} />
-        <Field kind="date" name="due" label={t('Срок')} value={due} onChange={setDue} hint={t('до {date}', { date: due ? formatDate(due) : '' })} />
+        <Field
+          className="dir__wide"
+          kind="select"
+          name="assignee"
+          label={t('Кому')}
+          value={who}
+          onChange={setWho}
+          options={options}
+          placeholder={t('Выберите сотрудника')}
+        />
+        <Field
+          className="dir__wide"
+          kind="textarea"
+          name="title"
+          label={t('Задача')}
+          value={title}
+          onChange={setTitle}
+          rows={3}
+        />
+        <Field
+          kind="date"
+          name="due"
+          label={t('Срок')}
+          value={due}
+          onChange={setDue}
+          hint={t('до {date}', { date: due ? formatDate(due) : '' })}
+        />
       </div>
       {save.error && <ErrorNote error={save.error} />}
       <div className="acad__actions">
@@ -245,7 +343,12 @@ export function StaffTaskDialog({ assignee, onClose }: { assignee?: { id: number
           onClick={() =>
             save.mutate(
               { assignee: Number(who), title, due },
-              { onSuccess: (task) => { toast.success(t('Задача поставлена — {name}', { name: task.assignee.name })); onClose() } },
+              {
+                onSuccess: (task) => {
+                  toast.success(t('Задача поставлена — {name}', { name: task.assignee.name }))
+                  onClose()
+                },
+              },
             )
           }
         >

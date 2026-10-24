@@ -15,7 +15,7 @@ import { Bar, Chip, DataCard, ErrorNote, Kpi, Loading, ScreenHead } from '../../
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
 import { formatDateTimeLong, formatDayMonth } from '../../lib/format'
-import { MyStaffTasksCard, todayLine, useGreeting } from './parts'
+import { HomeColumns, MyStaffTasksCard, todayLine, useGreeting } from './parts'
 import { EventDialog, seatsWords } from './SportEvents'
 
 export default function SportHome() {
@@ -47,106 +47,167 @@ export default function SportHome() {
         <Kpi
           label={t('Мероприятий в этом месяце')}
           value={thisMonth.length}
-          note={t('{c} соревнований · {e} мероприятий', { c: competitions, e: thisMonth.length - competitions })}
+          note={t('{c} соревнований · {e} мероприятий', {
+            c: competitions,
+            e: thisMonth.length - competitions,
+          })}
           to="/sport-events"
         />
         <Kpi label={t('Новых заявок')} value={fresh.length} note={t('ждут решения')} to="/sport-events" />
-        <Kpi label={t('Участников на ближайшем')} value={next ? seatsWords(next) : null} note={next?.title} to={next ? `/sport-events?open=${next.id}` : '/sport-events'} />
-        <Kpi label={t('Зрителей')} value={next?.spectators ? (next.watchers ?? 0) : null} note={t('записались смотреть')} />
+        <Kpi
+          label={t('Участников на ближайшем')}
+          value={next ? seatsWords(next) : null}
+          note={next?.title}
+          to={next ? `/sport-events?open=${next.id}` : '/sport-events'}
+        />
+        <Kpi
+          label={t('Зрителей')}
+          value={next?.spectators ? (next.watchers ?? 0) : null}
+          note={t('записались смотреть')}
+        />
       </div>
       <MyStaffTasksCard />
-      <PendingQueue fold />
-      <div className="lay-main lay-main--even">
-        {next ? (
-          <DataCard className="card--beam" title={t('Ближайшее мероприятие')} note={[next.title, next.kind_title, next.sport_title].filter(Boolean).join(' · ')}>
-            <div className="dir__lines">
-              <div className="dir__line">
-                <span>{t('Дата')}</span>
-                <b>{formatDateTimeLong(next.starts_at)}</b>
+      <PendingQueue fold hideEmpty />
+      <HomeColumns
+        main={[
+          next ? (
+            <DataCard
+              className="card--beam"
+              title={t('Ближайшее мероприятие')}
+              note={[next.title, next.kind_title, next.sport_title].filter(Boolean).join(' · ')}
+            >
+              <div className="dir__lines">
+                <div className="dir__line">
+                  <span>{t('Дата')}</span>
+                  <b>{formatDateTimeLong(next.starts_at)}</b>
+                </div>
+                <div className="dir__line">
+                  <span>{t('Место')}</span>
+                  <b>{next.place}</b>
+                </div>
+                <div className="dir__line">
+                  <span>{t('Заявок')}</span>
+                  <b className="num">
+                    {t('участвовать {p} · смотреть {w}', {
+                      p: next.applications ?? 0,
+                      w: next.watchers ?? 0,
+                    })}
+                  </b>
+                </div>
+                <div className="dir__line">
+                  <span>{t('Мест для участников занято')}</span>
+                  <b className="num">{seatsWords(next)}</b>
+                </div>
               </div>
-              <div className="dir__line">
-                <span>{t('Место')}</span>
-                <b>{next.place}</b>
+              {next.seats !== null && <Bar percent={(next.accepted * 100) / Math.max(1, next.seats)} />}
+              <div className="acad__actions">
+                <Button variant="outline" onClick={() => navigate(`/sport-events?open=${next.id}`)}>
+                  {t('Открыть заявки')}
+                </Button>
               </div>
-              <div className="dir__line">
-                <span>{t('Заявок')}</span>
-                <b className="num">{t('участвовать {p} · смотреть {w}', { p: next.applications ?? 0, w: next.watchers ?? 0 })}</b>
+            </DataCard>
+          ) : (
+            <DataCard
+              title={t('Ближайшее мероприятие')}
+              empty={t('мероприятий впереди нет')}
+              emptyAction={
+                <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
+                  {t('Добавить')}
+                </Button>
+              }
+            />
+          ),
+        ]}
+        aside={[
+          upcoming.length > 1 && (
+            <DataCard title={t('Дальше в календаре')} count={Math.max(0, upcoming.length - 1) || undefined}>
+              <div className="dir__rows">
+                <ShowAll>
+                  {upcoming.slice(1).map((row) => (
+                    <div key={row.id} className="dir__row">
+                      <span className="dir__what">
+                        <b>{row.title}</b>
+                        <span className="t-note">
+                          {[row.kind_title, row.sport_title, row.place].filter(Boolean).join(' · ')}
+                        </span>
+                      </span>
+                      <Chip size="sm">{formatDayMonth(row.starts_at)}</Chip>
+                      <span />
+                    </div>
+                  ))}
+                </ShowAll>
               </div>
-              <div className="dir__line">
-                <span>{t('Мест для участников занято')}</span>
-                <b className="num">{seatsWords(next)}</b>
+            </DataCard>
+          ),
+          fresh.length > 0 && (
+            <DataCard
+              title={t('Новые заявки')}
+              count={fresh.length || undefined}
+              right={
+                <Button variant="link" size="sm" onClick={() => navigate('/sport-events')}>
+                  {t('Все')}
+                </Button>
+              }
+            >
+              <div className="dir__rows">
+                <ShowAll>
+                  {fresh.map((row) => (
+                    <div key={row.id} className="dir__row">
+                      <Avatar name={row.student?.full_name ?? ''} />
+                      <span className="dir__what">
+                        <b>{row.student?.short_name}</b>
+                        <span className="t-note">
+                          {[row.student?.group, row.event?.title, row.comment].filter(Boolean).join(' · ')}
+                        </span>
+                      </span>
+                      <span />
+                      <span className="dir__acts">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={decide.isPending}
+                          onClick={() =>
+                            decide.mutate(
+                              { id: row.id, status: 'accepted' },
+                              {
+                                onSuccess: () => toast.success(t('Заявка принята · ученик увидит статус')),
+                                onError: (reason) => toast.error(reason.message),
+                              },
+                            )
+                          }
+                        >
+                          {t('Принять')}
+                        </Button>
+                        <RowMenu>
+                          <RowMenuItem
+                            onClick={() =>
+                              decide.mutate(
+                                { id: row.id, status: 'declined' },
+                                {
+                                  onSuccess: () =>
+                                    toast.success(t('Заявка отклонена · ученик увидит статус')),
+                                },
+                              )
+                            }
+                          >
+                            {t('Отклонить')}
+                          </RowMenuItem>
+                        </RowMenu>
+                      </span>
+                    </div>
+                  ))}
+                </ShowAll>
               </div>
-            </div>
-            {next.seats !== null && <Bar percent={(next.accepted * 100) / Math.max(1, next.seats)} />}
-            <div className="acad__actions">
-              <Button variant="outline" onClick={() => navigate(`/sport-events?open=${next.id}`)}>
-                {t('Открыть заявки')}
-              </Button>
-            </div>
-          </DataCard>
-        ) : (
-          <DataCard title={t('Ближайшее мероприятие')} empty={t('мероприятий впереди нет')} emptyAction={<Button size="sm" variant="outline" onClick={() => setCreating(true)}>{t('Добавить')}</Button>} />
-        )}
-        <div className="lay-stack">
-          <DataCard title={t('Дальше в календаре')} count={Math.max(0, upcoming.length - 1) || undefined} empty={upcoming.length <= 1 && t('дальше пока ничего нет')}>
-            <div className="dir__rows">
-              <ShowAll>
-                {upcoming.slice(1).map((row) => (
-                  <div key={row.id} className="dir__row">
-                    <span className="dir__what">
-                      <b>{row.title}</b>
-                      <span className="t-note">{[row.kind_title, row.sport_title, row.place].filter(Boolean).join(' · ')}</span>
-                    </span>
-                    <Chip size="sm">{formatDayMonth(row.starts_at)}</Chip>
-                    <span />
-                  </div>
-                ))}
-              </ShowAll>
-            </div>
-          </DataCard>
-          <DataCard
-            title={t('Новые заявки')}
-            count={fresh.length || undefined}
-            empty={fresh.length === 0 && t('новых заявок нет')}
-            right={
-              <Button variant="link" size="sm" onClick={() => navigate('/sport-events')}>
-                {t('Все')}
-              </Button>
-            }
-          >
-            <div className="dir__rows">
-              <ShowAll>
-                {fresh.map((row) => (
-                  <div key={row.id} className="dir__row">
-                    <Avatar name={row.student?.full_name ?? ''} />
-                    <span className="dir__what">
-                      <b>{row.student?.short_name}</b>
-                      <span className="t-note">{[row.student?.group, row.event?.title, row.comment].filter(Boolean).join(' · ')}</span>
-                    </span>
-                    <span />
-                    <span className="dir__acts">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={decide.isPending}
-                        onClick={() => decide.mutate({ id: row.id, status: 'accepted' }, { onSuccess: () => toast.success(t('Заявка принята · ученик увидит статус')), onError: (reason) => toast.error(reason.message) })}
-                      >
-                        {t('Принять')}
-                      </Button>
-                      <RowMenu>
-                        <RowMenuItem onClick={() => decide.mutate({ id: row.id, status: 'declined' }, { onSuccess: () => toast.success(t('Заявка отклонена · ученик увидит статус')) })}>
-                          {t('Отклонить')}
-                        </RowMenuItem>
-                      </RowMenu>
-                    </span>
-                  </div>
-                ))}
-              </ShowAll>
-            </div>
-          </DataCard>
-        </div>
-      </div>
-      {creating && <EventDialog onClose={() => setCreating(false)} onSaved={(row) => navigate(`/sport-events?open=${row.id}`)} />}
+            </DataCard>
+          ),
+        ]}
+      />
+      {creating && (
+        <EventDialog
+          onClose={() => setCreating(false)}
+          onSaved={(row) => navigate(`/sport-events?open=${row.id}`)}
+        />
+      )}
     </div>
   )
 }

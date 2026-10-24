@@ -66,8 +66,19 @@ export default function Parents() {
         </span>
       ),
     },
-    { key: 'why', title: t('Причина'), width: 'auto', cell: (row) => row.reason },
-    { key: 'phone', title: t('Телефон'), width: '160px', cell: (row) => (row.contact?.phone ? <a href={`tel:${row.contact.phone}`}>{row.contact.phone}</a> : t('нет телефона')) },
+    {
+      key: 'why',
+      title: t('Причина'),
+      width: 'auto',
+      cell: (row) => <span className="dir__clamp">{row.reason}</span>,
+    },
+    {
+      key: 'phone',
+      title: t('Телефон'),
+      width: '160px',
+      cell: (row) =>
+        row.contact?.phone ? <a href={`tel:${row.contact.phone}`}>{row.contact.phone}</a> : t('нет телефона'),
+    },
     {
       key: 'state',
       title: t('Статус'),
@@ -92,7 +103,14 @@ export default function Parents() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setCalling({ id: row.student_id, name: row.student, note: [row.parent, row.contact?.phone].filter(Boolean).join(' · '), contact: row.contact_id })}
+          onClick={() =>
+            setCalling({
+              id: row.student_id,
+              name: row.student,
+              note: [row.parent, row.contact?.phone].filter(Boolean).join(' · '),
+              contact: row.contact_id,
+            })
+          }
         >
           {t('Итог звонка')}
         </Button>
@@ -101,7 +119,13 @@ export default function Parents() {
   ]
 
   const contactColumns: Column<ParentContact>[] = [
-    { key: 'student', title: t('Ученик'), width: 'auto', phone: 'head', cell: (row) => <b>{row.student_name}</b> },
+    {
+      key: 'student',
+      title: t('Ученик'),
+      width: 'auto',
+      phone: 'head',
+      cell: (row) => <b>{row.student_name}</b>,
+    },
     { key: 'group', title: t('Группа'), width: '110px', cell: (row) => row.student_group || t('без группы') },
     {
       key: 'parent',
@@ -114,14 +138,21 @@ export default function Parents() {
         </>
       ),
     },
-    { key: 'phone', title: t('Телефон'), width: '160px', cell: (row) => (row.phone ? <a href={`tel:${row.phone}`}>{row.phone}</a> : t('нет телефона')) },
+    {
+      key: 'phone',
+      title: t('Телефон'),
+      width: '160px',
+      cell: (row) => (row.phone ? <a href={`tel:${row.phone}`}>{row.phone}</a> : t('нет телефона')),
+    },
     {
       key: 'last',
       title: t('Последний звонок'),
       width: '150px',
       cell: (row) => {
         const last = lastCall.get(row.student)
-        return last ? `${formatDayMonthShort(last.at)} · ${last.outcome_title.toLocaleLowerCase()}` : t('не звонили')
+        return last
+          ? `${formatDayMonthShort(last.at)} · ${last.outcome_title.toLocaleLowerCase()}`
+          : t('не звонили')
       },
     },
     {
@@ -130,7 +161,18 @@ export default function Parents() {
       width: '140px',
       actions: true,
       cell: (row) => (
-        <Button variant="outline" size="sm" onClick={() => setCalling({ id: row.student, name: row.student_name, note: [row.full_name, row.phone].filter(Boolean).join(' · '), contact: row.id })}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            setCalling({
+              id: row.student,
+              name: row.student_name,
+              note: [row.full_name, row.phone].filter(Boolean).join(' · '),
+              contact: row.id,
+            })
+          }
+        >
           {t('Итог звонка')}
         </Button>
       ),
@@ -138,7 +180,13 @@ export default function Parents() {
   ]
 
   const historyColumns: Column<CallRow>[] = [
-    { key: 'when', title: t('Когда'), width: '150px', cell: (row) => formatDateTime(row.at), sortBy: (row) => row.at },
+    {
+      key: 'when',
+      title: t('Когда'),
+      width: '150px',
+      cell: (row) => formatDateTime(row.at),
+      sortBy: (row) => row.at,
+    },
     {
       key: 'student',
       title: t('Ученик'),
@@ -152,7 +200,16 @@ export default function Parents() {
       ),
     },
     { key: 'who', title: t('Кто звонил'), width: 'auto', cell: (row) => row.by },
-    { key: 'res', title: t('Итог'), width: '140px', cell: (row) => <Chip tone={OUTCOME_TONE[row.outcome]} size="sm">{row.outcome_title}</Chip> },
+    {
+      key: 'res',
+      title: t('Итог'),
+      width: '140px',
+      cell: (row) => (
+        <Chip tone={OUTCOME_TONE[row.outcome]} size="sm">
+          {row.outcome_title}
+        </Chip>
+      ),
+    },
     { key: 'note', title: t('Комментарий'), width: 'auto', cell: (row) => row.note || t('без записи') },
   ]
 
@@ -162,7 +219,10 @@ export default function Parents() {
 
   return (
     <div className="lay-screen">
-      <ScreenHead title={t('Родители')} subtitle={todayLine(t('итоги звонков записываются в карточку ученика'))} />
+      <ScreenHead
+        title={t('Родители')}
+        subtitle={todayLine(t('итоги звонков записываются в карточку ученика'))}
+      />
       <div className="lay-4">
         <Kpi label={t('Позвонить сегодня')} value={left.length} note={t('по правилам обзвона')} />
         <Kpi label={t('Звонков за неделю')} value={week.total} note={t('вы и кураторы')} />
@@ -173,23 +233,65 @@ export default function Parents() {
         value={tab}
         onChange={setTab}
         items={[
-          { value: 'today' as const, label: <>{t('Позвонить сегодня')} <span className="tabs__n num">{left.length}</span></> },
+          {
+            value: 'today' as const,
+            label: (
+              <>
+                {t('Позвонить сегодня')} <span className="tabs__n num">{left.length}</span>
+              </>
+            ),
+          },
           { value: 'contacts' as const, label: t('Контакты') },
-          { value: 'history' as const, label: <>{t('История звонков')} <span className="tabs__n num">{history.data?.total ?? 0}</span></> },
+          {
+            value: 'history' as const,
+            label: (
+              <>
+                {t('История звонков')} <span className="tabs__n num">{history.data?.total ?? 0}</span>
+              </>
+            ),
+          },
           { value: 'rules' as const, label: t('Правила обзвона') },
         ]}
       />
       {tab === 'today' && (
-        <DataCard className={rows.length ? 'card--beam' : undefined} title={t('Позвонить сегодня')} note={t('по включённым правилам')} count={rows.length || undefined} empty={rows.length === 0 && t('по правилам обзвона звонить сегодня некому')}>
-          <DataTable columns={todayColumns} rows={rows} rowKey={(row) => row.student_id} limit={5} fit={!phone} />
+        <DataCard
+          className={rows.length ? 'card--beam' : undefined}
+          title={t('Позвонить сегодня')}
+          note={t('по включённым правилам')}
+          // то же число, что «Позвонить сегодня» на главной и в показателе: кто ещё ждёт звонка
+          count={left.length || undefined}
+          empty={rows.length === 0 && t('по правилам обзвона звонить сегодня некому')}
+        >
+          <DataTable
+            columns={todayColumns}
+            rows={rows}
+            rowKey={(row) => row.student_id}
+            limit={5}
+            fit={!phone}
+          />
         </DataCard>
       )}
       {tab === 'contacts' && (
         <DataCard title={t('Контакты родителей')} count={contacts.data?.count}>
           <div className="filters">
-            <Field usageFilter className="filters__search" name="q" label={t('Поиск')} value={search} placeholder={t('Фамилия ученика')} onChange={setSearch} />
+            <Field
+              usageFilter
+              className="filters__search"
+              name="q"
+              label={t('Поиск')}
+              value={search}
+              placeholder={t('Фамилия ученика')}
+              onChange={setSearch}
+            />
           </div>
-          <DataTable columns={contactColumns} rows={contacts.data?.results ?? []} rowKey={(row) => row.id} limit={5} fit={!phone} empty={t('Никого с такой фамилией')} />
+          <DataTable
+            columns={contactColumns}
+            rows={contacts.data?.results ?? []}
+            rowKey={(row) => row.id}
+            limit={5}
+            fit={!phone}
+            empty={t('Никого с такой фамилией')}
+          />
         </DataCard>
       )}
       {tab === 'history' && (
@@ -205,14 +307,22 @@ export default function Parents() {
               onClick={() =>
                 downloadFile('/directors/calls/export/', t('Звонки родителям.xlsx'))
                   .then(() => toast.success(t('Файл xlsx скачан')))
-                  .catch((reason: unknown) => toast.error(reason instanceof Error ? reason.message : String(reason)))
+                  .catch((reason: unknown) =>
+                    toast.error(reason instanceof Error ? reason.message : String(reason)),
+                  )
               }
             >
               {t('Выгрузить xlsx')}
             </Button>
           }
         >
-          <DataTable columns={historyColumns} rows={history.data?.rows ?? []} rowKey={(row) => row.id} limit={5} fit={!phone} />
+          <DataTable
+            columns={historyColumns}
+            rows={history.data?.rows ?? []}
+            rowKey={(row) => row.id}
+            limit={5}
+            fit={!phone}
+          />
         </DataCard>
       )}
       {tab === 'rules' && (
@@ -242,7 +352,12 @@ export default function Parents() {
                     variant="ghost"
                     size="sm"
                     disabled={rules.update.isPending}
-                    onClick={() => rules.update.mutate({ id: rule.id, is_active: !rule.is_active }, { onSuccess: () => void today.refetch() })}
+                    onClick={() =>
+                      rules.update.mutate(
+                        { id: rule.id, is_active: !rule.is_active },
+                        { onSuccess: () => void today.refetch() },
+                      )
+                    }
                   >
                     {rule.is_active ? t('Выключить') : t('Включить')}
                   </Button>
@@ -252,7 +367,16 @@ export default function Parents() {
           </div>
         </DataCard>
       )}
-      {calling && <CallDialog student={calling.id} name={calling.name} note={calling.note} contact={calling.contact} rule={calling.rule} onClose={() => setCalling(null)} />}
+      {calling && (
+        <CallDialog
+          student={calling.id}
+          name={calling.name}
+          note={calling.note}
+          contact={calling.contact}
+          rule={calling.rule}
+          onClose={() => setCalling(null)}
+        />
+      )}
     </div>
   )
 }

@@ -440,7 +440,8 @@ def call_list(limit: int = 8) -> list[dict]:
             if order[rule.urgency] < order[current["urgency"]]:
                 current["urgency"] = rule.urgency
                 current["urgency_title"] = rule.get_urgency_display()
-            current["reasons"].append(reason)
+            if reason not in current["reasons"]:
+                current["reasons"].append(reason)
             return
         contact = ParentContact.objects.filter(student=student).exclude(phone="").order_by("-is_primary", "id").first()
         rows[student.pk] = {
@@ -482,11 +483,9 @@ def call_list(limit: int = 8) -> list[dict]:
                 add(
                     student,
                     rule,
-                    (
-                        tn(days, "{n} день без входа|{n} дня без входа|{n} дней без входа")
-                        if days is not None
-                        else _("не входил ни разу")
-                    ),
+                    # «не входил ни разу» рядом с «Не заходил в систему» — одно и то же дважды:
+                    # подпись правила уже это говорит
+                    tn(days, "{n} день без входа|{n} дня без входа|{n} дней без входа") if days is not None else "",
                 )
         elif rule.condition == CallCondition.MISSED_DEADLINE:
             missed = (

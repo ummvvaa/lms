@@ -41,7 +41,10 @@ export default function StudentSport() {
   const shown = upcoming.filter((row) => kind === 'all' || row.kind === kind)
 
   const watch = (row: SportEventRow) =>
-    apply.mutate({ id: row.id, kind: 'watch', comment: '' }, { onSuccess: () => toast.success(t('Заявка отправлена директору спорта')) })
+    apply.mutate(
+      { id: row.id, kind: 'watch', comment: '' },
+      { onSuccess: () => toast.success(t('Заявка отправлена директору спорта')) },
+    )
 
   const actions = (row: SportEventRow) =>
     row.mine ? (
@@ -64,7 +67,11 @@ export default function StudentSport() {
   return (
     <>
       {next ? (
-        <DataCard className="card--beam" title={next.title} note={[next.kind_title, next.sport_title].filter(Boolean).join(' · ')}>
+        <DataCard
+          className="card--beam"
+          title={next.title}
+          note={[next.kind_title, next.sport_title].filter(Boolean).join(' · ')}
+        >
           <div className="dir__lines">
             <div className="dir__line">
               <span>{t('Дата')}</span>
@@ -82,10 +89,17 @@ export default function StudentSport() {
           <div className="acad__actions">{actions(next)}</div>
         </DataCard>
       ) : (
-        <DataCard title={t('Мероприятия школы')} empty={t('ближайших мероприятий нет — ведёт директор спорта')} />
+        <DataCard
+          title={t('Мероприятия школы')}
+          empty={t('ближайших мероприятий нет — ведёт директор спорта')}
+        />
       )}
       <div className="lay-main lay-main--even">
-        <DataCard title={t('Все мероприятия')} count={shown.length || undefined} empty={shown.length === 0 && t('мероприятий пока нет')}>
+        <DataCard
+          title={t('Все мероприятия')}
+          count={shown.length || undefined}
+          empty={shown.length === 0 && t('мероприятий пока нет')}
+        >
           <div className="filters">
             <Segmented
               value={kind}
@@ -105,7 +119,14 @@ export default function StudentSport() {
                   <span className="dir__what">
                     <b>{row.title}</b>
                     <span className="t-note">
-                      {[formatDayMonth(row.starts_at), row.sport_title, row.place, row.spectators ? '' : t('без зрителей')].filter(Boolean).join(' · ')}
+                      {[
+                        formatDayMonth(row.starts_at),
+                        row.sport_title,
+                        row.place,
+                        row.spectators ? '' : t('без зрителей'),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </span>
                   </span>
                   <span />
@@ -115,7 +136,11 @@ export default function StudentSport() {
             </ShowAll>
           </div>
         </DataCard>
-        <DataCard title={t('Мои заявки')} count={mine.length || undefined} empty={mine.length === 0 && t('заявок пока нет')}>
+        <DataCard
+          title={t('Мои заявки')}
+          count={mine.length || undefined}
+          empty={mine.length === 0 && t('заявок пока нет')}
+        >
           <div className="dir__rows">
             <ShowAll>
               {mine.map((row) => (
@@ -128,13 +153,21 @@ export default function StudentSport() {
                     {row.mine?.status_title}
                   </Chip>
                   <span className="dir__acts">
-                    {row.mine && !row.past && !(row.mine.status === 'accepted' && row.mine.kind === 'play') && (
-                      <RowMenu>
-                        <RowMenuItem onClick={() => withdraw.mutate(row.mine!.id, { onSuccess: () => toast.success(t('Заявка отозвана')) })}>
-                          {t('Отозвать заявку')}
-                        </RowMenuItem>
-                      </RowMenu>
-                    )}
+                    {row.mine &&
+                      !row.past &&
+                      !(row.mine.status === 'accepted' && row.mine.kind === 'play') && (
+                        <RowMenu>
+                          <RowMenuItem
+                            onClick={() =>
+                              withdraw.mutate(row.mine!.id, {
+                                onSuccess: () => toast.success(t('Заявка отозвана')),
+                              })
+                            }
+                          >
+                            {t('Отозвать заявку')}
+                          </RowMenuItem>
+                        </RowMenu>
+                      )}
                   </span>
                 </div>
               ))}
@@ -151,8 +184,20 @@ function ApplyDialog({ row, onClose }: { row: SportEventRow; onClose: () => void
   const apply = useApplySport()
   const [comment, setComment] = useState('')
   return (
-    <Modal title={t('Участвовать')} note={`${row.title} · ${formatDayMonth(row.starts_at)}`} onClose={onClose}>
-      <Field kind="textarea" name="sport-comment" label={t('Комментарий директору')} value={comment} onChange={setComment} rows={3} placeholder={t('Например: играю в команде, был на прошлом турнире')} />
+    <Modal
+      title={t('Участвовать')}
+      note={`${row.title} · ${formatDayMonth(row.starts_at)}`}
+      onClose={onClose}
+    >
+      <Field
+        kind="textarea"
+        name="sport-comment"
+        label={t('Комментарий директору')}
+        value={comment}
+        onChange={setComment}
+        rows={3}
+        placeholder={t('Например: играю в команде, был на прошлом турнире')}
+      />
       {apply.error && <ErrorNote error={apply.error} />}
       <div className="acad__actions">
         <Button variant="outline" onClick={onClose}>

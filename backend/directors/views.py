@@ -1067,7 +1067,6 @@ def sport_application_release(request, pk: int):
 
 
 def _me_student(request):
-    from students.models import Student
 
     if _role(request) != ROLE_STUDENT:
         return None
@@ -1137,76 +1136,6 @@ def my_sport_application(request, pk: int):
 @permission_classes([IsAuthenticated])
 def morning(request):
     """Утренние отметки всех групп за день: кто отметил и когда, кого нет, кто опоздал, кто освобождён."""
-    from accounts.curators import active_assignments
-    from students.models import AttendanceDay, StudyGroup
-
     if _role(request) not in ("director_behavior", ROLE_ADMIN):
         return _forbid(_("Утренние отметки по школе читает директор школы"))
-    day = _date(request.query_params.get("date")) or timezone.localdate()
-    groups = list(StudyGroup.objects.filter(is_active=True).order_by("parallel", "code"))
-    curators = {
-        row.group_id: row.curator.full_name or row.curator.email
-        for row in active_assignments().select_related("curator")
-    }
-    students = list(Student.objects.filter(is_active=True, group__in=groups).select_related("group"))
-    marks = {row.student_id: row for row in AttendanceDay.objects.filter(date=day, student__in=students)}
-    released = services.released_map([s.pk for s in students], day, day)
-    by_group: dict[int, dict] = {
-        g.pk: {
-            "id": g.pk,
-            "code": g.code,
-            "parallel": g.parallel,
-            "curator": curators.get(g.pk, ""),
-            "size": 0,
-            "marked": False,
-            "at": None,
-            "absent": 0,
-            "late": 0,
-            "released": 0,
-            "students": [],
-        }
-        for g in groups
-    }
-    for student in students:
-        row = by_group[student.group_id]
-        row["size"] += 1
-        mark = marks.get(student.pk)
-        free = services.released_on(released, student.pk, day)
-        if mark is not None:
-            row["marked"] = True
-            row["at"] = max(filter(None, (row["at"], mark.updated_at)), default=None)
-        state = "released" if free else (mark.mark if mark is not None else "")
-        if state == "absent":
-            row["absent"] += 1
-        elif state == "late":
-            row["late"] += 1
-        elif state == "released":
-            row["released"] += 1
-        if state in ("absent", "late", "released"):
-            row["students"].append(
-                {
-                    **_brief(student),
-                    "state": state,
-                    "reason": services.release_label(free) if free else mark.reason,
-                }
-            )
-    rows = list(by_group.values())
-    for row in rows:
-        row["at"] = timezone.localtime(row["at"]).strftime("%H:%M") if row["at"] else ""
-        row["students"].sort(key=lambda s: ({"absent": 0, "late": 1, "released": 2}[s["state"]], s["full_name"]))
-    marked = [r for r in rows if r["marked"]]
-    return Response(
-        {
-            "date": day,
-            "groups": rows,
-            "totals": {
-                "students": len(students),
-                "absent": sum(r["absent"] for r in rows),
-                "late": sum(r["late"] for r in rows),
-                "released": sum(r["released"] for r in rows),
-                "groups": len(rows),
-                "marked": len(marked),
-                "last": max((r["at"] for r in marked if r["at"]), default=""),
-            },
-        }
-    )
+    return Response(reports.morning_overview(_date(request.query_params.get("date"))))

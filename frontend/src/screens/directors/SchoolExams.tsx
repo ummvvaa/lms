@@ -52,45 +52,71 @@ export default function SchoolExams() {
   if (!data) return null
 
   const s = data.summary
-  const last = data.rows.map((row) => row.mock_date).filter(Boolean).sort().at(-1)
+  const last = data.rows
+    .map((row) => row.mock_date)
+    .filter(Boolean)
+    .sort()
+    .at(-1)
   const values = data.rows.map((row) => Number(row.mock)).filter((v) => isScore(v))
   const buckets = BUCKETS[exam].map((bucket) => ({ ...bucket, n: values.filter(bucket.test).length }))
   const top = Math.max(1, ...buckets.map((b) => b.n))
 
   const columns: Column<ExamResultRow>[] = [
-    { key: 'name', title: t('Ученик'), width: 'auto', phone: 'head', cell: (row) => <b>{row.full_name}</b>, sortBy: (row) => row.full_name },
-    { key: 'group', title: t('Группа'), width: '110px', cell: (row) => <Chip size="sm">{row.group}</Chip>, sortBy: (row) => row.group },
+    {
+      key: 'name',
+      title: t('Ученик'),
+      width: 'auto',
+      phone: 'head',
+      // фамилия и имя не разрываются посреди слова — переносится только между словами
+      cell: (row) => <b className="dir__name">{row.full_name}</b>,
+      sortBy: (row) => row.full_name,
+    },
+    {
+      key: 'group',
+      title: t('Группа'),
+      width: '110px',
+      cell: (row) => <Chip size="sm">{row.group}</Chip>,
+      sortBy: (row) => row.group,
+    },
     {
       key: 'mock',
-      title: exam === 'IELTS' ? t('Последний Mock · L / R / W / S') : t('Последний Mock · M / V'),
-      width: 'auto',
+      title: t('Последний Mock'),
+      hint: exam === 'IELTS' ? t('Последний Mock · L / R / W / S') : t('Последний Mock · M / V'),
+      width: '200px',
       cell: (row) =>
         row.mock ? (
           <>
             <b className="num">{row.mock}</b>
-            <span className="t-note">{` · ${row.sections}`}</span>
+            {row.sections && <span className="t-note">{` · ${row.sections}`}</span>}
           </>
         ) : (
           <span className="t-note">{t('не сдавал(а)')}</span>
         ),
       sortBy: (row) => (row.mock ? Number(row.mock) : null),
     },
-    { key: 'official', title: t('Официальный'), width: '120px', align: 'right', cell: (row) => <span className="num">{row.official || t('нет')}</span>, sortBy: (row) => (row.official ? Number(row.official) : null) },
-    { key: 'goal', title: t('Цель'), width: '90px', align: 'right', cell: (row) => <span className="num">{row.goal || t('нет')}</span> },
     {
-      key: 'gap',
-      title: t('До цели'),
-      width: '130px',
+      key: 'official',
+      title: t('Официальный'),
+      width: '150px',
+      align: 'right',
+      cell: (row) => <span className="num">{row.official || t('нет')}</span>,
+      sortBy: (row) => (row.official ? Number(row.official) : null),
+    },
+    {
+      // цель и разница — одной пометкой: «Цель: нет» и «До цели: цели нет» говорили одно дважды
+      key: 'goal',
+      title: t('Цель'),
+      width: '170px',
       cell: (row) =>
-        row.gap === null ? (
+        row.gap === null || !row.goal ? (
           <span className="t-note">{t('цели нет')}</span>
         ) : row.gap === 0 ? (
           <Chip tone="good" size="sm">
-            {t('цель достигнута')}
+            {t('{goal} · достигнута', { goal: row.goal })}
           </Chip>
         ) : (
           <Chip tone={row.gap >= (exam === 'IELTS' ? 1 : 100) ? 'bad' : 'warn'} size="sm">
-            {`−${row.gap}`}
+            {t('{goal} · до цели −{gap}', { goal: row.goal, gap: row.gap })}
           </Chip>
         ),
       sortBy: (row) => row.gap,
@@ -101,16 +127,25 @@ export default function SchoolExams() {
     <div className="lay-screen">
       <ScreenHead
         title={t('Результаты экзаменов')}
-        subtitle={last ? t('11 параллель · последний Mock Test {date}', { date: formatDayMonth(last) }) : t('11 параллель')}
+        subtitle={
+          last
+            ? t('11 параллель · последний Mock Test {date}', { date: formatDayMonth(last) })
+            : t('11 параллель')
+        }
         actions={
           <Button
             variant="outline"
             disabled={saving}
             onClick={() => {
               setSaving(true)
-              downloadFile(`/directors/exam-results/export/?exam=${exam}${group ? `&group=${encodeURIComponent(group)}` : ''}`, `${exam}.xlsx`)
+              downloadFile(
+                `/directors/exam-results/export/?exam=${exam}${group ? `&group=${encodeURIComponent(group)}` : ''}`,
+                `${exam}.xlsx`,
+              )
                 .then(() => toast.success(t('Файл xlsx скачан')))
-                .catch((reason: unknown) => toast.error(reason instanceof Error ? reason.message : String(reason)))
+                .catch((reason: unknown) =>
+                  toast.error(reason instanceof Error ? reason.message : String(reason)),
+                )
                 .finally(() => setSaving(false))
             }}
           >
@@ -119,7 +154,15 @@ export default function SchoolExams() {
         }
       />
       <div className="filters">
-        <Segmented value={exam} onChange={setExam} label={t('Экзамен')} items={[{ value: 'IELTS', label: 'IELTS' }, { value: 'SAT', label: 'SAT' }]} />
+        <Segmented
+          value={exam}
+          onChange={setExam}
+          label={t('Экзамен')}
+          items={[
+            { value: 'IELTS', label: 'IELTS' },
+            { value: 'SAT', label: 'SAT' },
+          ]}
+        />
         <Field
           usageFilter
           kind="select"
@@ -133,21 +176,46 @@ export default function SchoolExams() {
       </div>
       <div className="lay-4">
         <Kpi label={t('Сдавали Mock Test')} value={s.took} note={t('из {n} учеников', { n: s.students })} />
-        <Kpi label={t('Средний балл')} value={s.average || null} note={t('по последнему Mock Test')} />
-        <Kpi label={t('Достигли цели')} value={t('{n} из {total}', { n: s.reached, total: s.with_goal })} note={t('с целью по {exam}', { exam })} />
-        <Kpi
-          label={exam === 'IELTS' ? t('Ниже цели на 1.0+') : t('Ниже цели на 100+')}
-          value={s.far}
-          chip={s.far ? { label: t('нужна помощь'), tone: 'warn' } : undefined}
-          note={t('официальные: {n}', { n: s.official })}
-        />
+        {/* показатель без числа и «0 из 0» без целей плиткой не рисуются */}
+        {s.average && <Kpi label={t('Средний балл')} value={s.average} note={t('по последнему Mock Test')} />}
+        {s.with_goal > 0 && (
+          <Kpi
+            label={t('Достигли цели')}
+            value={t('{n} из {total}', { n: s.reached, total: s.with_goal })}
+            note={t('с целью по {exam}', { exam })}
+          />
+        )}
+        {s.with_goal > 0 && (
+          <Kpi
+            label={exam === 'IELTS' ? t('Ниже цели на 1.0+') : t('Ниже цели на 100+')}
+            value={s.far}
+            chip={s.far ? { label: t('нужна помощь'), tone: 'warn' } : undefined}
+            note={t('официальные: {n}', { n: s.official })}
+          />
+        )}
       </div>
       <div className="lay-main lay-main--even">
-        <DataCard className="card--beam" title={t('Ученики')} count={data.rows.length} empty={data.rows.length === 0 && t('учеников 11 параллели нет')}>
-          <DataTable columns={columns} rows={data.rows} rowKey={(row) => row.id} onRowClick={setOpened} limit={8} fit={!phone} />
+        <DataCard
+          className="card--beam"
+          title={t('Ученики')}
+          count={data.rows.length}
+          empty={data.rows.length === 0 && t('учеников 11 параллели нет')}
+        >
+          <DataTable
+            columns={columns}
+            rows={data.rows}
+            rowKey={(row) => row.id}
+            onRowClick={setOpened}
+            limit={8}
+            fit={!phone}
+          />
         </DataCard>
         <div className="lay-stack">
-          <DataCard title={t('Распределение баллов · {exam}', { exam })} note={t('по последнему Mock Test')} empty={values.length === 0 && t('Mock Test ещё не сдавали')}>
+          <DataCard
+            title={t('Распределение баллов · {exam}', { exam })}
+            note={t('по последнему Mock Test')}
+            empty={values.length === 0 && t('Mock Test ещё не сдавали')}
+          >
             <div className="dir__bars">
               {buckets.map((bucket) => (
                 <div key={bucket.label} className="dir__bar">
@@ -172,7 +240,11 @@ function isScore(value: number): boolean {
 function HistoryDialog({ row, onClose }: { row: ExamResultRow; onClose: () => void }) {
   const { data, isLoading, error } = useExamHistory(row.id)
   return (
-    <Modal title={row.full_name} note={t('История попыток · {group}', { group: row.group })} onClose={onClose}>
+    <Modal
+      title={row.full_name}
+      note={t('История попыток · {group}', { group: row.group })}
+      onClose={onClose}
+    >
       {isLoading && <Loading />}
       {error && <ErrorNote error={error} />}
       {data && (

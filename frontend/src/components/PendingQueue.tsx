@@ -125,6 +125,7 @@ export default function PendingQueue({
   note,
   limit = 6,
   fold = false,
+  hideEmpty = false,
 }: {
   title?: string
   /** одна строка о том, что именно внесли ученики этого домена */
@@ -136,6 +137,8 @@ export default function PendingQueue({
    * кабинетов раскладка прежняя.
    */
   fold?: boolean
+  /** главная директора (24.10.2026): пустой очереди нет вовсе — ни строки, ни карточки */
+  hideEmpty?: boolean
 }) {
   const queue = useStudentQueue()
   const { confirmMany } = useReviewSuggestion()
@@ -145,6 +148,7 @@ export default function PendingQueue({
   const [all, setAll] = useState(false)
   const shown = fold ? (all ? rows : rows.slice(0, LIST_LIMIT)) : rows.slice(0, limit)
 
+  if (hideEmpty && rows.length === 0) return null
   if (fold && rows.length === 0) return <DataCard title={t(title)} empty={t('никто ничего не внёс')} />
 
   return (
@@ -159,7 +163,9 @@ export default function PendingQueue({
         </Chip>
       </header>
 
-      {rows.length === 0 && <EmptyNote what={tk('ничего не ждёт решения')} who={tk('ученики пока ничего не внесли')} />}
+      {rows.length === 0 && (
+        <EmptyNote what={tk('ничего не ждёт решения')} who={tk('ученики пока ничего не внесли')} />
+      )}
 
       {shown.map((row) => (
         <QueueRow
@@ -193,9 +199,10 @@ export default function PendingQueue({
               })
             }
           >
-            {checked.length > 0 ? t('Подтвердить отмеченные ({count})', { count: checked.length }) : t('Подтвердить отмеченные')}
+            {checked.length > 0
+              ? t('Подтвердить отмеченные ({count})', { count: checked.length })
+              : t('Подтвердить отмеченные')}
           </Button>
-          <span className="muted pqueue__note">{t('Отклонение просит причину — ученик её увидит')}</span>
         </div>
       )}
     </section>

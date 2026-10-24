@@ -97,53 +97,113 @@ def _curator_name(group) -> str:
 # --- Директор школы -----------------------------------------------------------------
 
 
+def morning_overview(day: dt.date | None = None) -> dict:
+    """Утренние отметки всех групп за день — один источник для главной, экрана и отчёта.
+
+    День — сегодня, если отметки за сегодня уже есть; иначе последний учебный
+    день: главная и отчёт считали разные дни, и числа расходились.
+    """
+    from accounts.curators import active_assignments
+    from directors import services
+    from directors.views import _brief
+
+    day = day or morning_day()
+    groups = list(StudyGroup.objects.filter(is_active=True).order_by("parallel", "code"))
+    curators = {
+        row.group_id: row.curator.full_name or row.curator.email
+        for row in active_assignments().select_related("curator")
+    }
+    students = list(Student.objects.filter(is_active=True, group__in=groups).select_related("group"))
+    marks = {row.student_id: row for row in AttendanceDay.objects.filter(date=day, student__in=students)}
+    released = services.released_map([s.pk for s in students], day, day)
+    by_group: dict[int, dict] = {
+        g.pk: {
+            "id": g.pk,
+            "code": g.code,
+            "parallel": g.parallel,
+            "curator": curators.get(g.pk, ""),
+            "size": 0,
+            "marked": False,
+            "at": None,
+            "absent": 0,
+            "late": 0,
+            "released": 0,
+            "students": [],
+        }
+        for g in groups
+    }
+    for student in students:
+        row = by_group[student.group_id]
+        row["size"] += 1
+        mark = marks.get(student.pk)
+        free = services.released_on(released, student.pk, day)
+        if mark is not None:
+            row["marked"] = True
+            row["at"] = max(filter(None, (row["at"], mark.updated_at)), default=None)
+        state = "released" if free else (mark.mark if mark is not None else "")
+        if state == "absent":
+            row["absent"] += 1
+        elif state == "late":
+            row["late"] += 1
+        elif state == "released":
+            row["released"] += 1
+        if state in ("absent", "late", "released"):
+            row["students"].append(
+                {
+                    **_brief(student),
+                    "state": state,
+                    "reason": services.release_label(free) if free else mark.reason,
+                }
+            )
+    rows = list(by_group.values())
+    for row in rows:
+        row["at"] = timezone.localtime(row["at"]).strftime("%H:%M") if row["at"] else ""
+        row["students"].sort(key=lambda s: ({"absent": 0, "late": 1, "released": 2}[s["state"]], s["full_name"]))
+    marked = [r for r in rows if r["marked"]]
+    return {
+        "date": day,
+        "groups": rows,
+        "totals": {
+            "students": len(students),
+            "absent": sum(r["absent"] for r in rows),
+            "late": sum(r["late"] for r in rows),
+            "released": sum(r["released"] for r in rows),
+            "groups": len(rows),
+            "marked": len(marked),
+            "last": max((r["at"] for r in marked if r["at"]), default=""),
+        },
+    }
+
+
+def morning_day() -> dt.date:
+    """Сегодня, если кураторы уже отмечали; иначе последний учебный день."""
+    today = _today()
+    if AttendanceDay.objects.filter(date=today).exists():
+        return today
+    return _school_day(today)
+
+
 def morning(period: str = "") -> Report:
     """Утренняя отметка кураторов за день: кто отметил, кого нет, кто опоздал."""
-    day = _parse_day(period) or _school_day(_today())
-    groups = list(_groups())
-    marks = AttendanceDay.objects.filter(date=day, student__is_active=True, student__group__in=groups)
-    by_group: dict[int, dict] = {}
-    for group_id, mark, reason, updated in marks.values_list("student__group", "mark", "reason", "updated_at"):
-        row = by_group.setdefault(group_id, {"absent": 0, "late": 0, "commented": 0, "last": None})
-        if mark == AttendanceDay.Mark.ABSENT:
-            row["absent"] += 1
-        if mark == AttendanceDay.Mark.LATE:
-            row["late"] += 1
-        if reason:
-            row["commented"] += 1
-        row["last"] = max(filter(None, (row["last"], updated)), default=None)
-    rows = []
-    for group in groups:
-        found = by_group.get(group.pk)
-        rows.append(
-            {
-                "group": group.code,
-                "curator": _curator_name(group),
-                "marked": found is not None,
-                "at": timezone.localtime(found["last"]).strftime("%H:%M") if found and found["last"] else "",
-                "absent": found["absent"] if found else 0,
-                "late": found["late"] if found else 0,
-            }
-        )
-    marked = sum(1 for r in rows if r["marked"])
-    absent = sum(r["absent"] for r in rows)
-    late = sum(r["late"] for r in rows)
-    unmarked = [r["group"] for r in rows if not r["marked"]]
+    data = morning_overview(_parse_day(period))
+    day = data["date"]
+    rows = data["groups"]
+    totals = data["totals"]
+    unmarked = [r["code"] for r in rows if not r["marked"]]
     report = Report(
         kind="morning",
         title=_("Утренняя отметка кураторов"),
         source=_("группы кураторов"),
         period=day.isoformat(),
         period_title=f"{day:%d.%m.%Y}",
-        summary=_("отметились {marked} из {total}").format(marked=marked, total=len(rows)),
+        summary=_("отметились {marked} из {total}").format(marked=totals["marked"], total=totals["groups"]),
         lines=[
-            (_("Групп отметились"), f"{marked} / {len(rows)}"),
-            (_("Нет в школе"), str(absent)),
-            (_("Опоздали"), str(late)),
-            (_("Не отметились"), ", ".join(unmarked[:6]) + (f" +{len(unmarked) - 6}" if len(unmarked) > 6 else "")),
+            (_("Групп отметились"), f"{totals['marked']} / {totals['groups']}"),
+            (_("Нет в школе"), str(totals["absent"])),
+            (_("Опоздали"), str(totals["late"])),
         ],
         columns=[
-            Column(_("Группа"), lambda r: r["group"], 12),
+            Column(_("Группа"), lambda r: r["code"], 12),
             Column(_("Куратор"), lambda r: r["curator"], 26),
             Column(_("Отмечено в"), lambda r: r["at"], 12),
             Column(_("Нет"), lambda r: r["absent"], 8),
@@ -151,8 +211,9 @@ def morning(period: str = "") -> Report:
         ],
         rows=rows,
     )
-    if not unmarked:
-        report.lines.pop()
+    if unmarked:
+        names = ", ".join(unmarked[:6]) + (f" +{len(unmarked) - 6}" if len(unmarked) > 6 else "")
+        report.lines.append((_("Не отметились"), names))
     return report
 
 
@@ -160,7 +221,7 @@ def security(period: str = "") -> Report:
     """Отчёт для службы безопасности: кого нет и кто опоздал по утренней отметке за день."""
     from students import discipline
 
-    day = _parse_day(period) or _school_day(_today())
+    day = _parse_day(period) or morning_day()
     buckets = discipline.absences(groups=list(_groups()), since=day, until=day)
     rows = [
         {
@@ -337,7 +398,7 @@ def attendance_week(period: str = "") -> Report:
         source=_("по урокам учителей · {span}").format(span=_span(monday, monday + dt.timedelta(days=4))),
         period=monday.isoformat(),
         period_title=_span(monday, monday + dt.timedelta(days=4)),
-        summary=_("средняя {pct}").format(pct=f"{average} %" if average is not None else "—"),
+        summary=_("средняя {pct}").format(pct=f"{average} %") if average is not None else "",
         lines=[
             (_("Средняя"), f"{average} %" if average is not None else _("уроков не было")),
             (_("Ниже {n} %").format(n=round(threshold)), tn(len(below), "{n} ученик|{n} ученика|{n} учеников")),
@@ -406,7 +467,7 @@ def grades_parallels(period: str = "") -> Report:
         source=_("ФО по урокам · {span}").format(span=_span(monday, end)),
         period=monday.isoformat(),
         period_title=_span(monday, end),
-        summary=_("средний ФО {pct}").format(pct=f"{round(sum(every) / len(every))} %" if every else "—"),
+        summary=_("средний ФО {pct}").format(pct=f"{round(sum(every) / len(every))} %") if every else "",
         figures={"fo": round(sum(every) / len(every)) if every else None, "below": len(below), "parallels": bars},
         lines=lines,
         columns=[
@@ -617,7 +678,9 @@ def recent_periods(kind: str, count: int = 4) -> list[str]:
     """Последние периоды вида для архива на экране: дни, недели, месяцы."""
     day = _school_day(_today())
     if kind in ("morning", "security"):
-        out, cursor = [], day
+        # первым — тот же день, что у текущего отчёта (бывает и субботой)
+        first = morning_day()
+        out, cursor = [first.isoformat()], first - dt.timedelta(days=1)
         while len(out) < count:
             if cursor.weekday() < 5:
                 out.append(cursor.isoformat())

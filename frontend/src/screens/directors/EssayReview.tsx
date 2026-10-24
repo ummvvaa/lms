@@ -9,7 +9,12 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router'
-import { useEssayReview, useEssayReviewDetail, useEssayVerdict, type EssayReviewRow } from '../../api/directors'
+import {
+  useEssayReview,
+  useEssayReviewDetail,
+  useEssayVerdict,
+  type EssayReviewRow,
+} from '../../api/directors'
 import Field from '../../components/Field'
 import { Avatar, Segmented, ShowAll } from '../../components/patterns'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
@@ -51,7 +56,10 @@ export default function EssayReview() {
 
   return (
     <div className="lay-screen">
-      <ScreenHead title={t('Эссе учеников')} subtitle={t('законченные эссе 11 параллели · ученик отправил на проверку')} />
+      <ScreenHead
+        title={t('Эссе учеников')}
+        subtitle={t('законченные эссе 11 параллели · ученик отправил на проверку')}
+      />
       <div className="filters">
         <Segmented
           value={filter}
@@ -62,7 +70,9 @@ export default function EssayReview() {
             label: (
               <>
                 {t(item.label)}
-                <span className="tabs__n num">{data.rows.filter((row) => matches(item.value, row)).length}</span>
+                <span className="tabs__n num">
+                  {data.rows.filter((row) => matches(item.value, row)).length}
+                </span>
               </>
             ),
           }))}
@@ -79,7 +89,11 @@ export default function EssayReview() {
         />
       </div>
       <div className="lay-main lay-main--even">
-        <DataCard title={t(FILTERS.find((item) => item.value === filter)?.label ?? '')} count={rows.length || undefined} empty={rows.length === 0 && t('с таким фильтром эссе нет')}>
+        <DataCard
+          title={t(FILTERS.find((item) => item.value === filter)?.label ?? '')}
+          count={rows.length || undefined}
+          empty={rows.length === 0 && t('с таким фильтром эссе нет')}
+        >
           <div className="dir__rows">
             <ShowAll limit={8}>
               {rows.map((row) => {
@@ -90,14 +104,24 @@ export default function EssayReview() {
                     <span className="dir__what">
                       <b>{`${row.student.short_name} · ${row.student.group}`}</b>
                       <span className="t-note">
-                        {[row.kind, tn(row.words, '{n} слово|{n} слова|{n} слов'), row.submitted_at ? formatDateTime(row.submitted_at) : ''].filter(Boolean).join(' · ')}
+                        {[
+                          row.kind,
+                          tn(row.words, '{n} слово|{n} слова|{n} слов'),
+                          row.submitted_at ? formatDateTime(row.submitted_at) : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
                       </span>
                     </span>
                     <Chip tone={chip.tone} size="sm">
                       {chip.label}
                     </Chip>
                     <span className="dir__acts">
-                      <Button variant={row.id === picked ? 'secondary' : 'ghost'} size="sm" onClick={() => pick(row.id)}>
+                      <Button
+                        variant={row.id === picked ? 'secondary' : 'ghost'}
+                        size="sm"
+                        onClick={() => pick(row.id)}
+                      >
                         {t('Открыть')}
                       </Button>
                     </span>
@@ -129,7 +153,9 @@ function EssayPanel({ id }: { id: number }) {
           toast.success(
             value === 'ok'
               ? t('{name} · эссе отмечено «Норм»', { name: data.student.short_name })
-              : t('{name} · эссе отмечено «Не норм», ученик увидит комментарий', { name: data.student.short_name }),
+              : t('{name} · эссе отмечено «Не норм», ученик увидит комментарий', {
+                  name: data.student.short_name,
+                }),
           )
         },
       },
@@ -139,7 +165,14 @@ function EssayPanel({ id }: { id: number }) {
     <DataCard
       className="card--beam"
       title={data.title}
-      note={[`${data.student.short_name} · ${data.student.group}`, data.kind, `${data.words}${limit}`, data.program].filter(Boolean).join(' · ')}
+      note={[
+        `${data.student.short_name} · ${data.student.group}`,
+        data.kind,
+        `${data.words}${limit}`,
+        data.program,
+      ]
+        .filter(Boolean)
+        .join(' · ')}
     >
       <div className="dir__essay">{data.text}</div>
       {data.comments.length > 0 && (
@@ -152,10 +185,22 @@ function EssayPanel({ id }: { id: number }) {
           ))}
         </div>
       )}
-      <Field kind="textarea" name="essay-comment" label={t('Комментарий ученику')} value={comment} onChange={setComment} rows={3} placeholder={t('Что поправить — ученик увидит это у себя в эссе')} />
+      <Field
+        kind="textarea"
+        name="essay-comment"
+        label={t('Комментарий ученику')}
+        value={comment}
+        onChange={setComment}
+        rows={3}
+        placeholder={t('Что поправить — ученик увидит это у себя в эссе')}
+      />
       {verdict.error && <ErrorNote error={verdict.error} />}
       <div className="acad__actions">
-        <Button variant="outline" disabled={verdict.isPending || !comment.trim()} onClick={() => decide('not_ok')}>
+        <Button
+          variant="outline"
+          disabled={verdict.isPending || !comment.trim()}
+          onClick={() => decide('not_ok')}
+        >
           {t('Не норм')}
         </Button>
         <Button disabled={verdict.isPending} onClick={() => decide('ok')}>

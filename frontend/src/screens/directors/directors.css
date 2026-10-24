@@ -274,3 +274,34 @@
     grid-template-columns: calc(var(--space) * 24) minmax(0, 1fr) calc(var(--space) * 10);
   }
 }
+
+/* ФИО в таблице: перенос только между словами, не посреди фамилии */
+.dir__name {
+  overflow-wrap: normal;
+  word-break: keep-all;
+  hyphens: none;
+}
+
+/* кнопки выбранной олимпиады и мероприятия — строкой под названием, а не рядом с ним */
+.dir__headacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 2);
+}
+
+/* причина звонка — не длиннее двух строк */
+.dir__clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+/* «Открыто по сотрудникам»: число текстом и чип просрочки в одну строку */
+.dir__count {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  white-space: nowrap;
+}

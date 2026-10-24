@@ -25,7 +25,16 @@ import Field from '../../components/Field'
 import Modal from '../../components/Modal'
 import RowMenu, { RowMenuItem } from '../../components/RowMenu'
 import { Segmented, ShowAll } from '../../components/patterns'
-import { EmptyNote, Bar, Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
+import {
+  EmptyNote,
+  Bar,
+  Chip,
+  DataCard,
+  ErrorNote,
+  Loading,
+  ScreenHead,
+  type Tone,
+} from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tk } from '../../i18n'
 import { formatDateTime, formatDateTimeLong, formatDayMonth } from '../../lib/format'
@@ -35,7 +44,9 @@ import './directors.css'
 export const STATUS_TONE: Record<string, Tone> = { pending: 'warn', accepted: 'good', declined: 'neutral' }
 
 export function seatsWords(row: SportEventRow): string {
-  return row.seats === null ? t('принято {n} · без ограничения мест', { n: row.accepted }) : t('{n} из {total}', { n: row.accepted, total: row.seats })
+  return row.seats === null
+    ? t('принято {n} · без ограничения мест', { n: row.accepted })
+    : t('{n} из {total}', { n: row.accepted, total: row.seats })
 }
 
 export default function SportEvents() {
@@ -65,20 +76,42 @@ export default function SportEvents() {
           onChange={setWhen}
           label={t('Когда')}
           items={[
-            { value: 'soon', label: <>{t('Ближайшие')} <span className="tabs__n num">{soon.length}</span></> },
-            { value: 'past', label: <>{t('Прошедшие')} <span className="tabs__n num">{past.length}</span></> },
+            {
+              value: 'soon',
+              label: (
+                <>
+                  {t('Ближайшие')} <span className="tabs__n num">{soon.length}</span>
+                </>
+              ),
+            },
+            {
+              value: 'past',
+              label: (
+                <>
+                  {t('Прошедшие')} <span className="tabs__n num">{past.length}</span>
+                </>
+              ),
+            },
           ]}
         />
       </div>
       <div className="lay-main lay-main--even">
-        <DataCard title={when === 'soon' ? t('Ближайшие') : t('Прошедшие')} count={rows.length || undefined} empty={rows.length === 0 && t('мероприятий пока нет')}>
+        <DataCard
+          title={when === 'soon' ? t('Ближайшие') : t('Прошедшие')}
+          count={rows.length || undefined}
+          empty={rows.length === 0 && t('мероприятий пока нет')}
+        >
           <div className="dir__rows">
             <ShowAll limit={8}>
               {rows.map((row) => (
                 <div key={row.id} className="dir__row">
                   <span className="dir__what">
                     <b>{row.title}</b>
-                    <span className="t-note">{[formatDayMonth(row.starts_at), row.sport_title, row.place].filter(Boolean).join(' · ')}</span>
+                    <span className="t-note">
+                      {[formatDayMonth(row.starts_at), row.sport_title, row.place]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
                   </span>
                   {(row.pending ?? 0) > 0 ? (
                     <Chip tone="accent" size="sm">
@@ -88,7 +121,11 @@ export default function SportEvents() {
                     <Chip size="sm">{row.kind_title}</Chip>
                   )}
                   <span className="dir__acts">
-                    <Button variant={row.id === picked ? 'secondary' : 'ghost'} size="sm" onClick={() => setParams({ open: String(row.id) }, { replace: true })}>
+                    <Button
+                      variant={row.id === picked ? 'secondary' : 'ghost'}
+                      size="sm"
+                      onClick={() => setParams({ open: String(row.id) }, { replace: true })}
+                    >
                       {t('Открыть')}
                     </Button>
                   </span>
@@ -99,7 +136,12 @@ export default function SportEvents() {
         </DataCard>
         {picked !== null && <Applications id={picked} key={picked} />}
       </div>
-      {creating && <EventDialog onClose={() => setCreating(false)} onSaved={(row) => setParams({ open: String(row.id) }, { replace: true })} />}
+      {creating && (
+        <EventDialog
+          onClose={() => setCreating(false)}
+          onSaved={(row) => setParams({ open: String(row.id) }, { replace: true })}
+        />
+      )}
     </div>
   )
 }
@@ -118,7 +160,13 @@ function Applications({ id }: { id: number }) {
       { id: row.id, status },
       {
         onSuccess: () =>
-          toast.success(status === 'accepted' ? t('Заявка принята · ученик увидит статус') : status === 'declined' ? t('Заявка отклонена · ученик увидит статус') : t('Заявка снова ждёт решения')),
+          toast.success(
+            status === 'accepted'
+              ? t('Заявка принята · ученик увидит статус')
+              : status === 'declined'
+                ? t('Заявка отклонена · ученик увидит статус')
+                : t('Заявка снова ждёт решения'),
+          ),
         onError: (reason) => toast.error(reason.message),
       },
     )
@@ -135,7 +183,12 @@ function Applications({ id }: { id: number }) {
         </>
       ),
     },
-    { key: 'group', title: t('Группа'), width: '90px', cell: (row) => <Chip size="sm">{row.student?.group}</Chip> },
+    {
+      key: 'group',
+      title: t('Группа'),
+      width: '90px',
+      cell: (row) => <Chip size="sm">{row.student?.group}</Chip>,
+    },
     { key: 'kind', title: t('Заявка'), width: '120px', cell: (row) => row.kind_title },
     { key: 'when', title: t('Когда подал'), width: '130px', cell: (row) => formatDateTime(row.created_at) },
     {
@@ -161,7 +214,12 @@ function Applications({ id }: { id: number }) {
       cell: (row) =>
         row.status === 'pending' ? (
           <>
-            <Button variant="outline" size="sm" disabled={decide.isPending} onClick={() => set(row, 'accepted')}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={decide.isPending}
+              onClick={() => set(row, 'accepted')}
+            >
               {t('Принять')}
             </Button>
             <RowMenu>
@@ -191,20 +249,22 @@ function Applications({ id }: { id: number }) {
       className="card--beam"
       title={event.title}
       note={[event.kind_title, event.sport_title].filter(Boolean).join(' · ')}
-      right={
+    >
+      <div className="dir__headacts">
         <Button
           variant="outline"
           size="sm"
           onClick={() =>
             downloadFile(`/directors/sport-events/${event.id}/export/`, `${event.title}.xlsx`)
               .then(() => toast.success(t('Файл xlsx скачан')))
-              .catch((reason: unknown) => toast.error(reason instanceof Error ? reason.message : String(reason)))
+              .catch((reason: unknown) =>
+                toast.error(reason instanceof Error ? reason.message : String(reason)),
+              )
           }
         >
           {t('Скачать список')}
         </Button>
-      }
-    >
+      </div>
       <div className="dir__lines">
         <div className="dir__line">
           <span>{t('Дата')}</span>
@@ -229,7 +289,13 @@ function Applications({ id }: { id: number }) {
       {data.rows.length === 0 ? (
         <EmptyNote what={tk('заявок пока нет')} who={tk('подают ученики в «Спорте»')} />
       ) : (
-        <DataTable columns={columns} rows={[...play, ...watch]} rowKey={(row) => row.id} limit={8} fit={!phone} />
+        <DataTable
+          columns={columns}
+          rows={[...play, ...watch]}
+          rowKey={(row) => row.id}
+          limit={8}
+          fit={!phone}
+        />
       )}
       {releasing && <ReleasePlayerDialog row={releasing} onClose={() => setReleasing(null)} />}
     </DataCard>
@@ -254,8 +320,24 @@ function ReleasePlayerDialog({ row, onClose }: { row: SportApplicationRow; onClo
       />
       {mode === 'slots' && (
         <div className="dir__form">
-          <Field kind="number" name="slot-from" label={t('С урока')} value={from} onChange={setFrom} min={1} max={10} />
-          <Field kind="number" name="slot-to" label={t('По урок')} value={to} onChange={setTo} min={1} max={10} />
+          <Field
+            kind="number"
+            name="slot-from"
+            label={t('С урока')}
+            value={from}
+            onChange={setFrom}
+            min={1}
+            max={10}
+          />
+          <Field
+            kind="number"
+            name="slot-to"
+            label={t('По урок')}
+            value={to}
+            onChange={setTo}
+            min={1}
+            max={10}
+          />
         </div>
       )}
       {release.error && <ErrorNote error={release.error} />}
@@ -267,7 +349,11 @@ function ReleasePlayerDialog({ row, onClose }: { row: SportApplicationRow; onClo
           disabled={release.isPending}
           onClick={() =>
             release.mutate(
-              { id: row.id, slot_from: mode === 'slots' ? Number(from) : null, slot_to: mode === 'slots' ? Number(to) : null },
+              {
+                id: row.id,
+                slot_from: mode === 'slots' ? Number(from) : null,
+                slot_to: mode === 'slots' ? Number(to) : null,
+              },
               { onSuccess: onClose },
             )
           }
@@ -280,7 +366,13 @@ function ReleasePlayerDialog({ row, onClose }: { row: SportApplicationRow; onClo
 }
 
 /** Новое мероприятие: название, тип, вид спорта, дата и время, место, места и зрители. */
-export function EventDialog({ onClose, onSaved }: { onClose: () => void; onSaved?: (row: SportEventRow) => void }) {
+export function EventDialog({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void
+  onSaved?: (row: SportEventRow) => void
+}) {
   const save = useSaveSportEvent()
   const types = useDirectoryEntries('sport-types')
   const [title, setTitle] = useState('')
@@ -294,7 +386,14 @@ export function EventDialog({ onClose, onSaved }: { onClose: () => void; onSaved
   return (
     <Modal title={t('Новое мероприятие')} note={t('ученики увидят в разделе «Спорт»')} onClose={onClose}>
       <div className="dir__form">
-        <Field className="dir__wide" name="title" label={t('Название')} value={title} onChange={setTitle} autoFocus />
+        <Field
+          className="dir__wide"
+          name="title"
+          label={t('Название')}
+          value={title}
+          onChange={setTitle}
+          autoFocus
+        />
         <div className="dir__wide">
           <Segmented
             value={kind}
@@ -313,13 +412,29 @@ export function EventDialog({ onClose, onSaved }: { onClose: () => void; onSaved
           value={sport}
           onChange={setSport}
           placeholder={t('Без вида спорта')}
-          options={(types.data?.results ?? []).filter((row) => row.is_active).map((row) => ({ value: String(row.id), title: row.name }))}
+          options={(types.data?.results ?? [])
+            .filter((row) => row.is_active)
+            .map((row) => ({ value: String(row.id), title: row.name }))}
         />
         <Field name="place" label={t('Место')} value={place} onChange={setPlace} />
         <Field kind="date" name="date" label={t('Дата')} value={when} onChange={setWhen} />
         <Field kind="time" name="time" label={t('Время')} value={time} onChange={setTime} />
-        <Field kind="number" name="seats" label={t('Мест для участников')} value={seats} onChange={setSeats} min={1} hint={t('пусто — без ограничения')} />
-        <Field kind="checkbox" name="spectators" label={t('Можно прийти зрителем')} checked={spectators} onChange={setSpectators} />
+        <Field
+          kind="number"
+          name="seats"
+          label={t('Мест для участников')}
+          value={seats}
+          onChange={setSeats}
+          min={1}
+          hint={t('пусто — без ограничения')}
+        />
+        <Field
+          kind="checkbox"
+          name="spectators"
+          label={t('Можно прийти зрителем')}
+          checked={spectators}
+          onChange={setSpectators}
+        />
       </div>
       {save.error && <ErrorNote error={save.error} />}
       <div className="acad__actions">

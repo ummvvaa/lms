@@ -35,8 +35,11 @@ export function StudentPicks({
   onSearch?: (query: string) => void
 }) {
   const [query, setQuery] = useState('')
-  const shown = onSearch ? items : items.filter((item) => !query || item.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
-  const toggle = (id: number) => onChange(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id])
+  const shown = onSearch
+    ? items
+    : items.filter((item) => !query || item.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
+  const toggle = (id: number) =>
+    onChange(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id])
   return (
     <>
       <Field
@@ -55,7 +58,11 @@ export function StudentPicks({
         {shown.length === 0 && <p className="t-note">{t('никого не нашли')}</p>}
         {shown.map((item) => (
           <label key={item.id} className="dir__pick">
-            <Checkbox checked={picked.includes(item.id)} onCheckedChange={() => toggle(item.id)} aria-label={item.name} />
+            <Checkbox
+              checked={picked.includes(item.id)}
+              onCheckedChange={() => toggle(item.id)}
+              aria-label={item.name}
+            />
             <span>{item.name}</span>
             <span className="t-note">{item.note}</span>
           </label>
@@ -68,13 +75,26 @@ export function StudentPicks({
 /** Ученики школы для выбора — поиск идёт на сервере, граница видимости та же. */
 export function useSchoolPicks(search: string): Pickable[] {
   const students = useStudents({ search, page_size: 50 })
-  return (students.data?.results ?? []).map((s) => ({ id: s.id, name: s.full_name, note: s.group_code ?? '' }))
+  return (students.data?.results ?? []).map((s) => ({
+    id: s.id,
+    name: s.full_name,
+    note: s.group_code ?? '',
+  }))
 }
 
-export const fromBriefs = (rows: StudentBrief[]): Pickable[] => rows.map((s) => ({ id: s.id, name: s.full_name, note: s.group }))
+export const fromBriefs = (rows: StudentBrief[]): Pickable[] =>
+  rows.map((s) => ({ id: s.id, name: s.full_name, note: s.group }))
 
 /** Новая олимпиада: название, предмет из справочника, место, уровень, даты. */
-export function OlympiadDialog({ levels, onClose, onSaved }: { levels: { value: string; label: string }[]; onClose: () => void; onSaved?: (row: OlympiadRow) => void }) {
+export function OlympiadDialog({
+  levels,
+  onClose,
+  onSaved,
+}: {
+  levels: { value: string; label: string }[]
+  onClose: () => void
+  onSaved?: (row: OlympiadRow) => void
+}) {
   const save = useSaveOlympiad()
   const subjects = useDirectoryEntries('subjects')
   const [title, setTitle] = useState('')
@@ -86,7 +106,14 @@ export function OlympiadDialog({ levels, onClose, onSaved }: { levels: { value: 
   return (
     <Modal title={t('Новая олимпиада')} note={t('видно академ директору и кураторам')} onClose={onClose}>
       <div className="dir__form">
-        <Field className="dir__wide" name="title" label={t('Название')} value={title} onChange={setTitle} autoFocus />
+        <Field
+          className="dir__wide"
+          name="title"
+          label={t('Название')}
+          value={title}
+          onChange={setTitle}
+          autoFocus
+        />
         <Field
           kind="select"
           name="subject"
@@ -94,14 +121,28 @@ export function OlympiadDialog({ levels, onClose, onSaved }: { levels: { value: 
           value={subject}
           onChange={setSubject}
           placeholder={t('Без предмета')}
-          options={(subjects.data?.results ?? []).filter((row) => row.is_active).map((row) => ({ value: String(row.id), title: row.name }))}
+          options={(subjects.data?.results ?? [])
+            .filter((row) => row.is_active)
+            .map((row) => ({ value: String(row.id), title: row.name }))}
         />
         <Field name="place" label={t('Место')} value={place} onChange={setPlace} />
         <div className="dir__wide">
-          <Segmented value={level} onChange={setLevel} label={t('Уровень')} items={levels.map((row) => ({ value: row.value, label: row.label }))} />
+          <Segmented
+            value={level}
+            onChange={setLevel}
+            label={t('Уровень')}
+            items={levels.map((row) => ({ value: row.value, label: row.label }))}
+          />
         </div>
         <Field kind="date" name="starts" label={t('Дата с')} value={starts} onChange={setStarts} />
-        <Field kind="date" name="ends" label={t('Дата по')} value={ends} onChange={setEnds} hint={t('один день — оставьте пустым')} />
+        <Field
+          kind="date"
+          name="ends"
+          label={t('Дата по')}
+          value={ends}
+          onChange={setEnds}
+          hint={t('один день — оставьте пустым')}
+        />
       </div>
       {save.error && <ErrorNote error={save.error} />}
       <div className="acad__actions">
@@ -112,7 +153,14 @@ export function OlympiadDialog({ levels, onClose, onSaved }: { levels: { value: 
           disabled={!title.trim() || !starts || save.isPending}
           onClick={() =>
             save.mutate(
-              { title, level, starts, ends: ends || starts, place, subject: subject ? Number(subject) : null },
+              {
+                title,
+                level,
+                starts,
+                ends: ends || starts,
+                place,
+                subject: subject ? Number(subject) : null,
+              },
               {
                 onSuccess: (row) => {
                   toast.success(t('Олимпиада добавлена · видно академ директору и кураторам'))
@@ -154,7 +202,12 @@ export function ReleaseDialog({
   const entries = fromBriefs(initial?.entries?.map((e) => e.student) ?? [])
   const items = entries.length ? entries : school
   return (
-    <Modal title={t('Новое освобождение')} note={t('видно академ директору и кураторам групп')} onClose={onClose} wide>
+    <Modal
+      title={t('Новое освобождение')}
+      note={t('видно академ директору и кураторам групп')}
+      onClose={onClose}
+      wide
+    >
       <div className="dir__form">
         <Field
           className="dir__wide"
@@ -170,7 +223,10 @@ export function ReleaseDialog({
               setEnds(row.ends)
             }
           }}
-          options={olympiads.map((row) => ({ value: String(row.id), title: `${row.title} · ${formatDayMonth(row.starts)}` }))}
+          options={olympiads.map((row) => ({
+            value: String(row.id),
+            title: `${row.title} · ${formatDayMonth(row.starts)}`,
+          }))}
         />
         <Field kind="date" name="starts" label={t('С')} value={starts} onChange={setStarts} />
         <Field kind="date" name="ends" label={t('По')} value={ends} onChange={setEnds} />
@@ -187,13 +243,34 @@ export function ReleaseDialog({
         </div>
         {mode === 'slots' && (
           <>
-            <Field kind="number" name="slot-from" label={t('С урока')} value={slotFrom} onChange={setSlotFrom} min={1} max={10} />
-            <Field kind="number" name="slot-to" label={t('По урок')} value={slotTo} onChange={setSlotTo} min={1} max={10} />
+            <Field
+              kind="number"
+              name="slot-from"
+              label={t('С урока')}
+              value={slotFrom}
+              onChange={setSlotFrom}
+              min={1}
+              max={10}
+            />
+            <Field
+              kind="number"
+              name="slot-to"
+              label={t('По урок')}
+              value={slotTo}
+              onChange={setSlotTo}
+              min={1}
+              max={10}
+            />
           </>
         )}
         <div className="dir__wide">
           <span className="t-note">{t('Ученики · выбрано {n}', { n: picked.length })}</span>
-          <StudentPicks items={items} picked={picked} onChange={setPicked} onSearch={entries.length ? undefined : setSearch} />
+          <StudentPicks
+            items={items}
+            picked={picked}
+            onChange={setPicked}
+            onSearch={entries.length ? undefined : setSearch}
+          />
         </div>
       </div>
       {save.error && <ErrorNote error={save.error} />}

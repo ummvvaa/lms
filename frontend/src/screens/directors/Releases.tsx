@@ -59,7 +59,11 @@ export default function Releases() {
         />
         <span className="t-note">{`${formatDayMonth(from)} – ${formatDayMonth(to)} · ${t('освобождений: {n}', { n: rows.reduce((sum, row) => sum + row.students.length, 0) })}`}</span>
       </div>
-      <DataCard className="card--beam" title={t('Неделя')} empty={rows.length === 0 && t('на этой неделе освобождений нет')}>
+      <DataCard
+        className="card--beam"
+        title={t('Неделя')}
+        empty={rows.length === 0 && t('на этой неделе освобождений нет')}
+      >
         <div className="dir__week">
           {days.map((day, index) => {
             const found = rows.filter((row) => row.starts <= day && row.ends >= day)
@@ -73,14 +77,20 @@ export default function Releases() {
                 {found.map((row) => (
                   <Button key={row.id} variant="ghost" className="dir__tile" onClick={() => setOpened(row)}>
                     <b>{row.reason}</b>
-                    <span className="t-note">{row.all_day ? t('весь день') : t('уроки {a}–{b}', { a: row.slot_from ?? '', b: row.slot_to ?? '' })}</span>
+                    <span className="t-note">
+                      {row.all_day
+                        ? t('весь день')
+                        : t('уроки {a}–{b}', { a: row.slot_from ?? '', b: row.slot_to ?? '' })}
+                    </span>
                     <span className="dir__chip-list">
                       {row.students.slice(0, 3).map((s) => (
                         <Chip key={s.id} size="sm">
                           {s.short_name}
                         </Chip>
                       ))}
-                      {row.students.length > 3 && <Chip size="sm">{t('ещё {n}', { n: row.students.length - 3 })}</Chip>}
+                      {row.students.length > 3 && (
+                        <Chip size="sm">{t('ещё {n}', { n: row.students.length - 3 })}</Chip>
+                      )}
                     </span>
                   </Button>
                 ))}
@@ -98,7 +108,11 @@ export default function Releases() {
 function ReleaseCard({ row, onClose }: { row: ReleaseRow; onClose: () => void }) {
   const cancel = useCancelRelease()
   return (
-    <Modal title={row.reason} note={`${row.span} · ${t('освободил: {by}', { by: row.by })}`} onClose={onClose}>
+    <Modal
+      title={row.reason}
+      note={`${row.span} · ${t('освободил: {by}', { by: row.by })}`}
+      onClose={onClose}
+    >
       <div className="dir__lines">
         {row.students.map((student) => (
           <div key={student.id} className="dir__line">

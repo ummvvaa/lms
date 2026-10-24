@@ -30,7 +30,12 @@ import { usePhone } from '../../phone'
 import { OlympiadDialog, ReleaseDialog, StudentPicks, useSchoolPicks } from './talent'
 import './directors.css'
 
-export const LEVEL_TONE: Record<string, Tone> = { school: 'neutral', city: 'info', national: 'accent', international: 'good' }
+export const LEVEL_TONE: Record<string, Tone> = {
+  school: 'neutral',
+  city: 'info',
+  national: 'accent',
+  international: 'good',
+}
 
 const RESULTS: { value: OlympiadResult; label: string }[] = [
   { value: 'pending', label: tk('Ждём') },
@@ -40,7 +45,9 @@ const RESULTS: { value: OlympiadResult; label: string }[] = [
 ]
 
 export function olympiadDates(row: Pick<OlympiadRow, 'starts' | 'ends'>): string {
-  return row.starts === row.ends ? formatDayMonth(row.starts) : `${formatDayMonth(row.starts)} – ${formatDayMonth(row.ends)}`
+  return row.starts === row.ends
+    ? formatDayMonth(row.starts)
+    : `${formatDayMonth(row.starts)} – ${formatDayMonth(row.ends)}`
 }
 
 export default function OlympiadEvents() {
@@ -71,26 +78,52 @@ export default function OlympiadEvents() {
           onChange={setWhen}
           label={t('Когда')}
           items={[
-            { value: 'soon', label: <>{t('Предстоящие')} <span className="tabs__n num">{soon.length}</span></> },
-            { value: 'past', label: <>{t('Прошли')} <span className="tabs__n num">{past.length}</span></> },
+            {
+              value: 'soon',
+              label: (
+                <>
+                  {t('Предстоящие')} <span className="tabs__n num">{soon.length}</span>
+                </>
+              ),
+            },
+            {
+              value: 'past',
+              label: (
+                <>
+                  {t('Прошли')} <span className="tabs__n num">{past.length}</span>
+                </>
+              ),
+            },
           ]}
         />
       </div>
       <div className="lay-main lay-main--even">
-        <DataCard title={when === 'soon' ? t('Предстоящие') : t('Прошли')} count={rows.length || undefined} empty={rows.length === 0 && t('олимпиад пока нет')}>
+        <DataCard
+          title={when === 'soon' ? t('Предстоящие') : t('Прошли')}
+          count={rows.length || undefined}
+          empty={rows.length === 0 && t('олимпиад пока нет')}
+        >
           <div className="dir__rows">
             <ShowAll limit={8}>
               {rows.map((row) => (
                 <div key={row.id} className="dir__row">
                   <span className="dir__what">
                     <b>{row.title}</b>
-                    <span className="t-note">{[olympiadDates(row), row.place, t('участников: {n}', { n: row.participants ?? 0 })].filter(Boolean).join(' · ')}</span>
+                    <span className="t-note">
+                      {[olympiadDates(row), row.place, t('участников: {n}', { n: row.participants ?? 0 })]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
                   </span>
                   <Chip tone={LEVEL_TONE[row.level] ?? 'neutral'} size="sm">
                     {row.level_title}
                   </Chip>
                   <span className="dir__acts">
-                    <Button variant={row.id === picked ? 'secondary' : 'ghost'} size="sm" onClick={() => setParams({ open: String(row.id) }, { replace: true })}>
+                    <Button
+                      variant={row.id === picked ? 'secondary' : 'ghost'}
+                      size="sm"
+                      onClick={() => setParams({ open: String(row.id) }, { replace: true })}
+                    >
                       {t('Открыть')}
                     </Button>
                   </span>
@@ -101,7 +134,13 @@ export default function OlympiadEvents() {
         </DataCard>
         {picked !== null && <Participants id={picked} olympiads={data.rows} key={picked} />}
       </div>
-      {creating && <OlympiadDialog levels={data.levels} onClose={() => setCreating(false)} onSaved={(row) => setParams({ open: String(row.id) }, { replace: true })} />}
+      {creating && (
+        <OlympiadDialog
+          levels={data.levels}
+          onClose={() => setCreating(false)}
+          onSaved={(row) => setParams({ open: String(row.id) }, { replace: true })}
+        />
+      )}
     </div>
   )
 }
@@ -118,13 +157,31 @@ function Participants({ id, olympiads }: { id: number; olympiads: OlympiadRow[] 
   const entries = data.entries ?? []
   type Entry = (typeof entries)[number]
   const columns: Column<Entry>[] = [
-    { key: 'name', title: t('Ученик'), width: 'auto', phone: 'head', cell: (row) => <b>{row.student.short_name}</b> },
-    { key: 'group', title: t('Группа'), width: '100px', cell: (row) => <Chip size="sm">{row.student.group}</Chip> },
+    {
+      key: 'name',
+      title: t('Ученик'),
+      width: 'auto',
+      phone: 'head',
+      cell: (row) => <b>{row.student.short_name}</b>,
+    },
+    {
+      key: 'group',
+      title: t('Группа'),
+      width: '100px',
+      cell: (row) => <Chip size="sm">{row.student.group}</Chip>,
+    },
     {
       key: 'free',
       title: t('Уроки'),
       width: '130px',
-      cell: (row) => (row.released ? <Chip tone="info" size="sm">{t('освобождён')}</Chip> : <span className="t-note">{t('на уроках')}</span>),
+      cell: (row) =>
+        row.released ? (
+          <Chip tone="info" size="sm">
+            {t('освобождён')}
+          </Chip>
+        ) : (
+          <span className="t-note">{t('на уроках')}</span>
+        ),
     },
     {
       key: 'result',
@@ -136,7 +193,15 @@ function Participants({ id, olympiads }: { id: number; olympiads: OlympiadRow[] 
           name={`result-${row.id}`}
           label={t('Результат')}
           value={row.result}
-          onChange={(value) => result.mutate({ id: row.id, result: value as OlympiadResult }, { onSuccess: () => toast.success(t('Результат сохранён: {name}', { name: row.student.short_name })) })}
+          onChange={(value) =>
+            result.mutate(
+              { id: row.id, result: value as OlympiadResult },
+              {
+                onSuccess: () =>
+                  toast.success(t('Результат сохранён: {name}', { name: row.student.short_name })),
+              },
+            )
+          }
           options={RESULTS.map((item) => ({ value: item.value, title: t(item.label) }))}
         />
       ),
@@ -146,28 +211,31 @@ function Participants({ id, olympiads }: { id: number; olympiads: OlympiadRow[] 
     <DataCard
       className="card--beam"
       title={data.title}
-      note={[olympiadDates(data), data.place, data.subject_title, data.level_title].filter(Boolean).join(' · ')}
+      note={[olympiadDates(data), data.place, data.subject_title, data.level_title]
+        .filter(Boolean)
+        .join(' · ')}
       count={entries.length || undefined}
-      right={
-        <>
-          <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
-            {t('Добавить участников')}
-          </Button>
-          {entries.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={() => setReleasing(true)}>
-              {t('Освободить от уроков')}
-            </Button>
-          )}
-        </>
-      }
     >
+      {/* кнопки — строкой под названием: длинное название не жмётся к ним в три строки */}
+      <div className="dir__headacts">
+        <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
+          {t('Добавить участников')}
+        </Button>
+        {entries.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setReleasing(true)}>
+            {t('Освободить от уроков')}
+          </Button>
+        )}
+      </div>
       {entries.length === 0 ? (
         <EmptyNote what={tk('участников пока нет')} who={tk('добавляет директор талантов')} />
       ) : (
         <DataTable columns={columns} rows={entries} rowKey={(row) => row.id} limit={8} fit={!phone} />
       )}
       {adding && <AddDialog olympiad={data} onClose={() => setAdding(false)} />}
-      {releasing && <ReleaseDialog olympiads={olympiads} olympiad={data} onClose={() => setReleasing(false)} />}
+      {releasing && (
+        <ReleaseDialog olympiads={olympiads} olympiad={data} onClose={() => setReleasing(false)} />
+      )}
     </DataCard>
   )
 }

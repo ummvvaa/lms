@@ -33,10 +33,16 @@ def goal_of(goals: dict[tuple[int, str], Decimal], student_id: int, exam: str) -
 
 
 def _sections(attempt: ExamAttempt) -> str:
+    """Секции через «/»; секций нет вовсе — пусто: «– / – / – / –» ничего не говорит."""
     if attempt.exam_type == "IELTS":
         parts = (attempt.listening, attempt.reading, attempt.writing, attempt.speaking)
+        if all(p is None for p in parts):
+            return ""
         return " / ".join(f"{p:.1f}" if p is not None else "–" for p in parts)
-    return " / ".join(str(p) if p is not None else "–" for p in (attempt.math, attempt.verbal))
+    parts = (attempt.math, attempt.verbal)
+    if all(p is None for p in parts):
+        return ""
+    return " / ".join(str(p) if p is not None else "–" for p in parts)
 
 
 def _score(value) -> str:

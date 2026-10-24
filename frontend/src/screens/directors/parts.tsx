@@ -3,7 +3,7 @@
  * строка отчёта и окно с цифрами, итог звонка, задачи от академического
  * директора на главной исполнителя, приветствие с датой.
  */
-import { useState, type ReactNode } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import {
   reportExportPath,
@@ -42,7 +42,10 @@ export function useGreeting(): string {
 
 /** Две буквы отчёта в квадрате строки: из названия, а не из кода. */
 export function monoOf(title: string): string {
-  const words = title.replace(/[«»]/g, '').split(/\s+/).filter((w) => w.length > 2)
+  const words = title
+    .replace(/[«»]/g, '')
+    .split(/\s+/)
+    .filter((w) => w.length > 2)
   return ((words[0]?.[0] ?? '') + (words[1]?.[0] ?? '')).toLocaleUpperCase()
 }
 
@@ -92,12 +95,24 @@ export function ReportLine({
 }
 
 /** Окно отчёта: цифры строками, «Скачать xlsx» и «Просмотрено». */
-export function ReportDialog({ kind, period, onClose }: { kind: string; period?: string; onClose: () => void }) {
+export function ReportDialog({
+  kind,
+  period,
+  onClose,
+}: {
+  kind: string
+  period?: string
+  onClose: () => void
+}) {
   const { data, isLoading, error } = useSchoolReport(kind, period ?? '')
   const seen = useReportSeen()
   const [saving, setSaving] = useState(false)
   return (
-    <Modal title={data?.title ?? t('Отчёт')} note={data ? `${data.source} · ${data.period_title}` : undefined} onClose={onClose}>
+    <Modal
+      title={data?.title ?? t('Отчёт')}
+      note={data ? `${data.source} · ${data.period_title}` : undefined}
+      onClose={onClose}
+    >
       {isLoading && <Loading />}
       {error && <ErrorNote error={error} />}
       {data && (
@@ -118,7 +133,9 @@ export function ReportDialog({ kind, period, onClose }: { kind: string; period?:
                 setSaving(true)
                 downloadFile(reportExportPath(data.kind, data.period), `${data.title}.xlsx`)
                   .then(() => toast.success(t('Файл xlsx скачан')))
-                  .catch((reason: unknown) => toast.error(reason instanceof Error ? reason.message : String(reason)))
+                  .catch((reason: unknown) =>
+                    toast.error(reason instanceof Error ? reason.message : String(reason)),
+                  )
                   .finally(() => setSaving(false))
               }}
             >
@@ -177,7 +194,12 @@ export function CallDialog({
   const record = useRecordCall()
   return (
     <Modal title={t('Итог звонка · {name}', { name })} note={note} onClose={onClose}>
-      <Segmented value={outcome} onChange={setOutcome} label={t('Итог звонка')} items={OUTCOMES.map((o) => ({ value: o.value, label: t(o.label) }))} />
+      <Segmented
+        value={outcome}
+        onChange={setOutcome}
+        label={t('Итог звонка')}
+        items={OUTCOMES.map((o) => ({ value: o.value, label: t(o.label) }))}
+      />
       <Field
         kind="textarea"
         name="call-note"
@@ -193,7 +215,9 @@ export function CallDialog({
         </Button>
         <Button
           disabled={record.isPending}
-          onClick={() => record.mutate({ student, outcome, note: text, contact, rule }, { onSuccess: onClose })}
+          onClick={() =>
+            record.mutate({ student, outcome, note: text, contact, rule }, { onSuccess: onClose })
+          }
         >
           {t('Сохранить')}
         </Button>
@@ -212,7 +236,11 @@ export function MyStaffTasksCard({ beam = false }: { beam?: boolean }) {
   const rows = data?.rows ?? []
   if (rows.length === 0) return null
   return (
-    <DataCard className={beam ? 'card--beam' : undefined} title={t('Задачи от академического директора')} count={rows.length}>
+    <DataCard
+      className={beam ? 'card--beam' : undefined}
+      title={t('Задачи от академического директора')}
+      count={rows.length}
+    >
       <div className="dir__rows">
         <ShowAll>
           {rows.map((task) => (
@@ -225,12 +253,28 @@ export function MyStaffTasksCard({ beam = false }: { beam?: boolean }) {
                     : t('до {date}', { date: formatDate(task.due) })}
                 </span>
               </span>
-              <Chip tone={task.late ? 'bad' : task.status === 'done' ? 'neutral' : task.status === 'returned' ? 'warn' : 'info'} size="sm">
+              <Chip
+                tone={
+                  task.late
+                    ? 'bad'
+                    : task.status === 'done'
+                      ? 'neutral'
+                      : task.status === 'returned'
+                        ? 'warn'
+                        : 'info'
+                }
+                size="sm"
+              >
                 {task.status === 'done' ? t('ждёт приёмки') : task.late ? t('просрочено') : task.status_title}
               </Chip>
               <span className="dir__acts">
                 {task.status !== 'done' && (
-                  <Button variant="outline" size="sm" disabled={done.isPending} onClick={() => done.mutate(task.id)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={done.isPending}
+                    onClick={() => done.mutate(task.id)}
+                  >
                     {t('Выполнено')}
                   </Button>
                 )}
@@ -240,5 +284,23 @@ export function MyStaffTasksCard({ beam = false }: { beam?: boolean }) {
         </ShowAll>
       </div>
     </DataCard>
+  )
+}
+
+/**
+ * Колонки главной директора: пустые карточки не рисуются вовсе (их не передают —
+ * `null` или `false`), а пустая правая колонка отдаёт ширину левой. Колонки
+ * кончаются вровень — последняя карточка правой тянется (`lay-main--even`).
+ */
+export function HomeColumns({ main, aside }: { main: ReactNode[]; aside: ReactNode[] }) {
+  const left = main.filter(Boolean)
+  const right = aside.filter(Boolean)
+  const list = (nodes: ReactNode[]) => nodes.map((node, index) => <Fragment key={index}>{node}</Fragment>)
+  if (!left.length || !right.length) return <>{list([...left, ...right])}</>
+  return (
+    <div className="lay-main lay-main--even">
+      <div className="lay-stack">{list(left)}</div>
+      <div className="lay-stack">{list(right)}</div>
+    </div>
   )
 }
