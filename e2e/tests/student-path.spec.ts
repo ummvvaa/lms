@@ -423,10 +423,11 @@ test("сквозной путь ученика: от временного пар
     .first()
     .click();
 
-  const exam = await as(browser, "director_exam");
-  await exam.goto("/dashboard");
+  // цель по экзамену подтверждает куратор: Кымбат правки учеников не разбирает (25.10.2026)
+  const exam = await as(browser, "curator");
+  await exam.goto("/queue?group=all");
   const examRow = exam
-    .locator("#student-queue [data-suggestion]", { hasText: "Целевой балл" })
+    .locator("[data-suggestion]", { hasText: "Целевой балл" })
     .first();
   if (await examRow.count()) {
     await examRow
@@ -435,7 +436,7 @@ test("сквозной путь ученика: от временного пар
       .click();
   } else {
     notes.push(
-      "цель по экзамену не нашлась в очереди академического директора по подписи «Целевой балл»",
+      "цель по экзамену не нашлась в очереди куратора по подписи «Целевой балл»",
     );
   }
 

@@ -12,7 +12,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { statePath } from "../helpers/auth-state";
-import { apiDelete, apiPatch, openDirectorQueue } from "../helpers/session";
+import { apiDelete, apiPatch } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 240_000 });
 
@@ -95,9 +95,10 @@ test("цель видна в календаре с пометкой, после 
   await expect(pendingRow).toBeVisible();
   await expect(pendingRow.getByText("ждёт проверки")).toBeVisible();
 
-  const director = await as(browser, "director_exam");
-  const queue = await openDirectorQueue(director);
-  const row = queue
+  // цель подтверждает куратор: Кымбат ученические правки не разбирает (25.10.2026)
+  const director = await as(browser, "curator");
+  await director.goto("/queue?group=all");
+  const row = director
     .locator("[data-suggestion]", {
       hasText: "Целевой балл экзамена",
     })

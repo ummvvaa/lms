@@ -75,23 +75,34 @@ test("директор спорта не видит балл экзамена в
   ).toHaveCount(0);
 });
 
-test("академический директор видит строку и подтверждает — журнал помнит ученика", async ({
+test("куратор видит строку и подтверждает — журнал помнит ученика", async ({
   browser,
 }) => {
-  const page = await as(browser, "director_exam");
-  const queue = await openDirectorQueue(page);
-  await expect(queue).toBeVisible();
-  const row = queue
+  // ученические правки экзаменов подтверждает куратор: Кымбат их не разбирает
+  // (решение владельца, 25.10.2026) — очереди на её главной нет
+  const kymbat = await as(browser, "director_exam");
+  await kymbat.goto("/dashboard");
+  await expect(kymbat.locator("h1")).toContainText("Добрый день");
+  await expect(kymbat.locator("#student-queue")).toHaveCount(0);
+  await kymbat.context().close();
+
+  const curator = await as(browser, "curator");
+  await curator.goto("/queue?group=all");
+  const row = curator
     .locator("[data-suggestion]", { hasText: "Текущий балл IELTS" })
     .first();
   await expect(row).toBeVisible();
+  // передавать экзамен некому: кнопки «Передать Кымбат» у строки нет
+  await expect(row.getByRole("button", { name: "Передать Кымбат" })).toHaveCount(0);
 
   const [response] = await Promise.all([
-    page.waitForResponse((r) => r.url().includes("/review/")),
+    curator.waitForResponse((r) => r.url().includes("/review/")),
     row.getByRole("button", { name: "Подтвердить", exact: true }).click(),
   ]);
   expect(response.status()).toBe(200);
+  await curator.context().close();
 
+  const page = await as(browser, "admin");
   // значение легло в профиль, источник в журнале — «предложил ученик»
   const students = (await (
     await page.request.get("/api/students/?page_size=500")

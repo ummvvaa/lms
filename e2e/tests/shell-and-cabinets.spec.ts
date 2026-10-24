@@ -334,7 +334,8 @@ test("у пяти директоров очередь решений, у адм�
     const queued = ((await (await page.request.get("/api/suggestions/from-students/")).json()) as { results: unknown[] }).results.length;
     await page.goto("/dashboard");
     await expect(page.locator("h1")).toContainText("Добрый день");
-    if (queued)
+    // у Кымбат очереди нет вовсе: подтверждают кураторы (решение владельца, 25.10.2026)
+    if (queued && role !== "director_exam")
       await expect(page.locator("#student-queue"), `${role}: нет очереди при ${queued} строках`).toBeVisible();
     else await expect(page.locator("#student-queue"), `${role}: пустая очередь не рисуется`).toHaveCount(0);
     await page.close();

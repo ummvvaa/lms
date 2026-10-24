@@ -22,7 +22,6 @@ const PDF = Buffer.from(
 const stamp = Date.now();
 const NOTE = `Заметка прогона ${stamp}: мама просила звонить после шести`;
 const CALL = `Звонок прогона ${stamp}: договорились о сертификате`;
-const HANDOVER = `Передача прогона ${stamp}: балл расходится с сертификатом`;
 
 async function as(browser: Browser, role: string): Promise<Page> {
   const context = await browser.newContext({ storageState: statePath(role) });
@@ -448,9 +447,11 @@ test("звонок родителям: итог уходит в заметки �
   await page.context().close();
 });
 
-test("передача Кымбат: строка уходит к владельцу, ответ возвращается уведомлением", async ({
+test("экзамен Кымбат не передаётся: куратор подтверждает строку сам", async ({
   browser,
 }) => {
+  // Кымбат ученические правки не разбирает — ей некогда (решение владельца, 25.10.2026):
+  // у строки экзамена нет «Передать Кымбат», решение за куратором
   const suggestion = await proposeJump(browser);
 
   const page = await as(browser, "curator");
@@ -458,85 +459,22 @@ test("передача Кымбат: строка уходит к владель
   await page.goto("/queue?group=all");
   const row = page.locator(`[data-suggestion="${suggestion}"]`);
   await expect(row).toBeVisible();
-  // у строки экзамена кнопка подписана владельцем домена
-  await row.getByRole("button", { name: "Передать Кымбат" }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(
-    dialog.getByRole("button", { name: "Передать", exact: true }),
-  ).toBeDisabled();
-  await dialog.getByPlaceholder("Что смущает").fill(HANDOVER);
-  const mark = diag.mark();
-  await dialog.getByRole("button", { name: "Передать", exact: true }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  expect(
-    diag
-      .since(mark)
-      .some((c) => c.url.includes("/escalate/") && c.status === 200),
-  ).toBeTruthy();
-
-  // строка ушла из очереди в карточку «Передано владельцу» внизу — с именем адресата
-  await expect(
-    page.locator(`.squeue__row[data-suggestion="${suggestion}"]`),
-  ).toHaveCount(0);
-  const handed = page.locator(".datacard", { hasText: "Передано владельцу" });
-  await expect(handed).toContainText("Передано владельцу");
-  await expect(handed).toContainText("у Кымбат");
-  await expect(handed).toContainText(HANDOVER);
-
-  // вернуть себе — и передать снова: до решения владельца строка своя
-  const returned = page.waitForResponse(
-    (r) => r.url().includes(`/api/suggestions/${suggestion}/unescalate/`) && r.request().method() === "POST",
-  );
-  await handed
-    .locator(".rowline", { hasText: HANDOVER })
-    .getByRole("button", { name: "Вернуть себе" })
-    .click();
-  expect((await returned).status()).toBe(200);
-  await expect(
-    page.locator(`.squeue__row[data-suggestion="${suggestion}"]`),
-  ).toBeVisible();
-  await apiPost(page, `/api/suggestions/${suggestion}/escalate/`, {
-    comment: HANDOVER,
-  });
+  await expect(row.getByRole("button", { name: /^Передать/ })).toHaveCount(0);
+  const [review] = await Promise.all([
+    page.waitForResponse((r) => r.url().includes(`/api/suggestions/${suggestion}/review/`)),
+    row.getByRole("button", { name: "Подтвердить", exact: true }).click(),
+  ]);
+  expect(review.status()).toBe(200);
+  await expect(page.locator(`[data-suggestion="${suggestion}"]`)).toHaveCount(0);
+  expect(diag.consoleErrors).toEqual([]);
   await page.context().close();
 
-  // Кымбат: строка сверху её очереди, с именем куратора и его словами
+  // у Кымбат очереди на главной нет вовсе
   const kymbat = await as(browser, "director_exam");
-  const kdiag = watch(kymbat);
-  // очередь решений — на главной Кымбат (раздела «Предложения» нет с 24.10.2026)
-  const queue = await openDirectorQueue(kymbat);
-  const first = queue.locator("[data-suggestion]").first();
-  await expect(first).toHaveAttribute("data-suggestion", String(suggestion));
-  await expect(first).toContainText("от куратора Асель");
-  await expect(first).toContainText(HANDOVER);
-  const kmark = kdiag.mark();
-  await first.getByRole("button", { name: "Подтвердить", exact: true }).click();
-  await expect(queue.locator(`[data-suggestion="${suggestion}"]`)).toHaveCount(
-    0,
-  );
-  expect(
-    kdiag
-      .since(kmark)
-      .some((c) => c.url.includes("/review/") && c.status === 200),
-  ).toBeTruthy();
+  await kymbat.goto("/dashboard");
+  await expect(kymbat.locator("h1")).toContainText("Добрый день");
+  await expect(kymbat.locator("#student-queue")).toHaveCount(0);
   await kymbat.context().close();
-
-  // куратор: уведомление в колокольчике ведёт к ученику
-  const back = await as(browser, "curator");
-  await back.goto("/dashboard");
-  // уведомления живут в меню пользователя внизу бокового меню
-  await back.getByRole("button", { name: "Меню профиля" }).click();
-  await back.getByRole("menuitem", { name: /^Уведомления/ }).click();
-  // строки списка уведомлений — общий компонент строки: у непрочитанной
-  // справа точка, поэтому переход — отдельной кнопкой «Открыть» в строке
-  const notice = back
-    .getByRole("dialog", { name: "Уведомления" })
-    .locator(".rowline", { hasText: "ответ на переданное" })
-    .first();
-  await expect(notice).toBeVisible();
-  await notice.getByRole("button", { name: "Открыть" }).click();
-  await expect(back).toHaveURL(/\/students\/\d+/);
-  await back.context().close();
 });
 
 test("очередь: вкладка «Документы» и строка документа с файлом", async ({
