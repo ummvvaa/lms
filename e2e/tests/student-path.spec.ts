@@ -15,7 +15,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
 import { dropUsers, resetAll, serviceLog, waitForApi } from "../helpers/manage";
 import { byKey } from "../helpers/roles";
-import { apiPost, login } from "../helpers/session";
+import { apiPost, login, openDirectorQueue } from "../helpers/session";
 
 test.describe.configure({ mode: "serial", timeout: 600_000 });
 
@@ -410,9 +410,10 @@ test("сквозной путь ученика: от временного пар
   step("эссе заведено");
 
   // --- 15. Директора подтверждают внесённое ------------------------------
+  // очередь решений — на главной директора (раздела «Предложения» нет с 24.10.2026)
   const talent = await as(browser, "director_talent");
-  await talent.goto("/suggestions");
-  const talentRow = talent.locator("#student-queue .squeue__row").first();
+  const talentQueue = await openDirectorQueue(talent);
+  const talentRow = talentQueue.locator("[data-suggestion]").first();
   await expect(
     talentRow,
     "достижение ученика должно ждать в очереди директора талантов",
@@ -423,9 +424,9 @@ test("сквозной путь ученика: от временного пар
     .click();
 
   const exam = await as(browser, "director_exam");
-  await exam.goto("/suggestions");
+  await exam.goto("/dashboard");
   const examRow = exam
-    .locator("#student-queue .squeue__row", { hasText: "Целевой балл" })
+    .locator("#student-queue [data-suggestion]", { hasText: "Целевой балл" })
     .first();
   if (await examRow.count()) {
     await examRow

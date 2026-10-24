@@ -354,20 +354,21 @@ test("сквозной путь: от пустой базы до возврат�
   ).json();
   expect(profile.ielts_current).toBe("7.5");
 
-  await examPage.goto("/import");
+  // историю загрузок и отмену ведёт администратор: «Импорта» у Кымбат нет с 24.10.2026
+  await adminPage.goto("/import");
   // у загрузки мастера две строки истории: отчёт и пачка домена — отменяется пачка
-  const batch = examPage
+  const batch = adminPage
     .locator("table.tbl tbody tr")
     .filter({ hasText: "баллы.csv" })
-    .filter({ has: examPage.getByRole("button", { name: "Отменить", exact: true }) })
+    .filter({ has: adminPage.getByRole("button", { name: "Отменить", exact: true }) })
     .first();
   await expect(batch).toContainText("администратор за домен «Экзамены»");
   await batch.getByRole("button", { name: "Отменить", exact: true }).click();
-  await examPage
+  await adminPage
     .locator(".confirm")
     .getByRole("button", { name: "Отменить импорт" })
     .click();
-  await expect(examPage.locator(".rowline", { hasText: "Возвращено прежних значений" }).first()).toContainText(
+  await expect(adminPage.locator(".rowline", { hasText: "Возвращено прежних значений" }).first()).toContainText(
     "Возвращено прежних значений",
   );
 
