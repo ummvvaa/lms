@@ -11,6 +11,7 @@
  * а не табличные данные, файл живёт вне корня веб-сервера.
  */
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import {
   useAtGoal,
@@ -286,7 +287,10 @@ export default function MyData() {
   const rows = useStudentRows(me?.student_id ?? null)
   const contacts = useContacts({ student: me?.student_id ?? null })
   const proposals = useMyProposals()
-  const [tab, setTab] = useState<Tab>('overview')
+  // вкладка из адреса (`?tab=sport`): ссылка ведёт сразу в нужный раздел портфолио
+  const [params] = useSearchParams()
+  const TABS: Tab[] = ['overview', 'achievements', 'documents', 'sport', 'olympiads', 'cv']
+  const [tab, setTab] = useState<Tab>(TABS.find((value) => value === params.get('tab')) ?? 'overview')
 
   const myProposals = useMemo(() => proposals.data?.results ?? [], [proposals.data])
   const pending = useMemo(() => pendingByField(myProposals), [myProposals])

@@ -16,44 +16,44 @@ const DIR = path.join(__dirname, "..", "shots");
 
 /** Экраны каждой роли — те же адреса, что в её навигации. */
 const SCREENS: Record<string, string[]> = {
+  // кабинеты директоров по макету (24.10.2026): меню каждой роли — как в макете
   director_behavior: [
     "/dashboard",
-    "/table",
-    "/suggestions",
-    "/task-templates",
-    "/groups",
-    "/contacts",
+    "/attendance",
+    "/school-reports",
+    "/parents",
     "/risks",
-    // правила обзвона (фаза 49); «Сюжеты главной» переехали к администратору
-    "/call-rules",
-    "/overview",
+    "/table",
     "/profile",
   ],
   director_admission: [
     "/dashboard",
-    "/directory",
+    "/essay-review",
     "/table",
-    "/suggestions",
+    "/directory",
     "/deadlines",
-    // профтест Асем читает: результаты и разборы; мастера импорта у неё нет
-    "/career-tests",
   ],
   director_exam: [
     "/dashboard",
+    "/school-reports",
+    "/staff-tasks",
     "/table",
-    "/import",
-    "/top30",
+    "/schedule",
+    "/exam-results",
     "/mocks",
+    "/top30",
+    "/exam-kinds",
   ],
   director_talent: [
     "/dashboard",
+    "/olympiad-events",
+    "/releases",
     "/table",
+    "/olympiad-group",
     "/subjects",
     "/tracks",
-    "/materials",
-    "/olympiad-group",
   ],
-  director_sport: ["/dashboard", "/table", "/sport-types", "/competitions"],
+  director_sport: ["/dashboard", "/sport-events", "/sport-types", "/table"],
   // «Импорт» — у администратора и Кымбат; «Сюжеты главной» — настройка школы
   admin: [
     "/dashboard",
@@ -65,7 +65,8 @@ const SCREENS: Record<string, string[]> = {
     "/spend",
   ],
   // куратор (фаза 60): заглушка кабинета и профиль
-  curator: ["/dashboard", "/profile"],
+  // утренняя отметка с чипом освобождения (24.10.2026)
+  curator: ["/dashboard", "/attendance", "/profile"],
   // Все экраны кабинета — фаза 48 переделала вид каждого, и снимков
   // восьми из семнадцати перестало хватать
   // кабинет 11 класса с 07.10.2026 без «Моего пути», плана, стипендий, роадмапа,
@@ -74,6 +75,8 @@ const SCREENS: Record<string, string[]> = {
     "/dashboard",
     "/calendar",
     "/my-data",
+    // мероприятия школы и свои заявки — у 11 во вкладке «Спорт» портфолио (24.10.2026)
+    "/my-data?tab=sport",
     "/selection",
     "/catalog",
     "/catalog?mode=mine",
