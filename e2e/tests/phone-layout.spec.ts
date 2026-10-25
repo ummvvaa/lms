@@ -380,7 +380,7 @@ test.describe("телефон 390×844", () => {
     await page.context().close();
   });
 
-  test("ученик вносит балл с телефона: список листом, кнопка на месте, директор видит карточку", async ({
+  test("ученик вносит балл с телефона: список листом, кнопка на месте, куратор видит строку", async ({
     browser,
   }) => {
     const student = await as(browser, "student", PHONE);
@@ -425,66 +425,69 @@ test.describe("телефон 390×844", () => {
 
     const input = form.locator("input").first();
     await input.fill("7.5");
-    await send.click();
+    const [proposed] = await Promise.all([
+      student.waitForResponse((r) => r.url().includes("/suggestions/propose/")),
+      send.click(),
+    ]);
+    const id = ((await proposed.json()) as { suggestions: number[] })
+      .suggestions[0];
+    expect(id, "правка ушла на проверку").toBeTruthy();
     // ушло предложение: строка помечена «на проверке у директора»
     await expect(student.getByText("на проверке у директора").first()).toBeVisible({
       timeout: 15_000,
     });
     await student.context().close();
 
-    // директор домена видит его карточкой: с фазы 76 «было → стало»
-    // в одну строку и кнопки рядом — плотность кураторской очереди
-    const director = await as(browser, "director_exam", PHONE);
-    await director.goto("/dashboard");
-    await settle(director);
-    const row = director.locator(".pqueue__row").first();
+    // правку экзамена подтверждает куратор группы, не Кымбат (решение владельца,
+    // 25.10.2026): на телефоне строка его очереди — решения в пределах экрана и не ниже 44
+    const curator = await as(browser, "curator", PHONE);
+    await curator.goto("/queue?group=all");
+    await settle(curator);
+    const row = curator.locator(`[data-suggestion="${id}"]`);
     await expect(row).toBeVisible({ timeout: 15_000 });
-    const queue = await director.evaluate(() => {
-      const row = document.querySelector(".pqueue__row") as HTMLElement;
-      const values = [
-        ...row.querySelectorAll(".pqueue__values [data-slot='badge']"),
-      ] as HTMLElement[];
-      const buttons = [
-        ...row.querySelectorAll(".pqueue__actions [data-slot='button']"),
-      ] as HTMLElement[];
-      return {
-        inline:
-          values.length === 2 &&
-          values[1].getBoundingClientRect().left >=
-            values[0].getBoundingClientRect().right - 1,
-        buttons: buttons.map((b) => Math.round(b.getBoundingClientRect().top)),
-        heights: buttons.map((b) => b.getBoundingClientRect().height),
-      };
-    });
-    expect(queue.inline, "«было» и «стало» в одну строку").toBe(true);
-    expect(queue.buttons.length).toBeGreaterThanOrEqual(2);
-    expect(new Set(queue.buttons).size, "кнопки рядом, в одну линию").toBe(1);
-    for (const height of queue.heights)
-      expect(height).toBeGreaterThanOrEqual(44);
+    const buttons = await row.evaluate((node) =>
+      [
+        ...node.querySelectorAll(".squeue__actions [data-slot='button']"),
+      ].map((b) => {
+        const box = (b as HTMLElement).getBoundingClientRect();
+        return { top: Math.round(box.top), height: box.height, right: box.right };
+      }),
+    );
+    expect(buttons.length).toBeGreaterThanOrEqual(2);
+    // решения под текстом во всю ширину, переносятся рядами (student-queue.css)
+    expect(
+      new Set(buttons.map((b) => b.top)).size,
+      "решения — не больше двух рядов",
+    ).toBeLessThanOrEqual(2);
+    for (const button of buttons) {
+      expect(button.height).toBeGreaterThanOrEqual(44);
+      expect(button.right, "кнопка не уходит за край").toBeLessThanOrEqual(390);
+    }
 
     // отклонение с причиной — тот же путь, что в жизни, и заодно
-    // проверка, что кнопки в карточке работают
-    const id = await row.getAttribute("data-suggestion");
-    await row.getByRole("button", { name: "Отклонить" }).click();
-    await row.getByRole("textbox").fill("Проверка телефонной версии");
-    await row.getByRole("button", { name: "Отклонить" }).click();
-    // из очереди уходит именно эта строка; соседние сценарии могли
-    // оставить свои, и «очередь пуста» здесь ничего не доказывает (D34)
-    await expect(
-      director.locator(`.pqueue__row[data-suggestion="${id}"]`),
-    ).toHaveCount(0, { timeout: 15_000 });
+    // проверка, что кнопки в строке работают
+    await row.getByRole("button", { name: "Отклонить", exact: true }).click();
+    await row
+      .getByRole("textbox", { name: "Причина отклонения" })
+      .fill("Проверка телефонной версии");
+    await row.getByRole("button", { name: "Отклонить с причиной" }).click();
+    await expect(curator.locator(`[data-suggestion="${id}"]`)).toHaveCount(0, {
+      timeout: 15_000,
+    });
+    await curator.context().close();
 
     // и убираем за собой совсем: отклонённое предложение видно ученику
     // в портфолио, а сценарий не должен оставлять следов на экранах.
     // Удаление отвечает 204 без тела, поэтому запрос идёт напрямую
+    const admin = await as(browser, "admin");
     const csrf =
-      (await director.context().cookies()).find((c) => c.name === "csrftoken")
+      (await admin.context().cookies()).find((c) => c.name === "csrftoken")
         ?.value ?? "";
-    const gone = await director.request.delete(`/api/suggestions/${id}/`, {
+    const gone = await admin.request.delete(`/api/suggestions/${id}/`, {
       headers: { "X-CSRFToken": csrf },
     });
     expect(gone.ok(), "предложение прогона убрано").toBe(true);
-    await director.context().close();
+    await admin.context().close();
   });
 
   test("плашка «не подтверждено» не пропадает при сжатии карточки", async ({
