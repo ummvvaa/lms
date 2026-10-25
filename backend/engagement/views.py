@@ -77,10 +77,10 @@ def onboarding_skip(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def onboarding_pending(request):
-    """Что ученики написали о себе и ждёт подтверждения директора."""
+    """Что ученики написали о себе и ждёт подтверждения директора или куратора."""
     if request.user.role == ROLE_STUDENT:
         return Response({"detail": _("Список подтверждений ведёт директор")}, status=status.HTTP_403_FORBIDDEN)
-    return Response(onboarding.pending_for(request.user.role))
+    return Response(onboarding.pending_for(request.user.role, request.user))
 
 
 @extend_schema(request=OnboardingReviewSerializer, responses={200: dict})

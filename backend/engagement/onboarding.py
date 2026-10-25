@@ -230,24 +230,40 @@ def skip(student: Student) -> dict:
     return state(student)
 
 
-def may_review(role: str, domain_code: str) -> bool:
-    """Кто решает по ответу: директор домена, куда ляжет ответ, и администратор.
+def may_review(role: str, domain_code: str, *, actor=None, student=None) -> bool:
+    """Кто решает по ответу: директор домена, куда ляжет ответ, администратор
+    и куратор — по доменам, которые он подтверждает и в очереди правок.
 
     Ответ ученика — это значение поля домена, и подтверждает его владелец
-    поля (инвариант №1). Директор другого домена и куратор (у него домена
-    нет) решения не принимают, даже если ученик им виден.
+    поля (инвариант №1) или тот, кому реестр это поручил. Куратор
+    подтверждает ответы `CURATOR_CONFIRM_DOMAINS` (экзамены: Кымбат ученические
+    правки не разбирает, решение владельца 25.10.2026) и только у учеников
+    своих групп. Директор другого домена решения не принимает.
     """
-    from core.domains import ROLE_ADMIN, domain_of_role
+    from core.domains import CURATOR_CONFIRM_DOMAINS, ROLE_ADMIN, ROLE_CURATOR, domain_of_role
+    from core.scope import sees_student
 
     if role == ROLE_ADMIN:
         return True
+    if role == ROLE_CURATOR:
+        return (
+            domain_code in CURATOR_CONFIRM_DOMAINS
+            and actor is not None
+            and student is not None
+            and sees_student(actor, student.pk)
+        )
     domain = domain_of_role(role)
     return domain is not None and domain.code == domain_code
 
 
-def pending_for(role: str) -> list[dict]:
-    """Что ждёт подтверждения у директора этого домена."""
-    from core.domains import ROLE_ADMIN, domain_of_role
+def pending_for(role: str, user=None) -> list[dict]:
+    """Что ждёт подтверждения у этой роли.
+
+    Куратору — ответы доменов, которые он подтверждает, по ученикам своих
+    групп; без пользователя граница групп неизвестна — список пуст.
+    """
+    from core.domains import CURATOR_CONFIRM_DOMAINS, ROLE_ADMIN, ROLE_CURATOR, domain_of_role
+    from core.scope import visible_students
 
     domain = domain_of_role(role)
     rows = OnboardingAnswer.objects.filter(is_confirmed=False).exclude(value="").select_related("session__student")
@@ -255,8 +271,10 @@ def pending_for(role: str) -> list[dict]:
         rows = rows.filter(domain_code=domain.code)
     elif role == ROLE_ADMIN:
         rows = rows.exclude(domain_code="")
+    elif role == ROLE_CURATOR and user is not None:
+        rows = rows.filter(domain_code__in=CURATOR_CONFIRM_DOMAINS, session__student__in=visible_students(user))
     else:
-        # роль без домена (куратор) ответов не подтверждает — и списка не видит
+        # роль без домена и без поручения ответов не подтверждает — и списка не видит
         return []
 
     return [
@@ -285,10 +303,17 @@ def review(answer_id: int, *, decision: str, actor, value: str | None = None) ->
     row = OnboardingAnswer.objects.select_related("session__student").filter(pk=answer_id).first()
     if row is None:
         raise ValueError(gettext("Ответа нет"))
-    if not may_review(getattr(actor, "role", ""), row.domain_code):
+    student = row.session.student
+    role = getattr(actor, "role", "")
+    from core.domains import ROLE_CURATOR
+    from core.scope import sees_student
+
+    # ученик чужой группы куратору не виден вовсе — как везде, 404, а не 403
+    if role == ROLE_CURATOR and not sees_student(actor, student.pk):
+        raise ValueError(gettext("Ответа нет"))
+    if not may_review(role, row.domain_code, actor=actor, student=student):
         raise PermissionError(gettext("Ответ подтверждает директор своего домена"))
 
-    student = row.session.student
     if row.target:
         label, field = row.target.rsplit(".", 1)
         instance = _profile_for(student, label)

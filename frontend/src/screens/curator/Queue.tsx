@@ -20,6 +20,7 @@ import {
   useStudentQueue,
   type StudentQueueRow,
 } from '../../api/hooks'
+import OnboardingQueue from '../../components/OnboardingQueue'
 import { Row, Rows, Segmented } from '../../components/patterns'
 import { QueueRow } from '../../components/StudentQueue'
 import { DataCard, EmptyNote, ErrorNote, Loading, ScreenHead } from '../../components/ui'
@@ -154,6 +155,10 @@ export default function CuratorQueue() {
           </Button>
         </div>
       )}
+
+      {/* ответы анкеты первого входа по экзаменам своих групп: их подтверждает
+          куратор, а не Кымбат (решение владельца, 25.10.2026); пустой список не рисуется */}
+      <OnboardingQueue />
 
       <section className="card card-pad cqueue">
         {shown.length === 0 && (

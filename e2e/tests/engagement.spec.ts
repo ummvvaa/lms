@@ -2,8 +2,9 @@
  * Фаза 11: онбординг и геймификация.
  *
  * Приёмка: новый ученик проходит квиз, его ответы появляются у директоров
- * на подтверждении с пометкой источника; выполнение задачи начисляет XP
- * и двигает уровень; стрик растёт за день с активностью.
+ * (по экзаменам — у куратора) на подтверждении с пометкой источника;
+ * выполнение задачи начисляет XP и двигает уровень; стрик растёт за день
+ * с активностью.
  */
 import { expect, test } from "@playwright/test";
 import { statePath } from "../helpers/auth-state";
@@ -75,9 +76,9 @@ test.describe("квиз знакомства", () => {
 });
 
 test.describe("ответы ученика ждут подтверждения", () => {
-  // Кымбат ученические правки и ответы анкеты не разбирает (решение владельца, 25.10.2026);
-  // кто подтверждает ответы анкеты по экзаменам — вопрос владельцу в отчёте
-  test.skip("Кымбат видит балл ученика отдельным списком и подтверждает", async ({
+  // Кымбат ученические правки не разбирает: ответы анкеты по экзаменам
+  // подтверждает куратор группы (решение владельца, 25.10.2026)
+  test("куратор видит балл ученика отдельным списком и подтверждает", async ({
     browser,
   }) => {
     test.setTimeout(120_000);
@@ -93,18 +94,28 @@ test.describe("ответы ученика ждут подтверждения",
       value: "7.0",
     });
 
-    const directorContext = await browser.newContext({
+    // у Кымбат списка нет: на её главной очередей нет вовсе
+    const kymbatContext = await browser.newContext({
       storageState: statePath("director_exam"),
     });
-    const director = await directorContext.newPage();
-    await director.goto("/dashboard");
+    const kymbat = await kymbatContext.newPage();
+    await kymbat.goto("/dashboard");
+    await expect(kymbat.locator("h1")).toContainText("Добрый день");
+    await expect(kymbat.locator("#onboarding-queue")).toHaveCount(0);
+    await kymbatContext.close();
 
-    const queue = director.locator("#onboarding-queue");
+    const curatorContext = await browser.newContext({
+      storageState: statePath("curator"),
+    });
+    const curator = await curatorContext.newPage();
+    await curator.goto("/queue?group=all");
+
+    const queue = curator.locator("#onboarding-queue");
     await expect(queue).toContainText("Заполнили при входе");
     await expect(queue).toContainText("IELTS или TOEFL");
 
     const [confirmed] = await Promise.all([
-      director.waitForResponse((r) =>
+      curator.waitForResponse((r) =>
         r.url().includes("/api/onboarding/pending/"),
       ),
       queue.getByRole("button", { name: "Подтвердить" }).first().click(),
@@ -112,11 +123,11 @@ test.describe("ответы ученика ждут подтверждения",
     expect(confirmed.status()).toBe(200);
 
     // после подтверждения строка уходит из очереди
-    await director.reload();
-    await expect(director.locator("#onboarding-queue")).toBeHidden();
+    await curator.reload();
+    await expect(curator.locator("#onboarding-queue")).toBeHidden();
 
     await studentContext.close();
-    await directorContext.close();
+    await curatorContext.close();
   });
 
   test("Асем снимает текстовый ответ — поле пустеет, а не падает пятисоткой", async ({

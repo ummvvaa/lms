@@ -110,6 +110,8 @@ CURATOR_READ_ROUTES = frozenset(
         "suggestion-list",
         "suggestion-detail",
         "suggestion-students-queue",
+        # ответы анкеты первого входа по экзаменам своих групп (25.10.2026)
+        "onboarding-pending",
         # кабинет куратора (фаза 61): главная, ученики, карточка, задачи, профиль
         "curator-overview",
         "curator-students",
@@ -226,6 +228,7 @@ CURATOR_WRITE_ROUTES = frozenset(
         "suggestion-review",
         "suggestion-reject",
         "suggestion-students-confirm",
+        "onboarding-review",
         # задачи ученикам своих групп: постановка и смена статуса (фаза 61)
         "curator-tasks",
         "curator-task-status",
