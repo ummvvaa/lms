@@ -821,3 +821,48 @@
   margin-left: auto;
   font-weight: 600;
 }
+
+/* ---------------------------------------------------------------------------
+   Телефон: без вечных перерисовок. На ноутбуке всё как выше.
+   Сферы фона стоят на месте: под стеклом их движение заставляло каждый кадр
+   заново размывать все стеклянные поверхности. Бега света по рамке нет,
+   кроме входа: угол градиента не анимируется слоем, и карточка
+   перерисовывалась 60 раз в секунду. Блик главной кнопки едет сдвигом слоя,
+   а не `left`: так каждый кадр не пересчитывает раскладку. `body` — вес выше
+   правил `base.css`, которые идут в каскаде после этого файла.
+   --------------------------------------------------------------------------- */
+@media (max-width: 759px) {
+  .backdrop__orb {
+    animation: none;
+  }
+
+  body .card--beam:not(.login__card) {
+    border-color: var(--glass-line);
+    box-shadow: var(--shadow-card);
+  }
+
+  body .card--beam:not(.login__card)::before {
+    content: none;
+    animation: none;
+  }
+
+  /* блик шириной 45% проходит от −60% до 130% кнопки: 190 / 45 = 422% своей ширины */
+  body
+    [data-variant='default'][data-size]:not(
+      [data-slot='badge'],
+      [data-slot='native-select'],
+      [data-slot='switch']
+    ):not(:disabled)::after {
+    animation-name: shimmer-shift;
+  }
+
+  @keyframes shimmer-shift {
+    0%,
+    55% {
+      transform: translateX(0) skewX(-18deg);
+    }
+    100% {
+      transform: translateX(422.22%) skewX(-18deg);
+    }
+  }
+}
