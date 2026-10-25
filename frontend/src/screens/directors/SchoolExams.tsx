@@ -75,7 +75,7 @@ export default function SchoolExams() {
     {
       key: 'group',
       title: t('Группа'),
-      width: '110px',
+      width: '96px',
       cell: (row) => <Chip size="sm">{row.group}</Chip>,
       sortBy: (row) => row.group,
     },
@@ -83,12 +83,13 @@ export default function SchoolExams() {
       key: 'mock',
       title: t('Последний Mock'),
       hint: exam === 'IELTS' ? t('Последний Mock · L / R / W / S') : t('Последний Mock · M / V'),
-      width: '200px',
+      width: '140px',
       cell: (row) =>
         row.mock ? (
           <>
             <b className="num">{row.mock}</b>
-            {row.sections && <span className="t-note">{` · ${row.sections}`}</span>}
+            {/* секции — второй строкой под баллом, чтобы имени хватило ширины */}
+            {row.sections && <span className="t-note dir__sub">{row.sections}</span>}
           </>
         ) : (
           <span className="t-note">{t('не сдавал(а)')}</span>
@@ -98,7 +99,7 @@ export default function SchoolExams() {
     {
       key: 'official',
       title: t('Официальный'),
-      width: '150px',
+      width: '128px',
       align: 'right',
       cell: (row) => <span className="num">{row.official || t('нет')}</span>,
       sortBy: (row) => (row.official ? Number(row.official) : null),
@@ -107,7 +108,7 @@ export default function SchoolExams() {
       // цель и разница — одной пометкой: «Цель: нет» и «До цели: цели нет» говорили одно дважды
       key: 'goal',
       title: t('Цель'),
-      width: '170px',
+      width: '164px',
       cell: (row) =>
         row.gap === null || !row.goal ? (
           <span className="t-note">{t('цели нет')}</span>

@@ -97,7 +97,8 @@
   gap: calc(var(--space) * 2);
 }
 
-.dir__tile[data-variant][data-size] {
+/* body — вес выше общего правила кнопок в base.css, которое стоит в каскаде позже */
+body .dir__tile[data-variant][data-size] {
   /* плитка — кнопка реестра: высота по содержимому, текст слева и переносится */
   height: auto;
   justify-content: stretch;
@@ -280,6 +281,21 @@
   overflow-wrap: normal;
   word-break: keep-all;
   hyphens: none;
+}
+
+/* подстрока под значением ячейки — секции последнего Mock */
+.dir__sub {
+  display: block;
+}
+
+/* длинный чип в узкой панели переносится, а не режется: общее правило бейджа держит строку */
+body .tbl [data-slot='badge'].dir__wrapchip {
+  height: auto;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  white-space: normal;
+  border-radius: var(--radius-row);
 }
 
 /* кнопки выбранной олимпиады и мероприятия — строкой под названием, а не рядом с ним */

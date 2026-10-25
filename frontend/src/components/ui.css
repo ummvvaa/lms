@@ -2428,6 +2428,13 @@ body [data-slot='button'][data-variant].notif__all {
     opacity: 0.5;
   }
 
+  /* в карточке строки таблицы список делит ряд с подписью и не вылезает за край */
+  .tbl .selfield,
+  body .tbl [data-slot='button'][data-variant].selfield {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
   .selfield__value {
     min-width: 0;
     overflow: hidden;

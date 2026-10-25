@@ -18171,3 +18171,7 @@ msgstr "Parents"
 #: directors
 msgid "Эссе учеников"
 msgstr "Student essays"
+
+#: directors
+msgid "достигли цели {n}"
+msgstr "reached the goal: {n}"

@@ -19,8 +19,8 @@ import {
   type OlympiadRow,
 } from '../../api/directors'
 import DataTable, { type Column } from '../../components/DataTable'
-import Field from '../../components/Field'
 import Modal from '../../components/Modal'
+import { SelectField } from '../../components/SelectField'
 import { Segmented, ShowAll } from '../../components/patterns'
 import { EmptyNote, Chip, DataCard, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
@@ -156,54 +156,48 @@ function Participants({ id, olympiads }: { id: number; olympiads: OlympiadRow[] 
   if (!data) return null
   const entries = data.entries ?? []
   type Entry = (typeof entries)[number]
+  // панель узкая: группа и освобождение — строкой под именем, результат — списком без подписи
   const columns: Column<Entry>[] = [
     {
       key: 'name',
       title: t('Ученик'),
       width: 'auto',
       phone: 'head',
-      cell: (row) => <b>{row.student.short_name}</b>,
-    },
-    {
-      key: 'group',
-      title: t('Группа'),
-      width: '100px',
-      cell: (row) => <Chip size="sm">{row.student.group}</Chip>,
-    },
-    {
-      key: 'free',
-      title: t('Уроки'),
-      width: '130px',
-      cell: (row) =>
-        row.released ? (
-          <Chip tone="info" size="sm">
-            {t('освобождён')}
-          </Chip>
-        ) : (
-          <span className="t-note">{t('на уроках')}</span>
-        ),
+      cell: (row) => (
+        <>
+          <b className="dir__name">{row.student.short_name}</b>
+          <span className="t-note dir__sub">
+            {[row.student.group, row.released ? t('освобождён') : t('на уроках')].join(' · ')}
+          </span>
+        </>
+      ),
     },
     {
       key: 'result',
       title: t('Результат'),
-      width: '170px',
+      width: '150px',
       cell: (row) => (
-        <Field
-          kind="select"
+        <SelectField
+          size="sm"
+          aria-label={t('Результат')}
           name={`result-${row.id}`}
-          label={t('Результат')}
           value={row.result}
-          onChange={(value) =>
+          onChange={(event) =>
             result.mutate(
-              { id: row.id, result: value as OlympiadResult },
+              { id: row.id, result: event.target.value as OlympiadResult },
               {
                 onSuccess: () =>
                   toast.success(t('Результат сохранён: {name}', { name: row.student.short_name })),
               },
             )
           }
-          options={RESULTS.map((item) => ({ value: item.value, title: t(item.label) }))}
-        />
+        >
+          {RESULTS.map((item) => (
+            <option key={item.value} value={item.value}>
+              {t(item.label)}
+            </option>
+          ))}
+        </SelectField>
       ),
     },
   ]

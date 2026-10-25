@@ -18090,3 +18090,7 @@ msgstr "Ата-аналар"
 #: directors
 msgid "Эссе учеников"
 msgstr "Оқушылар эссесі"
+
+#: directors
+msgid "достигли цели {n}"
+msgstr "мақсатқа жеткендер {n}"

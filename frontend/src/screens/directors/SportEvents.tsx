@@ -170,6 +170,7 @@ function Applications({ id }: { id: number }) {
         onError: (reason) => toast.error(reason.message),
       },
     )
+  // панель узкая: группа, заявка, время и статус — строками под именем, на виду одно действие
   const columns: Column<SportApplicationRow>[] = [
     {
       key: 'name',
@@ -178,38 +179,29 @@ function Applications({ id }: { id: number }) {
       phone: 'head',
       cell: (row) => (
         <>
-          <b>{row.student?.short_name}</b>
-          {row.comment && <span className="t-note">{` · ${row.comment}`}</span>}
+          <b className="dir__name">{row.student?.short_name}</b>
+          <span className="t-note dir__sub">
+            {[row.student?.group, row.kind_title, formatDateTime(row.created_at)].filter(Boolean).join(' · ')}
+          </span>
+          {row.comment && <span className="t-note dir__sub">{row.comment}</span>}
+          <span className="dir__sub">
+            {row.release ? (
+              <Chip tone="info" size="sm" className="dir__wrapchip">
+                {t('освобождён · {span}', { span: row.release })}
+              </Chip>
+            ) : (
+              <Chip tone={STATUS_TONE[row.status]} size="sm">
+                {row.status_title}
+              </Chip>
+            )}
+          </span>
         </>
       ),
     },
     {
-      key: 'group',
-      title: t('Группа'),
-      width: '90px',
-      cell: (row) => <Chip size="sm">{row.student?.group}</Chip>,
-    },
-    { key: 'kind', title: t('Заявка'), width: '120px', cell: (row) => row.kind_title },
-    { key: 'when', title: t('Когда подал'), width: '130px', cell: (row) => formatDateTime(row.created_at) },
-    {
-      key: 'status',
-      title: t('Статус'),
-      width: '140px',
-      cell: (row) =>
-        row.release ? (
-          <Chip tone="info" size="sm">
-            {t('освобождён · {span}', { span: row.release })}
-          </Chip>
-        ) : (
-          <Chip tone={STATUS_TONE[row.status]} size="sm">
-            {row.status_title}
-          </Chip>
-        ),
-    },
-    {
       key: 'acts',
       title: '',
-      width: '210px',
+      width: '128px',
       actions: true,
       cell: (row) =>
         row.status === 'pending' ? (
@@ -227,18 +219,14 @@ function Applications({ id }: { id: number }) {
             </RowMenu>
           </>
         ) : (
-          <>
-            {row.status === 'accepted' && row.kind === 'play' && !row.release && !event.past && (
-              <Button variant="outline" size="sm" onClick={() => setReleasing(row)}>
-                {t('Освободить от уроков')}
-              </Button>
-            )}
-            {row.kind === 'play' && (
-              <RowMenu>
-                <RowMenuItem onClick={() => set(row, 'pending')}>{t('Вернуть')}</RowMenuItem>
-              </RowMenu>
-            )}
-          </>
+          row.kind === 'play' && (
+            <RowMenu>
+              {row.status === 'accepted' && !row.release && !event.past && (
+                <RowMenuItem onClick={() => setReleasing(row)}>{t('Освободить от уроков')}</RowMenuItem>
+              )}
+              <RowMenuItem onClick={() => set(row, 'pending')}>{t('Вернуть')}</RowMenuItem>
+            </RowMenu>
+          )
         ),
     },
   ]

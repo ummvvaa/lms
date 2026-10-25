@@ -219,13 +219,6 @@
   max-width: 100%;
 }
 
-@media (max-width: 759px) {
-  .import-flow .tbl .selfield {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-}
-
 /* «Импорт» по макету Import: мастер — одна главная карточка с бегущим светом,
    ряд шагов сверху, под ним строка «файл · состояние» и текущий шаг. */
 .import-wizard > .wizard__steps {

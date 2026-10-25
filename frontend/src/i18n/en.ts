@@ -4330,7 +4330,6 @@ export const en: Record<string, string> = {
   'Заявок': 'Applications',
   'Зрителей': 'Spectators',
   'Какие': 'Which',
-  'Когда подал': 'Applied at',
   'Комментарий директору': 'Comment to the director',
   'Мероприятие': 'Event',
   'Мероприятий в этом месяце': 'Events this month',
