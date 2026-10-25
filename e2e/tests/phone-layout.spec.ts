@@ -432,8 +432,8 @@ test.describe("телефон 390×844", () => {
     const id = ((await proposed.json()) as { suggestions: number[] })
       .suggestions[0];
     expect(id, "правка ушла на проверку").toBeTruthy();
-    // ушло предложение: строка помечена «на проверке у директора»
-    await expect(student.getByText("на проверке у директора").first()).toBeVisible({
+    // ушло предложение: строка помечена «на проверке у куратора»
+    await expect(student.getByText("на проверке у куратора").first()).toBeVisible({
       timeout: 15_000,
     });
     await student.context().close();

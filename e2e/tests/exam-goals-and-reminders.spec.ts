@@ -80,7 +80,7 @@ test("ученик ставит цель IELTS с датой — строка у
     row.getByRole("button", { name: "Сохранить" }).click(),
   ]);
   expect(propose.status()).toBe(201);
-  await expect(row.getByText("на проверке у директора")).toBeVisible();
+  await expect(row.getByText("на проверке у куратора")).toBeVisible();
 });
 
 test("цель видна в календаре с пометкой, после подтверждения — без", async ({

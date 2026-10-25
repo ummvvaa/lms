@@ -41,7 +41,7 @@ import {
 } from '../api/types'
 import { Chip, DataCard, EmptyNote, ErrorNote, Loading, Ring, ScreenHead, ScreenTabs } from '../components/ui'
 import { Row, Rows } from '../components/patterns'
-import { AddRowForm, ProfileCard, ProposeForm } from '../components/PortfolioForms'
+import { AddRowForm, ProfileCard, ProposeForm, waitingLabel } from '../components/PortfolioForms'
 import { DateTile, EntryList, Medal, WhoConfirms, ownerOf, waitingState } from './PortfolioEntries'
 import { modelOf, pendingByField, pendingNewRows } from './portfolioData'
 import StudentSport from './directors/StudentSport'
@@ -140,7 +140,7 @@ function GoalsCard({ meta, proposals }: { meta: DomainMeta | undefined; proposal
           <div key={exam.value} className="goals__row goals__row--student" data-exam={exam.value}>
             <span className="goals__exam">
               {exam.title}
-              {waiting && <Chip tone="neutral">{t('на проверке у директора')}</Chip>}
+              {waiting && <Chip tone="neutral">{waitingLabel('exam')}</Chip>}
             </span>
             <label className="goals__field">
               <span className="t-note">{t('Желаемый балл')}</span>
@@ -464,6 +464,7 @@ export default function MyData() {
                   pending={pending}
                   label={t('Внести баллы')}
                   certificate
+                  domain="exam"
                 />
               )}
             </DataCard>

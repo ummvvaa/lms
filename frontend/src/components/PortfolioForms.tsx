@@ -19,6 +19,12 @@ import { todayAlmaty } from '../lib/dates'
 import { CERT_SECTIONS, DOMAIN_TITLE, SECTION_LABELS, shown } from '../screens/portfolioData'
 
 /** Форма правки полей профиля: значения уходят предложением (фаза 37). */
+/** Кто проверит правку ученика: экзамены — куратор группы (решение владельца
+ *  25.10.2026), остальные домены — их директор. */
+export function waitingLabel(code: string | undefined) {
+  return code === 'exam' ? t('на проверке у куратора') : t('на проверке у директора')
+}
+
 export function ProposeForm({
   model,
   fields,
@@ -27,6 +33,7 @@ export function ProposeForm({
   label,
   hint,
   certificate = false,
+  domain,
 }: {
   model: DomainModel
   fields: DomainField[]
@@ -38,6 +45,8 @@ export function ProposeForm({
   hint?: string
   /** спрашивать ли секции IELTS с сертификата (фаза 63) */
   certificate?: boolean
+  /** код домена — от него зависит, кто проверит значение */
+  domain?: string
 }) {
   const propose = usePropose()
   const [open, setOpen] = useState(false)
@@ -98,7 +107,9 @@ export function ProposeForm({
   return (
     <div className="propose__form">
       <p className="muted propose__note">
-        {t('Значение проверит директор — до этого оно помечено «на проверке у директора».')}
+        {domain === 'exam'
+          ? t('Значение проверит куратор — до этого оно помечено «на проверке у куратора».')
+          : t('Значение проверит директор — до этого оно помечено «на проверке у директора».')}
       </p>
       {fields.map((field) => (
         <label key={field.name} className="propose__field">
@@ -346,7 +357,7 @@ export const ByCurator = () => <Chip tone="neutral">{t('внёс куратор'
 
 /**
  * Карточка домена в кабинете ученика: ровно колонки таблицы владельца
- * домена (фаза 70), значения с пометками «на проверке у директора» и «внёс куратор»,
+ * домена (фаза 70), значения с пометками «на проверке» и «внёс куратор»,
  * форма предложения для полей, которые ученик вносит сам.
  */
 export function ProfileCard({
@@ -394,14 +405,14 @@ export function ProfileCard({
             <div key={field.name} className={`portfolio__pair${wide ? ' portfolio__pair--wide' : ''}`}>
               <span className="portfolio__k">{t(field.short || field.title)}</span>
               <span className={`portfolio__v${value === t('нет') ? ' portfolio__v--empty' : ''}`}>{value}</span>
-              {waiting !== undefined && <Chip tone="neutral">{t('на проверке у директора')}</Chip>}
+              {waiting !== undefined && <Chip tone="neutral">{waitingLabel(code)}</Chip>}
               {byCurator && <ByCurator />}
             </div>
           )
         })}
       </div>
       {proposable.length > 0 && (
-        <ProposeForm model={model} fields={proposable} current={values} pending={pending} />
+        <ProposeForm model={model} fields={proposable} current={values} pending={pending} domain={code} />
       )}
     </DataCard>
   )
