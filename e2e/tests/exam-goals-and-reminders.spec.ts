@@ -83,12 +83,23 @@ test("ученик ставит цель IELTS с датой — строка у
   await expect(row.getByText("на проверке у куратора")).toBeVisible();
 });
 
+/**
+ * Список календаря показывает ближайшие пять строк, остальное — под «Показать
+ * все». В полном прогоне соседние сценарии заводят ученику задачи раньше даты
+ * экзамена, и цель уходит за первые пять: раскрываем список целиком.
+ */
+async function openCalendarList(page: Page) {
+  await page.goto("/calendar");
+  await page.getByRole("button", { name: "Список" }).click();
+  const all = page.getByRole("button", { name: /^Показать все/ });
+  if (await all.count()) await all.first().click();
+}
+
 test("цель видна в календаре с пометкой, после подтверждения — без", async ({
   browser,
 }) => {
   const student = await as(browser, "student");
-  await student.goto("/calendar");
-  await student.getByRole("button", { name: "Список" }).click();
+  await openCalendarList(student);
   const pendingRow = student
     .locator(".rowline", { hasText: "IELTS" })
     .first();
@@ -109,8 +120,7 @@ test("цель видна в календаре с пометкой, после 
   ]);
   expect(review.status()).toBe(200);
 
-  await student.goto("/calendar");
-  await student.getByRole("button", { name: "Список" }).click();
+  await openCalendarList(student);
   const confirmed = student
     .locator(".rowline", { hasText: "Экзамен: IELTS" })
     .first();
