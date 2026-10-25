@@ -8,7 +8,7 @@ import { Loading } from '../components/ui'
 import Backdrop from '../components/Backdrop'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { useAuth } from '../auth/AuthContext'
-import { SCHOOL_MARK, SCHOOL_NAME, SCHOOL_SHORT_NAME } from '../branding'
+import { LOGO, SCHOOL_NAME, SCHOOL_SHORT_NAME } from '../branding'
 import Icon from './icons'
 import MobileNav from './MobileNav'
 import { NAV_GROUPS, navFor, tabsFor } from './nav'
@@ -110,9 +110,7 @@ export default function Shell() {
         <aside className="shell__nav">
           <div className="shell__navinner">
             <div className="shell__brand">
-              <span className="shell__mark" aria-hidden="true">
-                {SCHOOL_MARK}
-              </span>
+              <img className="shell__logo" src={LOGO.sidebar} alt="" />
               <span className="shell__brandname">
                 <span>{SCHOOL_SHORT_NAME}</span>
                 {SCHOOL_NAME !== SCHOOL_SHORT_NAME && <span className="shell__brandfull">{SCHOOL_NAME}</span>}

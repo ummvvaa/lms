@@ -11,21 +11,14 @@ export const SCHOOL_NAME: string = import.meta.env.VITE_SCHOOL_NAME || 'Школ
 export const SCHOOL_SHORT_NAME: string = import.meta.env.VITE_SCHOOL_SHORT_NAME || SCHOOL_NAME
 
 /**
- * Плитка-буква в строке логотипа меню: первая буква короткого названия
- * на акцентной подложке. Картинка герба там больше не стоит — на тёмной
- * полосе она читалась как чужой блок, а буква рисуется токенами и
- * перекрашивается вместе с темой.
- */
-export const SCHOOL_MARK: string = SCHOOL_SHORT_NAME.trim().charAt(0).toUpperCase() || SCHOOL_NAME.charAt(0)
-
-/**
  * Пути к вариантам логотипа. Каждому месту — свой размер,
  * один файл на все случаи не растягивается.
  */
 export const LOGO = {
   /** страница входа */
   login: '/brand/logo-192.png',
-  /** сайдбар */
+  /** строка логотипа меню: герб на прозрачном фоне — читается и на светлом,
+   *  и на тёмном стекле (решение владельца 25.10.2026, вместо плитки-буквы) */
   sidebar: '/brand/logo-96.png',
   /** шапка */
   header: '/brand/logo-56.png',

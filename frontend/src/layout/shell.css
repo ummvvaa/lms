@@ -64,7 +64,7 @@
   }
 }
 
-/* --- Строка логотипа: плитка-буква, короткое имя, поиск, сворачивание --- */
+/* --- Строка логотипа: герб школы, короткое имя, поиск, сворачивание --- */
 .shell__brand {
   display: flex;
   align-items: center;
@@ -73,19 +73,11 @@
   white-space: nowrap;
 }
 
-.shell__mark {
+.shell__logo {
   width: var(--avatar);
   height: var(--avatar);
   flex: 0 0 auto;
-  border-radius: var(--radius-inrow);
-  background: var(--accent-grad);
-  color: var(--on-accent);
-  box-shadow: var(--shadow-mark);
-  font-family: var(--font-head);
-  font-size: var(--type-body);
-  font-weight: 700;
-  display: grid;
-  place-items: center;
+  object-fit: contain;
 }
 
 .shell__brandname {
