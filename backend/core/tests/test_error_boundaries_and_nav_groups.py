@@ -113,13 +113,13 @@ def test_spacing_uses_the_scale():
 def test_nav_items_are_grouped():
     """У каждого пункта меню есть группа, и группа — из объявленного набора.
 
-    Наборов два: у сотрудника «Работа · Учёба · Данные · Настройки»
+    Наборов два: у сотрудника «Работа · Секции · Учёба · Данные · Настройки»
     (у куратора вместо данных «Ещё»), у ученика «Основное · Достижения ·
     Поступление · Работа» (достижения — у 8–10, поступление — у 11).
     Пункт без группы в меню не встаёт вовсе — это и проверяем.
     """
     nav = (FRONTEND / "layout" / "nav.ts").read_text(encoding="utf-8")
-    groups = "main|achievements|admission|work|academics|exams|data|settings|more"
+    groups = "main|achievements|admission|work|sections|academics|exams|data|settings|more"
     items = re.findall(
         rf"\{{ path: '[^']+', label: tk\('[^']*'\), icon: '[a-zA-Z]+'(, group: '({groups})')?[^}}]*\}}", nav
     )

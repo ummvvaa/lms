@@ -19,6 +19,8 @@ import './screens/academics/homework-review.css'
 import './screens/attendance.css'
 // кабинеты директоров (24.10.2026): строки, плитки, неделя освобождений
 import './screens/directors/directors.css'
+// спортивные секции и билеты (27.10.2026): после строк кабинетов — плитки часов переигрывают их
+import './screens/sport/sport.css'
 import './screens/mocks/mocks.css'
 import './components/queue.css'
 import './screens/dashboards/cabinet.css'

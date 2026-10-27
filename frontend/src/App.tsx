@@ -136,6 +136,11 @@ const EssayReview = lazy(() => import('./screens/directors/EssayReview'))
 const OlympiadEvents = lazy(() => import('./screens/directors/OlympiadEvents'))
 const Releases = lazy(() => import('./screens/directors/Releases'))
 const SportEvents = lazy(() => import('./screens/directors/SportEvents'))
+// спортивные секции и билеты (27.10.2026)
+const Sections = lazy(() => import('./screens/sport/Sections'))
+const SportSession = lazy(() => import('./screens/sport/Session'))
+const SectionAttendance = lazy(() => import('./screens/sport/SectionAttendance'))
+const Tickets = lazy(() => import('./screens/sport/Tickets'))
 const Deadlines = lazy(() => import('./screens/sections/Deadlines'))
 const Top30 = lazy(() => import('./screens/sections/Top30'))
 const Mocks = lazy(() => import('./screens/sections/Mocks'))
@@ -379,6 +384,10 @@ function Routing() {
         <Route path="/olympiad-events" element={<OlympiadEvents />} />
         <Route path="/releases" element={<Releases />} />
         <Route path="/sport-events" element={<SportEvents />} />
+        <Route path="/sections" element={<Sections />} />
+        <Route path="/session" element={<SportSession />} />
+        <Route path="/section-attendance" element={<SectionAttendance />} />
+        <Route path="/tickets" element={<Tickets />} />
         <Route path="/overview" element={<OverviewDashboard />} />
         <Route path="/deadlines" element={<Deadlines />} />
         <Route path="/top30" element={<Top30 />} />

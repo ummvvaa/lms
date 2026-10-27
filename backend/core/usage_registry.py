@@ -125,6 +125,12 @@ SCREENS = (
     Screen("/olympiad-events", gettext_noop("Олимпиады школы"), (ROLE_ADMIN, "director_talent")),
     Screen("/releases", gettext_noop("Освобождения от уроков"), (ROLE_ADMIN, "director_talent")),
     Screen("/sport-events", gettext_noop("Мероприятия"), (ROLE_ADMIN, "director_sport")),
+    # спортивные секции и билеты (27.10.2026)
+    Screen("/sections", gettext_noop("Секции"), (ROLE_ADMIN, "director_sport")),
+    Screen("/session", gettext_noop("Занятие и QR"), (ROLE_ADMIN, "director_sport")),
+    Screen("/section-attendance", gettext_noop("Посещаемость секций"), (ROLE_ADMIN, "director_sport")),
+    Screen("/tickets", gettext_noop("Билеты"), (ROLE_ADMIN, "director_sport")),
+    Screen("/s/:token", gettext_noop("Отметка на занятии"), (ROLE_STUDENT,)),
 )
 SCREENS_BY_KEY = {screen.key: screen for screen in SCREENS}
 

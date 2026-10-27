@@ -137,7 +137,8 @@ describe('меню директоров по макету', () => {
       ['Главная', 'Олимпиады', 'Освобождения', 'Мои уроки'],
       ['Таблица', 'Олимпиадная группа', 'Предметы и треки'],
     ])
-    expect(menu('director_sport', { teaches: true })).toEqual([['Главная', 'Мероприятия'], ['Виды спорта', 'Таблица']])
+    // секции, QR, посещаемость секций и билеты — своей группой «Секции» (27.10.2026)
+    expect(menu('director_sport', { teaches: true })).toEqual([['Главная', 'Мероприятия'], ['Секции', 'Занятие и QR', 'Посещаемость секций', 'Билеты'], ['Виды спорта', 'Таблица']])
   })
 
   it('убранное открывается адресом только там, где его нет в списке роли', () => {
@@ -157,6 +158,6 @@ describe('меню директоров по макету', () => {
     const tabs = (role: Role) => tabsFor(role, navFor(role)).map((item) => item.path)
     expect(tabs('director_behavior')).toEqual(['/dashboard', '/attendance', '/school-reports', '/parents'])
     expect(tabs('director_exam')).toEqual(['/dashboard', '/school-reports', '/staff-tasks', '/exam-results'])
-    expect(tabs('director_sport')).toEqual(['/dashboard', '/sport-events', '/table', '/sport-types'])
+    expect(tabs('director_sport')).toEqual(['/dashboard', '/sections', '/session', '/sport-events'])
   })
 })

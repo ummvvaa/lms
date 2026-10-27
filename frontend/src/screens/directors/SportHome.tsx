@@ -8,6 +8,7 @@ import { todayAlmaty } from '../../lib/dates'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router'
 import { useDecideApplication, useSportApplications, useSportEvents } from '../../api/directors'
+import { useSessionsToday } from '../../api/sport'
 import PendingQueue from '../../components/PendingQueue'
 import RowMenu, { RowMenuItem } from '../../components/RowMenu'
 import { Avatar, ShowAll } from '../../components/patterns'
@@ -17,12 +18,14 @@ import { t, tn } from '../../i18n'
 import { formatDateTimeLong, formatDayMonth } from '../../lib/format'
 import { HomeColumns, MyStaffTasksCard, todayLine, useGreeting } from './parts'
 import { EventDialog, seatsWords } from './SportEvents'
+import { slotTime } from '../sport/words'
 
 export default function SportHome() {
   const navigate = useNavigate()
   const greeting = useGreeting()
   const events = useSportEvents()
   const applications = useSportApplications()
+  const sessions = useSessionsToday()
   const decide = useDecideApplication()
   const [creating, setCreating] = useState(false)
   if (events.isLoading || applications.isLoading) return <Loading kind="cards" />
@@ -35,6 +38,7 @@ export default function SportHome() {
   const upcoming = rows.filter((row) => !row.past)
   const next = upcoming[0]
   const fresh = applications.data?.rows ?? []
+  const today = sessions.data?.rows ?? []
 
   return (
     <div className="lay-screen">
@@ -133,6 +137,57 @@ export default function SportHome() {
           ),
         ]}
         aside={[
+          // занятия секций сегодня — со ссылкой на «Занятие и QR» (27.10.2026)
+          today.length > 0 && (
+            <DataCard
+              title={t('Занятия сегодня')}
+              count={today.length}
+              right={
+                <Button variant="link" size="sm" onClick={() => navigate('/session')}>
+                  {t('Занятие и QR')}
+                </Button>
+              }
+            >
+              <div className="dir__rows">
+                <ShowAll>
+                  {today.map((row) => (
+                    <div key={row.id} className="dir__row">
+                      <span className="dir__what">
+                        <b>{row.title}</b>
+                        <span className="t-note num">
+                          {[
+                            slotTime(row),
+                            t('параллели {grades}', { grades: `${row.parallel_from}–${row.parallel_to}` }),
+                          ].join(' · ')}
+                        </span>
+                      </span>
+                      <Chip
+                        tone={row.state === 'live' ? 'good' : row.state === 'soon' ? 'info' : 'neutral'}
+                        size="sm"
+                      >
+                        {row.state === 'live'
+                          ? t('идёт')
+                          : row.state === 'soon'
+                            ? t('скоро')
+                            : t('прошло · {came} из {n}', { came: row.came, n: row.enrolled })}
+                      </Chip>
+                      <span className="dir__acts">
+                        {row.state === 'live' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/session?open=${row.id}`)}
+                          >
+                            {t('Показать QR')}
+                          </Button>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </ShowAll>
+              </div>
+            </DataCard>
+          ),
           next ? (
             <DataCard
               className="card--beam"

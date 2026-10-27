@@ -24,13 +24,14 @@ import { tk } from '../i18n'
  *
  * Порядок здесь и есть порядок групп на экране; пустая не рисуется.
  */
-export type NavGroup = 'main' | 'achievements' | 'admission' | 'work' | 'academics' | 'exams' | 'data' | 'settings' | 'more'
+export type NavGroup = 'main' | 'achievements' | 'admission' | 'work' | 'sections' | 'academics' | 'exams' | 'data' | 'settings' | 'more'
 
 export const NAV_GROUPS: { key: NavGroup; label: string }[] = [
   { key: 'main', label: tk('Основное') },
   { key: 'achievements', label: tk('Достижения') },
   { key: 'admission', label: tk('Поступление') },
   { key: 'work', label: tk('Работа') },
+  { key: 'sections', label: tk('Секции') },
   { key: 'academics', label: tk('Учёба') },
   { key: 'exams', label: tk('Экзамены') },
   { key: 'data', label: tk('Данные') },
@@ -51,6 +52,17 @@ export interface NavItem {
    *  ходит и с ноутбука, станет искать в меню слово, которого там нет */
   short?: string
 }
+
+/**
+ * Спортивные секции (27.10.2026): секции и часы, занятие с QR, посещаемость
+ * и билеты. У директора спорта и у администратора — один и тот же набор.
+ */
+const SPORT_SECTIONS: NavItem[] = [
+  { path: '/sections', label: tk('Секции'), icon: 'court', group: 'sections' },
+  { path: '/session', label: tk('Занятие и QR'), icon: 'qr', group: 'sections', short: tk('QR') },
+  { path: '/section-attendance', label: tk('Посещаемость секций'), icon: 'checkin', group: 'sections' },
+  { path: '/tickets', label: tk('Билеты'), icon: 'ticket', group: 'sections' },
+]
 
 const TABLE: NavItem = { path: '/table', label: tk('Таблица'), icon: 'table', group: 'work' }
 const SUGGESTIONS: NavItem = { path: '/suggestions', label: tk('Предложения'), icon: 'bulb', group: 'work' }
@@ -290,6 +302,7 @@ export const NAV: Record<Role, NavItem[]> = {
     HOME,
     // соревнования и мероприятия школы, заявки учеников
     { path: '/sport-events', label: tk('Мероприятия'), icon: 'trophy', group: 'work' },
+    ...SPORT_SECTIONS,
     { path: '/sport-types', label: tk('Виды спорта'), icon: 'ball', group: 'data' },
     { ...TABLE, group: 'data' },
     SUGGESTIONS,
@@ -328,6 +341,8 @@ export const NAV: Record<Role, NavItem[]> = {
     IMPORT,
     // задачи сотрудникам ставят Кымбат и администратор
     { path: '/staff-tasks', label: tk('Задачи сотрудникам'), icon: 'check', group: 'work', short: tk('Задачи') },
+    // секции, QR, посещаемость секций и билеты — всё, что у директора спорта (решение владельца, 27.10.2026)
+    ...SPORT_SECTIONS,
     ...ACADEMICS,
     // карусель на главной ученика — настройка школы, а не домен директора
     { path: '/home-cues', label: tk('Сюжеты главной'), icon: 'megaphone', group: 'settings' },
@@ -367,7 +382,8 @@ export const TABS: Record<Role, string[]> = {
   director_admission: ['/dashboard', '/essay-review', '/table', '/directory'],
   director_exam: ['/dashboard', '/school-reports', '/staff-tasks', '/exam-results'],
   director_talent: ['/dashboard', '/olympiad-events', '/releases', '/olympiad-group'],
-  director_sport: ['/dashboard', '/sport-events', '/table', '/sport-types'],
+  // секции и QR на занятии — то, что директор спорта открывает с телефона
+  director_sport: ['/dashboard', '/sections', '/session', '/sport-events'],
   // у куратора в баре — утренняя отметка, «Документы» уходят в «Ещё» (макет телефона куратора)
   curator: ['/dashboard', '/queue', '/students', '/attendance'],
   // у учителя четыре раздела: все в баре, профиль — в «Ещё»
@@ -647,6 +663,11 @@ export const STAFF_ONLY = [
   '/olympiad-events',
   '/releases',
   '/sport-events',
+  // спортивные секции и билеты (27.10.2026)
+  '/sections',
+  '/session',
+  '/section-attendance',
+  '/tickets',
 ]
 
 /** Экраны администратора: люди, архив, расходы и настройка главной ученика. */
@@ -689,4 +710,9 @@ export const SCREEN_ROLES: Record<string, Role[]> = {
   '/school-reports': ['director_behavior', 'director_exam'],
   '/staff-tasks': ['director_exam', 'admin'],
   '/groups': ['admin'],
+  // секции, занятие, посещаемость секций и билеты — директор спорта и администратор
+  '/sections': ['director_sport', 'admin'],
+  '/session': ['director_sport', 'admin'],
+  '/section-attendance': ['director_sport', 'admin'],
+  '/tickets': ['director_sport', 'admin'],
 }

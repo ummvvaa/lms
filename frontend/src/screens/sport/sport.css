@@ -1,0 +1,248 @@
+/* Спортивные секции и билеты (макеты sport-sections, 27.10.2026): переключатель записи,
+   часы секции, экран занятия с QR, выбор секции учеником, страница отметки.
+   Отступы — шагом 4 через --space, цвета — токены, размеры шрифта — токены языка. */
+
+/* секции: список уже карточки секции */
+.sport-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--gap-block);
+  align-items: start;
+  min-width: 0;
+}
+
+/* «Запись открыта до…»: переключатель, слова, дата или чип */
+.sport-window {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: calc(var(--space) * 4);
+}
+.sport-window__form {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 2);
+}
+
+/* часы секции: плитки «день, время, параллели, записано из лимита» с полосой */
+.sport-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space) * 56), 1fr));
+  gap: calc(var(--space) * 2);
+}
+/* плитка — кнопка реестра: высота по содержимому, текст слева; body — вес выше общего правила кнопок */
+body .sport-slot[data-variant][data-size] {
+  width: 100%;
+  height: auto;
+  justify-content: stretch;
+  justify-items: stretch;
+  white-space: normal;
+  display: grid;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-inner);
+  background: var(--surface-2);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+  min-height: var(--touch);
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+body .sport-slot[data-variant][data-size]:hover {
+  background: var(--accent-bg);
+}
+body .sport-slot--on[data-variant][data-size] {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+.sport-slot__head {
+  font-family: var(--font-head);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sport-slot__line b {
+  font-family: var(--font-head);
+  font-weight: 600;
+}
+.sport-slot__line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 2);
+  min-width: 0;
+}
+/* занятия сегодня — плитками столбиком */
+.sport-today {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+/* выбор часа в фильтре посещаемости: «Сб 12:00–13:00 · 10–11» целиком */
+.sport-filter-wide {
+  min-width: calc(var(--space) * 64);
+}
+
+/* список учеников часа и строка «без часа» */
+.sport-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+.sport-list--warn {
+  padding: calc(var(--space) * 3);
+  border-radius: var(--radius-inner);
+  background: var(--warn-bg);
+}
+.sport-list__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space) * 2);
+}
+.sport-pct {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(var(--space) * 2);
+  white-space: nowrap;
+}
+
+/* окно «Изменить секцию»: занятие — строкой полей */
+.sport-edit {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+}
+.sport-edit__row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1.2fr 0.8fr 1fr auto;
+  align-items: end;
+  gap: calc(var(--space) * 2);
+  padding-bottom: calc(var(--space) * 3);
+  border-bottom: 1px solid var(--line);
+}
+.sport-edit__row:last-child {
+  border-bottom: 0;
+}
+
+/* «Занятие и QR»: занятия, код, отметившиеся */
+.sport-session {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: var(--gap-block);
+  align-items: start;
+}
+.sport-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--space) * 3);
+  text-align: center;
+}
+.sport-qr:fullscreen {
+  justify-content: center;
+  background: var(--qr-paper);
+  color: var(--qr-ink);
+}
+.sport-qr__code {
+  width: min(100%, calc(var(--space) * 80));
+  aspect-ratio: 1;
+  padding: calc(var(--space) * 3);
+  border-radius: var(--radius-inner);
+  background: var(--qr-paper);
+}
+.sport-qr:fullscreen .sport-qr__code {
+  width: min(80vh, 80vw);
+}
+.sport-qr__code svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* модули кода — цветом токена: пакет рисует их обводкой, подложку — заливкой */
+.sport-qr__code svg path[stroke] {
+  stroke: var(--qr-ink);
+}
+.sport-qr__code svg path[fill] {
+  fill: var(--qr-paper);
+}
+.sport-qr__count {
+  font-size: var(--type-card);
+}
+.sport-qr__count b {
+  font-family: var(--font-head);
+  font-size: var(--type-figure);
+}
+.sport-roster {
+  margin-top: calc(var(--space) * 3);
+}
+
+/* выбор секции и карточки раздач у ученика: четыре в ряд, ниже — по две */
+.sport-choose {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space) * 72), 1fr));
+  gap: var(--gap-block);
+  align-items: stretch;
+}
+.sport-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space) * 3);
+}
+.sport-count {
+  font-family: var(--font-head);
+  font-size: var(--type-figure);
+  font-weight: 600;
+}
+
+/* страница отметки по QR на телефоне */
+.sport-scan {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: calc(var(--space) * 4);
+}
+.sport-scan > [data-slot='badge'] {
+  align-self: flex-start;
+}
+.sport-scan__text {
+  font-size: var(--type-body);
+}
+
+@media (max-width: 1279px) {
+  .sport-session {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .sport-session > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 1100px) {
+  .sport-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sport-edit__row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 759px) {
+  .sport-session {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sport-window {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .sport-window > .dir__acts,
+  .sport-window__form {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+  .sport-edit__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
