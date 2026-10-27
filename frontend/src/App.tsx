@@ -1,5 +1,5 @@
 /** Роутинг и провайдеры. */
-import { Fragment, lazy, useEffect, useMemo, useReducer, type ReactNode } from 'react'
+import { Fragment, Suspense, lazy, useEffect, useMemo, useReducer, type ReactNode } from 'react'
 import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router'
@@ -141,6 +141,8 @@ const Sections = lazy(() => import('./screens/sport/Sections'))
 const SportSession = lazy(() => import('./screens/sport/Session'))
 const SectionAttendance = lazy(() => import('./screens/sport/SectionAttendance'))
 const Tickets = lazy(() => import('./screens/sport/Tickets'))
+// отметка по QR открывается камерой без меню: свой кусок и своя граница загрузки
+const Scan = lazy(() => import('./screens/sport/Scan'))
 const Deadlines = lazy(() => import('./screens/sections/Deadlines'))
 const Top30 = lazy(() => import('./screens/sections/Top30'))
 const Mocks = lazy(() => import('./screens/sections/Mocks'))
@@ -320,6 +322,15 @@ function Routing() {
       <Route path="/login/link" element={<LinkLogin />} />
       <Route path="/set-password" element={<SetPassword />} />
       <Route path="/confirm-email" element={<ConfirmEmail />} />
+      {/* отметка по QR: камера открывает ссылку и до входа — вход здесь же */}
+      <Route
+        path="/s/:token"
+        element={
+          <Suspense fallback={null}>
+            <Scan />
+          </Suspense>
+        }
+      />
 
       <Route element={<Protected />}>
         <Route path="/dashboard" element={<Dashboard />} />

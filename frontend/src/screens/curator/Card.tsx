@@ -40,6 +40,7 @@ import { usePhone } from '../../phone'
 import GradesTab from '../academics/GradesTab'
 import StudentCareerBlock from '../career/StudentCareerBlock'
 import ContactsBlock from './ContactsBlock'
+import SectionBlock from '../sport/SectionBlock'
 import { CURATOR_HIDDEN } from '../../layout/nav'
 import { CallDialog, EscalateStudentDialog, TransferDialog } from './Dialogs'
 import { DocumentEntry, ExamsEntry, PortfolioEntry, UniversitiesEntry } from './DirectEntry'
@@ -722,6 +723,9 @@ export default function CuratorCard() {
             {phone && !junior && <AdmissionBlock block={data.admission} studentId={data.id} filledOnly />}
 
             {!disciplineLeft && <DisciplineBlock card={data} />}
+
+            {/* спортивная секция ученика — на чтение (27.10.2026) */}
+            <SectionBlock studentId={data.id} />
 
             <ContactsBlock card={data} />
           </div>

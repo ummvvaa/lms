@@ -45,6 +45,7 @@ import { AddRowForm, ProfileCard, ProposeForm, waitingLabel } from '../component
 import { DateTile, EntryList, Medal, WhoConfirms, ownerOf, waitingState } from './PortfolioEntries'
 import { modelOf, pendingByField, pendingNewRows } from './portfolioData'
 import StudentSport from './directors/StudentSport'
+import SportTabs from './sport/SportTabs'
 import './portfolio.css'
 import './portfolio-layout.css'
 import { Button } from '../components/ui/button'
@@ -629,46 +630,52 @@ export default function MyData() {
         </div>
       )}
 
-      {/* мероприятия школы и свои заявки (24.10.2026) — у 11 здесь, у 8–10 в разделе «Спорт» */}
-      {tab === 'sport' && <StudentSport />}
+      {/* секция, мероприятия школы и билеты (27.10.2026) — у 11 здесь, у 8–10 в разделе «Спорт» */}
       {tab === 'sport' && (
-        <div className="lay-3 pfl-tab">
-          <div className="lay-span2">
-            <DataCard title={t('Спортивные соревнования')} count={competitions.length + pendingCompetitions.length}>
-              <EntryList
-                rows={[
-                  ...pendingCompetitions.map((row, index) => ({
-                    key: `pending-${index}`,
-                    title: row.name ?? '',
-                    result: row.result ?? '',
-                    lead: <DateTile value={row.date ?? null} />,
-                    state: waitingState(),
-                  })),
-                  ...competitions.map((row) => ({
-                    key: row.id,
-                    title: row.name,
-                    result: row.result,
-                    lead: <DateTile value={row.date} />,
-                    byCurator: (row.entered_by_curator ?? []).length > 0,
-                  })),
-                ]}
-                empty={t('Соревнований пока нет')}
-              />
-              {competitionModel && (
-                <AddRowForm
-                  model="students.Competition"
-                  fields={competitionModel.fields.filter((f) => f.student_proposable && f.name !== 'proof_url')}
-                  submitLabel={t('Добавить соревнование')}
-                  withFile
-                />
-              )}
-            </DataCard>
-          </div>
-          <div className="lay-stack">
-            <WhoConfirms owner={ownerOf(domains, 'students.Competition')} />
-            {domainCard('sport')}
-          </div>
-        </div>
+        <SportTabs
+          events={
+            <>
+              <StudentSport />
+              <div className="lay-3 pfl-tab">
+                <div className="lay-span2">
+                  <DataCard title={t('Спортивные соревнования')} count={competitions.length + pendingCompetitions.length}>
+                    <EntryList
+                      rows={[
+                        ...pendingCompetitions.map((row, index) => ({
+                          key: `pending-${index}`,
+                          title: row.name ?? '',
+                          result: row.result ?? '',
+                          lead: <DateTile value={row.date ?? null} />,
+                          state: waitingState(),
+                        })),
+                        ...competitions.map((row) => ({
+                          key: row.id,
+                          title: row.name,
+                          result: row.result,
+                          lead: <DateTile value={row.date} />,
+                          byCurator: (row.entered_by_curator ?? []).length > 0,
+                        })),
+                      ]}
+                      empty={t('Соревнований пока нет')}
+                    />
+                    {competitionModel && (
+                      <AddRowForm
+                        model="students.Competition"
+                        fields={competitionModel.fields.filter((f) => f.student_proposable && f.name !== 'proof_url')}
+                        submitLabel={t('Добавить соревнование')}
+                        withFile
+                      />
+                    )}
+                  </DataCard>
+                </div>
+                <div className="lay-stack">
+                  <WhoConfirms owner={ownerOf(domains, 'students.Competition')} />
+                  {domainCard('sport')}
+                </div>
+              </div>
+            </>
+          }
+        />
       )}
 
       {tab === 'olympiads' && (

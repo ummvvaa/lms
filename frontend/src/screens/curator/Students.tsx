@@ -12,6 +12,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useCuratorStudents, type CuratorStudentRow } from '../../api/hooks'
+import { useStudentsSections } from '../../api/sport'
 import DataTable, { type Column } from '../../components/DataTable'
 import { ExportPreview } from '../../components/ExportPreview'
 import Field from '../../components/Field'
@@ -23,6 +24,7 @@ import GroupSwitch from './GroupSwitch'
 import TaskDialog from './TaskDialog'
 import { STATUS_TONE, useGroup } from './state'
 import { formatDate } from '../../lib/format'
+import '../directors/directors.css'
 import './curator.css'
 import './curator-layout.css'
 
@@ -48,11 +50,20 @@ export default function CuratorStudents() {
 
   const bucket = params.get('bucket') ?? ''
   const { data, isLoading, error } = useCuratorStudents(group, bucket, search)
+  // секция и посещение секции за месяц (27.10.2026): сервер отдаёт только свои группы
+  const sections = useStudentsSections(null)
+  const [sectionFilter, setSectionFilter] = useState<'' | 'none' | 'skip'>('')
 
   if (isLoading && !data) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
 
-  const rows = data?.results ?? []
+  const sectionOf = (row: CuratorStudentRow) => sections.data?.rows[String(row.id)]
+  const loaded = data?.results ?? []
+  const noSection = loaded.filter((row) => !sectionOf(row)).length
+  const skipping = loaded.filter((row) => sectionOf(row)?.below).length
+  const rows = loaded.filter((row) =>
+    sectionFilter === 'none' ? !sectionOf(row) : sectionFilter === 'skip' ? Boolean(sectionOf(row)?.below) : true,
+  )
   // у выбранных групп без поступления нет колонок IELTS, SAT и документов
   // и задачи плана; в смешанном списке у строк 8–10 эти ячейки пустые
   const admission = data?.has_admission ?? true
@@ -78,7 +89,7 @@ export default function CuratorStudents() {
     {
       key: 'name',
       title: t('Ученик'),
-      width: '24%',
+      width: '22%',
       cell: (row) => (
         <span className="personcell">
           <Avatar name={row.full_name} size={30} />
@@ -121,6 +132,41 @@ export default function CuratorStudents() {
           </span>
         ) : null,
       sortBy: (row) => row.documents_collected,
+    },
+    {
+      key: 'section',
+      title: t('Секция'),
+      width: '13%',
+      cell: (row) => {
+        const info = sectionOf(row)
+        if (!info) return <span className="t-note">{t('не записан')}</span>
+        return (
+          <>
+            <b>{info.section}</b>
+            <span className="t-note dir__sub">{info.slot || t('час не выбран')}</span>
+          </>
+        )
+      },
+      sortBy: (row) => sectionOf(row)?.section ?? '',
+    },
+    {
+      key: 'section_pct',
+      title: t('Посещение секции'),
+      width: '15%',
+      align: 'right',
+      cell: (row) => {
+        const info = sectionOf(row)
+        if (!info) return null
+        if (info.percent === null) return <span className="t-note">{t('занятий не было')}</span>
+        return info.below ? (
+          <Chip tone="warn" size="sm" className="num">
+            {`${info.percent}%`}
+          </Chip>
+        ) : (
+          <span className="num">{info.percent}%</span>
+        )
+      },
+      sortBy: (row) => sectionOf(row)?.percent ?? -1,
     },
     {
       key: 'status',
@@ -173,8 +219,17 @@ export default function CuratorStudents() {
       {/* корзины — фильтрами со счётчиком в одну строку; поиск — в шапке таблицы, как в макете */}
       <div className="filters cstudents__buckets">
         <Segmented
-          value={bucket}
-          onChange={setBucket}
+          value={sectionFilter ? `sport:${sectionFilter}` : bucket}
+          onChange={(value) => {
+            // «Без секции» и «Пропускают секцию» — в том же ряду, что корзины (макет CStudents)
+            if (value.startsWith('sport:')) {
+              setSectionFilter(value.slice(6) as 'none' | 'skip')
+              setBucket('')
+            } else {
+              setSectionFilter('')
+              setBucket(value)
+            }
+          }}
           label={t('Кого показать')}
           items={[
             { value: '', label: <>{t('Все')}<span className="tabs__n num">{total}</span></> },
@@ -187,6 +242,8 @@ export default function CuratorStudents() {
                 </>
               ),
             })),
+            { value: 'sport:none', label: <>{t('Без секции')}<span className="tabs__n num">{noSection}</span></> },
+            { value: 'sport:skip', label: <>{t('Пропускают секцию')}<span className="tabs__n num">{skipping}</span></> },
           ]}
         />
       </div>
