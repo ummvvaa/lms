@@ -74,33 +74,28 @@ export default function Sections() {
       <EnrollWindow open={data.settings.open} until={data.settings.enroll_until} />
       <div className="sport-pair">
         <DataCard title={t('Секции')} count={data.rows.length}>
-          <div className="dir__rows">
+          <div className="sport-today">
             {data.rows.map((row) => (
-              <div key={row.id} className="dir__row">
-                <span className="dir__mono">{row.title.slice(0, 2).toLocaleUpperCase()}</span>
-                <span className="dir__what">
+              <Button
+                key={row.id}
+                variant="ghost"
+                className={`sport-slot${row.id === picked ? ' sport-slot--on' : ''}`}
+                aria-pressed={row.id === picked}
+                onClick={() => setParams({ open: String(row.id) }, { replace: true })}
+              >
+                <span className="sport-slot__line">
                   <b>{row.title}</b>
-                  <span className="t-note">
-                    {t('{n} из {total} мест', { n: row.enrolled, total: row.capacity })}
-                  </span>
+                  {row.no_hour > 0 && (
+                    <Chip tone="warn" size="sm">
+                      {t('{n} без часа', { n: row.no_hour })}
+                    </Chip>
+                  )}
                 </span>
-                {row.no_hour > 0 ? (
-                  <Chip tone="warn" size="sm">
-                    {t('{n} без часа', { n: row.no_hour })}
-                  </Chip>
-                ) : (
-                  <span />
-                )}
-                <span className="dir__acts">
-                  <Button
-                    variant={row.id === picked ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => setParams({ open: String(row.id) }, { replace: true })}
-                  >
-                    {t('Открыть')}
-                  </Button>
+                <span className="t-note num">
+                  {t('{n} из {total} мест', { n: row.enrolled, total: row.capacity })}
                 </span>
-              </div>
+                <Bar percent={(row.enrolled * 100) / Math.max(1, row.capacity)} />
+              </Button>
             ))}
           </div>
         </DataCard>

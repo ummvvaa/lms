@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { scan, type ScanAnswer } from '../../api/sport'
+import { LOGO, SCHOOL_NAME } from '../../branding'
 import { useAuth } from '../../auth/AuthContext'
 import Backdrop from '../../components/Backdrop'
 import Field from '../../components/Field'
@@ -43,6 +44,10 @@ export default function Scan() {
   return (
     <div className="login">
       <Backdrop />
+      <div className="login__brand">
+        <img className="login__logo" src={LOGO.header} alt="" />
+        <span className="login__title">{SCHOOL_NAME}</span>
+      </div>
       <div className="card card-pad card--beam login__card sport-scan">
         {answer?.state === 'login' && !me ? (
           <ScanLogin
