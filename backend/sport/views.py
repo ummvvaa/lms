@@ -85,7 +85,7 @@ def _brief(student) -> dict:
         "full_name": student.full_name,
         "short_name": f"{student.last_name} {student.first_name}".strip(),
         "group": student.group.code if student.group_id else "",
-        "grade": services.grade_of(student),
+        "parallel": services.student_parallel(student),
     }
 
 
@@ -98,8 +98,8 @@ def _slot_dict(slot: SectionSlot, taken: int | None = None) -> dict:
         "day_short": services.short_day(slot.weekday),
         "starts": f"{slot.starts:%H:%M}",
         "ends": f"{slot.ends:%H:%M}",
-        "grade_from": slot.grade_from,
-        "grade_to": slot.grade_to,
+        "parallel_from": slot.parallel_from,
+        "parallel_to": slot.parallel_to,
         "room": slot.room,
         "capacity": slot.capacity,
     }
@@ -219,22 +219,22 @@ def _clock(raw) -> dt.time | None:
 def _slot_fields(data) -> dict:
     weekday = _int(data.get("weekday"))
     starts, ends = _clock(data.get("starts")), _clock(data.get("ends"))
-    grade_from, grade_to = _int(data.get("grade_from")), _int(data.get("grade_to"))
+    parallel_from, parallel_to = _int(data.get("parallel_from")), _int(data.get("parallel_to"))
     capacity = _int(data.get("capacity"))
     if weekday is None or weekday not in Weekday.values:
         raise services.Refused(_("Выберите день недели"))
     if starts is None or ends is None or ends <= starts:
         raise services.Refused(_("Конец занятия должен быть позже начала"))
-    if grade_from is None or grade_to is None or not 8 <= grade_from <= grade_to <= 11:
-        raise services.Refused(_("Классы — от 8 до 11"))
+    if parallel_from is None or parallel_to is None or not 8 <= parallel_from <= parallel_to <= 11:
+        raise services.Refused(_("Параллели — от 8 до 11"))
     if not capacity:
         raise services.Refused(_("Укажите лимит мест"))
     return {
         "weekday": weekday,
         "starts": starts,
         "ends": ends,
-        "grade_from": grade_from,
-        "grade_to": grade_to,
+        "parallel_from": parallel_from,
+        "parallel_to": parallel_to,
         "room": str(data.get("room") or "").strip()[:80],
         "capacity": min(capacity, 999),
     }
@@ -318,7 +318,7 @@ def sections_export(request):
         Column(_("Час"), lambda e: services.slot_words(e.slot) if e.slot_id else _("час не выбран"), 18),
         Column(_("Ученик"), lambda e: e.student.full_name, 30),
         Column(_("Группа"), lambda e: e.student.group.code if e.student.group_id else "", 10),
-        Column(_("Класс"), lambda e: services.grade_of(e.student), 8),
+        Column(_("Параллель"), lambda e: services.student_parallel(e.student), 8),
         Column(_("Записался"), lambda e: timezone.localtime(e.enrolled_at).date(), 12),
         Column(_("Откуда запись"), lambda e: e.get_source_display(), 18),
     ]
@@ -489,7 +489,7 @@ def _my_payload(student) -> dict:
         }
     return {
         **settings_data,
-        "grade": services.grade_of(student),
+        "parallel": services.student_parallel(student),
         "enrollment": mine,
         "sections": options,
     }
@@ -876,7 +876,7 @@ def attendance_export(request):
         columns = [
             Column(_("Ученик"), lambda r: r["student"]["full_name"], 30),
             Column(_("Группа"), lambda r: r["student"]["group"], 10),
-            Column(_("Класс"), lambda r: r["student"]["grade"], 8),
+            Column(_("Параллель"), lambda r: r["student"]["parallel"], 8),
             *[
                 Column(f"{day:%d.%m}", lambda r, i=index: words.get(r["cells"][i], ""), 9)
                 for index, day in enumerate(dates)
@@ -907,7 +907,7 @@ def _drop_fields(data) -> dict:
     pickup = str(data.get("pickup") or "").strip()
     event_at, opens_at = moment("event_at"), moment("opens_at")
     count = _int(data.get("count"))
-    grade_from, grade_to = _int(data.get("grade_from")) or 8, _int(data.get("grade_to")) or 11
+    parallel_from, parallel_to = _int(data.get("parallel_from")) or 8, _int(data.get("parallel_to")) or 11
     offer_minutes = _int(data.get("offer_minutes")) or 30
     if not title:
         raise services.Refused(_("Напишите, что за событие"))
@@ -919,8 +919,8 @@ def _drop_fields(data) -> dict:
         raise services.Refused(_("Укажите, где событие и где забрать билет"))
     if not count:
         raise services.Refused(_("Укажите, сколько билетов"))
-    if not 8 <= grade_from <= grade_to <= 11:
-        raise services.Refused(_("Классы — от 8 до 11"))
+    if not 8 <= parallel_from <= parallel_to <= 11:
+        raise services.Refused(_("Параллели — от 8 до 11"))
     return {
         "title": title[:250],
         "place": place[:200],
@@ -928,8 +928,8 @@ def _drop_fields(data) -> dict:
         "event_at": event_at,
         "opens_at": opens_at,
         "count": min(count, 5000),
-        "grade_from": grade_from,
-        "grade_to": grade_to,
+        "parallel_from": parallel_from,
+        "parallel_to": parallel_to,
         "offer_minutes": max(1, min(offer_minutes, 1440)),
     }
 
@@ -945,8 +945,8 @@ def _drop_dict(drop, *, now=None, with_counts: bool = True) -> dict:
         "count": drop.count,
         "opens_at": _when(drop.opens_at),
         "pickup": drop.pickup,
-        "grade_from": drop.grade_from,
-        "grade_to": drop.grade_to,
+        "parallel_from": drop.parallel_from,
+        "parallel_to": drop.parallel_to,
         "offer_minutes": drop.offer_minutes,
         "stage": tickets.stage(drop, now),
     }
@@ -1054,7 +1054,7 @@ def ticket_drop_export(request, pk: int):
     columns = [
         Column(_("Ученик"), lambda c: c.student.full_name, 30),
         Column(_("Группа"), lambda c: c.student.group.code if c.student.group_id else "", 10),
-        Column(_("Класс"), lambda c: services.grade_of(c.student), 8),
+        Column(_("Параллель"), lambda c: services.student_parallel(c.student), 8),
         Column(_("Нажал"), lambda c: timezone.localtime(c.pressed_at).strftime("%d.%m %H:%M:%S.%f")[:-3], 20),
         Column(_("Из очереди"), lambda c: c.from_queue, 12),
     ]
@@ -1111,11 +1111,11 @@ def my_tickets(request):
     me = _me_student(request)
     if me is None:
         return _forbid(_("Раздел — у ученика"))
-    grade = services.grade_of(me)
+    grade = services.student_parallel(me)
     now = timezone.now()
     since = now - dt.timedelta(days=60)
     rows = (
-        TicketDrop.objects.filter(grade_from__lte=grade, grade_to__gte=grade, event_at__gte=since)
+        TicketDrop.objects.filter(parallel_from__lte=grade, parallel_to__gte=grade, event_at__gte=since)
         .prefetch_related("claims")
         .order_by("opens_at")
     )
@@ -1128,8 +1128,8 @@ def _my_drop_action(request, pk: int, action):
     me = _me_student(request)
     if me is None:
         return _forbid(_("Билет забирает ученик"))
-    grade = services.grade_of(me)
-    drop = TicketDrop.objects.filter(pk=pk, grade_from__lte=grade, grade_to__gte=grade).first()
+    grade = services.student_parallel(me)
+    drop = TicketDrop.objects.filter(pk=pk, parallel_from__lte=grade, parallel_to__gte=grade).first()
     if drop is None:
         return _not_found()
     try:

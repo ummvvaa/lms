@@ -22,22 +22,27 @@ from django.utils.translation import gettext as _
 from core.models import Notification
 from core.parallels import ADMISSION_PARALLEL
 from sport.models import HELD, ClaimStatus, TicketClaim, TicketDrop
-from sport.services import Refused, grade_of
+from sport.services import Refused, student_parallel
 from students.models import Student
 
 #: за сколько минут до старта раздачи приходит напоминание
 REMIND_MINUTES = 5
-#: куда ведёт уведомление о билетах
-LINK = "/sport?tab=tickets"
+#: куда ведёт уведомление о билетах: у 8–10 — раздел «Спорт», у 11 — вкладка «Спорт» портфолио
+LINK_JUNIOR = "/sport?sport=tickets"
+LINK_GRADUATE = "/my-data?tab=sport&sport=tickets"
+
+
+def link_for(student) -> str:
+    return LINK_GRADUATE if student_parallel(student) == ADMISSION_PARALLEL else LINK_JUNIOR
 
 
 def audience(drop: TicketDrop):
     """Ученики классов раздачи со своей учёткой. Ученик без группы — выпускник, как везде."""
-    grades = Q(group__parallel__gte=drop.grade_from, group__parallel__lte=drop.grade_to)
-    if drop.grade_from <= ADMISSION_PARALLEL <= drop.grade_to:
+    grades = Q(group__parallel__gte=drop.parallel_from, group__parallel__lte=drop.parallel_to)
+    if drop.parallel_from <= ADMISSION_PARALLEL <= drop.parallel_to:
         grades |= Q(group__isnull=True)
     return Student.objects.filter(grades, is_active=True, user__isnull=False, user__is_active=True).select_related(
-        "user"
+        "user", "group"
     )
 
 
@@ -50,7 +55,9 @@ def _notify(students, kind: str, build) -> int:
     rows = []
     for student in students:
         with translation.override(getattr(student.user, "language", "") or "ru"):
-            rows.append(Notification(recipient=student.user, kind=kind, text=str(build())[:500], link=LINK))
+            rows.append(
+                Notification(recipient=student.user, kind=kind, text=str(build())[:500], link=link_for(student))
+            )
     Notification.objects.bulk_create(rows, batch_size=500)
     return len(rows)
 
@@ -117,8 +124,10 @@ def claim(*, drop: TicketDrop, student, now: dt.datetime | None = None) -> Ticke
         raise Refused(_("Раздача ещё не началась"))
     if now >= drop.event_at:
         raise Refused(_("Событие уже прошло"))
-    if not drop.grade_from <= grade_of(student) <= drop.grade_to:
-        raise Refused(_("Эта раздача — для {grades} классов").format(grades=f"{drop.grade_from}–{drop.grade_to}"))
+    if not drop.parallel_from <= student_parallel(student) <= drop.parallel_to:
+        raise Refused(
+            _("Эта раздача — для параллелей {grades}").format(grades=f"{drop.parallel_from}–{drop.parallel_to}")
+        )
     existing = drop.claims.filter(student=student).first()
     if existing is not None:
         return existing

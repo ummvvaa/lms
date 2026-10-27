@@ -55,8 +55,8 @@ def _title(user) -> str:
     return (getattr(user, "full_name", "") or getattr(user, "email", "") or "")[:250]
 
 
-def grade_of(student) -> int:
-    """Класс ученика — параллель его группы."""
+def student_parallel(student) -> int:
+    """Параллель ученика — параллель его группы."""
     return parallel_of(student)
 
 
@@ -148,9 +148,9 @@ def active_of(student) -> SectionEnrollment | None:
 
 def slots_for(student, section: Section | None = None):
     """Занятия, подходящие ученику по классу."""
-    grade = grade_of(student)
+    grade = student_parallel(student)
     qs = SectionSlot.objects.filter(
-        section__archived_at__isnull=True, grade_from__lte=grade, grade_to__gte=grade
+        section__archived_at__isnull=True, parallel_from__lte=grade, parallel_to__gte=grade
     ).select_related("section")
     if section is not None:
         qs = qs.filter(section=section)
@@ -181,8 +181,10 @@ def enroll(*, student, slot: SectionSlot, actor, by_director: bool = False) -> S
         choosing_hour = current is not None and current.slot_id is None and current.section_id == locked.section_id
         if not choosing_hour:
             raise Refused(_("Запись на секции закрыта — обратитесь к директору спорта"))
-    if not locked.fits(grade_of(student)):
-        raise Refused(_("Это занятие для {grades} классов").format(grades=f"{locked.grade_from}–{locked.grade_to}"))
+    if not locked.fits(student_parallel(student)):
+        raise Refused(
+            _("Это занятие для параллелей {grades}").format(grades=f"{locked.parallel_from}–{locked.parallel_to}")
+        )
     if current is not None and current.slot_id == locked.pk:
         return current
     if taken(locked) >= locked.capacity:
@@ -269,8 +271,8 @@ def remove_slot(slot: SectionSlot, *, move_to: SectionSlot | None, actor) -> int
     """
     if move_to is not None and (move_to.section_id != slot.section_id or move_to.pk == slot.pk):
         raise Refused(_("Перевести можно только в другой час этой секции"))
-    if move_to is not None and (move_to.grade_from > slot.grade_from or move_to.grade_to < slot.grade_to):
-        raise Refused(_("Час, куда переводят, — для других классов"))
+    if move_to is not None and (move_to.parallel_from > slot.parallel_from or move_to.parallel_to < slot.parallel_to):
+        raise Refused(_("Час, куда переводят, — для других параллелей"))
     rows = list(SectionEnrollment.objects.select_for_update().filter(slot=slot, ended_at__isnull=True))
     now = timezone.now()
     for row in rows:
@@ -410,7 +412,7 @@ def _slot_brief(slot: SectionSlot) -> dict:
         "day": slot.get_weekday_display(),
         "starts": f"{slot.starts:%H:%M}",
         "ends": f"{slot.ends:%H:%M}",
-        "grades": f"{slot.grade_from}–{slot.grade_to}",
+        "grades": f"{slot.parallel_from}–{slot.parallel_to}",
         "address": slot.section.address,
     }
 

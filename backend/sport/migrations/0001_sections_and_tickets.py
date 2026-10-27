@@ -78,12 +78,12 @@ def seed(apps, schema_editor):
                 weekday=weekday,
                 starts=_time(starts),
                 ends=_time(ends),
-                grade_from=grade_from,
-                grade_to=grade_to,
+                parallel_from=parallel_from,
+                parallel_to=parallel_to,
                 room=room,
                 capacity=capacity,
             )
-            for weekday, starts, ends, grade_from, grade_to, room, capacity in slots
+            for weekday, starts, ends, parallel_from, parallel_to, room, capacity in slots
         )
 
 
@@ -121,7 +121,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         blank=True,
                         null=True,
-                        on_delete=django.db.models.deletion.PROTECT,
+                        on_delete=django.db.models.deletion.SET_NULL,
                         related_name="sections",
                         to="directories.sporttype",
                         verbose_name="Вид спорта",
@@ -186,8 +186,8 @@ class Migration(migrations.Migration):
                 ),
                 ("starts", models.TimeField(verbose_name="Начало")),
                 ("ends", models.TimeField(verbose_name="Конец")),
-                ("grade_from", models.PositiveSmallIntegerField(verbose_name="С класса")),
-                ("grade_to", models.PositiveSmallIntegerField(verbose_name="По класс")),
+                ("parallel_from", models.PositiveSmallIntegerField(verbose_name="С параллели")),
+                ("parallel_to", models.PositiveSmallIntegerField(verbose_name="По параллель")),
                 ("room", models.CharField(blank=True, max_length=80, verbose_name="Кабинет или уточнение")),
                 ("capacity", models.PositiveSmallIntegerField(verbose_name="Мест")),
                 (
@@ -203,7 +203,7 @@ class Migration(migrations.Migration):
             options={
                 "verbose_name": "Занятие секции",
                 "verbose_name_plural": "Занятия секций",
-                "ordering": ("section", "weekday", "starts", "grade_from", "id"),
+                "ordering": ("section", "weekday", "starts", "parallel_from", "id"),
             },
         ),
         migrations.CreateModel(
@@ -389,8 +389,8 @@ class Migration(migrations.Migration):
                 ("count", models.PositiveSmallIntegerField(verbose_name="Сколько билетов")),
                 ("opens_at", models.DateTimeField(verbose_name="Старт раздачи")),
                 ("pickup", models.CharField(max_length=250, verbose_name="Где и до когда забрать")),
-                ("grade_from", models.PositiveSmallIntegerField(default=8, verbose_name="С класса")),
-                ("grade_to", models.PositiveSmallIntegerField(default=11, verbose_name="По класс")),
+                ("parallel_from", models.PositiveSmallIntegerField(default=8, verbose_name="С параллели")),
+                ("parallel_to", models.PositiveSmallIntegerField(default=11, verbose_name="По параллель")),
                 (
                     "offer_minutes",
                     models.PositiveSmallIntegerField(default=30, verbose_name="Минут на ответ из очереди"),
@@ -476,7 +476,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="sectionslot",
             constraint=models.CheckConstraint(
-                condition=models.Q(("grade_to__gte", models.F("grade_from"))), name="slot_grades_ordered"
+                condition=models.Q(("parallel_to__gte", models.F("parallel_from"))), name="slot_parallels_ordered"
             ),
         ),
         migrations.AddIndex(
@@ -512,7 +512,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="ticketdrop",
             constraint=models.CheckConstraint(
-                condition=models.Q(("grade_to__gte", models.F("grade_from"))), name="ticket_grades_ordered"
+                condition=models.Q(("parallel_to__gte", models.F("parallel_from"))), name="ticket_parallels_ordered"
             ),
         ),
         migrations.AddConstraint(

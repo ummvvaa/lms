@@ -75,9 +75,9 @@ def pupils(groups, make_user):
     return senior, junior
 
 
-def slot_of(title: str, weekday: int, hour: int, grade_from: int) -> SectionSlot:
+def slot_of(title: str, weekday: int, hour: int, parallel_from: int) -> SectionSlot:
     return SectionSlot.objects.get(
-        section__title=title, weekday=weekday, starts=dt.time(hour, 0), grade_from=grade_from
+        section__title=title, weekday=weekday, starts=dt.time(hour, 0), parallel_from=parallel_from
     )
 
 

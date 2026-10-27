@@ -89,7 +89,7 @@ def test_apply_sets_hour_only_when_one_slot_and_is_idempotent(school, tmp_path):
     # у 10–11 три часа тенниса — без часа; у 8–9 один — час ставится сам
     assert aruzhan.slot is None and aruzhan.source == EnrollmentSource.BOT
     assert aruzhan.enrolled_at.date() == dt.date(2026, 9, 10)
-    assert timur.slot == SectionSlot.objects.get(section__title="Теннис", grade_from=8)
+    assert timur.slot == SectionSlot.objects.get(section__title="Теннис", parallel_from=8)
     assert not SectionEnrollment.objects.filter(student=school["twice"]).exists()
     text = run(path, "--apply")
     assert "Записано в LMS: 0" in text and "уже перенесён: 2" in text

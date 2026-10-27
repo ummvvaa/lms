@@ -224,7 +224,7 @@ def test_variant_one_takes_level_on_period_end_and_sport(pupils, calendar, year)
     EnglishLevel.objects.create(student=student, level="A2", since=days(-50))
     EnglishLevel.objects.create(student=student, level="B1", since=days(-5))
     EnglishLevel.objects.create(student=student, level="B2", since=days(1))
-    SportProfile.objects.filter(student=student).update(sport_type=SportType.objects.create(name="Теннис"))
+    SportProfile.objects.filter(student=student).update(sport_type=SportType.objects.get_or_create(name="Теннис")[0])
     report = build(student, ReportTemplate.REVIEW, calendar)
     profile = {line.code: line.value for line in report.lines.all() if line.section == ReportSection.PROFILE}
     assert profile == {"english_level": "B1", "sport": "Теннис"}

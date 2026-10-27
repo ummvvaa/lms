@@ -268,7 +268,7 @@ def test_reset_all_leaves_nothing_behind(learner):
     mock = MockExam.objects.create(exam_type="IELTS", title="Пробный")
     MockSection.objects.create(mock=mock, section="reading", question_count=1, order=1)
     OlympiadSubject.objects.create(name="Математика")
-    SportType.objects.create(name="Футбол")
+    SportType.objects.get_or_create(name="Футбол")
 
     call_command("reset_data", "--all", confirm="УДАЛИТЬ ДАННЫЕ", stdout=StringIO())
 

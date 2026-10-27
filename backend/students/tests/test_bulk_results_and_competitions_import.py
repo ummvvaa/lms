@@ -128,7 +128,7 @@ def test_competitions_import_matches_students_and_skips_duplicates(student):
     from core.models import ImportBatch
     from students.competitions_import import apply_rows, build_preview
 
-    SportType.objects.create(name="Футбол")
+    SportType.objects.get_or_create(name="Футбол")
     rows = [[student.email, "Кубок города", "Футбол", "городской", "2026-03-01", "2 место", "да"]]
 
     preview = build_preview(header=HEADER, rows=rows)
@@ -150,10 +150,12 @@ def test_unknown_sport_is_refused_and_directory_is_not_grown(student):
     """Импорт не заводит записей справочника: опечатка отклоняет строку."""
     from students.competitions_import import build_preview
 
-    preview = build_preview(header=HEADER, rows=[[student.email, "Кубок города", "Футбол", "", "", "", ""]])
+    # виды спорта секций уже в справочнике (миграция расписания): опечатка — вида нет ни там, ни там
+    before = SportType.objects.count()
+    preview = build_preview(header=HEADER, rows=[[student.email, "Кубок города", "Кёрлинг", "", "", "", ""]])
     assert preview.rows[0].status == "error"
     assert "справочник" in preview.rows[0].reason
-    assert SportType.objects.count() == 0
+    assert SportType.objects.count() == before
 
 
 @pytest.mark.django_db

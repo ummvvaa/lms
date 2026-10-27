@@ -42,7 +42,7 @@ def test_reset_all_goes_through_olympiads_and_events(settings, student, make_use
     event = SportEvent.objects.create(
         title="Кубок",
         kind="competition",
-        sport_type=SportType.objects.create(name="Волейбол"),
+        sport_type=SportType.objects.get_or_create(name="Волейбол")[0],
         starts_at=timezone.now() + dt.timedelta(days=2),
         place="Спортзал",
     )

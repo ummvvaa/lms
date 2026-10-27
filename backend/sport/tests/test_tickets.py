@@ -100,7 +100,7 @@ def test_leaving_queue_and_missed_pickup(crowd, people):
 
 def test_announce_and_reminder_reach_only_audience(crowd, pupils):
     _senior, junior = pupils
-    drop = make_drop(opens_in=4, grade_from=10, grade_to=11)
+    drop = make_drop(opens_in=4, parallel_from=10, parallel_to=11)
     reached = tickets.announce(drop)
     assert reached == len(crowd) + 1  # плюс ученик 10 класса из `pupils`
     assert not Notification.objects.filter(recipient=junior.user).exists()
@@ -131,8 +131,8 @@ def test_director_publishes_and_strangers_cannot(people, django_capture_on_commi
         "place": "Ледовый дворец",
         "pickup": "Кабинет директора спорта",
         "count": 20,
-        "grade_from": 8,
-        "grade_to": 11,
+        "parallel_from": 8,
+        "parallel_to": 11,
     }
     with django_capture_on_commit_callbacks(execute=False) as callbacks:
         answer = login(people["director_sport"]).post("/api/sport/tickets/", body, format="json")

@@ -199,7 +199,7 @@ def resolve(rows: list[Row], sections: dict[str, Section]) -> list[str]:
         groups: dict[tuple[int, int], list[SectionSlot]] = defaultdict(list)
         for slot in section.slots.all():
             if slot.archived_at is None:
-                groups[(slot.grade_from, slot.grade_to)].append(slot)
+                groups[(slot.parallel_from, slot.parallel_to)].append(slot)
         for (low, high), slots in groups.items():
             coming = sum(
                 1 for r in rows if r.state in (FOUND, DONE) and r.sheet == section.title and low <= r.grade <= high

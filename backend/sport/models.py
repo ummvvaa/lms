@@ -44,7 +44,8 @@ class Section(Archivable):
         "directories.SportType",
         verbose_name=gettext_lazy("Вид спорта"),
         related_name="sections",
-        on_delete=models.PROTECT,
+        # справочник удаляется физически: секция остаётся, вид спорта у неё пустеет
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
@@ -76,19 +77,19 @@ class SectionSlot(Archivable):
     weekday = models.PositiveSmallIntegerField(gettext_lazy("День недели"), choices=Weekday.choices)
     starts = models.TimeField(gettext_lazy("Начало"))
     ends = models.TimeField(gettext_lazy("Конец"))
-    grade_from = models.PositiveSmallIntegerField(gettext_lazy("С класса"))
-    grade_to = models.PositiveSmallIntegerField(gettext_lazy("По класс"))
+    parallel_from = models.PositiveSmallIntegerField(gettext_lazy("С параллели"))
+    parallel_to = models.PositiveSmallIntegerField(gettext_lazy("По параллель"))
     room = models.CharField(gettext_lazy("Кабинет или уточнение"), max_length=80, blank=True)
     capacity = models.PositiveSmallIntegerField(gettext_lazy("Мест"))
 
     class Meta:
         verbose_name = gettext_lazy("Занятие секции")
         verbose_name_plural = gettext_lazy("Занятия секций")
-        ordering = ("section", "weekday", "starts", "grade_from", "id")
+        ordering = ("section", "weekday", "starts", "parallel_from", "id")
         constraints = [
             models.CheckConstraint(condition=models.Q(ends__gt=models.F("starts")), name="slot_ends_after_starts"),
             models.CheckConstraint(
-                condition=models.Q(grade_to__gte=models.F("grade_from")), name="slot_grades_ordered"
+                condition=models.Q(parallel_to__gte=models.F("parallel_from")), name="slot_parallels_ordered"
             ),
         ]
 
@@ -97,7 +98,7 @@ class SectionSlot(Archivable):
 
     def fits(self, grade: int) -> bool:
         """Подходит ли занятие ученику этого класса."""
-        return self.grade_from <= grade <= self.grade_to
+        return self.parallel_from <= grade <= self.parallel_to
 
 
 class EnrollmentSource(models.TextChoices):
@@ -275,8 +276,8 @@ class TicketDrop(Archivable):
     count = models.PositiveSmallIntegerField(gettext_lazy("Сколько билетов"))
     opens_at = models.DateTimeField(gettext_lazy("Старт раздачи"))
     pickup = models.CharField(gettext_lazy("Где и до когда забрать"), max_length=250)
-    grade_from = models.PositiveSmallIntegerField(gettext_lazy("С класса"), default=8)
-    grade_to = models.PositiveSmallIntegerField(gettext_lazy("По класс"), default=11)
+    parallel_from = models.PositiveSmallIntegerField(gettext_lazy("С параллели"), default=8)
+    parallel_to = models.PositiveSmallIntegerField(gettext_lazy("По параллель"), default=11)
     offer_minutes = models.PositiveSmallIntegerField(gettext_lazy("Минут на ответ из очереди"), default=30)
     announced_at = models.DateTimeField(gettext_lazy("Анонс разослан"), null=True, blank=True)
     reminded_at = models.DateTimeField(gettext_lazy("Напоминание разослано"), null=True, blank=True)
@@ -297,7 +298,7 @@ class TicketDrop(Archivable):
         ordering = ("-opens_at", "-id")
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(grade_to__gte=models.F("grade_from")), name="ticket_grades_ordered"
+                condition=models.Q(parallel_to__gte=models.F("parallel_from")), name="ticket_parallels_ordered"
             ),
             models.CheckConstraint(condition=models.Q(count__gte=1), name="ticket_count_positive"),
         ]

@@ -18332,9 +18332,6 @@ msgstr "Room or note"
 msgid "Как отмечен"
 msgstr "How marked"
 
-#: sport
-msgid "Классы — от 8 до 11"
-msgstr "Grades are 8 to 11"
 
 #: sport
 msgid "Когда закончено"
@@ -18456,9 +18453,6 @@ msgstr "Moved from the bot"
 msgid "По QR"
 msgstr "By QR"
 
-#: sport
-msgid "По класс"
-msgstr "To grade"
 
 #: sport
 msgid "Получил"
@@ -18496,9 +18490,6 @@ msgstr "The ticket giveaway starts soon"
 msgid "Раздачи билетов"
 msgstr "Ticket giveaways"
 
-#: sport
-msgid "С класса"
-msgstr "From grade"
 
 #: sport
 msgid "Секции ведёт директор спорта"
@@ -18588,9 +18579,6 @@ msgstr "Hour"
 msgid "Час занятия"
 msgstr "Session hour"
 
-#: sport
-msgid "Час, куда переводят, — для других классов"
-msgstr "The target hour is for other grades"
 
 #: sport
 msgid "Через сколько секунд код на экране директора спорта меняется. Фото кода, отправленное другу, через это время уже не отметит"
@@ -18600,9 +18588,6 @@ msgstr "How many seconds until the code on the sports director's screen changes.
 msgid "Четверг"
 msgstr "Thursday"
 
-#: sport
-msgid "Это занятие для {grades} классов"
-msgstr "This session is for grades {grades}"
 
 #: sport
 msgid "сек"
@@ -18700,10 +18685,43 @@ msgstr "Enter the number of tickets"
 msgid "Через пять минут начнётся раздача билетов: {title}"
 msgstr "The ticket giveaway starts in five minutes: {title}"
 
-#: sport
-msgid "Эта раздача — для {grades} классов"
-msgstr "This giveaway is for grades {grades}"
 
 #: sport
 msgid "вручную"
 msgstr "manually"
+
+#: sport
+msgid "Билеты"
+msgstr "Tickets"
+
+#: sport
+msgid "Занятие и QR"
+msgstr "Session and QR"
+
+#: sport
+msgid "Параллели — от 8 до 11"
+msgstr "Years are 8 to 11"
+
+#: sport
+msgid "По параллель"
+msgstr "To year"
+
+#: sport
+msgid "Посещаемость секций"
+msgstr "Section attendance"
+
+#: sport
+msgid "С параллели"
+msgstr "From year"
+
+#: sport
+msgid "Час, куда переводят, — для других параллелей"
+msgstr "The target hour is for other years"
+
+#: sport
+msgid "Эта раздача — для параллелей {grades}"
+msgstr "This giveaway is for years {grades}"
+
+#: sport
+msgid "Это занятие для параллелей {grades}"
+msgstr "This session is for years {grades}"

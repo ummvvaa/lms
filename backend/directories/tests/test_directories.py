@@ -189,7 +189,8 @@ def test_normalization_ignores_case_dots_and_lookalikes():
 @pytest.mark.django_db
 def test_text_value_resolves_to_a_directory_record(db):
     """«футбол» из файла находит заведённый «Футбол»."""
-    football = SportType.objects.create(name="Футбол", category="team")
+    # «Футбол» заводит миграция расписания секций — берём его, а не заводим второй
+    football, _ = SportType.objects.get_or_create(name="Футбол", defaults={"category": "team"})
     assert find(SportType, "футбол") == football
     assert find(SportType, str(football.pk)) == football
 
@@ -197,17 +198,18 @@ def test_text_value_resolves_to_a_directory_record(db):
 @pytest.mark.django_db
 def test_unknown_value_is_refused_with_a_hint(db):
     """Опечатка в файле не заводит новую запись справочника молча."""
-    SportType.objects.create(name="Футбол")
+    SportType.objects.get_or_create(name="Футбол")
+    before = SportType.objects.count()
     with pytest.raises(LookupError) as error:
         find(SportType, "Кёрлинг")
     assert "нет в справочнике «Виды спорта»" in str(error.value)
-    assert SportType.objects.count() == 1
+    assert SportType.objects.count() == before
 
 
 @pytest.mark.django_db
 def test_table_cell_accepts_the_name_and_stores_the_link(api, nurlybek, student):
     """В ячейке таблицы директор пишет название, в базе оказывается ссылка."""
-    football = SportType.objects.create(name="Футбол", category="team")
+    football, _ = SportType.objects.get_or_create(name="Футбол", defaults={"category": "team"})
     api.force_authenticate(nurlybek)
 
     saved = api.post(

@@ -44,10 +44,12 @@ def test_closed_enrollment_hides_the_choice(pupils):
 def test_student_sees_only_slots_of_his_grade(pupils, open_enroll):
     senior, junior = pupils
     body = login(senior.user).get("/api/my/section/").json()
-    grades = {(s["grade_from"], s["grade_to"]) for section in body["sections"] for s in section["slots"]}
+    grades = {(s["parallel_from"], s["parallel_to"]) for section in body["sections"] for s in section["slots"]}
     assert grades == {(10, 11)}
     body = login(junior.user).get("/api/my/section/").json()
-    assert {(s["grade_from"], s["grade_to"]) for section in body["sections"] for s in section["slots"]} == {(8, 9)}
+    assert {(s["parallel_from"], s["parallel_to"]) for section in body["sections"] for s in section["slots"]} == {
+        (8, 9)
+    }
     # чужой группы час — отказ сервера, а не только скрытая кнопка
     answer = login(junior.user).post("/api/my/section/enroll/", {"slot": slot_of("Теннис", 5, 12, 10).pk})
     assert answer.status_code == 400
@@ -185,8 +187,8 @@ def test_removed_slot_moves_students_or_leaves_them_without_hour(people, pupils,
             "weekday": s.weekday,
             "starts": f"{s.starts:%H:%M}",
             "ends": f"{s.ends:%H:%M}",
-            "grade_from": s.grade_from,
-            "grade_to": s.grade_to,
+            "parallel_from": s.parallel_from,
+            "parallel_to": s.parallel_to,
             "capacity": s.capacity,
         }
         for s in tennis.slots.exclude(pk=first.pk)
