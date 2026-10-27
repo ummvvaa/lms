@@ -86,7 +86,8 @@ test("олимпиады: запись уходит на проверку и в�
   await page.reload();
   await expect(page.locator(".rows__item", { hasText: title })).toContainText("на проверке у директора");
 
-  await page.goto("/sport");
+  // соревнования — во вкладке «Мероприятия» раздела (27.10.2026)
+  await page.goto("/sport?sport=events");
   await expect(page.locator("h1")).toContainText("Спорт");
   await expect(page.locator(".datacard", { hasText: "Соревнования" }).first()).toBeVisible();
   await page.context().close();

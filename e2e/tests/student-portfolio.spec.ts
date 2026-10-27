@@ -118,6 +118,8 @@ test("соревнование уходит директору спорта, а 
   const student = await as(browser, "student");
   await student.goto("/my-data");
   await student.getByRole("tab", { name: "Спорт" }).click();
+  // внутри «Спорта» — «Секция · Мероприятия · Билеты» (27.10.2026): соревнования — в «Мероприятиях»
+  await student.getByRole("tab", { name: "Мероприятия" }).click();
   await student.getByRole("button", { name: "Добавить соревнование" }).click();
   const card = student
     .locator("section", { hasText: "Спортивные соревнования" })
