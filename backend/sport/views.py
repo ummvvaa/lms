@@ -755,3 +755,135 @@ def scan(request):
     if found is None:
         return Response({"state": "stale"})
     return Response(services.mark_by_scan(student=me, slot_id=found[0], day=found[1]))
+
+
+# --- Посещаемость -----------------------------------------------------------------------------
+
+
+def _attendance_rows(request, slot: SectionSlot, first: dt.date, last: dt.date):
+    """Ученики часа × даты месяца: был по QR, вручную или нет. Куратору — только свои группы."""
+    enrollments = list(
+        services.active_enrollments()
+        .filter(slot=slot, student__in=visible_students(request.user))
+        .select_related("student", "student__group", "section", "slot")
+        .order_by("student__last_name", "student__first_name")
+    )
+    dates = services.session_dates(slot, first, last)
+    held = set(services.held_dates(slot, first, last))
+    marks = {
+        (m.student_id, m.date): m
+        for m in SectionMark.objects.filter(
+            slot=slot, date__gte=first, date__lte=last, student__in=[e.student_id for e in enrollments]
+        )
+    }
+    pct = services.month_percents(enrollments, f"{first:%Y-%m}")
+    rows = []
+    for row in enrollments:
+        cells = []
+        for day in dates:
+            mark = marks.get((row.student_id, day))
+            if mark is not None:
+                cells.append(mark.method)
+            elif day in held and day >= services.since_of(row):
+                cells.append("absent")
+            else:
+                cells.append("")
+        value = pct.get(row.student_id)
+        rows.append(
+            {"student": _brief(row.student), "cells": cells, "percent": value, "below": services.below_threshold(value)}
+        )
+    return dates, held, rows, marks
+
+
+def _attendance_slot(request):
+    slot = SectionSlot.objects.select_related("section").filter(pk=_int(request.query_params.get("slot"))).first()
+    if slot is None:
+        section_id = _int(request.query_params.get("section"))
+        query = SectionSlot.objects.select_related("section").filter(section__archived_at__isnull=True)
+        if section_id:
+            query = query.filter(section_id=section_id)
+        slot = query.order_by("section__order", "weekday", "starts").first()
+    return slot
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def attendance(request):
+    """Посещаемость секции: показатели месяца и таблица ученики × даты. Куратор — свои группы."""
+    if not can_read_cabinet(_role(request), MARK):
+        return _no_rights()
+    slot = _attendance_slot(request)
+    if slot is None:
+        return _not_found()
+    first, last = services.month_bounds(request.query_params.get("month"))
+    dates, held, rows, marks = _attendance_rows(request, slot, first, last)
+    values = [r["percent"] for r in rows if r["percent"] is not None]
+    figures = {
+        "average": round(sum(values) / len(values)) if values else None,
+        "sessions": len(held),
+        "sessions_total": len(dates),
+        "below": sum(1 for r in rows if r["below"]),
+        "manual": sum(1 for m in marks.values() if m.method == MarkMethod.MANUAL),
+        "threshold": int(services.school_rules.value(services.school_rules.SPORT_ATTENDANCE_BELOW)),
+    }
+    sections_list = [
+        {
+            "id": s.pk,
+            "title": s.title,
+            "slots": [
+                {**_slot_dict(x), "title": services.slot_words(x)} for x in s.slots.all() if x.archived_at is None
+            ],
+        }
+        for s in Section.objects.prefetch_related("slots")
+    ]
+    return Response(
+        {
+            "section": slot.section_id,
+            "slot": _slot_dict(slot),
+            "slot_title": services.slot_words(slot),
+            "month": f"{first:%Y-%m}",
+            "dates": [d.isoformat() for d in dates],
+            "held": [d.isoformat() for d in sorted(held)],
+            "rows": rows,
+            "figures": figures,
+            "sections": sections_list,
+        }
+    )
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def attendance_export(request):
+    """Excel посещаемости за месяц: лист на каждое занятие секции (или на одно выбранное)."""
+    if not can_read_cabinet(_role(request), MARK):
+        return _no_rights()
+    first, last = services.month_bounds(request.query_params.get("month"))
+    slot_id = _int(request.query_params.get("slot"))
+    section_id = _int(request.query_params.get("section"))
+    slots = SectionSlot.objects.select_related("section").filter(section__archived_at__isnull=True)
+    if slot_id:
+        slots = slots.filter(pk=slot_id)
+    elif section_id:
+        slots = slots.filter(section_id=section_id)
+    words = {"qr": _("был"), "manual": _("вручную"), "absent": _("нет"), "": ""}
+    sheets = []
+    for slot in slots.order_by("section__order", "weekday", "starts"):
+        dates, _held, rows, _marks = _attendance_rows(request, slot, first, last)
+        if not rows:
+            continue
+        columns = [
+            Column(_("Ученик"), lambda r: r["student"]["full_name"], 30),
+            Column(_("Группа"), lambda r: r["student"]["group"], 10),
+            Column(_("Класс"), lambda r: r["student"]["grade"], 8),
+            *[
+                Column(f"{day:%d.%m}", lambda r, i=index: words.get(r["cells"][i], ""), 9)
+                for index, day in enumerate(dates)
+            ],
+            Column(_("Посещение, %"), lambda r: r["percent"] if r["percent"] is not None else "", 12),
+        ]
+        sheets.append((f"{slot.section.title} {services.slot_words(slot)}", columns, rows))
+    return workbook_of_sheets(
+        filename=_("Посещаемость секций {month}.xlsx").format(month=f"{first:%m.%Y}"), sheets=sheets, request=request
+    )

@@ -484,7 +484,7 @@ def month_bounds(month: str | None) -> tuple[dt.date, dt.date]:
     return first, following - dt.timedelta(days=1)
 
 
-def _since(row: SectionEnrollment) -> dt.date:
+def since_of(row: SectionEnrollment) -> dt.date:
     """С какой даты ученик ходит на свой час: назначение часа или запись."""
     moment = row.slot_set_at or row.enrolled_at
     return timezone.localtime(moment).date()
@@ -504,7 +504,7 @@ def percent(row: SectionEnrollment, first: dt.date, last: dt.date, marks: set[dt
     """Посещение записи за промежуток: доля прошедших занятий её часа с отметкой. Нет занятий — `None`."""
     if row.slot_id is None:
         return None
-    dates = held_dates(row.slot, max(first, _since(row)), last)
+    dates = held_dates(row.slot, max(first, since_of(row)), last)
     if not dates:
         return None
     if marks is None:

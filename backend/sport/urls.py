@@ -17,6 +17,9 @@ urlpatterns = [
     path("sport/sessions/<int:pk>/token/", views.session_token, name="sport-session-token"),
     path("sport/sessions/<int:pk>/end/", views.session_end, name="sport-session-end"),
     path("sport/sessions/<int:pk>/marks/", views.session_mark, name="sport-session-mark"),
+    # посещаемость секций: директор спорта, администратор и куратор своих групп
+    path("sport/attendance/", views.attendance, name="sport-attendance"),
+    path("sport/attendance/export/", views.attendance_export, name="sport-attendance-export"),
     # ученик отсканировал QR — и до входа: код подождёт две минуты
     path("sport/scan/", views.scan, name="sport-scan"),
     # куратор своих групп, директор спорта и администратор: секция ученика на чтение

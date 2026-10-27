@@ -165,6 +165,8 @@ CURATOR_READ_ROUTES = frozenset(
         # секция ученика своих групп и посещение секции — на чтение (27.10.2026)
         "sport-students-sections",
         "sport-student-section",
+        "sport-attendance",
+        "sport-attendance-export",
         "delete-preview",
         # мастера импорта здесь нет намеренно: решением владельца кураторы
         # вносят руками. Разбор «лист чужой группы — ошибка» в коде остался
