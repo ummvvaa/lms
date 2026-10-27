@@ -18611,3 +18611,99 @@ msgstr "sec"
 #: sport
 msgid "час не выбран"
 msgstr "hour not chosen"
+
+#: sport
+msgid "Бесплатные билеты: {title}. Раздача начнётся {at}, один билет в руки"
+msgstr "Free tickets: {title}. The giveaway starts {at}, one ticket per person"
+
+#: sport
+msgid "Билет вам сейчас не предложен"
+msgstr "No ticket is offered to you right now"
+
+#: sport
+msgid "Билет забирает ученик"
+msgstr "Only the student can claim a ticket"
+
+#: sport
+msgid "Билета и места в очереди уже нет"
+msgstr "You no longer have a ticket or a place in the queue"
+
+#: sport
+msgid "Билеты раздаёт директор спорта"
+msgstr "Tickets are given out by the sports director"
+
+#: sport
+msgid "Время на ответ вышло — билет ушёл следующему"
+msgstr "Time to answer is over — the ticket went to the next person"
+
+#: sport
+msgid "Вы не нажимали «Забрать» в этой раздаче"
+msgstr "You have not pressed “Claim” in this giveaway"
+
+#: sport
+msgid "Напишите, что за событие"
+msgstr "Write what the event is"
+
+#: sport
+msgid "Не забрать можно только полученный билет"
+msgstr "Only a received ticket can be marked as not picked up"
+
+#: sport
+msgid "Освободился билет: {title}. Подтвердите до {until}, иначе он уйдёт следующему"
+msgstr "A ticket became available: {title}. Confirm by {until}, otherwise it goes to the next person"
+
+#: sport
+msgid "Отмечается на занятии ученик"
+msgstr "Only a student can check in to a session"
+
+#: sport
+msgid "Посещаемость секций {month}.xlsx"
+msgstr "Section attendance {month}.xlsx"
+
+#: sport
+msgid "Посещение, %"
+msgstr "Attendance, %"
+
+#: sport
+msgid "Раздача должна начаться раньше события"
+msgstr "The giveaway must start before the event"
+
+#: sport
+msgid "Раздача ещё не началась"
+msgstr "The giveaway has not started yet"
+
+#: sport
+msgid "Раздача отменена"
+msgstr "The giveaway was cancelled"
+
+#: sport
+msgid "Раздача уже началась — отменить её нельзя"
+msgstr "The giveaway has started — it cannot be cancelled"
+
+#: sport
+msgid "Событие уже прошло"
+msgstr "The event is over"
+
+#: sport
+msgid "Укажите, где событие и где забрать билет"
+msgstr "Enter where the event is and where to pick up the ticket"
+
+#: sport
+msgid "Укажите, когда событие и когда старт раздачи"
+msgstr "Enter when the event is and when the giveaway starts"
+
+#: sport
+msgid "Укажите, сколько билетов"
+msgstr "Enter the number of tickets"
+
+#: sport
+msgid "Через пять минут начнётся раздача билетов: {title}"
+msgstr "The ticket giveaway starts in five minutes: {title}"
+
+#: sport
+msgid "Эта раздача — для {grades} классов"
+msgstr "This giveaway is for grades {grades}"
+
+#: sport
+msgid "вручную"
+msgstr "manually"
