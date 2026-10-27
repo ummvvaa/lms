@@ -345,6 +345,11 @@ def end_session(slot: SectionSlot, *, actor, day: dt.date | None = None) -> Sess
 # --- QR -------------------------------------------------------------------------------
 
 
+def seconds_now() -> float:
+    """Секунды эпохи — окно токена и срок удержания считаются от них."""
+    return time.time()
+
+
 def ttl() -> int:
     return int(school_rules.value(school_rules.SPORT_QR_SECONDS))
 
@@ -356,7 +361,7 @@ def _signer() -> signing.Signer:
 def make_token(slot: SectionSlot, day: dt.date, *, at: float | None = None) -> tuple[str, int]:
     """Токен на окно времени: «занятие.дата.окно.подпись». Второе число — сколько секунд он ещё свежий."""
     seconds = ttl()
-    moment = at if at is not None else time.time()
+    moment = at if at is not None else seconds_now()
     window = int(moment // seconds)
     token = _signer().sign(f"{slot.pk}.{day:%Y%m%d}.{window}")
     return token, int(seconds - moment % seconds)
@@ -375,7 +380,7 @@ def read_token(token: str, *, at: float | None = None) -> tuple[int, dt.date] | 
         slot_value = int(slot_id)
     except (signing.BadSignature, ValueError):
         return None
-    current = int((at if at is not None else time.time()) // ttl())
+    current = int((at if at is not None else seconds_now()) // ttl())
     if window_value not in (current, current - 1):
         return None
     return slot_value, day_value
@@ -383,7 +388,7 @@ def read_token(token: str, *, at: float | None = None) -> tuple[int, dt.date] | 
 
 def scan_hold(session, slot_id: int, day: dt.date) -> None:
     """Код свежий, а ученик ещё не вошёл: отметка ждёт входа в этом же браузере."""
-    session[HOLD_KEY] = {"slot": slot_id, "date": day.isoformat(), "at": time.time()}
+    session[HOLD_KEY] = {"slot": slot_id, "date": day.isoformat(), "at": seconds_now()}
 
 
 def take_hold(session) -> tuple[int, dt.date] | None:
@@ -391,7 +396,7 @@ def take_hold(session) -> tuple[int, dt.date] | None:
     if not isinstance(hold, dict):
         return None
     try:
-        if time.time() - float(hold["at"]) > HOLD_SECONDS:
+        if seconds_now() - float(hold["at"]) > HOLD_SECONDS:
             return None
         return int(hold["slot"]), dt.date.fromisoformat(str(hold["date"]))
     except (KeyError, TypeError, ValueError):

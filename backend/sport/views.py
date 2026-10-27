@@ -16,9 +16,10 @@ from django.utils.dateparse import parse_datetime
 from django.utils.translation import gettext as _
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 
 from core.domains import ROLE_STUDENT, can_read_cabinet, can_write_cabinet
 from core.exports import Column, workbook_of_sheets
@@ -36,6 +37,7 @@ from students.models import Student
 
 SECTION = "sport.Section"
 ENROLLMENT = "sport.SectionEnrollment"
+MARK = "sport.SectionMark"
 
 
 def _forbid(detail: str) -> Response:
@@ -594,3 +596,162 @@ def students_sections(request):
         for row in rows
     }
     return Response({"rows": {str(k): v for k, v in by_student.items()}})
+
+
+# --- Занятие и QR ---------------------------------------------------------------------------
+
+
+def _session_dict(slot: SectionSlot, day: dt.date, now=None) -> dict:
+    enrolled = services.active_enrollments().filter(slot=slot).count()
+    came = SectionMark.objects.filter(slot=slot, date=day).count()
+    return {
+        **_slot_dict(slot),
+        "title": slot.section.title,
+        "address": slot.section.address,
+        "date": day.isoformat(),
+        "state": services.session_state(slot, day, now),
+        "enrolled": enrolled,
+        "came": came,
+    }
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def sessions_today(request):
+    """Занятия сегодня со статусами «прошло / идёт / скоро» — экран «Занятие и QR» и главная."""
+    if not _writer(request, MARK):
+        return _no_rights()
+    now = services.local_now()
+    rows = [_session_dict(slot, now.date(), now) for slot in services.sessions_today(now)]
+    return Response({"date": now.date().isoformat(), "now": now.isoformat(), "rows": rows})
+
+
+def _session_slot(pk: int):
+    return SectionSlot.objects.select_related("section").filter(pk=pk, section__archived_at__isnull=True).first()
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def session(request, pk: int):
+    """«Пришли / Ещё нет» на занятии в дату (по умолчанию сегодня); экран опрашивает раз в несколько секунд."""
+    if not _writer(request, MARK):
+        return _no_rights()
+    slot = _session_slot(pk)
+    if slot is None:
+        return _not_found()
+    day = _date(request.query_params.get("date")) or services.local_now().date()
+    rows = list(
+        services.active_enrollments()
+        .filter(slot=slot)
+        .select_related("student", "student__group", "section", "slot")
+        .order_by("student__last_name", "student__first_name")
+    )
+    marks = {m.student_id: m for m in SectionMark.objects.filter(slot=slot, date=day)}
+    students = []
+    for row in rows:
+        mark = marks.get(row.student_id)
+        students.append(
+            {
+                **_brief(row.student),
+                "came": mark is not None,
+                "method": mark.method if mark else "",
+                "at": _when(mark.marked_at) if mark else None,
+            }
+        )
+    students.sort(key=lambda s: (not s["came"], s["at"] or "", s["short_name"]))
+    return Response({**_session_dict(slot, day), "students": students})
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def session_token(request, pk: int):
+    """Свежий токен QR на идущее занятие. Фронт перезапрашивает его, когда истекает срок."""
+    if not _writer(request, MARK):
+        return _no_rights()
+    slot = _session_slot(pk)
+    if slot is None:
+        return _not_found()
+    now = services.local_now()
+    state = services.session_state(slot, now.date(), now) if now.date().weekday() == slot.weekday else "none"
+    if state != "live":
+        return Response({"state": state, "token": "", "ttl": services.ttl(), "expires_in": 0})
+    token, left = services.make_token(slot, now.date())
+    return Response({"state": state, "token": token, "ttl": services.ttl(), "expires_in": left})
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def session_end(request, pk: int):
+    """«Закончить занятие»: отметки по QR на сегодня закрываются, остальные — пропуск."""
+    if not _writer(request, MARK):
+        return _no_rights()
+    slot = _session_slot(pk)
+    if slot is None:
+        return _not_found()
+    services.end_session(slot, actor=request.user)
+    return Response(_session_dict(slot, services.local_now().date()))
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST", "DELETE"])
+@permission_classes([IsAuthenticated])
+def session_mark(request, pk: int):
+    """Отметить вручную пришедшего без телефона (POST) или снять ошибочную отметку (DELETE)."""
+    if not _writer(request, MARK):
+        return _no_rights()
+    slot = _session_slot(pk)
+    if slot is None:
+        return _not_found()
+    student = _visible_student(request, request.data.get("student") or request.query_params.get("student"))
+    if student is None:
+        return _not_found()
+    day = _date(request.data.get("date") or request.query_params.get("date")) or services.local_now().date()
+    if request.method == "DELETE":
+        services.unmark(student=student, slot=slot, day=day)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    try:
+        _mark, created = services.mark_manually(student=student, slot=slot, day=day, actor=request.user)
+    except services.Refused as error:
+        return _bad(str(error))
+    return Response({"created": created}, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
+class ScanThrottle(UserRateThrottle):
+    """Предел частоты отметки: по ученику, до входа — по адресу. Перебору токенов здесь делать нечего."""
+
+    scope = "sport_scan"
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([ScanThrottle])
+def scan(request):
+    """Ученик отсканировал QR. Не вошёл — свежий код ждёт входа в этом браузере две минуты.
+
+    Токен даёт только одно — отметку своего ученика на занятии, которое
+    идёт сейчас. Без токена ручка ставит отложенную отметку после входа.
+    """
+    token = str(request.data.get("token") or "")
+    found = services.read_token(token) if token else None
+    user = request.user
+    if not user.is_authenticated:
+        if found is None:
+            return Response({"state": "stale"})
+        services.scan_hold(request.session, *found)
+        return Response({"state": "login", "hold_seconds": services.HOLD_SECONDS})
+    if _role(request) != ROLE_STUDENT:
+        return _forbid(_("Отмечается на занятии ученик"))
+    me = _me_student(request)
+    if me is None:
+        return _forbid(_("Отмечается на занятии ученик"))
+    held = services.take_hold(request.session)
+    if found is None and not token:
+        found = held
+    if found is None:
+        return Response({"state": "stale"})
+    return Response(services.mark_by_scan(student=me, slot_id=found[0], day=found[1]))

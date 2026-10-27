@@ -11,6 +11,14 @@ urlpatterns = [
     path("sport/students/", views.student_search, name="sport-student-search"),
     path("sport/enrollments/", views.enrollments, name="sport-enrollments"),
     path("sport/enrollments/<int:pk>/", views.enrollment, name="sport-enrollment"),
+    # занятие и QR: директор спорта и администратор показывают код и отмечают вручную
+    path("sport/sessions/today/", views.sessions_today, name="sport-sessions-today"),
+    path("sport/sessions/<int:pk>/", views.session, name="sport-session"),
+    path("sport/sessions/<int:pk>/token/", views.session_token, name="sport-session-token"),
+    path("sport/sessions/<int:pk>/end/", views.session_end, name="sport-session-end"),
+    path("sport/sessions/<int:pk>/marks/", views.session_mark, name="sport-session-mark"),
+    # ученик отсканировал QR — и до входа: код подождёт две минуты
+    path("sport/scan/", views.scan, name="sport-scan"),
     # куратор своих групп, директор спорта и администратор: секция ученика на чтение
     path("sport/students/sections/", views.students_sections, name="sport-students-sections"),
     path("sport/students/<int:pk>/section/", views.student_section, name="sport-student-section"),
