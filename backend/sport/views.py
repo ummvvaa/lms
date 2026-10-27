@@ -887,3 +887,291 @@ def attendance_export(request):
     return workbook_of_sheets(
         filename=_("Посещаемость секций {month}.xlsx").format(month=f"{first:%m.%Y}"), sheets=sheets, request=request
     )
+
+
+# --- Билеты ---------------------------------------------------------------------------------
+
+DROP = "sport.TicketDrop"
+
+
+def _drop_fields(data) -> dict:
+    def moment(key):
+        raw = data.get(key)
+        value = parse_datetime(str(raw)) if raw else None
+        if value is not None and timezone.is_naive(value):
+            value = timezone.make_aware(value)
+        return value
+
+    title = str(data.get("title") or "").strip()
+    place = str(data.get("place") or "").strip()
+    pickup = str(data.get("pickup") or "").strip()
+    event_at, opens_at = moment("event_at"), moment("opens_at")
+    count = _int(data.get("count"))
+    grade_from, grade_to = _int(data.get("grade_from")) or 8, _int(data.get("grade_to")) or 11
+    offer_minutes = _int(data.get("offer_minutes")) or 30
+    if not title:
+        raise services.Refused(_("Напишите, что за событие"))
+    if event_at is None or opens_at is None:
+        raise services.Refused(_("Укажите, когда событие и когда старт раздачи"))
+    if opens_at >= event_at:
+        raise services.Refused(_("Раздача должна начаться раньше события"))
+    if not place or not pickup:
+        raise services.Refused(_("Укажите, где событие и где забрать билет"))
+    if not count:
+        raise services.Refused(_("Укажите, сколько билетов"))
+    if not 8 <= grade_from <= grade_to <= 11:
+        raise services.Refused(_("Классы — от 8 до 11"))
+    return {
+        "title": title[:250],
+        "place": place[:200],
+        "pickup": pickup[:250],
+        "event_at": event_at,
+        "opens_at": opens_at,
+        "count": min(count, 5000),
+        "grade_from": grade_from,
+        "grade_to": grade_to,
+        "offer_minutes": max(1, min(offer_minutes, 1440)),
+    }
+
+
+def _drop_dict(drop, *, now=None, with_counts: bool = True) -> dict:
+    from sport import tickets
+
+    out = {
+        "id": drop.pk,
+        "title": drop.title,
+        "event_at": _when(drop.event_at),
+        "place": drop.place,
+        "count": drop.count,
+        "opens_at": _when(drop.opens_at),
+        "pickup": drop.pickup,
+        "grade_from": drop.grade_from,
+        "grade_to": drop.grade_to,
+        "offer_minutes": drop.offer_minutes,
+        "stage": tickets.stage(drop, now),
+    }
+    if with_counts:
+        claims = list(drop.claims.all())
+        out["received"] = sum(1 for c in claims if c.status == "received")
+        out["queued"] = sum(1 for c in claims if c.status in ("queued", "offered"))
+        out["left"] = max(drop.count - sum(1 for c in claims if c.status in ("received", "offered")), 0)
+    return out
+
+
+def _claim_dict(row) -> dict:
+    from sport import tickets
+
+    return {
+        "id": row.pk,
+        "student": _brief(row.student),
+        "pressed_at": timezone.localtime(row.pressed_at).isoformat(timespec="milliseconds"),
+        "status": row.status,
+        "status_title": row.get_status_display(),
+        "from_queue": row.from_queue,
+        "place": tickets.queue_place(row),
+        "offer_until": _when(row.offer_until),
+    }
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def ticket_drops(request):
+    """Раздачи билетов (GET) и новая раздача (POST): анонс уходит ученикам сразу."""
+    from sport.models import TicketDrop
+    from sport.tasks import announce_drop
+
+    if not _writer(request, DROP):
+        return _forbid(_("Билеты раздаёт директор спорта"))
+    if request.method == "POST":
+        try:
+            fields = _drop_fields(request.data)
+        except services.Refused as error:
+            return _bad(str(error))
+        drop = TicketDrop.objects.create(**fields, created_by=request.user)
+        from django.db import transaction
+
+        transaction.on_commit(lambda: announce_drop.delay(drop.pk))
+        return Response(_drop_dict(drop), status=status.HTTP_201_CREATED)
+    now = timezone.now()
+    rows = TicketDrop.objects.prefetch_related("claims").order_by("-opens_at")
+    return Response({"now": now.isoformat(), "rows": [_drop_dict(d, now=now) for d in rows]})
+
+
+def _drop_of(pk):
+    from sport.models import TicketDrop
+
+    return TicketDrop.objects.filter(pk=pk).first()
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET", "DELETE"])
+@permission_classes([IsAuthenticated])
+def ticket_drop(request, pk: int):
+    """Карточка раздачи: получили, очередь, отказались — с временем нажатия. DELETE — отменить до старта."""
+    from core.archive import archive
+
+    if not _writer(request, DROP):
+        return _forbid(_("Билеты раздаёт директор спорта"))
+    drop = _drop_of(pk)
+    if drop is None:
+        return _not_found()
+    if request.method == "DELETE":
+        if timezone.now() >= drop.opens_at:
+            return _bad(_("Раздача уже началась — отменить её нельзя"))
+        archive(drop, actor=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    claims = list(drop.claims.select_related("student", "student__group", "drop").order_by("pressed_at", "id"))
+    reached = _audience_count(drop)
+    return Response(
+        {
+            **_drop_dict(drop),
+            "announced": reached if drop.announced_at else 0,
+            "claims": [_claim_dict(c) for c in claims],
+        }
+    )
+
+
+def _audience_count(drop) -> int:
+    from sport import tickets
+
+    return tickets.audience(drop).count()
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def ticket_drop_export(request, pk: int):
+    """Список на вход: кто получил билет, по порядку нажатия."""
+    if not _writer(request, DROP):
+        return _forbid(_("Билеты раздаёт директор спорта"))
+    drop = _drop_of(pk)
+    if drop is None:
+        return _not_found()
+    rows = list(
+        drop.claims.filter(status="received").select_related("student", "student__group").order_by("pressed_at")
+    )
+    columns = [
+        Column(_("Ученик"), lambda c: c.student.full_name, 30),
+        Column(_("Группа"), lambda c: c.student.group.code if c.student.group_id else "", 10),
+        Column(_("Класс"), lambda c: services.grade_of(c.student), 8),
+        Column(_("Нажал"), lambda c: timezone.localtime(c.pressed_at).strftime("%d.%m %H:%M:%S.%f")[:-3], 20),
+        Column(_("Из очереди"), lambda c: c.from_queue, 12),
+    ]
+    return workbook_of_sheets(filename=f"{drop.title}.xlsx", sheets=[(drop.title, columns, rows)], request=request)
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def ticket_claim_missed(request, pk: int):
+    """«Не забрал»: билет уходит первому в очереди."""
+    from sport import tickets
+    from sport.models import TicketClaim
+
+    if not _writer(request, DROP):
+        return _forbid(_("Билеты раздаёт директор спорта"))
+    row = TicketClaim.objects.select_related("drop", "student", "student__group").filter(pk=pk).first()
+    if row is None:
+        return _not_found()
+    try:
+        row = tickets.give_up(row, missed=True)
+    except services.Refused as error:
+        return _bad(str(error))
+    return Response(_claim_dict(row))
+
+
+def _my_drop_dict(drop, me, now) -> dict:
+    from sport import tickets
+
+    claim = next((c for c in drop.claims.all() if c.student_id == me.pk), None)
+    out = _drop_dict(drop, now=now)
+    out.pop("queued", None)
+    out["mine"] = (
+        {
+            "status": claim.status,
+            "status_title": claim.get_status_display(),
+            "place": tickets.queue_place(claim),
+            "offer_until": _when(claim.offer_until),
+            "from_queue": claim.from_queue,
+        }
+        if claim
+        else None
+    )
+    return out
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_tickets(request):
+    """Раздачи для своего класса и свои билеты. Обратный отсчёт — от времени сервера (`now`)."""
+    from sport.models import TicketDrop
+
+    me = _me_student(request)
+    if me is None:
+        return _forbid(_("Раздел — у ученика"))
+    grade = services.grade_of(me)
+    now = timezone.now()
+    since = now - dt.timedelta(days=60)
+    rows = (
+        TicketDrop.objects.filter(grade_from__lte=grade, grade_to__gte=grade, event_at__gte=since)
+        .prefetch_related("claims")
+        .order_by("opens_at")
+    )
+    return Response({"now": now.isoformat(), "rows": [_my_drop_dict(d, me, now) for d in rows]})
+
+
+def _my_drop_action(request, pk: int, action):
+    from sport.models import TicketDrop
+
+    me = _me_student(request)
+    if me is None:
+        return _forbid(_("Билет забирает ученик"))
+    grade = services.grade_of(me)
+    drop = TicketDrop.objects.filter(pk=pk, grade_from__lte=grade, grade_to__gte=grade).first()
+    if drop is None:
+        return _not_found()
+    try:
+        action(drop, me)
+    except services.Refused as error:
+        return _bad(str(error))
+    drop = TicketDrop.objects.prefetch_related("claims").get(pk=drop.pk)
+    return Response(_my_drop_dict(drop, me, timezone.now()))
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def my_ticket_claim(request, pk: int):
+    """«Забрать билет»: сервер принимает нажатие только после старта раздачи."""
+    from sport import tickets
+
+    return _my_drop_action(request, pk, lambda drop, me: tickets.claim(drop=drop, student=me))
+
+
+def _own_claim(drop, me):
+    row = drop.claims.filter(student=me).select_related("drop").first()
+    if row is None:
+        raise services.Refused(_("Вы не нажимали «Забрать» в этой раздаче"))
+    return row
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def my_ticket_decline(request, pk: int):
+    """«Не смогу пойти», «Не нужно» или «Выйти из очереди»."""
+    from sport import tickets
+
+    return _my_drop_action(request, pk, lambda drop, me: tickets.give_up(_own_claim(drop, me)))
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def my_ticket_accept(request, pk: int):
+    """«Беру билет» из очереди — пока не вышло время на ответ."""
+    from sport import tickets
+
+    return _my_drop_action(request, pk, lambda drop, me: tickets.accept(_own_claim(drop, me)))

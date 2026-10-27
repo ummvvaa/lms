@@ -25,6 +25,16 @@ urlpatterns = [
     # куратор своих групп, директор спорта и администратор: секция ученика на чтение
     path("sport/students/sections/", views.students_sections, name="sport-students-sections"),
     path("sport/students/<int:pk>/section/", views.student_section, name="sport-student-section"),
+    # билеты: раздачи у директора спорта и администратора
+    path("sport/tickets/", views.ticket_drops, name="sport-tickets"),
+    path("sport/tickets/<int:pk>/", views.ticket_drop, name="sport-ticket"),
+    path("sport/tickets/<int:pk>/export/", views.ticket_drop_export, name="sport-ticket-export"),
+    path("sport/ticket-claims/<int:pk>/missed/", views.ticket_claim_missed, name="sport-ticket-missed"),
+    # ученик: раздачи своего класса и свои билеты
+    path("my/tickets/", views.my_tickets, name="my-tickets"),
+    path("my/tickets/<int:pk>/claim/", views.my_ticket_claim, name="my-ticket-claim"),
+    path("my/tickets/<int:pk>/decline/", views.my_ticket_decline, name="my-ticket-decline"),
+    path("my/tickets/<int:pk>/accept/", views.my_ticket_accept, name="my-ticket-accept"),
     # ученик: своя секция
     path("my/section/", views.my_section, name="my-section"),
     path("my/section/enroll/", views.my_enroll, name="my-section-enroll"),
