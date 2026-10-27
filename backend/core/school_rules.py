@@ -42,6 +42,7 @@ class Section:
 
 
 ATTENDANCE = "attendance"
+SPORT = "sport"
 GRADES = "grades"
 HOMEWORK = "homework"
 CURATOR = "curator"
@@ -60,6 +61,11 @@ SECTIONS: tuple[Section, ...] = (
         ATTENDANCE,
         gettext_lazy("Посещаемость"),
         gettext_lazy("Процент посещаемости, «день без причины», напоминание учителю"),
+    ),
+    Section(
+        SPORT,
+        gettext_lazy("Спортивные секции"),
+        gettext_lazy("Срок жизни QR-кода на занятии и порог посещения секции"),
     ),
     Section(
         GRADES,
@@ -235,6 +241,9 @@ class Rule:
 
 #: Посещаемость ниже порога — ученик в «Рисках», процент красным на экранах
 ATTENDANCE_BELOW = "attendance_below"
+#: Секции: сколько секунд живёт QR-код на занятии и с какого посещения ученик «пропускает секцию»
+SPORT_QR_SECONDS = "sport_qr_seconds"
+SPORT_ATTENDANCE_BELOW = "sport_attendance_below"
 #: Расчётная четвертная ниже — ученик отстаёт по предмету
 QUARTER_GRADE_BELOW = "quarter_grade_below"
 #: Средний ФО ниже этой доли от максимума — отстаёт по предмету «Только ФО»
@@ -1552,6 +1561,30 @@ RULES: tuple[Rule, ...] = (
         0,
         365,
         section=ACCESS,
+    ),
+    # --- Спортивные секции ---
+    Rule(
+        SPORT_QR_SECONDS,
+        gettext_lazy("Срок жизни QR-кода на занятии"),
+        gettext_lazy(
+            "Через сколько секунд код на экране директора спорта меняется. Фото кода, отправленное другу, "
+            "через это время уже не отметит"
+        ),
+        gettext_lazy("сек"),
+        20,
+        10,
+        120,
+        section=SPORT,
+    ),
+    Rule(
+        SPORT_ATTENDANCE_BELOW,
+        gettext_lazy("Порог посещения секции"),
+        gettext_lazy("Ниже — ученик в «Пропускают секцию» у куратора и в «Ниже порога» у директора спорта"),
+        "%",
+        60,
+        0,
+        100,
+        section=SPORT,
     ),
     # --- ИИ ---
     Rule(

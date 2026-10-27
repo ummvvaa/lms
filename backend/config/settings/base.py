@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "homework",
     "career",
     "directors",
+    "sport",
 ]
 
 MIDDLEWARE = [
@@ -188,6 +189,8 @@ REST_FRAMEWORK = {
         # операции с моделью стоят денег: один цикл в чужом скрипте
         # не должен съесть месячный бюджет
         "llm": env("LLM_RATE", "20/min"),
+        # отметка на секции по QR: ученик сканирует раз в занятие, перебор токенов — нет
+        "sport_scan": env("SPORT_SCAN_RATE", "30/min"),
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
@@ -394,6 +397,11 @@ SYNC_EXTRA_HOSTS = env_list("SYNC_EXTRA_HOSTS", "")
 # (`core.school_rules`, разделы «Напоминания» и «Дедлайны и окна»), не здесь
 
 CELERY_BEAT_SCHEDULE = {
+    "sport-tickets-tick": {
+        "task": "sport.tickets_tick",
+        # напоминание за 5 минут до старта раздачи и ответ из очереди, который истёк
+        "schedule": crontab(minute="*"),
+    },
     "purge-usage-events": {
         "task": "core.purge_usage_events",
         # Воскресенье, 04:15 по Алматы; оставляем последние 365 суток.

@@ -306,6 +306,10 @@ class Notification(models.Model):
         REPORTS_BUILT = "reports_built", gettext_lazy("Отчёты родителям собраны")
         # задачи сотрудникам (24.10.2026): напоминание исполнителю
         STAFF_TASK = "staff_task", gettext_lazy("Задача от академического директора")
+        # билеты от школы (27.10.2026): анонс раздачи, напоминание перед стартом, билет из очереди
+        TICKET_ANNOUNCED = "ticket_announced", gettext_lazy("Анонс раздачи билетов")
+        TICKET_REMINDER = "ticket_reminder", gettext_lazy("Раздача билетов скоро начнётся")
+        TICKET_OFFERED = "ticket_offered", gettext_lazy("Освободился билет")
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,

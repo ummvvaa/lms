@@ -51,6 +51,11 @@ EXTRA_TITLES: dict[str, tuple[Any, Any]] = {
         gettext_lazy("Освобождение отменено"),
     ),
     "students.Student.sport_application": (gettext_lazy("Заявка на мероприятие"), gettext_lazy("Заявка")),
+    "students.Student.sport_section": (gettext_lazy("Спортивная секция"), gettext_lazy("Секция")),
+    "sport.SectionSettings.enroll_until": (
+        gettext_lazy("Запись на секции открыта до"),
+        gettext_lazy("Запись открыта до"),
+    ),
     "students.Student.essay_verdict": (gettext_lazy("Решение по эссе"), gettext_lazy("Эссе")),
     "students.Student.escalation": (gettext_lazy("Передано владельцу домена"), gettext_lazy("Передано")),
     "students.Student.escalation_returned": (gettext_lazy("Возвращено себе из передачи"), gettext_lazy("Возвращено")),

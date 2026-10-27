@@ -18175,3 +18175,439 @@ msgstr "Student essays"
 #: directors
 msgid "достигли цели {n}"
 msgstr "reached the goal: {n}"
+
+#: sport
+msgid "LMS"
+msgstr "LMS"
+
+#: sport
+msgid "Адрес площадки"
+msgstr "Venue address"
+
+#: sport
+msgid "Анонс раздачи билетов"
+msgstr "Ticket giveaway announcement"
+
+#: sport
+msgid "Анонс разослан"
+msgstr "Announcement sent"
+
+#: sport
+msgid "В этот день у часа нет занятия"
+msgstr "This hour has no session on that day"
+
+#: sport
+msgid "Воскресенье"
+msgstr "Sunday"
+
+#: sport
+msgid "Вручную"
+msgstr "Manually"
+
+#: sport
+msgid "Вс"
+msgstr "Sun"
+
+#: sport
+msgid "Вторник"
+msgstr "Tuesday"
+
+#: sport
+msgid "Выберите день недели"
+msgstr "Choose a weekday"
+
+#: sport
+msgid "Выберите час занятия"
+msgstr "Choose a session hour"
+
+#: sport
+msgid "Выберите час этой секции"
+msgstr "Choose an hour of this section"
+
+#: sport
+msgid "Выходит из секции ученик"
+msgstr "Only the student can leave a section"
+
+#: sport
+msgid "Вышел из очереди"
+msgstr "Left the queue"
+
+#: sport
+msgid "Вышел из секции"
+msgstr "Left the section"
+
+#: sport
+msgid "Где"
+msgstr "Where"
+
+#: sport
+msgid "Где и до когда забрать"
+msgstr "Where and until when to pick up"
+
+#: sport
+msgid "Дата занятия"
+msgstr "Session date"
+
+#: sport
+msgid "Законченное занятие"
+msgstr "Ended session"
+
+#: sport
+msgid "Законченные занятия"
+msgstr "Ended sessions"
+
+#: sport
+msgid "Занятие"
+msgstr "Session"
+
+#: sport
+msgid "Занятие ещё не прошло"
+msgstr "The session has not taken place yet"
+
+#: sport
+msgid "Занятие секции"
+msgstr "Section session"
+
+#: sport
+msgid "Занятия секций"
+msgstr "Section sessions"
+
+#: sport
+msgid "Записал директор спорта"
+msgstr "Enrolled by the sports director"
+
+#: sport
+msgid "Записался"
+msgstr "Enrolled"
+
+#: sport
+msgid "Записи в секции"
+msgstr "Section enrollments"
+
+#: sport
+msgid "Записывается ученик"
+msgstr "Only the student can enroll"
+
+#: sport
+msgid "Запись в секцию"
+msgstr "Section enrollment"
+
+#: sport
+msgid "Запись закрыта — сменить секцию можно через директора спорта"
+msgstr "Enrollment is closed — ask the sports director to change your section"
+
+#: sport
+msgid "Запись на секции закрыта — обратитесь к директору спорта"
+msgstr "Section enrollment is closed — contact the sports director"
+
+#: sport
+msgid "Запись на секции открыта до"
+msgstr "Section enrollment open until"
+
+#: sport
+msgid "Запись открыта до"
+msgstr "Enrollment open until"
+
+#: sport
+msgid "Заявка на билет"
+msgstr "Ticket claim"
+
+#: sport
+msgid "Заявки на билеты"
+msgstr "Ticket claims"
+
+#: sport
+msgid "Из очереди"
+msgstr "From the queue"
+
+#: sport
+msgid "Истёк"
+msgstr "Expired"
+
+#: sport
+msgid "Кабинет или уточнение"
+msgstr "Room or note"
+
+#: sport
+msgid "Как отмечен"
+msgstr "How marked"
+
+#: sport
+msgid "Классы — от 8 до 11"
+msgstr "Grades are 8 to 11"
+
+#: sport
+msgid "Когда закончено"
+msgstr "Ended at"
+
+#: sport
+msgid "Когда изменился статус"
+msgstr "Status changed at"
+
+#: sport
+msgid "Когда назначен час"
+msgstr "Hour assigned at"
+
+#: sport
+msgid "Когда отмечен"
+msgstr "Marked at"
+
+#: sport
+msgid "Когда событие"
+msgstr "Event date"
+
+#: sport
+msgid "Конец занятия должен быть позже начала"
+msgstr "The session must end after it starts"
+
+#: sport
+msgid "Кто закончил"
+msgstr "Ended by"
+
+#: sport
+msgid "Кто закрыл запись"
+msgstr "Closed by"
+
+#: sport
+msgid "Кто назначил час"
+msgstr "Hour assigned by"
+
+#: sport
+msgid "Кто опубликовал"
+msgstr "Published by"
+
+#: sport
+msgid "Кто отметил вручную"
+msgstr "Marked manually by"
+
+#: sport
+msgid "Кто отметил на момент отметки"
+msgstr "Marked by at the time"
+
+#: sport
+msgid "Мест"
+msgstr "Places"
+
+#: sport
+msgid "Минут на ответ из очереди"
+msgstr "Minutes to answer from the queue"
+
+#: sport
+msgid "На этот час мест нет"
+msgstr "No places left for this hour"
+
+#: sport
+msgid "Нажал"
+msgstr "Pressed"
+
+#: sport
+msgid "Напоминание разослано"
+msgstr "Reminder sent"
+
+#: sport
+msgid "Настройка записи на секции"
+msgstr "Section enrollment setting"
+
+#: sport
+msgid "Настройки записи на секции"
+msgstr "Section enrollment settings"
+
+#: sport
+msgid "Не забрал"
+msgstr "Did not pick up"
+
+#: sport
+msgid "Ниже — ученик в «Пропускают секцию» у куратора и в «Ниже порога» у директора спорта"
+msgstr "Below this the student is in “Missing the section” for the curator and in “Below the threshold” for the sports director"
+
+#: sport
+msgid "Опубликована"
+msgstr "Published"
+
+#: sport
+msgid "Освободился билет"
+msgstr "A ticket became available"
+
+#: sport
+msgid "Ответить до"
+msgstr "Answer by"
+
+#: sport
+msgid "Отказался"
+msgstr "Declined"
+
+#: sport
+msgid "Отметка на занятии"
+msgstr "Session check-in"
+
+#: sport
+msgid "Отметки на занятиях"
+msgstr "Session check-ins"
+
+#: sport
+msgid "Перевести можно только в другой час этой секции"
+msgstr "You can only move to another hour of this section"
+
+#: sport
+msgid "Перенос из бота"
+msgstr "Moved from the bot"
+
+#: sport
+msgid "По QR"
+msgstr "By QR"
+
+#: sport
+msgid "По класс"
+msgstr "To grade"
+
+#: sport
+msgid "Получил"
+msgstr "Received"
+
+#: sport
+msgid "Понедельник"
+msgstr "Monday"
+
+#: sport
+msgid "Порог посещения секции"
+msgstr "Section attendance threshold"
+
+#: sport
+msgid "Предложен"
+msgstr "Offered"
+
+#: sport
+msgid "Пятница"
+msgstr "Friday"
+
+#: sport
+msgid "Раздача"
+msgstr "Giveaway"
+
+#: sport
+msgid "Раздача билетов"
+msgstr "Ticket giveaway"
+
+#: sport
+msgid "Раздача билетов скоро начнётся"
+msgstr "The ticket giveaway starts soon"
+
+#: sport
+msgid "Раздачи билетов"
+msgstr "Ticket giveaways"
+
+#: sport
+msgid "С класса"
+msgstr "From grade"
+
+#: sport
+msgid "Секции ведёт директор спорта"
+msgstr "Sections are run by the sports director"
+
+#: sport
+msgid "Секции.xlsx"
+msgstr "Sections.xlsx"
+
+#: sport
+msgid "Секция: вышел из секции «{title}»"
+msgstr "Section: left “{title}”"
+
+#: sport
+msgid "Секция: записан — {where}"
+msgstr "Section: enrolled — {where}"
+
+#: sport
+msgid "Секция: перенесён из бота — {title}"
+msgstr "Section: moved from the bot — {title}"
+
+#: sport
+msgid "Секция: час занятия — {where}"
+msgstr "Section: session hour — {where}"
+
+#: sport
+msgid "Сколько билетов"
+msgstr "Number of tickets"
+
+#: sport
+msgid "Событие"
+msgstr "Event"
+
+#: sport
+msgid "Спортивная секция"
+msgstr "Sports section"
+
+#: sport
+msgid "Спортивные секции"
+msgstr "Sports sections"
+
+#: sport
+msgid "Среда"
+msgstr "Wednesday"
+
+#: sport
+msgid "Срок жизни QR-кода на занятии"
+msgstr "Session QR code lifetime"
+
+#: sport
+msgid "Срок жизни QR-кода на занятии и порог посещения секции"
+msgstr "Session QR code lifetime and section attendance threshold"
+
+#: sport
+msgid "Старт раздачи"
+msgstr "Giveaway start"
+
+#: sport
+msgid "Суббота"
+msgstr "Saturday"
+
+#: sport
+msgid "Такого занятия нет"
+msgstr "No such session"
+
+#: sport
+msgid "Укажите адрес площадки"
+msgstr "Enter the venue address"
+
+#: sport
+msgid "Укажите лимит мест"
+msgstr "Enter the number of places"
+
+#: sport
+msgid "Ученик записан не на этот час"
+msgstr "The student is not enrolled in this hour"
+
+#: sport
+msgid "Ученик не записан ни в одну секцию"
+msgstr "The student is not enrolled in any section"
+
+#: sport
+msgid "Час"
+msgstr "Hour"
+
+#: sport
+msgid "Час занятия"
+msgstr "Session hour"
+
+#: sport
+msgid "Час, куда переводят, — для других классов"
+msgstr "The target hour is for other grades"
+
+#: sport
+msgid "Через сколько секунд код на экране директора спорта меняется. Фото кода, отправленное другу, через это время уже не отметит"
+msgstr "How many seconds until the code on the sports director's screen changes. A photo of the code sent to a friend will no longer check them in after this time"
+
+#: sport
+msgid "Четверг"
+msgstr "Thursday"
+
+#: sport
+msgid "Это занятие для {grades} классов"
+msgstr "This session is for grades {grades}"
+
+#: sport
+msgid "сек"
+msgstr "sec"
+
+#: sport
+msgid "час не выбран"
+msgstr "hour not chosen"

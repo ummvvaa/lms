@@ -1373,6 +1373,12 @@ CABINET_WRITERS: dict[str, tuple[str, ...]] = {
     "directors.LessonRelease": ("director_talent", "director_sport", ROLE_ADMIN),
     "directors.SportEvent": ("director_sport", ROLE_ADMIN),
     "directors.SportApplication": ("director_sport", ROLE_ADMIN),
+    # секции, отметки на занятиях и раздачи билетов (27.10.2026): администратор — всё,
+    # что директор спорта, во всех блоках (решение владельца)
+    "sport.Section": ("director_sport", ROLE_ADMIN),
+    "sport.SectionEnrollment": ("director_sport", ROLE_ADMIN),
+    "sport.SectionMark": ("director_sport", ROLE_ADMIN),
+    "sport.TicketDrop": ("director_sport", ROLE_ADMIN),
     # эссе: решение «Норм / Не норм» и комментарий ученику — у Асем; текст правит только ученик
     "roadmap.Essay.verdict": ("director_admission", ROLE_ADMIN),
 }
@@ -1384,6 +1390,10 @@ CABINET_READERS: dict[str, tuple[str, ...]] = {
     "directors.LessonRelease": (*ALL_DIRECTORS, ROLE_CURATOR, ROLE_ADMIN),
     "directors.Olympiad": (*ALL_DIRECTORS, ROLE_CURATOR, ROLE_ADMIN),
     "directors.SportEvent": (*ALL_DIRECTORS, ROLE_CURATOR, ROLE_ADMIN, ROLE_STUDENT),
+    # секция ученика и посещение секции: куратор — своих групп (`core.scope`), остальные
+    # директора — нет; ученик свою запись видит своими ручками, а не этим правом
+    "sport.SectionEnrollment": ("director_sport", ROLE_CURATOR, ROLE_ADMIN),
+    "sport.SectionMark": ("director_sport", ROLE_CURATOR, ROLE_ADMIN),
 }
 
 #: Кому ставят задачи сотрудникам: учителя, кураторы и директора (кроме самой себя)

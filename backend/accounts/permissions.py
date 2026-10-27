@@ -162,6 +162,9 @@ CURATOR_READ_ROUTES = frozenset(
         "subject-list",
         "sport-type-list",
         "exam-kind-list",
+        # секция ученика своих групп и посещение секции — на чтение (27.10.2026)
+        "sport-students-sections",
+        "sport-student-section",
         "delete-preview",
         # мастера импорта здесь нет намеренно: решением владельца кураторы
         # вносят руками. Разбор «лист чужой группы — ошибка» в коде остался
@@ -400,6 +403,10 @@ ADMIN_CLOSED_ROUTES: dict[str, str] = {
     "my-sport-events": STUDENT_CABINET,
     "my-sport-apply": STUDENT_CABINET,
     "my-sport-application": STUDENT_CABINET,
+    # «Моя секция» ученика: запись на час и свои отметки (27.10.2026)
+    "my-section": STUDENT_CABINET,
+    "my-section-enroll": STUDENT_CABINET,
+    "my-section-leave": STUDENT_CABINET,
     "homework-my-detail": STUDENT_CABINET,
     "homework-my-submit": STUDENT_CABINET,
     # кабинет куратора (фазы 60–63): свои группы, свой журнал
