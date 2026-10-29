@@ -373,7 +373,7 @@ export const en: Record<string, string> = {
   'Порог для разбора — целое число': 'The analysis threshold must be a whole number',
   'Порядок решает, какой сюжет ученик увидит первым. Выключенные не показываются никому': 'The order decides which cue a student sees first. Switched-off cues are shown to no one',
   'Последний': 'Latest',
-  'Правильных и неправильных ответов нет — отвечайте так, как думаете сейчас. Клавиши 1–5 — ответ, стрелки — переход.': 'There are no right or wrong answers — answer as you think now. Keys 1–5 answer, arrows move.',
+  'Правильных и неправильных ответов нет — отвечайте так, как думаете сейчас. Клавиши 1–{n} — ответ, стрелки — переход.': 'There are no right or wrong answers — answer as you think now. Keys 1–{n} answer, arrows move.',
   'Предметы: {subjects}': 'Subjects: {subjects}',
   'Привет, {name}': 'Hi, {name}',
   'Применены': 'Applied',

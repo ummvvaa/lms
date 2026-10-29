@@ -171,6 +171,8 @@ export default function CareerTake() {
   const items = useMemo(() => query.data?.items ?? [], [query.data])
   const options = useMemo(() => query.data?.options ?? [], [query.data])
   const total = items.length
+  /** сколько клавиш отвечают: варианты теста или наибольшее число своих вариантов */
+  const keyCount = Math.max(options.length, ...items.map((item) => item.choices.length))
 
   // ответы с сервера — один раз при загрузке; дальше источник правды — экран.
   // Открываемся на первом неотвеченном
@@ -416,7 +418,8 @@ export default function CareerTake() {
         )}
         <p className="t-note">
           {t(
-            'Правильных и неправильных ответов нет — отвечайте так, как думаете сейчас. Клавиши 1–5 — ответ, стрелки — переход.',
+            'Правильных и неправильных ответов нет — отвечайте так, как думаете сейчас. Клавиши 1–{n} — ответ, стрелки — переход.',
+            { n: keyCount },
           )}
         </p>
       </DataCard>
@@ -460,7 +463,7 @@ export default function CareerTake() {
                   return (
                     <div
                       key={item.id}
-                      className={`ctake__item${answered(value) ? ' ctake__item--done' : ''}`}
+                      className={`ctake__item${item.choices.length > 0 ? ' ctake__item--choices' : ''}${answered(value) ? ' ctake__item--done' : ''}`}
                     >
                       <div className="ctake__text">
                         <b className="ctake__num num">{item.number}</b>

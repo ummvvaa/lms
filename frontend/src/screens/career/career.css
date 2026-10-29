@@ -41,6 +41,12 @@
   align-items: stretch;
 }
 
+/* вопрос со своими вариантами: текст строкой сверху, варианты под ним */
+.ctake__item--choices {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
 .ctake__answers--choices .btn,
 .ctake__answers--choices button {
   justify-content: flex-start;
@@ -48,6 +54,14 @@
   height: auto;
   min-height: var(--control-h);
   text-align: left;
+}
+
+/* высота по тексту и на ноутбуке, и на телефоне: общий размер кнопки `sm`
+   из base.css грузится позже и держит одну строку, поэтому селектор сильнее */
+.ctake__answers.ctake__answers--choices [data-slot='button'][data-variant] {
+  height: auto;
+  min-height: var(--btn-row-h);
+  padding-block: calc(var(--space) * 2);
 }
 
 .ctake__item--done .ctake__num,
@@ -124,6 +138,16 @@
 
 .cbars__title {
   font-weight: 600;
+}
+
+/* подпись балла в таблице — фразой, по словам, если колонки мало */
+body .tbl [data-slot='badge'].cbars__label {
+  display: block;
+  height: auto;
+  min-height: calc(var(--space) * 5);
+  white-space: normal;
+  line-height: 1.3;
+  border-radius: var(--radius-row);
 }
 
 /* выбор тестов для разбора — галочки столбиком */

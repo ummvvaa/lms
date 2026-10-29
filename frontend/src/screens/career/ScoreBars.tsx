@@ -42,11 +42,11 @@ export default function ScoreBars({ scores, threshold, limit, compact = false }:
     )
   }
   const columns: Column<CareerScore>[] = [
-    { key: 'title', title: t('Шкала'), width: '30%', cell: (row) => <span className="cbars__title">{row.title}</span>, sortBy: (row) => row.title },
+    { key: 'title', title: t('Шкала'), width: '28%', cell: (row) => <span className="cbars__title">{row.title}</span>, sortBy: (row) => row.title },
     {
       key: 'bar',
       title: t('Балл'),
-      width: '32%',
+      width: '22%',
       cell: (row) => (
         <span className="cbars__bar">
           <Bar percent={percentOf(row)} color={colorOf(row, threshold)} />
@@ -57,10 +57,10 @@ export default function ScoreBars({ scores, threshold, limit, compact = false }:
     {
       key: 'label',
       title: t('Интерпретация'),
-      width: '26%',
+      width: '38%',
       cell: (row) =>
         row.label ? (
-          <Chip size="sm" tone={row.score >= threshold ? 'accent' : 'neutral'}>
+          <Chip size="sm" className="cbars__label" tone={row.score >= threshold ? 'accent' : 'neutral'}>
             {row.label}
           </Chip>
         ) : (
