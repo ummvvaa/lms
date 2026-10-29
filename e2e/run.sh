@@ -18,6 +18,12 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# Кадры прошлых прогонов временные и копятся гигабайтами: перед прогоном
+# убираются все, кроме эталонов сравнения и словаря ключей перевода
+if [ -d shots ]; then
+  find shots -mindepth 1 -maxdepth 1 ! -name baseline ! -name i18n-keys.json -exec rm -rf {} +
+fi
+
 # Точечный перегон: ./run.sh --spot tests/curator-cabinet.spec.ts
 # После полного прогона в базе эталонная или пустая школа — сценарии на ней
 # краснеют на данных. Ключ обнуляет базу, сеет заново и гонит указанное.

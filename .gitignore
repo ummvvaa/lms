@@ -24,6 +24,7 @@ backend/dumps/
 # Node
 node_modules/
 dist/
+frontend/dist/
 build/
 .vite/
 .eslintcache
@@ -72,6 +73,8 @@ e2e/__pycache__/
 # Снимки экранов, включая эталоны сравнения раскладки: весят десятки
 # мегабайт и снимаются заново на своей машине (порядок — в README)
 e2e/shots/
+# скрипты разовых снимков экранов: под dev-учётки, в репозиторий не идут
+e2e/tools/
 playwright-report/
 test-results/
 CLAUDE.md
