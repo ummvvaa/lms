@@ -136,10 +136,8 @@ def test_calendar_mode_is_remembered_per_role():
     card = read("components", "CalendarCard.tsx")
     assert "localStorage.setItem(storageKey" in card
     calendar = read("screens", "Calendar.tsx")
-    sport = read("screens", "dashboards", "SportDashboard.tsx")
     assert "localStorage.setItem(storageKey" in calendar
     assert "'calendar.mode.student'" in calendar
-    assert 'storageKey="calendar.mode.director_sport"' in sport
 
 
 def test_calendar_modes_live_only_on_the_phone():

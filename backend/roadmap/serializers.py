@@ -7,7 +7,6 @@ from rest_framework import serializers
 
 from core.serializers import PartialUniqueMixin
 from roadmap.models import (
-    ApplicationPlan,
     Essay,
     EssayCheckQuestion,
     EssayComment,
@@ -198,65 +197,6 @@ class GenerateTasksSerializer(serializers.Serializer):
     student = serializers.IntegerField(required=False)
     group = serializers.CharField(required=False)
     graduation_year = serializers.IntegerField(required=False)
-
-
-class ApplicationPlanSerializer(serializers.ModelSerializer):
-    """План поступления по программе (фаза 41). Дедлайн — из раунда, не копия."""
-
-    university_name = serializers.CharField(source="program.university.name", read_only=True)
-    program_name = serializers.CharField(source="program.name", read_only=True)
-    level_title = serializers.CharField(source="program.get_level_display", read_only=True)
-    round_type = serializers.CharField(source="admission_round.round_type", read_only=True, default=None)
-    deadline = serializers.DateField(read_only=True)
-    counters = serializers.SerializerMethodField()
-    days_left = serializers.SerializerMethodField()
-    progress = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ApplicationPlan
-        fields = (
-            "id",
-            "student",
-            "program",
-            "admission_round",
-            "university_name",
-            "program_name",
-            "level_title",
-            "round_type",
-            "deadline",
-            "generation_status",
-            "generation_offline",
-            "counters",
-            "days_left",
-            "progress",
-            "created_at",
-        )
-        read_only_fields = fields
-
-    def _counts(self, obj) -> dict:
-        cache = getattr(obj, "_counts_cache", None)
-        if cache is None:
-            tasks = obj.tasks.all()
-            total = len(tasks)
-            done = sum(1 for t in tasks if t.status == "done")
-            in_progress = sum(1 for t in tasks if t.status == "in_progress")
-            cache = {"total": total, "done": done, "in_progress": in_progress, "remaining": total - done}
-            obj._counts_cache = cache
-        return cache
-
-    def get_counters(self, obj) -> dict:
-        return self._counts(obj)
-
-    def get_progress(self, obj) -> int:
-        counts = self._counts(obj)
-        return round(counts["done"] / counts["total"] * 100) if counts["total"] else 0
-
-    def get_days_left(self, obj):
-        if obj.deadline is None:
-            return None
-        from django.utils import timezone
-
-        return (obj.deadline - timezone.localdate()).days
 
 
 # --- Конструктор эссе (фаза 43) --------------------------------------------

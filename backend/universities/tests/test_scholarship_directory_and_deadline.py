@@ -1,10 +1,9 @@
-"""Стипендии: справочник, сохранённые, подбор и дедлайн в одном месте.
+"""Стипендии: загрузка файлом и дедлайн в одном месте.
 
-Проверяем то, из-за чего раздел мог бы соврать ученику:
+Экрана справочника и раздела ученика нет (ручки сняты 29.10.2026), данные
+остались. Проверяем то, из-за чего они могли бы соврать ученику:
 
-* справочник ведёт директор по поступлению, чужой директор получает 403;
 * загруженная файлом запись приходит неподтверждённой (инвариант №14);
-* подбор не может назвать стипендию мимо справочника (инвариант №10);
 * дедлайн живёт у стипендии: он же в календаре, он же срок задачи
   (инвариант №4) — копии даты нигде нет.
 """
@@ -53,114 +52,7 @@ def scholarship(db) -> Scholarship:
     )
 
 
-# --- Справочник -----------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_admission_director_keeps_the_directory(api, make_user):
-    """Заводит, правит и убирает стипендии директор по поступлению."""
-    api.force_authenticate(make_user("director_admission"))
-    made = api.post(
-        "/api/scholarships/",
-        {"name": "Bolashak", "funding_type": "full", "country": "Казахстан"},
-        format="json",
-    )
-    assert made.status_code == 201, made.data
-
-    changed = api.patch(f"/api/scholarships/{made.data['id']}/", {"organizer": "Фонд"}, format="json")
-    assert changed.status_code == 200, changed.data
-
-    gone = api.delete(f"/api/scholarships/{made.data['id']}/")
-    assert gone.status_code == 200, gone.data
-    assert not Scholarship.objects.filter(pk=made.data["id"]).exists()
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize("role", ["director_sport", "director_exam", "director_talent"])
-def test_others_cannot_touch_the_directory(api, make_user, scholarship, role):
-    """Чужой директор справочник не ведёт — только читает.
-
-    Администратор с фазы 68 ведёт справочники всех доменов, поэтому
-    из списка «чужих» он ушёл — его право проверяет `test_admin_writes_all_domains`.
-    """
-    api.force_authenticate(make_user(role))
-    assert api.get("/api/scholarships/").status_code == 200
-    made = api.post("/api/scholarships/", {"name": "X", "funding_type": "full"}, format="json")
-    assert made.status_code == 403, made.data
-    changed = api.patch(f"/api/scholarships/{scholarship.pk}/", {"country": "Иное"}, format="json")
-    assert changed.status_code == 403, changed.data
-
-
-@pytest.mark.django_db
-def test_student_reads_but_does_not_write(api, student_user, scholarship):
-    api.force_authenticate(student_user)
-    listing = api.get("/api/scholarships/")
-    assert listing.status_code == 200
-    assert listing.data["results"][0]["name"] == scholarship.name
-    assert api.post("/api/scholarships/", {"name": "X", "funding_type": "full"}, format="json").status_code == 403
-
-
-@pytest.mark.django_db
-def test_hidden_scholarship_is_invisible_to_the_student(api, student_user, scholarship):
-    """Снятая с показа запись у ученика не появляется, у директора остаётся."""
-    scholarship.is_active = False
-    scholarship.save(update_fields=["is_active"])
-    api.force_authenticate(student_user)
-    assert api.get("/api/scholarships/").data["count"] == 0
-
-
-# --- Каталог и фильтры ------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_filters_narrow_the_catalogue(api, student_user, scholarship):
-    Scholarship.objects.create(name="Merit Grant", country="США", funding_type="partial", for_merit=True)
-    api.force_authenticate(student_user)
-    assert api.get("/api/scholarships/?country=Канада").data["count"] == 1
-    assert api.get("/api/scholarships/?basis=merit").data["count"] == 1
-    assert api.get("/api/scholarships/?funding_type=full").data["count"] == 1
-    assert api.get("/api/scholarships/?q=Merit").data["count"] == 1
-
-
-@pytest.mark.django_db
-def test_overview_counts_and_keeps_currencies_apart(api, student_user, scholarship):
-    """Суммы не складываются между валютами: курса мы не выдумываем."""
-    Scholarship.objects.create(name="Euro Grant", funding_type="partial", amount_max=5000, currency="EUR")
-    api.force_authenticate(student_user)
-    data = api.get("/api/scholarship-overview/").data
-    assert data["total"] == 2
-    assert data["soon"] == 1
-    currencies = {row["currency"]: row["amount"] for row in data["funding"]}
-    assert currencies == {"USD": 25000, "EUR": 5000}
-
-
-@pytest.mark.django_db
-def test_deadline_reads_in_words(api, student_user, scholarship):
-    """«дедлайн сегодня», «остался 1 день», «через N дней» — считает сервер."""
-    api.force_authenticate(student_user)
-    today = timezone.localdate()
-    for days, expected in ((0, "дедлайн сегодня"), (1, "остался 1 день"), (5, "через 5 дней"), (-1, "срок прошёл")):
-        scholarship.deadline = today + dt.timedelta(days=days)
-        scholarship.save(update_fields=["deadline"])
-        row = api.get("/api/scholarships/").data["results"][0]
-        assert row["deadline_state"] == expected
-
-
-# --- Сохранённые ------------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_student_saves_and_removes(api, student_user, student, scholarship):
-    api.force_authenticate(student_user)
-    saved = api.post(f"/api/scholarships-saved/{scholarship.pk}/")
-    assert saved.status_code == 201, saved.data
-    assert SavedScholarship.objects.filter(student=student).count() == 1
-    assert api.get("/api/scholarships-saved/").data["count"] == 1
-    assert api.get("/api/scholarships/").data["results"][0]["is_saved"] is True
-
-    gone = api.delete(f"/api/scholarships-saved/{scholarship.pk}/")
-    assert gone.status_code == 200
-    assert SavedScholarship.objects.filter(student=student).count() == 0
+# --- Дедлайн в календаре и задачах ---------------------------------------
 
 
 @pytest.mark.django_db
@@ -228,48 +120,6 @@ def test_moving_the_deadline_moves_the_task(student, scholarship):
     scholarship.save(update_fields=["deadline"])
     task.refresh_from_db()
     assert task.effective_due_date == scholarship.deadline
-
-
-# --- Подбор -----------------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_pick_says_the_directory_is_empty(api, student_user):
-    """Пустой справочник — так и говорится, а не достраивается по памяти."""
-    api.force_authenticate(student_user)
-    data = api.post("/api/scholarships-pick/").data
-    assert data["picks"] == []
-    assert "пуст" in data["note"]
-
-
-@pytest.mark.django_db
-def test_pick_names_only_records_from_the_directory(api, student_user, student, scholarship):
-    """Инвариант №10: в подборе только стипендии справочника."""
-    student.admission.target_country = "Канада"
-    student.admission.target_level = "bachelor"
-    student.admission.save()
-    api.force_authenticate(student_user)
-    data = api.post("/api/scholarships-pick/").data
-    known = set(Scholarship.objects.values_list("id", flat=True))
-    assert data["picks"]
-    assert all(row["id"] in known for row in data["picks"])
-    assert all(row["name"] == scholarship.name for row in data["picks"])
-
-
-@pytest.mark.django_db
-def test_pick_skips_the_wrong_country(api, student_user, student, scholarship):
-    student.admission.target_country = "Германия"
-    student.admission.save()
-    api.force_authenticate(student_user)
-    data = api.post("/api/scholarships-pick/").data
-    assert data["picks"] == []
-    assert "профиль" in data["note"] or "не нашлось" in data["note"]
-
-
-@pytest.mark.django_db
-def test_pick_is_a_student_screen(api, make_user, scholarship):
-    api.force_authenticate(make_user("director_admission"))
-    assert api.post("/api/scholarships-pick/").status_code == 403
 
 
 # --- Загрузка файлом --------------------------------------------------------
@@ -352,26 +202,6 @@ def test_only_the_administrator_uploads_the_file(api, make_user):
     answer = api.post("/api/scholarships-import/", {}, format="multipart")
     assert answer.status_code == 403
     assert "администратор" in answer.data["detail"]
-
-
-# --- Сводка директору -------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_attention_shows_who_saved_and_who_did_not(api, make_user, student, scholarship):
-    SavedScholarship.objects.create(student=student, scholarship=scholarship)
-    api.force_authenticate(make_user("director_admission"))
-    data = api.get("/api/scholarships-attention/").data
-    assert data["total_scholarships"] == 1
-    assert data["saved_by"][0]["saved"] == 1
-    assert data["deadline_this_week"] == [] or data["deadline_this_week"][0]["student"] == student.pk
-    assert data["without_saved"] == []
-
-
-@pytest.mark.django_db
-def test_attention_is_closed_to_other_directors(api, make_user):
-    api.force_authenticate(make_user("director_sport"))
-    assert api.get("/api/scholarships-attention/").status_code == 403
 
 
 # --- Реестр -----------------------------------------------------------------

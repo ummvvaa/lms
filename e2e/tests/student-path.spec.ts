@@ -343,17 +343,12 @@ test("сквозной путь ученика: от временного пар
   step("объяснение процента");
 
   const learnerToken = await csrf(learner);
-  const favorited = await learner.request.post("/api/favorites/", {
-    headers: { "X-CSRFToken": learnerToken },
-    data: { program },
-  });
-  expect(favorited.ok()).toBeTruthy();
   const added = await learner.request.post("/api/catalog/add/", {
     headers: { "X-CSRFToken": learnerToken },
     data: { program, tier: "target" },
   });
   expect(added.ok()).toBeTruthy();
-  step("вуз в избранном и в списке");
+  step("вуз в списке");
 
   // --- 10. План по вузу --------------------------------------------------
   // С фазы 48 план заводится сам при добавлении программы в список,
@@ -361,17 +356,10 @@ test("сквозной путь ученика: от временного пар
   await expect
     .poll(
       async () => {
-        const plans = (await (
-          await learner.request.get("/api/application-plans/")
-        ).json()) as {
-          results: {
-            id: number;
-            generation_status: string;
-            counters: { total: number };
-          }[];
-        };
-        const row = plans.results[0];
-        return row && row.generation_status === "done" ? row.counters.total : 0;
+        const tasks = (await (
+          await learner.request.get("/api/tasks/my/")
+        ).json()) as { plan: number | null }[];
+        return tasks.filter((task) => task.plan !== null).length;
       },
       { timeout: 120_000, intervals: [1000] },
     )

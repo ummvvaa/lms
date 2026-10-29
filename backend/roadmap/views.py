@@ -6,7 +6,7 @@ from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema
-from rest_framework import mixins, permissions, status, viewsets
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
@@ -14,10 +14,8 @@ from rest_framework.response import Response
 
 from core.deletion import ArchiveDeleteMixin, HardDeleteMixin
 from core.domains import ROLE_STUDENT
-from core.i18n import language_of, render
 from core.scope import sees_student
 from roadmap.models import (
-    ApplicationPlan,
     Essay,
     EssayCheckQuestion,
     EssayComment,
@@ -31,7 +29,6 @@ from roadmap.models import (
 )
 from roadmap.permissions import OwnCommentOrCurator, OwnEssayOrStaff, OwnStudentOrStaff, StaffOnly
 from roadmap.serializers import (
-    ApplicationPlanSerializer,
     EssayCheckQuestionSerializer,
     EssayCommentSerializer,
     EssayDocTypeSerializer,
@@ -249,155 +246,6 @@ def generate_roadmap(request):
 
 
 # --- План поступления по вузу (фаза 41) -------------------------------------
-
-
-class PlanPermission(permissions.BasePermission):
-    """План ведёт сам ученик целиком; сотрудник только читает своих учеников.
-
-    В отличие от задач и эссе, план — собственность ученика: он его
-    создаёт, генерирует задачи и удаляет. Ограничение `STUDENT_ACTIONS`
-    здесь не действует.
-    """
-
-    message = gettext_lazy("Свой план ведёт ученик")
-
-    def has_permission(self, request, view) -> bool:
-        if not (request.user and request.user.is_authenticated):
-            return False
-        if request.user.role != ROLE_STUDENT:
-            return request.method in permissions.SAFE_METHODS
-        return True
-
-    def has_object_permission(self, request, view, obj) -> bool:
-        if request.user.role != ROLE_STUDENT:
-            return request.method in permissions.SAFE_METHODS
-        student = getattr(request.user, "student", None)
-        return student is not None and obj.student_id == student.pk
-
-
-class ApplicationPlanViewSet(
-    ArchiveDeleteMixin,
-    mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
-    mixins.CreateModelMixin,
-    mixins.DestroyModelMixin,
-    viewsets.GenericViewSet,
-):
-    """Планы поступления. Ученик ведёт свои, сотрудник читает своих учеников.
-
-    План не правится PATCH-ом: вместо этого перегенерируются задачи —
-    поэтому `UpdateModelMixin` намеренно не включён (та же логика,
-    что у документов портфолио).
-    """
-
-    queryset = ApplicationPlan.objects.select_related(
-        "student", "program__university", "admission_round", "pending_suggestion"
-    ).prefetch_related("tasks")
-    serializer_class = ApplicationPlanSerializer
-    permission_classes = [PlanPermission]
-    filterset_fields = ("student", "program", "generation_status")
-
-    def get_queryset(self):
-        return super().get_queryset().filter(student__in=_visible_students(self.request.user))
-
-    def create(self, request, *args, **kwargs):
-        """Создать план по программе и запустить генерацию задач в фоне."""
-        from roadmap.models import ApplicationPlan
-        from universities.models import AdmissionRound, Program
-
-        student = getattr(request.user, "student", None)
-        if student is None:
-            return Response({"detail": _("План создаёт ученик")}, status=status.HTTP_403_FORBIDDEN)
-
-        program = Program.objects.filter(pk=request.data.get("program")).first()
-        if program is None:
-            return Response({"detail": _("Программа не найдена")}, status=status.HTTP_404_NOT_FOUND)
-        existing = ApplicationPlan.objects.filter(student=student, program=program).first()
-        if existing is not None:
-            return Response(
-                {"detail": _("План по этой программе уже есть"), "code": "plan_exists", "id": existing.pk},
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        # раунд — ближайший будущий для программы, если он есть
-        admission_round = (
-            AdmissionRound.objects.filter(program=program).order_by("deadline").first()
-            if request.data.get("admission_round") is None
-            else AdmissionRound.objects.filter(pk=request.data.get("admission_round")).first()
-        )
-        plan = ApplicationPlan.objects.create(
-            student=student,
-            program=program,
-            admission_round=admission_round,
-            generation_status=ApplicationPlan.Generation.RUNNING,
-        )
-        from core import jobs
-        from roadmap.tasks import generate_plan
-
-        task = generate_plan.delay(plan.pk)
-        jobs.start(
-            user=request.user,
-            kind="plan",
-            title=render(language_of(request.user), "План по вузу «{university}»", university=program.university.name),
-            task_id=task.id,
-            link=f"/plan/{plan.pk}",
-            retry_task="roadmap.generate_plan",
-            retry_payload={"plan_id": plan.pk},
-        )
-        return Response(self.get_serializer(plan).data, status=status.HTTP_201_CREATED)
-
-    def destroy(self, request, *args, **kwargs):
-        """Удалить план — в архив, вместе с его задачами. Это делает ученик."""
-        from core.archive import archive
-
-        plan = self.get_object()
-        if request.user.role != ROLE_STUDENT:
-            return Response({"detail": _("Свой план убирает ученик")}, status=status.HTTP_403_FORBIDDEN)
-        entry = archive(plan, actor=request.user)
-        return Response(
-            {
-                "archived": entry.pk,
-                "detail": _("План «{university}» в архиве").format(university=plan.program.university.name),
-            }
-        )
-
-    @action(detail=True, methods=["get"])
-    def preview(self, request, pk=None):
-        """Сгенерированные задачи, ждущие применения учеником."""
-        plan = self.get_object()
-        suggestion = plan.pending_suggestion
-        if suggestion is None:
-            return Response({"changes": [], "ready": plan.generation_status == "done"})
-        from suggestions.serializers import SuggestionSerializer
-
-        return Response(SuggestionSerializer(suggestion).data)
-
-    @action(detail=True, methods=["post"])
-    def apply_tasks(self, request, pk=None):
-        """Применить сгенерированные задачи — это делает сам ученик."""
-        plan = self.get_object()
-        if request.user.role != ROLE_STUDENT:
-            return Response({"detail": _("Задачи плана применяет ученик")}, status=status.HTTP_403_FORBIDDEN)
-        from roadmap.plans import apply_plan
-
-        result = apply_plan(plan, actor=request.user)
-        return Response(result)
-
-    @action(detail=True, methods=["get"])
-    def tasks(self, request, pk=None):
-        """Задачи плана, сгруппированные по этапам (категориям)."""
-        plan = self.get_object()
-        from roadmap.plans import STAGE_ORDER
-        from roadmap.serializers import TaskSerializer
-
-        rows = plan.tasks.select_related("admission_round", "plan__admission_round").all()
-        serialized = TaskSerializer(rows, many=True).data
-        by_stage: dict[str, list] = {}
-        for task in serialized:
-            by_stage.setdefault(task["category"], []).append(task)
-        order = {code: i for i, code in enumerate(STAGE_ORDER)}
-        stages = sorted(by_stage.items(), key=lambda kv: order.get(kv[0], 99))
-        return Response({"stages": [{"category": code, "tasks": tasks} for code, tasks in stages]})
 
 
 @extend_schema(responses={200: dict})

@@ -156,10 +156,8 @@ def test_the_screen_actually_uses_what_it_declares():
             "task-templates": ("TaskTemplates",),
             # формы предложений и документы — общие компоненты «Портфолио»
             "my-data": ("MyData", "PortfolioForms", "MyDocuments"),
-            "plan": ("Plan",),
             "essays": ("Essays",),
             "essay-content": ("EssayContent",),
-            "scholarships": ("Scholarships",),
             "resources": ("Resources",),
             "career-questions": ("CareerQuestions",),
             "badges": ("Badges",),

@@ -724,52 +724,22 @@ def main() -> int:
         code, _ = sessions["director_exam"].call("GET", f"/api/selection/runs/{run_id}/")
         check(code == 403, f"прогон подбора у директора → {code}, ожидали 403")
 
-    code, listing = student.call("GET", "/api/favorites/")
-    check(code == 200, f"избранное ученика → {code}, ожидали 200")
-    code, _ = sessions["director_admission"].call("GET", "/api/favorites/")
-    check(code == 403, f"избранное у директора → {code}, ожидали 403")
-
-    print("\n== План поступления по вузу (фаза 41) ==")
-    # берём любую программу из справочника, если она есть
-    code, progs = student.call("GET", "/api/programs/?page_size=1")
-    program = None
-    if isinstance(progs, dict) and progs.get("results"):
-        program = progs["results"][0]["id"]
-    if program:
-        code, plan = student.call("POST", "/api/application-plans/", {"program": program})
-        made = code in (201, 409)
-        check(made, f"ученик создаёт план по вузу → {code}")
-        plan_id = plan.get("id") if isinstance(plan, dict) else None
-        if code == 409:
-            code, listing = student.call("GET", "/api/application-plans/")
-            rows_ = listing.get("results", []) if isinstance(listing, dict) else []
-            plan_id = rows_[0]["id"] if rows_ else None
-        if plan_id:
-            import time as _t
-            for _ in range(20):
-                code, state = student.call("GET", f"/api/application-plans/{plan_id}/")
-                if isinstance(state, dict) and state.get("generation_status") != "running":
-                    break
-                _t.sleep(1)
-            check(
-                isinstance(state, dict) and state.get("generation_status") == "done",
-                f"задачи плана собрались → {state.get('generation_status') if isinstance(state, dict) else '—'}",
-            )
-            code, _ = student.call("POST", f"/api/application-plans/{plan_id}/apply_tasks/", {})
-            check(code == 200, f"ученик применяет задачи плана → {code}")
-            code, grouped = student.call("GET", f"/api/application-plans/{plan_id}/tasks/")
-            check(isinstance(grouped, dict) and len(grouped.get("stages", [])) > 0, "задачи сгруппированы по этапам")
-            # директор не создаёт план ученика, но читает
-            code, _ = sessions["director_admission"].call("GET", "/api/application-plans/")
-            check(code == 200, f"директор читает планы → {code}")
-            code, _ = sessions["director_admission"].call("POST", "/api/application-plans/", {"program": program})
-            check(code in (403, 405), f"директор создаёт план → {code}, ожидали 403/405")
-            code, _ = sessions["director_admission"].call("GET", "/api/application-plans/attention/")
-            check(code == 200, f"сводка планов у директора по поступлению → {code}")
-            code, _ = sessions["director_sport"].call("GET", "/api/application-plans/attention/")
-            check(code == 403, f"сводка планов у директора спорта → {code}, ожидали 403")
-            # уборка: план прогона в архив
-            student.call("DELETE", f"/api/application-plans/{plan_id}/")
+    print("\n== Убранные ручки: избранное, планы по вузу, справочник стипендий ==")
+    # экранов нет с 07.10.2026, ручки сняты 29.10.2026; данные остаются в базе
+    for path in (
+        "/api/favorites/",
+        "/api/application-plans/",
+        "/api/scholarships/",
+        "/api/scholarship-overview/",
+        "/api/scholarships-saved/",
+        "/api/scholarships-attention/",
+    ):
+        code, _ = student.call("GET", path)
+        check(code == 404, f"{path} у ученика → {code}, ожидали 404")
+    code, _ = sessions["director_admission"].call("GET", "/api/application-plans/attention/")
+    check(code == 200, f"сводка планов у директора по поступлению → {code}")
+    code, _ = sessions["director_sport"].call("GET", "/api/application-plans/attention/")
+    check(code == 403, f"сводка планов у директора спорта → {code}, ожидали 403")
 
     print("\n== Центр подготовки (фаза 42) ==")
     code, exams = student.call("GET", "/api/prep/center/exams/")
@@ -836,72 +806,13 @@ def main() -> int:
         code, _ = sessions["director_admission"].call("DELETE", f"/api/essay-doc-types/{probe_type}/")
         check(code in (200, 204), f"тип прогона удалён → {code}")
 
-    print("\n== Стипендии (фаза 44) ==")
-    code, made = sessions["director_admission"].call(
-        "POST",
-        "/api/scholarships/",
-        {
-            "name": "Probe Scholarship",
-            "funding_type": "full",
-            "country": "Канада",
-            "for_international": True,
-            "deadline": "2027-03-01",
-            "amount_max": "12000",
-            "currency": "USD",
-        },
-    )
-    check(code == 201, f"директор по поступлению заводит стипендию → {code}")
-    schol = made.get("id") if isinstance(made, dict) else None
-    code, _ = sessions["director_sport"].call("POST", "/api/scholarships/", {"name": "X", "funding_type": "full"})
-    check(code == 403, f"чужой директор заводит стипендию → {code}, ожидали 403")
-    code, _ = sessions["admin"].call("POST", "/api/scholarships/", {"name": "Y", "funding_type": "full"})
-    check(code == 403, f"администратор заводит стипендию → {code}, ожидали 403")
-
-    code, listing = student.call("GET", "/api/scholarships/")
-    rows_ = listing.get("results", []) if isinstance(listing, dict) else []
-    check(code == 200 and any(r.get("id") == schol for r in rows_), f"ученик видит каталог стипендий → {code}")
-    row = next((r for r in rows_ if r.get("id") == schol), {})
-    check(bool(row.get("deadline_state")), f"состояние срока приходит словами: «{row.get('deadline_state')}»")
-    check(bool(row.get("amount_title")), f"сумма приходит подписью: «{row.get('amount_title')}»")
-
-    code, overview = student.call("GET", "/api/scholarship-overview/")
-    check(code == 200 and isinstance(overview, dict) and "funding" in overview, f"числа над каталогом → {code}")
-
-    if schol:
-        code, _ = student.call("POST", f"/api/scholarships-saved/{schol}/")
-        check(code in (200, 201), f"ученик сохраняет стипендию → {code}")
-        code, saved_ = student.call("GET", "/api/scholarships-saved/")
-        check(
-            isinstance(saved_, dict) and any(r.get("id") == schol for r in saved_.get("results", [])),
-            "сохранённая стипендия в своём списке",
-        )
-        code, cal = student.call("GET", "/api/calendar/")
-        events = cal.get("events", []) if isinstance(cal, dict) else []
-        check(any(e.get("kind") == "scholarship" for e in events), "дедлайн стипендии попал в календарь")
-
-    code, pick = student.call("POST", "/api/scholarships-pick/", {})
-    known = {r.get("id") for r in rows_}
-    picks = pick.get("picks", []) if isinstance(pick, dict) else []
-    check(code == 200, f"подбор стипендий у ученика → {code}")
-    check(all(p.get("id") in known for p in picks), "подбор не называет стипендий мимо справочника (инвариант №10)")
-    code, _ = sessions["director_admission"].call("POST", "/api/scholarships-pick/", {})
-    check(code == 403, f"подбор у директора → {code}, ожидали 403")
-
-    code, _ = sessions["director_admission"].call("GET", "/api/scholarships-attention/")
-    check(code == 200, f"сводка по стипендиям у директора по поступлению → {code}")
-    code, _ = sessions["director_sport"].call("GET", "/api/scholarships-attention/")
-    check(code == 403, f"сводка по стипендиям у директора спорта → {code}, ожидали 403")
+    print("\n== Стипендии файлом (фаза 44) ==")
     # файл шлём настоящим multipart: с телом JSON запрос отбился бы разбором (415)
     # раньше, чем дошёл до проверки права, и проверка ничего не значила бы
     code, answer = sessions["director_admission"].upload("/api/scholarships-import/", "list.csv", b"name\n")
     check(code == 403, f"загрузка стипендий файлом у директора → {code}, ожидали 403")
     code, _ = sessions["admin"].upload("/api/scholarships-import/", "list.csv", b"\xef\xbb\xbfname\nProbe\n")
     check(code == 200, f"загрузка стипендий файлом у администратора → {code}")
-
-    if schol:
-        # уборка: стипендия прогона и отметка ученика
-        student.call("DELETE", f"/api/scholarships-saved/{schol}/")
-        sessions["director_admission"].call("DELETE", f"/api/scholarships/{schol}/")
 
     print("\n== Ресурсы и профтест (фаза 45) ==")
     code, cats = student.call("GET", "/api/resource-categories/")

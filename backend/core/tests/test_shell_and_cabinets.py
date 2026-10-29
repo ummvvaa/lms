@@ -182,30 +182,19 @@ def test_journey_is_not_in_the_student_cabinet():
 @pytest.mark.parametrize(
     "screen,marker",
     [
-        ("ExamDashboard.tsx", "Мок просел"),
         ("AdmissionDashboard.tsx", "Баланс списков"),
-        ("BehaviorDashboard.tsx", "Кому позвонить сегодня"),
-        ("TalentDashboard.tsx", "Материалы на проверке"),
-        ("SportDashboard.tsx", "Календарь стартов"),
         ("AdminDashboard.tsx", "Требует ваших действий"),
     ],
 )
-def test_six_cabinets_are_six_different_screens(screen: str, marker: str):
+def test_cabinets_are_different_screens(screen: str, marker: str):
     """У каждого кабинета своё главное, а не один экран с подменой данных."""
     source = read("screens", "dashboards", screen)
     assert marker in source, f"{screen}: нет того, ради чего этот экран открывают"
 
 
-def test_five_cabinets_share_the_queue_and_the_admin_does_not():
-    """Очередь подтверждений — у пятерых; администратору подтверждать нечего."""
-    for screen in (
-        "ExamDashboard.tsx",
-        "AdmissionDashboard.tsx",
-        "BehaviorDashboard.tsx",
-        "TalentDashboard.tsx",
-        "SportDashboard.tsx",
-    ):
-        assert "PendingQueue" in read("screens", "dashboards", screen), screen
+def test_director_cabinet_shares_the_queue_and_the_admin_does_not():
+    """Очередь подтверждений — у директора; администратору подтверждать нечего."""
+    assert "PendingQueue" in read("screens", "dashboards", "AdmissionDashboard.tsx")
     assert "PendingQueue" not in read("screens", "dashboards", "AdminDashboard.tsx")
 
 
@@ -229,11 +218,7 @@ def test_cabinets_never_leave_the_right_third_empty():
     css = read("screens", "dashboards", "cabinet.css")
     assert "minmax(0, 2fr) minmax(0, 1fr)" in css
     for screen in (
-        "ExamDashboard.tsx",
         "AdmissionDashboard.tsx",
-        "BehaviorDashboard.tsx",
-        "TalentDashboard.tsx",
-        "SportDashboard.tsx",
         "AdminDashboard.tsx",
     ):
         # с фазы 80 три дашборда собирает `CabinetBoard`: те же две колонки, но пустая

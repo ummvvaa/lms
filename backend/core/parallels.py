@@ -202,7 +202,7 @@ SECTIONS: tuple[Section, ...] = (
         gettext_lazy("Избранное"),
         ADMISSION_ONLY,
         paths=("/favorites",),
-        routes=("favorites", "favorite-remove"),
+        routes=(),
     ),
     Section(
         "universities",
@@ -216,29 +216,14 @@ SECTIONS: tuple[Section, ...] = (
         gettext_lazy("План поступления"),
         ADMISSION_ONLY,
         paths=("/plan",),
-        routes=(
-            "application-plan-list",
-            "application-plan-detail",
-            "application-plan-preview",
-            "application-plan-tasks",
-            "application-plan-apply-tasks",
-            "plan-attention",
-        ),
+        routes=("plan-attention",),
     ),
     Section(
         "scholarships",
         gettext_lazy("Стипендии"),
         ADMISSION_ONLY,
         paths=("/scholarships",),
-        routes=(
-            "scholarship-list",
-            "scholarship-detail",
-            "scholarship-overview",
-            "scholarships-saved",
-            "scholarship-save",
-            "scholarships-pick",
-            "scholarships-attention",
-        ),
+        routes=(),
     ),
     # профтест — тесты профориентации учителя: кому открыт тест, решает он
     # назначением, параллель раздел не закрывает (решение владельца, 08.10.2026)

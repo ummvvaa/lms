@@ -434,8 +434,6 @@ ADMIN_CLOSED_ROUTES: dict[str, str] = {
     "selection-runs": STUDENT_CABINET,
     "selection-run": STUDENT_CABINET,
     "selection-explain": STUDENT_CABINET,
-    "favorites": STUDENT_CABINET,
-    "scholarships-saved": STUDENT_CABINET,
     "essay-requirements": STUDENT_CABINET,
     "suggestion-mine": STUDENT_CABINET,
     "game-state": STUDENT_CABINET,

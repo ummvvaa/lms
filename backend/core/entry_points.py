@@ -210,13 +210,6 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         UPDATE: Entry("/directory", "useUpdateRound", ("director_admission",)),
         DELETE: Entry("/directory", "DeleteButton", ("director_admission",)),
     },
-    # стипендии (фаза 44): справочник директора по поступлению скрыт с экранов
-    # 11.10.2026 (решение владельца), данные и API остались; сохраняет ученик —
-    # отметка живёт на его же экране
-    "universities.SavedScholarship": {
-        CREATE: Entry("/scholarships", "useSaveScholarship", ("student",)),
-        DELETE: Entry("/scholarships", "useSaveScholarship", ("student",)),
-    },
     # вкладки «Строки и записи» у директоров больше нет (27.09.2026): список вузов
     # ученика заводит сам ученик в каталоге и куратор из карточки; Асем — читает и подтверждает
     "universities.StudentUniversity": {
@@ -259,11 +252,6 @@ ENTRY_POINTS: dict[str, dict[str, Entry]] = {
         CREATE: Entry("/students/:id", "TaskDialog", ("curator",)),
         UPDATE: Entry("/students/:id", "useCuratorTaskStatus", ("curator",)),
         DELETE: Entry("/students/:id", "DeleteButton"),
-    },
-    # план поступления по вузу ведёт сам ученик (фаза 41)
-    "roadmap.ApplicationPlan": {
-        CREATE: Entry("/plan", "usePlans", ("student",)),
-        DELETE: Entry("/plan", "usePlans", ("student",)),
     },
     "roadmap.TaskTemplate": {
         CREATE: Entry("/task-templates", "useTemplateRows"),
@@ -385,10 +373,14 @@ NO_SCREEN: dict[tuple[str, str], str] = {  # i18n-skip: причины для т
         "suggestions.Suggestion",
         DELETE,
     ): "предложение не удаляют, а отклоняют: отказ виден в списке и остаётся в журнале",
-    (
-        "universities.SavedScholarship",
-        UPDATE,
-    ): "у отметки «сохранено» нечего править: её ставят и снимают, как сердечко в избранном",
+    # экраны «Стипендии» и «План поступления» убраны у ученика 07.10.2026, ручки сняты
+    # 29.10.2026 (решение владельца): записи остаются в базе, план заводится сам при
+    # добавлении вуза, его задачи — на главной ученика
+    ("universities.SavedScholarship", CREATE): "экрана стипендий у ученика нет с 07.10.2026, отметки остались в базе",
+    ("universities.SavedScholarship", UPDATE): "экрана стипендий у ученика нет с 07.10.2026, отметки остались в базе",
+    ("universities.SavedScholarship", DELETE): "экрана стипендий у ученика нет с 07.10.2026, отметки остались в базе",
+    ("roadmap.ApplicationPlan", CREATE): "план заводится сам при добавлении вуза в список, экрана плана нет",
+    ("roadmap.ApplicationPlan", DELETE): "экрана плана у ученика нет с 07.10.2026, план остаётся в базе",
     # справочник стипендий скрыт с экранов 11.10.2026 (решение владельца): записи остаются
     # в базе, каталог и календарь ученика читают их; экрана правки больше нет
     ("universities.Scholarship", CREATE): "справочник стипендий скрыт с экранов 11.10.2026, данные остались",

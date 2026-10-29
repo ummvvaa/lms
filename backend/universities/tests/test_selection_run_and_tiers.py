@@ -14,7 +14,6 @@ from rest_framework.test import APIClient
 
 from universities.models import (
     AdmissionRequirement,
-    FavoriteProgram,
     MatchRun,
     Program,
     University,
@@ -203,35 +202,6 @@ def test_second_running_run_is_rejected(api, student_user, student, catalog, set
 
 
 # --- Избранное --------------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_favorites_are_separate_from_my_list(api, student_user, student, catalog):
-    api.force_authenticate(student_user)
-    program = catalog[0].pk
-    made = api.post("/api/favorites/", {"program": program}, format="json")
-    assert made.status_code == 201
-
-    listing = api.get("/api/favorites/").data
-    assert listing["count"] == 1
-    assert listing["results"][0]["in_my_list"] is False
-
-    # повторное сердечко не создаёт дубля
-    again = api.post("/api/favorites/", {"program": program}, format="json")
-    assert again.status_code == 200
-    assert FavoriteProgram.objects.count() == 1
-
-    removed = api.delete(f"/api/favorites/program/{program}/")
-    assert removed.status_code == 200
-    assert FavoriteProgram.objects.count() == 0
-
-
-@pytest.mark.django_db
-def test_staff_has_no_favorites(api, make_user, catalog):
-    api.force_authenticate(make_user("director_admission", "asem40@school.kz"))
-    assert api.get("/api/favorites/").status_code == 403
-    assert api.post("/api/favorites/", {"program": catalog[0].pk}, format="json").status_code == 403
-
 
 # --- Не «шанс» --------------------------------------------------------------
 

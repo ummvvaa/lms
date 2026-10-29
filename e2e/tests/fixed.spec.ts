@@ -185,7 +185,7 @@ test.describe("C2 · «Позже» в баннере запоминается",
 
     // полная перезагрузка, а не переход внутри приложения: раньше баннер
     // возвращался именно так
-    await page.goto("/roadmap");
+    await page.goto("/calendar");
     await page.waitForTimeout(800);
     await expect(page.getByRole("button", { name: "Позже" })).toBeHidden();
   });
