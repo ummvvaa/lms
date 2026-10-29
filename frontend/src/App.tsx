@@ -80,7 +80,6 @@ const Directory = lazy(() => import('./screens/Directory'))
 const Archive = lazy(() => import('./screens/Archive'))
 const Onboarding = lazy(() => import('./screens/Onboarding'))
 const Prep = lazy(() => import('./screens/Prep'))
-const Roadmap = lazy(() => import('./screens/Roadmap'))
 const Essays = lazy(() => import('./screens/Essays'))
 const Suggestions = lazy(() => import('./screens/Suggestions'))
 const Subjects = lazy(() => import('./screens/Subjects'))
@@ -94,14 +93,10 @@ const TaskTemplates = lazy(() => import('./screens/TaskTemplates'))
 const MyData = lazy(() => import('./screens/MyData'))
 const Olympiads = lazy(() => import('./screens/Olympiads'))
 const Sport = lazy(() => import('./screens/Sport'))
-const Journey = lazy(() => import('./screens/Journey'))
 const Calendar = lazy(() => import('./screens/Calendar'))
 const ExamKinds = lazy(() => import('./screens/ExamKinds'))
 const Selection = lazy(() => import('./screens/Selection'))
-const Favorites = lazy(() => import('./screens/Favorites'))
-const Plan = lazy(() => import('./screens/Plan'))
 const EssayContent = lazy(() => import('./screens/EssayContent'))
-const Scholarships = lazy(() => import('./screens/Scholarships'))
 const Resources = lazy(() => import('./screens/Resources'))
 const Career = lazy(() => import('./screens/career/Career'))
 const CareerTake = lazy(() => import('./screens/career/CareerTake'))
@@ -411,17 +406,12 @@ function Routing() {
         <Route path="/competitions" element={<Competitions />} />
 
         {/* Экраны ученика */}
-        <Route path="/journey" element={<Journey />} />
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/selection" element={<Selection />} />
         <Route path="/selection/:id" element={<Selection />} />
-        <Route path="/favorites" element={<Favorites />} />
-        <Route path="/plan" element={<Plan />} />
-        <Route path="/plan/:id" element={<Plan />} />
         <Route path="/my-data" element={<MyData />} />
         <Route path="/olympiads" element={<Olympiads />} />
         <Route path="/sport" element={<Sport />} />
-        <Route path="/roadmap" element={<Roadmap />} />
         {/* «Мои вузы» — вкладка каталога (07.10.2026): старые ссылки ведут туда */}
         <Route path="/universities" element={<Navigate to="/catalog?mode=mine" replace />} />
         <Route path="/catalog" element={<Catalog />} />
@@ -429,7 +419,6 @@ function Routing() {
         <Route path="/prep" element={<Prep />} />
         <Route path="/essays" element={<Essays />} />
         <Route path="/essay-content" element={<EssayContent />} />
-        <Route path="/scholarships" element={<Scholarships />} />
         {/* ресурсы читают все роли: раздел не закрыт ни доменом, ни группой */}
         <Route path="/resources" element={<Resources />} />
         <Route path="/resources/:id" element={<Resources />} />

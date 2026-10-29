@@ -387,67 +387,6 @@ body [data-slot='button'][data-variant].users__danger {
   border-color: color-mix(in srgb, var(--warn) 24%, transparent);
 }
 
-/* --- Лестница шагов ученика (фаза 37) --- */
-
-.journey__progress {
-  margin-bottom: calc(var(--space) * 4);
-}
-
-.journey__steps {
-  display: grid;
-  gap: calc(var(--space) * 3);
-}
-
-.journey__row {
-  display: flex;
-  align-items: flex-start;
-  gap: calc(var(--space) * 4);
-}
-
-.journey__num {
-  flex: none;
-  width: calc(var(--space) * 8);
-  height: var(--btn-row-h);
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  font-weight: 700;
-  font-size: var(--type-card);
-}
-
-.journey__num--done {
-  background: var(--good-bg);
-  border-color: var(--good);
-  color: var(--good);
-}
-
-.journey__body {
-  flex: 1;
-  min-width: 0;
-}
-
-.journey__title {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space) * 2);
-  font-weight: 650;
-  font-size: var(--type-card);
-}
-
-.journey__hint {
-  margin: calc(var(--space) * 1) 0 0;
-  font-size: var(--type-note);
-  line-height: 1.5;
-}
-
-.journey__actions {
-  flex: none;
-  display: flex;
-  gap: calc(var(--space) * 2);
-  align-items: center;
-}
-
 /* --- Календарь ученика (фаза 39) --- */
 
 .cal__nearest {
@@ -668,126 +607,6 @@ body [data-slot='button'][data-variant].users__danger {
   margin: calc(var(--space) * 2) 0 0;
   padding-left: calc(var(--space) * 4);
   line-height: 1.8;
-}
-
-/* плашка «идёт подбор» поверх любого экрана */
-/* --- План поступления по вузу (фаза 41) --- */
-
-/* --- План поступления (фазы 41 и 48) --- */
-
-.plan__progress {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space) * 3);
-  max-width: var(--panel-wide-w);
-}
-
-/* Стратегия: карточка со свёртыванием, внутри подкарточки в две колонки */
-.plan__strategy {
-  margin-bottom: var(--gap-block);
-}
-
-.plan__strategyhead {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space) * 3);
-  width: 100%;
-  border: 0;
-  background: none;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-
-.plan__strategytext {
-  flex: 1;
-  min-width: 0;
-  display: grid;
-  gap: 1px;
-}
-
-.plan__strategytext b {
-  font-size: var(--type-card);
-}
-
-.plan__strategytext span {
-  font-size: var(--type-note);
-}
-
-.plan__strategysummary {
-  margin: calc(var(--space) * 4) 0 0;
-  font-size: var(--type-body);
-  line-height: var(--leading-body);
-}
-
-.plan__strategygrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(calc(var(--space) * 65), 1fr));
-  gap: calc(var(--space) * 3);
-  margin-top: calc(var(--space) * 4);
-}
-
-.plan__strategycard {
-  background: var(--canvas);
-  border-radius: var(--radius-row);
-  padding: calc(var(--space) * 3);
-}
-
-.plan__strategyrow {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space) * 2);
-  margin-bottom: calc(var(--space) * 2);
-}
-
-.plan__strategyrow b {
-  font-size: calc(var(--type-note) - 1px);
-  letter-spacing: 0.06em;
-}
-
-.plan__strategycard p {
-  margin: 0;
-  font-size: var(--type-note);
-  line-height: 1.5;
-}
-
-.plan__strategynote {
-  margin: calc(var(--space) * 3) 0 0;
-  font-size: var(--type-note);
-}
-
-/* Отметка выполненной задачи плана. */
-.plan__check {
-  width: calc(var(--space) * 5);
-  height: calc(var(--space) * 5);
-  flex: 0 0 auto;
-  border-radius: var(--radius-inrow);
-  border: 1px solid var(--line);
-  display: grid;
-  place-items: center;
-  color: var(--on-accent);
-}
-
-.plan__check--on {
-  background: var(--good);
-  border-color: var(--good);
-}
-
-/* Убрать план — отдельно от задач и без цвета кнопки действия. */
-.plan__danger {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space) * 2);
-  flex-wrap: wrap;
-  margin-top: calc(var(--space) * 6);
-  padding-top: calc(var(--space) * 4);
-  border-top: 1px solid var(--line);
-}
-
-.plan__dangernote {
-  font-size: var(--type-note);
 }
 
 /* --- Конструктор эссе (фаза 43) --- */
@@ -1075,35 +894,6 @@ body [data-slot='button'][data-variant].essay__opt--wrong {
   line-height: 1.5;
 }
 
-/* Пройденный путь: строка «Путь пройден» и три карточки (фаза 49). */
-.journey__done {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space) * 3);
-  flex-wrap: wrap;
-  margin-bottom: var(--gap-block);
-}
-
-.journey__donetext {
-  flex: 1;
-  min-width: calc(var(--space) * 55);
-}
-
-.journey__donetext b {
-  font-size: var(--type-card);
-}
-
-.journey__donetext p {
-  margin: 2px 0 0;
-  font-size: var(--type-note);
-}
-
-.journey__cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space) * 70), 1fr));
-  gap: var(--gap-block);
-}
-
 /* Окно человека на «Пользователях»: заведение и правка по роли */
 .pform {
   display: grid;
@@ -1156,24 +946,4 @@ body [data-slot='button'][data-variant].essay__opt--wrong {
   background: var(--ink);
   border-color: var(--ink);
   color: var(--surface);
-}
-
-/* «Мой путь» на телефоне (фаза 75): кнопки шага переезжают под текст,
-   а не стоят в строке — с ними карточка была шире экрана */
-@media (max-width: 759px) {
-  .journey__row {
-    flex-wrap: wrap;
-    gap: calc(var(--space) * 2) calc(var(--space) * 3);
-  }
-
-  .journey__title {
-    flex-wrap: wrap;
-  }
-
-  .journey__actions {
-    width: 100%;
-    /* под текстом шага: ширина номера плюс зазор строки, оба из шкалы */
-    padding-left: calc(calc(var(--space) * 8) + calc(var(--space) * 3));
-    flex-wrap: wrap;
-  }
 }

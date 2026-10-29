@@ -26,7 +26,7 @@ export default function Dashboard() {
       // главная 8–10 — учёба; главная 11 не меняется (`core/parallels.py`)
       return me.has_admission === false ? <JuniorHome /> : <StudentHome />
     case 'director_behavior':
-      // главная по макету кабинетов директоров (24.10.2026); прежний `BehaviorDashboard` остался в коде
+      // главная по макету кабинетов директоров (24.10.2026)
       return <SchoolHome />
     case 'director_admission':
       return <AdmissionHome />
