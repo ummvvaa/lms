@@ -261,12 +261,17 @@ export function ScreenTabs<T extends string>({
 }) {
   const track = useTrack('tab.change')
   // на телефоне полоса прокручивается вбок (фаза 75), и выбранная
-  // вкладка обязана быть на виду — иначе человек не знает, где он
+  // вкладка обязана быть на виду — иначе человек не знает, где он.
+  // Двигается только сама лента: `scrollIntoView` крутил и предков —
+  // окно с лентой шире себя уезжало влево вместе с содержимым
   const box = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    box.current
-      ?.querySelector<HTMLElement>('.tabs__tab[data-selected], .tabs__tab[aria-selected="true"]')
-      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    const tab = box.current?.querySelector<HTMLElement>('.tabs__tab[data-selected], .tabs__tab[aria-selected="true"]')
+    const list = tab?.closest<HTMLElement>('.tabs__list')
+    if (!tab || !list || list.scrollWidth <= list.clientWidth) return
+    const left = tab.getBoundingClientRect().left - list.getBoundingClientRect().left + list.scrollLeft
+    if (left < list.scrollLeft) list.scrollLeft = left
+    else if (left + tab.offsetWidth > list.scrollLeft + list.clientWidth) list.scrollLeft = left + tab.offsetWidth - list.clientWidth
   }, [value])
 
   return (

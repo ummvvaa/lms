@@ -1741,6 +1741,13 @@ body [data-slot='button'][data-variant].notif__all {
   box-shadow: var(--shadow-raised);
 }
 
+/* окно — сетка из шапки, линии и тела без зазоров: наша `.grid` (зазор
+   плиток) без слоя перебивала утилиту `gap-0`, и над телом окна
+   копилось 32 пикселя пустоты */
+[data-slot='dialog-content'].modal__box {
+  gap: 0;
+}
+
 .modal__head {
   display: block;
   padding: calc(var(--space) * 4) var(--pad-card) calc(var(--space) * 3);

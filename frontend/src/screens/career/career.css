@@ -214,3 +214,14 @@ body .tbl [data-slot='badge'].cbars__label {
   padding-top: calc(var(--space) * 3);
   border-top: 1px solid var(--line);
 }
+
+/* окно результатов: вкладки, полное название теста и пояснение — одной плотной группой */
+.cresults__head {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 1);
+}
+
+.cresults__head .tabs {
+  margin: 0 0 calc(var(--space) * 2);
+}
