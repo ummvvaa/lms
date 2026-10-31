@@ -24,8 +24,13 @@ export default function TodayClubs({ rows }: { rows: { id: number; title: string
         {rows.map((row) => (
           <Row
             key={row.id}
-            title={t('Сегодня кружок: {title}', { title: row.title })}
-            when={<span className="num clubs-time">{row.time}</span>}
+            // название — одной строкой, длинное режется многоточием, полное — в подсказке
+            title={
+              <span className="clubs-oneline" title={row.title}>
+                {row.title}
+              </span>
+            }
+            note={t('Сегодня кружок · {time}', { time: row.time })}
             to="/clubs"
           />
         ))}

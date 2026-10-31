@@ -21,14 +21,16 @@ import {
 } from '../../api/clubs'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
-import { ShowAll } from '../../components/patterns'
 import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, ScreenTabs } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Switch } from '../../components/ui/switch'
 import { t, tk } from '../../i18n'
 import { formatDateTimeLong, formatDayMonth } from '../../lib/format'
 import { WEEKDAYS } from '../sport/words'
+import ClockField, { isClock } from './ClockField'
 import { HomeworkPanel, NotesPanel, SessionPanel } from './MentorWork'
+import { Segmented, ShowAll } from '../../components/patterns'
+import { usePhone } from '../../phone'
 import '../directors/directors.css'
 import '../sport/sport.css'
 import './clubs.css'
@@ -121,6 +123,13 @@ function ClubCard({ club }: { club: ClubAdminRow }) {
   const save = useSaveClub()
   const archive = useArchiveClub()
   const [archiving, setArchiving] = useState(false)
+  const phone = usePhone()
+  const tabs: { value: CardTab; label: string }[] = [
+    { value: 'members', label: t('Записанные') },
+    { value: 'homework', label: t('Задание') },
+    ...(club.marks_enabled ? [{ value: 'marks' as const, label: t('Отметка') }] : []),
+    { value: 'notes', label: t('Заметки') },
+  ]
   return (
     <DataCard
       className="card--beam"
@@ -195,18 +204,15 @@ function ClubCard({ club }: { club: ClubAdminRow }) {
         </div>
       </div>
       {/* администратор может всё, что ментор: задание, отметка и заметки — вкладками кружка */}
-      {!club.archived && (
-        <ScreenTabs
-          value={tab}
-          onChange={setTab}
-          items={[
-            { value: 'members', label: t('Записанные') },
-            { value: 'homework', label: t('Задание') },
-            ...(club.marks_enabled ? [{ value: 'marks' as const, label: t('Отметка') }] : []),
-            { value: 'notes', label: t('Заметки') },
-          ]}
-        />
-      )}
+      {!club.archived &&
+        // на телефоне четыре вкладки не помещаются в строку — переключатель в две колонки, без обрезки
+        (phone ? (
+          <div className="clubs-tabs">
+            <Segmented value={tab} onChange={setTab} items={tabs} label={t('Раздел кружка')} usageFilter={false} />
+          </div>
+        ) : (
+          <ScreenTabs value={tab} onChange={setTab} items={tabs} />
+        ))}
       {(tab === 'members' || club.archived) && <Members club={club} />}
       {!club.archived && tab === 'homework' && <HomeworkPanel club={club} />}
       {!club.archived && tab === 'marks' && club.marks_enabled && <SessionPanel club={club} />}
@@ -385,15 +391,13 @@ function ClubDialog({ club, onClose }: { club: ClubAdminRow | null; onClose: () 
               onChange={(value) => change(index, { weekday: Number(value) })}
               options={WEEKDAYS.map((label, value) => ({ value: String(value), title: t(label) }))}
             />
-            <Field
-              kind="time"
+            <ClockField
               name={`club-starts-${index}`}
               label={t('Начало')}
               value={row.starts}
               onChange={(value) => change(index, { starts: value })}
             />
-            <Field
-              kind="time"
+            <ClockField
               name={`club-ends-${index}`}
               label={t('Конец')}
               value={row.ends}
@@ -454,7 +458,7 @@ function ClubDialog({ club, onClose }: { club: ClubAdminRow | null; onClose: () 
         {until && (
           <span className="sport-window__form">
             <Field kind="date" name="club-until-date" label={t('До даты')} value={date} onChange={setDate} />
-            <Field kind="time" name="club-until-time" label={t('Время')} value={time} onChange={setTime} />
+            <ClockField name="club-until-time" label={t('Время')} value={time} onChange={setTime} />
           </span>
         )}
       </div>
@@ -464,7 +468,11 @@ function ClubDialog({ club, onClose }: { club: ClubAdminRow | null; onClose: () 
         label={t('Отметка посещения по QR')}
         checked={marks}
         onChange={setMarks}
-        hint={t('выключена — отметки нет ни у ученика, ни у ментора, ни у куратора')}
+        hint={
+          marks
+            ? t('включена — ментор показывает QR, ученики отмечаются, куратор видит посещение')
+            : t('выключена — отметки нет ни у ученика, ни у ментора, ни у куратора')
+        }
       />
       {save.error && <ErrorNote error={save.error} />}
       <div className="acad__actions">
@@ -472,7 +480,14 @@ function ClubDialog({ club, onClose }: { club: ClubAdminRow | null; onClose: () 
           {t('Отмена')}
         </Button>
         <Button
-          disabled={!title.trim() || !mentorName.trim() || parallels.length === 0 || (until && !date) || save.isPending}
+          disabled={
+            !title.trim() ||
+            !mentorName.trim() ||
+            parallels.length === 0 ||
+            (until && (!date || !isClock(time))) ||
+            meetings.some((row) => !isClock(row.starts) || !isClock(row.ends)) ||
+            save.isPending
+          }
           onClick={() =>
             save.mutate(body, {
               onSuccess: () => {

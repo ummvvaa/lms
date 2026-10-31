@@ -61,10 +61,7 @@
 .clubs-cards .dir__line b {
   white-space: nowrap;
 }
-/* время встречи в строке главной не переносится посреди себя */
-.clubs-time {
-  white-space: nowrap;
-}
+
 /* кнопка карточки — внизу, кнопки ряда одной высоты */
 .clubs-actions {
   display: flex;
@@ -100,5 +97,24 @@
 @media (max-width: 1100px) {
   .sport-pair.clubs-session {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* название кружка в строке главной — одной строкой с многоточием, полное — в подсказке */
+.clubs-oneline {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* вкладки кружка на телефоне: переключатель в две колонки, подписи целиком */
+@media (max-width: 759px) {
+  .clubs-tabs div.segrow {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .clubs-tabs .segrow__item {
+    justify-content: center;
   }
 }
