@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "career",
     "directors",
     "sport",
+    "clubs",
 ]
 
 MIDDLEWARE = [
@@ -86,6 +87,8 @@ MIDDLEWARE = [
     "accounts.permissions.AdminGateMiddleware",
     # учителю открыт свой список маршрутов, остальное для него не существует
     "accounts.permissions.TeacherGateMiddleware",
+    # ментору кружка открыт свой список маршрутов, остальное для него не существует
+    "accounts.permissions.MentorGateMiddleware",
     # ученику 8–10 закрыты маршруты поступления (реестр `core/parallels.py`)
     "accounts.permissions.StudentParallelGateMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",

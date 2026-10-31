@@ -295,6 +295,9 @@ ROLE_CURATOR = "curator"
 #: учитель: отдельная учётная запись, видит только свои уроки и учеников
 #: своих составов, ведёт посещаемость и оценки своих уроков (`academics`)
 ROLE_TEACHER = "teacher"
+#: ментор кружка (31.10.2026): отдельная учётка, видит только свой кружок
+#: и записанных в него учеников (`clubs.rights`, `core.scope`)
+ROLE_MENTOR = "mentor"
 
 
 class _Titles(dict):
@@ -320,6 +323,7 @@ ROLE_TITLES = _Titles(
         "director_sport": gettext_lazy("Директор спорта"),
         ROLE_CURATOR: gettext_lazy("Куратор"),
         ROLE_TEACHER: gettext_lazy("Учитель"),
+        ROLE_MENTOR: gettext_lazy("Ментор"),
         ROLE_ADMIN: gettext_lazy("Администратор"),
     }
 )
@@ -1379,6 +1383,13 @@ CABINET_WRITERS: dict[str, tuple[str, ...]] = {
     "sport.SectionEnrollment": ("director_sport", ROLE_ADMIN),
     "sport.SectionMark": ("director_sport", ROLE_ADMIN),
     "sport.TicketDrop": ("director_sport", ROLE_ADMIN),
+    # кружки (31.10.2026): кружки, параллели и окно записи ведёт администратор;
+    # задание, отметку и заметки — ментор своего кружка и администратор
+    # (граница «свой кружок» — `clubs.rights`)
+    "clubs.Club": (ROLE_ADMIN,),
+    "clubs.ClubHomework": (ROLE_MENTOR, ROLE_ADMIN),
+    "clubs.ClubMark": (ROLE_MENTOR, ROLE_ADMIN),
+    "clubs.ClubNote": (ROLE_MENTOR, ROLE_ADMIN),
     # эссе: решение «Норм / Не норм» и комментарий ученику — у Асем; текст правит только ученик
     "roadmap.Essay.verdict": ("director_admission", ROLE_ADMIN),
 }
@@ -1394,6 +1405,9 @@ CABINET_READERS: dict[str, tuple[str, ...]] = {
     # директора — нет; ученик свою запись видит своими ручками, а не этим правом
     "sport.SectionEnrollment": ("director_sport", ROLE_CURATOR, ROLE_ADMIN),
     "sport.SectionMark": ("director_sport", ROLE_CURATOR, ROLE_ADMIN),
+    # кружки ученика в карточке: куратор — своих групп; записанных читает ментор своего кружка.
+    # Заметок ментора здесь нет и не будет: их читатели — `clubs.rights.NOTE_READERS`
+    "clubs.ClubEnrollment": (ROLE_CURATOR, ROLE_MENTOR, ROLE_ADMIN),
 }
 
 #: Кому ставят задачи сотрудникам: учителя, кураторы и директора (кроме самой себя)

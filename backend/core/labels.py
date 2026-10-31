@@ -52,6 +52,16 @@ EXTRA_TITLES: dict[str, tuple[Any, Any]] = {
     ),
     "students.Student.sport_application": (gettext_lazy("Заявка на мероприятие"), gettext_lazy("Заявка")),
     "students.Student.sport_section": (gettext_lazy("Спортивная секция"), gettext_lazy("Секция")),
+    # кружки (31.10.2026): запись и выход ученика, правка кружка, задание ментора
+    "students.Student.club": (gettext_lazy("Кружок"), gettext_lazy("Кружок")),
+    "clubs.Club.created": (gettext_lazy("Кружок заведён"), gettext_lazy("Заведён")),
+    "clubs.Club.archived": (gettext_lazy("Кружок в архиве"), gettext_lazy("В архиве")),
+    "clubs.Club.restored": (gettext_lazy("Кружок возвращён из архива"), gettext_lazy("Возвращён")),
+    "clubs.Club.meetings": (gettext_lazy("Дни и время кружка"), gettext_lazy("Дни и время")),
+    "clubs.Club.parallels": (gettext_lazy("Кому можно записываться"), gettext_lazy("Параллели")),
+    "clubs.ClubHomework.published": (gettext_lazy("Задание кружка опубликовано"), gettext_lazy("Задание")),
+    "clubs.ClubHomework.edited": (gettext_lazy("Задание кружка изменено"), gettext_lazy("Задание")),
+    "clubs.ClubHomework.withdrawn": (gettext_lazy("Задание кружка снято"), gettext_lazy("Задание")),
     "sport.SectionSettings.enroll_until": (
         gettext_lazy("Запись на секции открыта до"),
         gettext_lazy("Запись открыта до"),

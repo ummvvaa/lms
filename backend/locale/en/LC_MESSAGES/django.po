@@ -18725,3 +18725,239 @@ msgstr "This giveaway is for years {grades}"
 #: sport
 msgid "Это занятие для параллелей {grades}"
 msgstr "This session is for years {grades}"
+
+#: clubs
+msgid "{day} {club} {club_time} и секция «{section}» {section_time}"
+msgstr "{day} {club} {club_time} and the “{section}” section {section_time}"
+
+#: clubs
+msgid "В один день — одна встреча"
+msgstr "One meeting per day"
+
+#: clubs
+msgid "В этот день встречи нет"
+msgstr "There is no meeting on this day"
+
+#: clubs
+msgid "Возвращён"
+msgstr "Restored"
+
+#: clubs
+msgid "Встреча ещё не прошла"
+msgstr "The meeting has not happened yet"
+
+#: clubs
+msgid "Встреча кружка"
+msgstr "Club meeting"
+
+#: clubs
+msgid "Встречи кружков"
+msgstr "Club meetings"
+
+#: clubs
+msgid "Вы не записаны в этот кружок"
+msgstr "You are not enrolled in this club"
+
+#: clubs
+msgid "Выберите учётку с ролью «Ментор»"
+msgstr "Choose an account with the Mentor role"
+
+#: clubs
+msgid "Вышел"
+msgstr "Left"
+
+#: clubs
+msgid "Вышел из кружка"
+msgstr "Left the club"
+
+#: clubs
+msgid "Дата встречи"
+msgstr "Meeting date"
+
+#: clubs
+msgid "Дни и время"
+msgstr "Days and time"
+
+#: clubs
+msgid "Дни и время кружка"
+msgstr "Club days and time"
+
+#: clubs
+msgid "Добавьте хотя бы одну встречу"
+msgstr "Add at least one meeting"
+
+#: clubs
+msgid "Задание кружка"
+msgstr "Club assignment"
+
+#: clubs
+msgid "Задание кружка изменено"
+msgstr "Club assignment edited"
+
+#: clubs
+msgid "Задание кружка опубликовано"
+msgstr "Club assignment published"
+
+#: clubs
+msgid "Задание кружка снято"
+msgstr "Club assignment withdrawn"
+
+#: clubs
+msgid "Задания кружков"
+msgstr "Club assignments"
+
+#: clubs
+msgid "Заметка ментора"
+msgstr "Mentor note"
+
+#: clubs
+msgid "Заметки ментора"
+msgstr "Mentor notes"
+
+#: clubs
+msgid "Записи в кружки"
+msgstr "Club enrollments"
+
+#: clubs
+msgid "Запись в кружок"
+msgstr "Club enrollment"
+
+#: clubs
+msgid "Запись закрыта"
+msgstr "Enrollment closed"
+
+#: clubs
+msgid "Кому можно записываться"
+msgstr "Who can enroll"
+
+#: clubs
+msgid "Конец встречи должен быть позже начала"
+msgstr "The meeting must end after it starts"
+
+#: clubs
+msgid "Кружки"
+msgstr "Clubs"
+
+#: clubs
+msgid "Кружки ведёт администратор"
+msgstr "Clubs are managed by the administrator"
+
+#: clubs
+msgid "Кружок"
+msgstr "Club"
+
+#: clubs
+msgid "Кружок в архиве"
+msgstr "Club archived"
+
+#: clubs
+msgid "Кружок возвращён из архива"
+msgstr "Club restored from the archive"
+
+#: clubs
+msgid "Кружок заведён"
+msgstr "Club created"
+
+#: clubs
+msgid "Кружок: вышел — {title}"
+msgstr "Club: left — {title}"
+
+#: clubs
+msgid "Кружок: записан — {title}"
+msgstr "Club: enrolled — {title}"
+
+#: clubs
+msgid "Ментор"
+msgstr "Mentor"
+
+#: clubs
+msgid "Напишите задание"
+msgstr "Write the assignment"
+
+#: clubs
+msgid "Напишите заметку"
+msgstr "Write the note"
+
+#: clubs
+msgid "Напишите имя ментора"
+msgstr "Enter the mentor's name"
+
+#: clubs
+msgid "Напишите название кружка"
+msgstr "Enter the club name"
+
+#: clubs
+msgid "Опубликовано"
+msgstr "Published"
+
+#: clubs
+msgid "Отметка на встрече кружка"
+msgstr "Club meeting check-in"
+
+#: clubs
+msgid "Отметка посещения"
+msgstr "Attendance check-in"
+
+#: clubs
+msgid "Отметка посещения в этом кружке выключена"
+msgstr "Attendance check-in is off for this club"
+
+#: clubs
+msgid "Отметки на встречах кружков"
+msgstr "Club meeting check-ins"
+
+#: clubs
+msgid "Отметьте параллели"
+msgstr "Select the grades"
+
+#: clubs
+msgid "Отметьте хотя бы одну параллель"
+msgstr "Select at least one grade"
+
+#: clubs
+msgid "Параллели"
+msgstr "Grades"
+
+#: clubs
+msgid "Параллели кружков"
+msgstr "Club grades"
+
+#: clubs
+msgid "Параллель кружка"
+msgstr "Club grade"
+
+#: clubs
+msgid "Такого кружка нет"
+msgstr "No such club"
+
+#: clubs
+msgid "Ученик не записан в этот кружок"
+msgstr "The student is not enrolled in this club"
+
+#: clubs
+msgid "Учётка ментора"
+msgstr "Mentor account"
+
+#: clubs
+msgid "Этот кружок не для вашей параллели"
+msgstr "This club is not for your grade"
+
+#: clubs
+msgid "включена"
+msgstr "on"
+
+#: clubs
+msgid "выключена"
+msgstr "off"
+
+#: clubs
+msgid "срок"
+msgstr "due"
+
+#: clubs
+msgid "Заметки об учениках"
+msgstr "Notes on students"
+
+#: clubs
+msgid "Отметка на встрече"
+msgstr "Meeting check-in"

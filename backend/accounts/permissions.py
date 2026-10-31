@@ -707,6 +707,85 @@ class TeacherGateMiddleware:
         return self.get_response(request)
 
 
+#: Что открыто ментору кружка (31.10.2026). Остальное для него не существует —
+#: шлюз отвечает «не найдено», как учителю: у роли нет карточек учеников,
+#: очередей и справочников. Внутри разрешённого границу «свой кружок» держат
+#: `clubs.rights` и выборка учеников (`core.scope`).
+MENTOR_READ_ROUTES = frozenset(
+    {
+        "usage-registry",
+        # каркас: уведомления, фоновые операции, реестр подписей
+        "notifications",
+        "jobs",
+        "domain-meta",
+        # кабинет ментора: свои кружки, ученики, задание, отметка, заметки
+        "clubs-mentor",
+        "clubs-mentor-club",
+        "clubs-homework",
+        "clubs-homework-detail",
+        "clubs-homework-file",
+        "clubs-session",
+        "clubs-session-token",
+        "clubs-notes",
+    }
+)
+
+#: Запись — только своё: задание, отметка, заметка
+MENTOR_WRITE_ROUTES = frozenset(
+    {
+        "usage",
+        "notifications-read",
+        "job-dismiss",
+        "job-retry",
+        "auth-preferences",
+        "clubs-homework",
+        "clubs-homework-detail",
+        "clubs-session-mark",
+        "clubs-notes",
+        "clubs-note",
+    }
+)
+
+
+def mentor_may(url_name: str | None, method: str) -> bool:
+    """Открыт ли маршрут ментору. Вход, выход и свой пароль — всегда."""
+    if not url_name:
+        return False
+    if url_name in CURATOR_SESSION_ROUTES:
+        return True
+    if method in ("GET", "HEAD", "OPTIONS"):
+        return url_name in MENTOR_READ_ROUTES
+    return url_name in MENTOR_WRITE_ROUTES
+
+
+class MentorGateMiddleware:
+    """Ментору открыт свой список маршрутов, остальное — «не найдено».
+
+    Та же единая точка, что у учителя: без неё роль без домена получила бы
+    право «видеть чужое» сама — `DomainFieldPermission` на чтение пускает
+    любого вошедшего. Других учеников LMS ментор не видит.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = getattr(request, "user", None)
+        if request.path.startswith("/api/") and user is not None and user.is_authenticated and user.role == Role.MENTOR:
+            from django.http import JsonResponse
+            from django.urls import Resolver404, resolve
+
+            try:
+                name = resolve(request.path).url_name
+            except Resolver404:
+                name = None
+            if not mentor_may(name, request.method):
+                return JsonResponse(
+                    {"detail": gettext("Не найдено")}, status=404, json_dumps_params={"ensure_ascii": False}
+                )
+        return self.get_response(request)
+
+
 class StudentParallelGateMiddleware:
     """Ученику 8–10 закрыты маршруты поступления — 403 с причиной.
 

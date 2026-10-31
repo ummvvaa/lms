@@ -46,6 +46,7 @@ AUTHOR_TRAILS: tuple[tuple[str, str, str], ...] = (
     ("core.ArchiveEntry", "actor", "actor_title"),
     ("students.AdmissionImport", "uploaded_by", "uploaded_by_title"),
     ("students.CuratorNote", "author", "author_title"),
+    ("clubs.ClubNote", "author", "author_title"),
     ("students.BehaviorRemark", "author", "author_title"),
     ("students.MockImport", "uploaded_by", "uploaded_by_title"),
     ("suggestions.Suggestion", "resolved_by", "resolved_by_title"),

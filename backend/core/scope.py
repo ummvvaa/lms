@@ -4,6 +4,7 @@
 - куратор — только свои группы;
 - учитель — только учеников своих составов: группы и подгруппы из
   расписания, где он ведёт журнал, и состав урока на замене — в день урока;
+- ментор — только учеников, записанных сейчас в его кружок;
 - ученик — только себя.
 
 Параллель видимость не сужает (решение владельца, 30.09.2026): Асем видит
@@ -23,10 +24,10 @@ from __future__ import annotations
 
 from django.db.models import QuerySet
 
-from core.domains import ROLE_CURATOR, ROLE_STUDENT, ROLE_TEACHER
+from core.domains import ROLE_CURATOR, ROLE_MENTOR, ROLE_STUDENT, ROLE_TEACHER
 
 #: роли с границей видимости; у остальных (руководители) — вся школа
-BOUNDED_ROLES = (ROLE_STUDENT, ROLE_CURATOR, ROLE_TEACHER)
+BOUNDED_ROLES = (ROLE_STUDENT, ROLE_CURATOR, ROLE_TEACHER, ROLE_MENTOR)
 
 
 def visible_students(user) -> QuerySet:
@@ -48,6 +49,11 @@ def visible_students(user) -> QuerySet:
         from academics.teachers import taught_student_ids
 
         return Student.objects.filter(pk__in=taught_student_ids(user))
+    if role == ROLE_MENTOR:
+        # вышедший из кружка ученик для ментора пропадает вместе с записью
+        from clubs.rights import mentored_student_ids
+
+        return Student.objects.filter(pk__in=mentored_student_ids(user))
     return Student.objects.all()
 
 

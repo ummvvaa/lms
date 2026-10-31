@@ -7,7 +7,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext, gettext_lazy, pgettext_lazy
 
-from core.domains import ROLE_CURATOR, ROLE_TEACHER, ROLE_TITLES
+from core.domains import ROLE_CURATOR, ROLE_MENTOR, ROLE_TEACHER, ROLE_TITLES
 
 
 class Role(models.TextChoices):
@@ -25,6 +25,8 @@ class Role(models.TextChoices):
     #: учитель: отдельная учётка, видит только свои уроки и учеников
     #: своих составов; профиль (предметы, кабинет) — `academics.TeacherProfile`
     TEACHER = ROLE_TEACHER, ROLE_TITLES[ROLE_TEACHER]
+    #: ментор кружка (31.10.2026): видит только свой кружок и его учеников
+    MENTOR = ROLE_MENTOR, ROLE_TITLES[ROLE_MENTOR]
     ADMIN = "admin", ROLE_TITLES["admin"]
 
 
