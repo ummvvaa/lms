@@ -169,7 +169,9 @@ def test_menu_follows_the_registry(make_user):
     у 11 нет отдельных «Олимпиад» и «Спорта» — его кабинет не меняется."""
     _client9, nine = _student(9, make_user)
     _client11, eleven = _student(11, make_user)
-    junior = student_paths(nine)
+    # «Кружки» зависят от кружков в базе, а не только от параллели — их проверяет
+    # `clubs/tests/test_club_student.py::test_menu_item_only_when_a_club_is_open_for_the_parallel`
+    junior = [path for path in student_paths(nine) if path != "/clubs"]
     assert junior == [
         "/dashboard",
         "/schedule",
