@@ -134,6 +134,7 @@ const SportEvents = lazy(() => import('./screens/directors/SportEvents'))
 // спортивные секции и билеты (27.10.2026)
 const Sections = lazy(() => import('./screens/sport/Sections'))
 const SportSession = lazy(() => import('./screens/sport/Session'))
+const ClubsScreen = lazy(() => import('./screens/clubs/ClubsScreen'))
 const SectionAttendance = lazy(() => import('./screens/sport/SectionAttendance'))
 const Tickets = lazy(() => import('./screens/sport/Tickets'))
 // отметка по QR открывается камерой без меню: свой кусок и своя граница загрузки
@@ -392,6 +393,8 @@ function Routing() {
         <Route path="/sport-events" element={<SportEvents />} />
         <Route path="/sections" element={<Sections />} />
         <Route path="/session" element={<SportSession />} />
+        {/* кружки: у администратора — раздел кружков, у ученика — свои кружки */}
+        <Route path="/clubs" element={<ClubsScreen />} />
         <Route path="/section-attendance" element={<SectionAttendance />} />
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/overview" element={<OverviewDashboard />} />

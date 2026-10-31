@@ -343,6 +343,8 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/staff-tasks', label: tk('Задачи сотрудникам'), icon: 'check', group: 'work', short: tk('Задачи') },
     // секции, QR, посещаемость секций и билеты — всё, что у директора спорта (решение владельца, 27.10.2026)
     ...SPORT_SECTIONS,
+    // кружки: список, правка, архив, записанные; задание, отметка и заметки — внутри кружка
+    { path: '/clubs', label: tk('Кружки'), icon: 'club', group: 'sections' },
     ...ACADEMICS,
     // карусель на главной ученика — настройка школы, а не домен директора
     { path: '/home-cues', label: tk('Сюжеты главной'), icon: 'megaphone', group: 'settings' },
@@ -716,4 +718,6 @@ export const SCREEN_ROLES: Record<string, Role[]> = {
   '/session': ['director_sport', 'admin'],
   '/section-attendance': ['director_sport', 'admin'],
   '/tickets': ['director_sport', 'admin'],
+  // кружки: у администратора — раздел кружков, у ученика — свои кружки (адрес один, экран по роли)
+  '/clubs': ['admin', 'student'],
 }

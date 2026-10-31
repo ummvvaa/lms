@@ -6,7 +6,15 @@ from dataclasses import dataclass
 
 from django.utils.translation import gettext, gettext_noop
 
-from core.domains import ALL_DIRECTORS, ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, ROLE_TEACHER, ROLE_TITLES, USAGE_READERS
+from core.domains import (
+    ALL_DIRECTORS,
+    ROLE_ADMIN,
+    ROLE_CURATOR,
+    ROLE_STUDENT,
+    ROLE_TEACHER,
+    ROLE_TITLES,
+    USAGE_READERS,
+)
 
 ALL = tuple(ROLE_TITLES)
 DIRECTORS = (ROLE_ADMIN, *ALL_DIRECTORS)
@@ -131,6 +139,8 @@ SCREENS = (
     Screen("/section-attendance", gettext_noop("Посещаемость секций"), (ROLE_ADMIN, "director_sport")),
     Screen("/tickets", gettext_noop("Билеты"), (ROLE_ADMIN, "director_sport")),
     Screen("/s/:token", gettext_noop("Отметка на занятии"), (ROLE_STUDENT,)),
+    # кружки (31.10.2026): у администратора — раздел кружков, у ученика — свои кружки
+    Screen("/clubs", gettext_noop("Кружки"), (ROLE_ADMIN, ROLE_STUDENT)),
 )
 SCREENS_BY_KEY = {screen.key: screen for screen in SCREENS}
 

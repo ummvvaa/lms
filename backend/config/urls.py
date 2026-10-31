@@ -24,6 +24,7 @@ urlpatterns = [
     path("api/", include("career.urls")),
     path("api/", include("directors.urls")),
     path("api/", include("sport.urls")),
+    path("api/", include("clubs.urls")),
     path("healthz", health.healthz, name="healthz"),
     path("readyz", health.readyz, name="readyz"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

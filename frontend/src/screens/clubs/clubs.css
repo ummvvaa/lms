@@ -1,0 +1,51 @@
+/* Кружки (31.10.2026): раздел администратора, кабинет ментора, раздел ученика, блок у куратора.
+   Плитки, строки и окно правки — из секций (`sport.css`, `directors.css`); здесь только своё.
+   Отступы — шагом 4 через --space, цвета — токены, размеры шрифта — токены языка. */
+
+/* описание кружка: абзац, переносится по словам */
+.clubs-text {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+/* два поля рядом: ментор и учётка, окно записи и дата */
+.clubs-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: calc(var(--space) * 3);
+}
+
+/* встреча кружка: день, начало, конец и «Убрать» */
+.sport-edit__row.clubs-meeting {
+  grid-template-columns: 1.4fr 1fr 1fr auto;
+}
+
+/* галочки параллелей в ряд */
+.clubs-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 2) calc(var(--space) * 6);
+}
+
+/* фильтр по группе и выгрузка — в одну строку, кнопка вровень с полем */
+.filters.clubs-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 3);
+}
+.clubs-filters > :first-child {
+  min-width: calc(var(--space) * 65);
+}
+
+@media (max-width: 759px) {
+  .clubs-pair,
+  .sport-edit__row.clubs-meeting {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .clubs-filters > :first-child {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+}
