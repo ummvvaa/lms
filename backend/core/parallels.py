@@ -101,6 +101,9 @@ class Section:
     routes: tuple[str, ...] = ()
 
 
+#: адрес раздела «Кружки»: пункт меню зависит от кружков, а не только от параллели
+CLUBS_PATH = "/clubs"
+
 #: Младшие параллели — учёба, олимпиады и спорт, без поступления
 JUNIOR = frozenset(PARALLELS) - ADMISSION_ONLY
 
@@ -125,6 +128,15 @@ SECTIONS: tuple[Section, ...] = (
     Section("profile", gettext_lazy("Профиль"), ALL, paths=("/profile",)),
     # материалы открывает ещё и отбор в олимпиадную группу (`materials.access`)
     Section("materials", gettext_lazy("Материалы олимпиадной группы"), ALL, paths=("/materials",)),
+    # кружки (31.10.2026): пункт есть, только если хотя бы один кружок открыт
+    # параллели ученика (`student_paths`, `clubs.services.any_open_for`)
+    Section(
+        "clubs",
+        gettext_lazy("Кружки"),
+        ALL,
+        paths=(CLUBS_PATH,),
+        routes=("my-clubs", "my-club-enroll", "my-club-leave"),
+    ),
     # --- 8–10: олимпиады и спорт своими разделами ---
     Section("olympiads", gettext_lazy("Олимпиады"), JUNIOR, paths=("/olympiads",)),
     Section("sport", gettext_lazy("Спорт"), JUNIOR, paths=("/sport",)),
@@ -412,7 +424,13 @@ def sections_for(parallel: int) -> list[Section]:
 def student_paths(student) -> list[str]:
     """Адреса экранов, открытые ученику, — меню и маршруты фронта берут их отсюда."""
     parallel = parallel_of(student)
-    return [path for section in sections_for(parallel) for path in section.paths if student_screen(path)]
+    paths = [path for section in sections_for(parallel) for path in section.paths if student_screen(path)]
+    if CLUBS_PATH in paths:
+        from clubs.services import any_open_for
+
+        if not any_open_for(student):
+            paths.remove(CLUBS_PATH)
+    return paths
 
 
 def section_open(code: str, parallel: int) -> bool:

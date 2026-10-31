@@ -410,6 +410,10 @@ ADMIN_CLOSED_ROUTES: dict[str, str] = {
     "my-section-enroll": STUDENT_CABINET,
     "my-section-leave": STUDENT_CABINET,
     "sport-scan": STUDENT_CABINET,
+    # кружки ученика (31.10.2026): у администратора — раздел «Кружки» целиком
+    "my-clubs": STUDENT_CABINET,
+    "my-club-enroll": STUDENT_CABINET,
+    "my-club-leave": STUDENT_CABINET,
     "my-tickets": STUDENT_CABINET,
     "my-ticket-claim": STUDENT_CABINET,
     "my-ticket-decline": STUDENT_CABINET,

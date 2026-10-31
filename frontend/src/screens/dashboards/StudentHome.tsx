@@ -43,6 +43,7 @@ import {
 } from './home-today'
 import './student.css'
 import './student-home.css'
+import TodayClubs, { useTodayClubs } from '../clubs/TodayClubs'
 
 const MARK_WORDS: Record<string, string> = {
   present: tk('был'),
@@ -269,6 +270,8 @@ export default function StudentHome() {
   const navigate = useNavigate()
   const phone = usePhone()
   const { me } = useAuth()
+  // встреча своего кружка сегодня — строка «Сегодня кружок» (31.10.2026)
+  const clubsToday = useTodayClubs()
   const profile = useMyProfile()
   const calendar = useCalendar()
   const cues = useHomeCues()
@@ -354,6 +357,7 @@ export default function StudentHome() {
             tiles={false}
           />
         )}
+        <TodayClubs rows={clubsToday} />
         <div className="stuhome__pair">
           <Kpi
             label={t('ДЗ к сдаче')}
@@ -414,6 +418,9 @@ export default function StudentHome() {
           { key: 'cues', folded: cueRows.length === 0, node: cuesCard },
         ]}
         aside={[
+          ...(clubsToday.length > 0
+            ? [{ key: 'clubs', folded: false, node: <TodayClubs rows={clubsToday} /> }]
+            : []),
           { key: 'nearest', folded: upcoming.length === 0, node: nearestCard },
           { key: 'homework', folded: todo.length === 0, node: <HomeworkDue /> },
           ...(openTasks > 0 ? [{ key: 'tasks', folded: false, node: <TasksBlock /> }] : []),

@@ -108,3 +108,51 @@ export function useArchiveClub() {
     onSuccess: refresh,
   })
 }
+
+/* --- Ученик: свои кружки ------------------------------------------------- */
+
+export interface ClubHomework {
+  id: number
+  club: number
+  text: string
+  due: string
+  file_name: string
+  has_file: boolean
+  created_at: string
+  updated_at: string
+  author: string
+}
+
+export interface MyClub extends ClubCard {
+  enrolled: boolean
+  enrolled_at: string | null
+  can_enroll: boolean
+  /** пересечения со своей спортивной секцией — словами с сервера */
+  overlaps: string[]
+  homework: ClubHomework[]
+}
+
+export interface MyClubsData {
+  clubs: MyClub[]
+  /** встречи своих кружков сегодня — строка на главной */
+  today: { id: number; title: string; time: string }[]
+  warnings?: string[]
+}
+
+export const useMyClubs = (enabled = true) =>
+  useQuery({ queryKey: ['my-clubs'], queryFn: () => get<MyClubsData>('/my/clubs/'), enabled })
+
+export function useMyClubAction() {
+  const queryClient = useQueryClient()
+  const done = (data: MyClubsData) => queryClient.setQueryData(['my-clubs'], data)
+  return {
+    enroll: useMutation({
+      mutationFn: (id: number) => post<MyClubsData>(`/my/clubs/${id}/enroll/`),
+      onSuccess: done,
+    }),
+    leave: useMutation({
+      mutationFn: (id: number) => post<MyClubsData>(`/my/clubs/${id}/leave/`),
+      onSuccess: done,
+    }),
+  }
+}

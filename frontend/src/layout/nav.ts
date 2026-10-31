@@ -210,6 +210,8 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/grades', label: tk('Оценки'), icon: 'book', group: 'main' },
     // сдача ДЗ в LMS: к сдаче, на проверке, проверено — у всех параллелей
     { path: '/homework', label: tk('Домашние задания'), icon: 'homework', group: 'main', short: tk('ДЗ') },
+    // кружки: пункт есть, только если хотя бы один кружок открыт параллели (`core/parallels.py`)
+    { path: '/clubs', label: tk('Кружки'), icon: 'club', group: 'main' },
     // календарь: экзамены, дедлайны, соревнования и задачи одним взглядом (фаза 39)
     { path: '/calendar', label: tk('Календарь'), icon: 'calendar', group: 'main' },
     // «Портфолио» — с фазы 38 ученик рассказывает о себе сам: баллы,

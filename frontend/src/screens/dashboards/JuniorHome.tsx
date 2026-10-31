@@ -29,6 +29,7 @@ import {
 } from './home-today'
 import './student.css'
 import './student-home.css'
+import TodayClubs, { useTodayClubs } from '../clubs/TodayClubs'
 
 /** Куда ведёт число: балл и посещаемость — к оценкам, СОР — к календарю, достижения — к олимпиадам. */
 const KPI_LINK: Record<string, string> = {
@@ -142,6 +143,8 @@ export default function JuniorHome() {
   const navigate = useNavigate()
   const phone = usePhone()
   const { me } = useAuth()
+  // встреча своего кружка сегодня — строка «Сегодня кружок» (31.10.2026)
+  const clubsToday = useTodayClubs()
   const home = useMyHome()
 
   if (home.isLoading) return <Loading kind="cards" />
@@ -220,6 +223,7 @@ export default function JuniorHome() {
           empty={data.lessons_empty || t('уроков сегодня нет')}
           tiles={false}
         />
+        <TodayClubs rows={clubsToday} />
         <div className="stuhome__pair">
           <Kpi label={t('ДЗ к сдаче')} value={String(homework.length)} to="/homework" />
           {attendance && <KpiOf kpi={attendance} />}
@@ -269,6 +273,9 @@ export default function JuniorHome() {
           { key: 'recent', folded: data.recent.length === 0, node: recentCard },
         ]}
         aside={[
+          ...(clubsToday.length > 0
+            ? [{ key: 'clubs', folded: false, node: <TodayClubs rows={clubsToday} /> }]
+            : []),
           {
             key: 'attendance',
             folded: !attendance,

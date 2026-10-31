@@ -18961,3 +18961,7 @@ msgstr "Notes on students"
 #: clubs
 msgid "Отметка на встрече"
 msgstr "Meeting check-in"
+
+#: clubs
+msgid "Выходит из кружка ученик"
+msgstr "Only a student can leave a club"

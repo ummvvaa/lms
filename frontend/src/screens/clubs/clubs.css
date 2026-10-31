@@ -49,3 +49,33 @@
     flex: 1 1 100%;
   }
 }
+
+/* кружки ученика: однотипные карточки — четыре в ряд, на узком — сколько влезет */
+.clubs-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space) * 80), 1fr));
+  gap: var(--gap-block);
+  align-items: stretch;
+}
+@media (min-width: 1440px) {
+  .clubs-cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+/* кнопка карточки — внизу, кнопки ряда одной высоты */
+.clubs-actions {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  margin-top: auto;
+}
+/* предупреждение — одна тихая янтарная строка */
+.clubs-warn {
+  margin: 0;
+  color: var(--warn);
+  overflow-wrap: anywhere;
+}
+/* задание: текст во всю ширину строки */
+.dir__row.clubs-homework {
+  grid-template-columns: minmax(0, 1fr);
+}
