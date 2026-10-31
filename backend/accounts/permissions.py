@@ -165,6 +165,8 @@ CURATOR_READ_ROUTES = frozenset(
         # секция ученика своих групп и посещение секции — на чтение (27.10.2026)
         "sport-students-sections",
         "sport-student-section",
+        # кружки ученика в карточке — на чтение, без заметок ментора (31.10.2026)
+        "clubs-student",
         "sport-attendance",
         "sport-attendance-export",
         "delete-preview",

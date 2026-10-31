@@ -41,6 +41,7 @@ import GradesTab from '../academics/GradesTab'
 import StudentCareerBlock from '../career/StudentCareerBlock'
 import ContactsBlock from './ContactsBlock'
 import SectionBlock from '../sport/SectionBlock'
+import ClubsBlock from '../clubs/ClubsBlock'
 import { CURATOR_HIDDEN } from '../../layout/nav'
 import { CallDialog, EscalateStudentDialog, TransferDialog } from './Dialogs'
 import { DocumentEntry, ExamsEntry, PortfolioEntry, UniversitiesEntry } from './DirectEntry'
@@ -726,6 +727,9 @@ export default function CuratorCard() {
 
             {/* спортивная секция ученика — на чтение (27.10.2026) */}
             <SectionBlock studentId={data.id} />
+
+            {/* кружки ученика — на чтение, без заметок ментора (31.10.2026) */}
+            <ClubsBlock studentId={data.id} />
 
             <ContactsBlock card={data} />
           </div>

@@ -4555,5 +4555,10 @@ export const en: Record<string, string> = {
   'ученики кружка увидят задание в «Кружках»': 'club students will see the assignment in Clubs',
   'файл не обязателен · до 20 МБ': 'file is optional · up to 20 MB',
   'Сегодня кружок: {title}': 'Club today: {title}',
+  'Только просмотр · записывается ученик сам': 'View only · students enroll themselves',
+  'встреч в этом месяце не было': 'no meetings this month',
   'выключена — отметки нет ни у ученика, ни у ментора, ни у куратора': 'off — students, the mentor and curators have no check-in',
+  'вышел': 'left',
+  'ни в одном кружке · записывается ученик сам': 'not in any club · students enroll themselves',
+  'посещение за месяц {n}%': 'attendance this month {n}%',
 }

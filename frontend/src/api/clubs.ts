@@ -296,3 +296,21 @@ export function useClubMarkAction(club: number) {
 
 export const clubScan = (token: string | null) => post<ScanAnswer>('/clubs/scan/', token ? { token } : {})
 
+/* --- Куратор: кружки ученика в карточке ---------------------------------- */
+
+export interface StudentClubRow {
+  id: number
+  club: string
+  schedule: string
+  enrolled_at: string
+  ended_at: string | null
+  left: boolean
+  /** посещение за месяц — только при включённой отметке */
+  percent?: number | null
+}
+
+export const useStudentClubs = (studentId: number) =>
+  useQuery({
+    queryKey: ['student-clubs', studentId],
+    queryFn: () => get<{ rows: StudentClubRow[] }>(`/clubs/students/${studentId}/`),
+  })

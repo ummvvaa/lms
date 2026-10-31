@@ -1,6 +1,6 @@
 from django.urls import path
 
-from clubs import admin_views, mentor_views, student_views
+from clubs import admin_views, card_views, mentor_views, student_views
 
 urlpatterns = [
     # администратор: кружки, правка, архив, записанные и выгрузка
@@ -22,6 +22,8 @@ urlpatterns = [
     path("clubs/notes/<int:pk>/", mentor_views.note, name="clubs-note"),
     # ученик отсканировал QR встречи — и до входа: код подождёт, как у секций
     path("clubs/scan/", mentor_views.scan, name="clubs-scan"),
+    # куратор своих групп и администратор: кружки ученика в карточке, на чтение
+    path("clubs/students/<int:pk>/", card_views.student_clubs, name="clubs-student"),
     # ученик: свои кружки, запись и выход
     path("my/clubs/", student_views.my_clubs, name="my-clubs"),
     path("my/clubs/<int:pk>/enroll/", student_views.my_enroll, name="my-club-enroll"),
