@@ -28,6 +28,7 @@ import { Switch } from '../../components/ui/switch'
 import { t, tk } from '../../i18n'
 import { formatDateTimeLong, formatDayMonth } from '../../lib/format'
 import { WEEKDAYS } from '../sport/words'
+import { HomeworkPanel, NotesPanel, SessionPanel } from './MentorWork'
 import '../directors/directors.css'
 import '../sport/sport.css'
 import './clubs.css'
@@ -112,7 +113,7 @@ export function windowWords(club: Pick<ClubAdminRow, 'open' | 'enroll_until'>): 
     : t('закрыта с {when}', { when: formatDateTimeLong(club.enroll_until) })
 }
 
-type CardTab = 'members'
+type CardTab = 'members' | 'homework' | 'marks' | 'notes'
 
 function ClubCard({ club }: { club: ClubAdminRow }) {
   const [editing, setEditing] = useState(false)
@@ -193,8 +194,23 @@ function ClubCard({ club }: { club: ClubAdminRow }) {
           )}
         </div>
       </div>
-      <ScreenTabs value={tab} onChange={setTab} items={[{ value: 'members', label: t('Записанные') }]} />
-      {tab === 'members' && <Members club={club} />}
+      {/* администратор может всё, что ментор: задание, отметка и заметки — вкладками кружка */}
+      {!club.archived && (
+        <ScreenTabs
+          value={tab}
+          onChange={setTab}
+          items={[
+            { value: 'members', label: t('Записанные') },
+            { value: 'homework', label: t('Задание') },
+            ...(club.marks_enabled ? [{ value: 'marks' as const, label: t('Отметка') }] : []),
+            { value: 'notes', label: t('Заметки') },
+          ]}
+        />
+      )}
+      {(tab === 'members' || club.archived) && <Members club={club} />}
+      {!club.archived && tab === 'homework' && <HomeworkPanel club={club} />}
+      {!club.archived && tab === 'marks' && club.marks_enabled && <SessionPanel club={club} />}
+      {!club.archived && tab === 'notes' && <NotesPanel club={club} />}
       {editing && <ClubDialog club={club} onClose={() => setEditing(false)} />}
       {archiving && (
         <Modal title={t('Убрать кружок в архив?')} note={club.title} onClose={() => setArchiving(false)}>
@@ -448,7 +464,7 @@ function ClubDialog({ club, onClose }: { club: ClubAdminRow | null; onClose: () 
         label={t('Отметка посещения по QR')}
         checked={marks}
         onChange={setMarks}
-        hint={t('пока выключена, отметки нет ни у ученика, ни у ментора, ни у куратора')}
+        hint={t('выключена — отметки нет ни у ученика, ни у ментора, ни у куратора')}
       />
       {save.error && <ErrorNote error={save.error} />}
       <div className="acad__actions">

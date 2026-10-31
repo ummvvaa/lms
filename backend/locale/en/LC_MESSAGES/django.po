@@ -18965,3 +18965,19 @@ msgstr "Meeting check-in"
 #: clubs
 msgid "Выходит из кружка ученик"
 msgstr "Only a student can leave a club"
+
+#: clubs
+msgid "Отмечается на встрече ученик"
+msgstr "Only a student checks in at a meeting"
+
+#: clubs
+msgid "Такой файл не подойдёт: PDF, Word, Excel, PowerPoint, картинка или ZIP"
+msgstr "This file type won't do: PDF, Word, Excel, PowerPoint, an image or ZIP"
+
+#: clubs
+msgid "Файл больше 20 МБ"
+msgstr "The file is larger than 20 MB"
+
+#: clubs
+msgid "Кружки ученика видят куратор и администратор"
+msgstr "A student's clubs are visible to the curator and the administrator"

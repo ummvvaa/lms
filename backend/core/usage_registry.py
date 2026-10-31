@@ -10,6 +10,7 @@ from core.domains import (
     ALL_DIRECTORS,
     ROLE_ADMIN,
     ROLE_CURATOR,
+    ROLE_MENTOR,
     ROLE_STUDENT,
     ROLE_TEACHER,
     ROLE_TITLES,
@@ -141,6 +142,10 @@ SCREENS = (
     Screen("/s/:token", gettext_noop("Отметка на занятии"), (ROLE_STUDENT,)),
     # кружки (31.10.2026): у администратора — раздел кружков, у ученика — свои кружки
     Screen("/clubs", gettext_noop("Кружки"), (ROLE_ADMIN, ROLE_STUDENT)),
+    Screen("/club-homework", gettext_noop("Задание кружка"), (ROLE_MENTOR,)),
+    Screen("/club-session", gettext_noop("Отметка на встрече"), (ROLE_MENTOR,)),
+    Screen("/club-notes", gettext_noop("Заметки об учениках"), (ROLE_MENTOR,)),
+    Screen("/k/:token", gettext_noop("Отметка на встрече кружка"), (ROLE_STUDENT,)),
 )
 SCREENS_BY_KEY = {screen.key: screen for screen in SCREENS}
 

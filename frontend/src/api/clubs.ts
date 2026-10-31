@@ -3,6 +3,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, get, patch, post } from './client'
+import type { ScanAnswer } from './sport'
 
 export interface ClubStudent {
   id: number
@@ -156,3 +157,142 @@ export function useMyClubAction() {
     }),
   }
 }
+
+/* --- Ментор своего кружка и администратор -------------------------------- */
+
+export interface MentorClub extends ClubCard {
+  enrolled: number
+}
+
+export interface MentorMember extends ClubMember {
+  notes: number
+}
+
+export interface ClubNote {
+  id: number
+  student: ClubStudent
+  text: string
+  created_at: string
+  author: string
+}
+
+export type MeetingState = 'none' | 'soon' | 'live' | 'past'
+
+export interface ClubSession {
+  club: ClubCard
+  date: string
+  state: MeetingState
+  time: string
+  came: number
+  students: (ClubStudent & { came: boolean; method: '' | 'qr' | 'manual'; at: string | null })[]
+}
+
+export const useMentorClubs = () =>
+  useQuery({ queryKey: ['mentor-clubs'], queryFn: () => get<{ clubs: MentorClub[] }>('/clubs/mine/') })
+
+export const useClubStudents = (id: number | null) =>
+  useQuery({
+    queryKey: ['club-students', id],
+    queryFn: () => get<{ club: ClubCard; rows: MentorMember[] }>(`/clubs/${id}/students/`),
+    enabled: id !== null,
+  })
+
+export const useClubHomework = (id: number | null) =>
+  useQuery({
+    queryKey: ['club-homework', id],
+    queryFn: () => get<{ club: ClubCard; rows: ClubHomework[] }>(`/clubs/${id}/homework/`),
+    enabled: id !== null,
+  })
+
+/** Задание с файлом уходит формой: файл — частью тела запроса. */
+function homeworkForm(body: { text?: string; due?: string; file?: File | null; drop_file?: boolean }): FormData {
+  const form = new FormData()
+  if (body.text !== undefined) form.append('text', body.text)
+  if (body.due !== undefined) form.append('due', body.due)
+  if (body.file) form.append('file', body.file)
+  if (body.drop_file) form.append('drop_file', '1')
+  return form
+}
+
+export function useHomeworkAction(club: number) {
+  const queryClient = useQueryClient()
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['club-homework', club] })
+    void queryClient.invalidateQueries({ queryKey: ['my-clubs'] })
+  }
+  return {
+    publish: useMutation({
+      mutationFn: (body: { text: string; due: string; file: File | null }) =>
+        api<ClubHomework>(`/clubs/${club}/homework/`, { method: 'POST', body: homeworkForm(body) }),
+      onSuccess: refresh,
+    }),
+    edit: useMutation({
+      mutationFn: ({ id, ...body }: { id: number; text: string; due: string; file: File | null; drop_file: boolean }) =>
+        api<ClubHomework>(`/clubs/${club}/homework/${id}/`, { method: 'PATCH', body: homeworkForm(body) }),
+      onSuccess: refresh,
+    }),
+    withdraw: useMutation({
+      mutationFn: (id: number) => api<void>(`/clubs/${club}/homework/${id}/`, { method: 'DELETE' }),
+      onSuccess: refresh,
+    }),
+  }
+}
+
+export const homeworkFilePath = (id: number) => `/clubs/homework/${id}/file/`
+
+export const useClubNotes = (id: number | null, student: number | null = null) =>
+  useQuery({
+    queryKey: ['club-notes', id, student],
+    queryFn: () =>
+      get<{ club: ClubCard; rows: ClubNote[] }>(`/clubs/${id}/notes/${student ? `?student=${student}` : ''}`),
+    enabled: id !== null,
+  })
+
+export function useNoteAction(club: number) {
+  const queryClient = useQueryClient()
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['club-notes', club] })
+    void queryClient.invalidateQueries({ queryKey: ['club-students', club] })
+  }
+  return {
+    add: useMutation({
+      mutationFn: (body: { student: number; text: string }) => post<ClubNote>(`/clubs/${club}/notes/`, body),
+      onSuccess: refresh,
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) => api<void>(`/clubs/notes/${id}/`, { method: 'DELETE' }),
+      onSuccess: refresh,
+    }),
+  }
+}
+
+export const useClubSession = (id: number | null, live: boolean) =>
+  useQuery({
+    queryKey: ['club-session', id],
+    queryFn: () => get<ClubSession>(`/clubs/${id}/session/`),
+    enabled: id !== null,
+    // «Пришли / Ещё нет» — опрос, пока встреча идёт, как у секций
+    refetchInterval: live ? 4000 : false,
+  })
+
+export const clubSessionToken = (id: number) =>
+  get<{ state: MeetingState; token: string; ttl: number; expires_in: number }>(`/clubs/${id}/session/token/`)
+
+export function useClubMarkAction(club: number) {
+  const queryClient = useQueryClient()
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: ['club-session', club] })
+  return {
+    mark: useMutation({
+      mutationFn: (student: number) => post<{ created: boolean }>(`/clubs/${club}/session/marks/`, { student }),
+      onSuccess: refresh,
+    }),
+    unmark: useMutation({
+      mutationFn: (student: number) =>
+        api<void>(`/clubs/${club}/session/marks/?student=${student}`, { method: 'DELETE' }),
+      onSuccess: refresh,
+    }),
+  }
+}
+
+export const clubScan = (token: string | null) => post<ScanAnswer>('/clubs/scan/', token ? { token } : {})
+

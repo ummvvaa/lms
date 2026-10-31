@@ -68,6 +68,7 @@ export default function Shell() {
     sections: me.sections,
     teaches: me.teaches,
     careerTests: me.career_tests,
+    clubMarks: me.club_marks,
     admission: me.role === 'curator' ? me.has_admission : undefined,
   })
 

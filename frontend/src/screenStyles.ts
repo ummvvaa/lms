@@ -21,6 +21,8 @@ import './screens/attendance.css'
 import './screens/directors/directors.css'
 // спортивные секции и билеты (27.10.2026): после строк кабинетов — плитки часов переигрывают их
 import './screens/sport/sport.css'
+// кружки (31.10.2026): после секций — плитки и строки секций они только дополняют
+import './screens/clubs/clubs.css'
 import './screens/mocks/mocks.css'
 import './components/queue.css'
 import './screens/dashboards/cabinet.css'

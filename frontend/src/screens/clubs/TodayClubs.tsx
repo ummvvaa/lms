@@ -6,6 +6,7 @@ import { useMyClubs } from '../../api/clubs'
 import { useAuth } from '../../auth/AuthContext'
 import { Row, Rows } from '../../components/patterns'
 import { t } from '../../i18n'
+import './clubs.css'
 
 /** Есть ли у ученика встреча кружка сегодня — главная складывает пустое место. */
 export function useTodayClubs() {
@@ -23,9 +24,9 @@ export default function TodayClubs({ rows }: { rows: { id: number; title: string
         {rows.map((row) => (
           <Row
             key={row.id}
-            title={t('Сегодня кружок: {title}, {time}', { title: row.title, time: row.time })}
+            title={t('Сегодня кружок: {title}', { title: row.title })}
+            when={<span className="num clubs-time">{row.time}</span>}
             to="/clubs"
-            chev
           />
         ))}
       </Rows>

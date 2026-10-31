@@ -16,10 +16,11 @@ import Modal from '../../components/Modal'
 import { Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t } from '../../i18n'
-import { formatDateLong, formatDayMonth } from '../../lib/format'
+import { formatDayMonth } from '../../lib/format'
 import '../directors/directors.css'
 import '../sport/sport.css'
 import './clubs.css'
+import { FileButton } from './MentorWork'
 
 const fail = (reason: unknown) => toast.error(reason instanceof Error ? reason.message : String(reason))
 
@@ -50,7 +51,6 @@ function ClubCard({ club }: { club: MyClub }) {
   return (
     <DataCard
       title={club.title}
-      note={club.schedule}
       right={
         club.enrolled ? (
           <Chip tone="good" size="sm">
@@ -72,7 +72,7 @@ function ClubCard({ club }: { club: MyClub }) {
         {club.enrolled && club.enrolled_at && (
           <div className="dir__line">
             <span>{t('В кружке')}</span>
-            <b>{t('с {date}', { date: formatDateLong(club.enrolled_at) })}</b>
+            <b>{t('с {date}', { date: formatDayMonth(club.enrolled_at) })}</b>
           </div>
         )}
       </div>
@@ -148,8 +148,7 @@ function Homework({ club }: { club: MyClub }) {
               <span className="clubs-text">{row.text}</span>
               <span className="t-note">{t('срок {date}', { date: formatDayMonth(row.due) })}</span>
             </span>
-            <span />
-            <span />
+            {row.has_file ? <FileButton homework={row} /> : <span />}
           </div>
         ))}
       </div>

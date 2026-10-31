@@ -34,6 +34,7 @@ import {
   STUDENT_ONLY,
   studentMayOpen,
   teacherMayOpen,
+  mentorMayOpen,
 } from './layout/nav'
 import LinkLogin from './screens/LinkLogin'
 import Login from './screens/Login'
@@ -135,6 +136,10 @@ const SportEvents = lazy(() => import('./screens/directors/SportEvents'))
 const Sections = lazy(() => import('./screens/sport/Sections'))
 const SportSession = lazy(() => import('./screens/sport/Session'))
 const ClubsScreen = lazy(() => import('./screens/clubs/ClubsScreen'))
+const ClubScan = lazy(() => import('./screens/clubs/ClubScan'))
+const MentorHomework = lazy(() => import('./screens/clubs/MentorWork').then((m) => ({ default: m.MentorHomework })))
+const MentorSession = lazy(() => import('./screens/clubs/MentorWork').then((m) => ({ default: m.MentorSession })))
+const MentorNotes = lazy(() => import('./screens/clubs/MentorWork').then((m) => ({ default: m.MentorNotes })))
 const SectionAttendance = lazy(() => import('./screens/sport/SectionAttendance'))
 const Tickets = lazy(() => import('./screens/sport/Tickets'))
 // отметка по QR открывается камерой без меню: свой кусок и своя граница загрузки
@@ -226,6 +231,8 @@ function ProtectedShell({ me }: { me: NonNullable<ReturnType<typeof useAuth>['me
     (me.role === 'curator' && !curatorMayOpen(location.pathname, me.has_admission)) ||
     // учителю — семь адресов; всё остальное для него не существует
     (me.role === 'teacher' && !teacherMayOpen(location.pathname)) ||
+    // ментору кружка — его ученики, задание, отметка и заметки; остального нет
+    (me.role === 'mentor' && !mentorMayOpen(location.pathname, me.club_marks)) ||
     // правка расписания, составы, учителя и учебный год — у Кымбат и администратора
     (SCHEDULE_EDIT_ONLY.includes(location.pathname) && !SCHEDULE_EDITORS.includes(me.role)) ||
     // журналы списком — только у учителя; журнал по адресу открыт и Кымбат с куратором
@@ -327,6 +334,15 @@ function Routing() {
           </Suspense>
         }
       />
+      {/* отметка на встрече кружка — так же, как на занятии секции */}
+      <Route
+        path="/k/:token"
+        element={
+          <Suspense fallback={null}>
+            <ClubScan />
+          </Suspense>
+        }
+      />
 
       <Route element={<Protected />}>
         <Route path="/dashboard" element={<Dashboard />} />
@@ -395,6 +411,10 @@ function Routing() {
         <Route path="/session" element={<SportSession />} />
         {/* кружки: у администратора — раздел кружков, у ученика — свои кружки */}
         <Route path="/clubs" element={<ClubsScreen />} />
+        {/* кабинет ментора кружка: задание, отметка, заметки; ученики — на главной */}
+        <Route path="/club-homework" element={<MentorHomework />} />
+        <Route path="/club-session" element={<MentorSession />} />
+        <Route path="/club-notes" element={<MentorNotes />} />
         <Route path="/section-attendance" element={<SectionAttendance />} />
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/overview" element={<OverviewDashboard />} />

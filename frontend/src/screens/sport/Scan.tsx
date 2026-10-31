@@ -26,7 +26,19 @@ function message(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback
 }
 
-export default function Scan() {
+/** Чем страница отметки отличается у кружка: своя ручка, своя кнопка «назад», свои слова. */
+export interface ScanKind {
+  send: (token: string | null) => Promise<ScanAnswer>
+  /** кнопка под ответом: адрес и подпись */
+  home?: { path: string; label: string }
+  /** «Код устарел»: чей экран сканировать снова */
+  stale?: string
+  /** «Ты отмечен»: пожелание после отметки */
+  wish?: string
+}
+
+export default function Scan({ kind }: { kind?: ScanKind } = {}) {
+  const send = kind?.send ?? scan
   const { token = '' } = useParams()
   const { me, isLoading, login } = useAuth()
   const [answer, setAnswer] = useState<ScanAnswer | null>(null)
@@ -36,10 +48,10 @@ export default function Scan() {
   useEffect(() => {
     if (isLoading || sent.current) return
     sent.current = true
-    scan(token)
+    send(token)
       .then(setAnswer)
       .catch((reason: unknown) => setError(message(reason, t('Не удалось отметиться'))))
-  }, [isLoading, token])
+  }, [isLoading, token, send])
 
   return (
     <div className="login">
@@ -52,16 +64,16 @@ export default function Scan() {
         {answer?.state === 'login' && !me ? (
           <ScanLogin
             onDone={() =>
-              scan(null)
+              send(null)
                 .then(setAnswer)
                 .catch((reason: unknown) => setError(message(reason, t('Не удалось отметиться'))))
             }
             login={login}
           />
         ) : error ? (
-          <Result tone="bad" title={t('Не получилось отметиться')} text={error} />
+          <Result tone="bad" title={t('Не получилось отметиться')} text={error} kind={kind} />
         ) : answer ? (
-          <Answer answer={answer} />
+          <Answer answer={answer} kind={kind} />
         ) : (
           <p className="t-note">{t('Отмечаем…')}</p>
         )}
@@ -133,18 +145,20 @@ function Result({
   title,
   text,
   foot,
+  kind,
 }: {
   tone: 'good' | 'warn' | 'bad'
   title: string
   text?: string
   foot?: ReactNode
+  kind?: ScanKind
 }) {
   const { me } = useAuth()
   const navigate = useNavigate()
   // у 8–10 секция — в разделе «Спорт», у 11 — во вкладке «Спорт» портфолио
-  const home = studentMayOpen(me?.sections, '/sport')
-    ? '/sport?sport=section'
-    : '/my-data?tab=sport&sport=section'
+  const home =
+    kind?.home?.path ??
+    (studentMayOpen(me?.sections, '/sport') ? '/sport?sport=section' : '/my-data?tab=sport&sport=section')
   return (
     <>
       <Chip tone={tone}>{title}</Chip>
@@ -152,14 +166,14 @@ function Result({
       {foot}
       {me && (
         <Button variant="outline" onClick={() => navigate(home)}>
-          {t('Моя секция')}
+          {kind?.home?.label ?? t('Моя секция')}
         </Button>
       )}
     </>
   )
 }
 
-function Answer({ answer }: { answer: ScanAnswer }) {
+function Answer({ answer, kind }: { answer: ScanAnswer; kind?: ScanKind }) {
   const session = answer.session
   const where = session
     ? t('{section}, {day} {time}', {
@@ -173,9 +187,10 @@ function Answer({ answer }: { answer: ScanAnswer }) {
     case 'already':
       return (
         <Result
+          kind={kind}
           tone="good"
           title={answer.state === 'marked' ? t('Ты отмечен') : t('Уже отмечен')}
-          text={answer.state === 'marked' ? t('{where}. Хорошей тренировки!', { where }) : where}
+          text={answer.state === 'marked' ? (kind?.wish ?? t('{where}. Хорошей тренировки!', { where })) : where}
           foot={
             answer.marked_at && (
               <div className="dir__line">
@@ -195,6 +210,7 @@ function Answer({ answer }: { answer: ScanAnswer }) {
     case 'foreign':
       return (
         <Result
+          kind={kind}
           tone="warn"
           title={t('Это не твоё занятие')}
           text={t('Сейчас идёт {where} для параллелей {grades}. Ты записан на {mine}', {
@@ -207,6 +223,7 @@ function Answer({ answer }: { answer: ScanAnswer }) {
     case 'not_started':
       return (
         <Result
+          kind={kind}
           tone="warn"
           title={t('Занятие ещё не началось')}
           text={t('Отметиться можно с начала занятия до его конца. Начало: {when}', {
@@ -219,6 +236,7 @@ function Answer({ answer }: { answer: ScanAnswer }) {
     case 'ended':
       return (
         <Result
+          kind={kind}
           tone="warn"
           title={t('Занятие уже закончилось')}
           text={t('Отметиться можно с начала занятия до его конца')}
@@ -227,21 +245,30 @@ function Answer({ answer }: { answer: ScanAnswer }) {
     case 'no_hour':
       return (
         <Result
+          kind={kind}
           tone="warn"
           title={t('Сначала выбери время занятия')}
           text={t('Пока час не выбран, отметиться на занятии не получится')}
         />
       )
     case 'not_enrolled':
-      return <Result tone="warn" title={t('Ты не записан на это занятие')} text={where} />
+      return (
+        <Result
+          kind={kind}
+          tone="warn"
+          title={kind ? t('Ты не записан в этот кружок') : t('Ты не записан на это занятие')}
+          text={where}
+        />
+      )
     case 'login':
-      return <Result tone="warn" title={t('Войди, чтобы отметиться')} />
+      return <Result kind={kind} tone="warn" title={t('Войди, чтобы отметиться')} />
     default:
       return (
         <Result
+          kind={kind}
           tone="bad"
           title={t('Код устарел')}
-          text={t('QR меняется каждые несколько секунд. Отсканируй код с экрана директора спорта ещё раз')}
+          text={kind?.stale ?? t('QR меняется каждые несколько секунд. Отсканируй код с экрана директора спорта ещё раз')}
         />
       )
   }

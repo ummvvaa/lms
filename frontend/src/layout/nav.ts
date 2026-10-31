@@ -335,6 +335,14 @@ export const NAV: Record<Role, NavItem[]> = {
     { path: '/journals', label: tk('Журналы'), icon: 'book', group: 'work' },
     { ...HOMEWORK_REVIEW, short: tk('Проверка') },
   ],
+  // ментор кружка (31.10.2026): ученики своего кружка, задание и заметки; «Отметка» —
+  // только когда администратор её включил (`NavExtras.clubMarks`)
+  mentor: [
+    { path: '/dashboard', label: tk('Ученики'), icon: 'people', group: 'work' },
+    { path: '/club-homework', label: tk('Домашнее задание'), icon: 'homework', group: 'work', short: tk('ДЗ') },
+    { path: '/club-session', label: tk('Отметка'), icon: 'qr', group: 'work', short: tk('QR') },
+    { path: '/club-notes', label: tk('Заметки'), icon: 'note', group: 'work' },
+  ],
   // у администратора дашборд и есть сводный вид — отдельного пункта
   // «Сводный вид» ему не заводим, он вёл бы на тот же экран
   admin: [
@@ -392,6 +400,7 @@ export const TABS: Record<Role, string[]> = {
   curator: ['/dashboard', '/queue', '/students', '/attendance'],
   // у учителя четыре раздела: все в баре, профиль — в «Ещё»
   teacher: ['/dashboard', '/schedule', '/journals', '/homework-review'],
+  mentor: ['/dashboard', '/club-homework', '/club-session', '/club-notes'],
   admin: ['/dashboard', '/users', '/table', '/suggestions'],
 }
 
@@ -409,6 +418,17 @@ export function teacherMayOpen(pathname: string): boolean {
     /^\/lessons\/\d+$/.test(pathname) ||
     /^\/students\/\d+$/.test(pathname)
   )
+}
+
+/**
+ * Экраны ментора кружка: ученики, задание, отметка, заметки, профиль. Список
+ * совпадает со шлюзом на сервере (`accounts.permissions.MENTOR_READ_ROUTES`):
+ * остальное для ментора не существует — сервер отвечает 404. «Отметка» —
+ * только при включённой отметке (`/auth/me/` → `club_marks`).
+ */
+export function mentorMayOpen(pathname: string, marks = false): boolean {
+  if (pathname === '/club-session') return marks
+  return ['/dashboard', '/club-homework', '/club-notes', '/profile'].includes(pathname)
 }
 
 /** Экраны правки расписания — только у Кымбат и администратора. */
@@ -512,6 +532,8 @@ export interface NavExtras {
   careerTests?: boolean
   /** куратор: ведёт ли группу с поступлением (`/auth/me/` → `has_admission`) */
   admission?: boolean | null
+  /** ментор: отметка в его кружке включена (`/auth/me/` → `club_marks`) */
+  clubMarks?: boolean
 }
 
 /**
@@ -574,6 +596,8 @@ export function navFor(role: Role, seesWholeSchool = false, extras: NavExtras = 
   // нет вовсе, не под замком
   // куратор только 8–10: очереди, документов и задач плана нет; бар телефона
   // добирает четвёрку следующими пунктами — посещаемостью и расписанием
+  // у ментора «Отметка» — только когда администратор включил её в кружке
+  if (role === 'mentor' && !extras.clubMarks) items = items.filter((item) => item.path !== '/club-session')
   if (role === 'curator' && extras.admission === false) {
     items = items.filter((item) => !CURATOR_ADMISSION_ONLY.includes(item.path))
   }
@@ -722,4 +746,7 @@ export const SCREEN_ROLES: Record<string, Role[]> = {
   '/tickets': ['director_sport', 'admin'],
   // кружки: у администратора — раздел кружков, у ученика — свои кружки (адрес один, экран по роли)
   '/clubs': ['admin', 'student'],
+  '/club-homework': ['mentor'],
+  '/club-session': ['mentor'],
+  '/club-notes': ['mentor'],
 }

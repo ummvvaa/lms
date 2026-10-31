@@ -15,6 +15,7 @@ export type Role =
   | 'director_sport'
   | 'curator'
   | 'teacher'
+  | 'mentor'
   | 'admin'
 
 /** Шестой домен «Документы» (фаза 60) — второй у директора по поступлению, без профиля ученика. */
@@ -62,6 +63,8 @@ export interface Me {
   teaches: boolean
   /** ведёт тесты профориентации при любой роли (`career.rights.manages`): меню добавляет «Профтест» */
   career_tests: boolean
+  /** ментор ведёт кружок с включённой отметкой — пункт «Отметка» в меню */
+  club_marks: boolean
   last_login: string | null
   /** предпочтения интерфейса: живут на сервере, переживают смену устройства */
   sidebar_collapsed: boolean

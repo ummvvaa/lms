@@ -45,6 +45,8 @@ class MeSerializer(serializers.ModelSerializer):
     #: ведёт тесты профориентации при любой роли (`career.rights.manages`):
     #: меню добавляет «Профтест» с тестами, результатами и разборами
     career_tests = serializers.SerializerMethodField()
+    #: ментор ведёт кружок с включённой отметкой: меню показывает «Отметку»
+    club_marks = serializers.SerializerMethodField()
     #: языки в выборе (`core.i18n.INTERFACE_LANGUAGES`): один язык — выбора нет
     languages = serializers.SerializerMethodField()
 
@@ -65,6 +67,7 @@ class MeSerializer(serializers.ModelSerializer):
             "has_admission",
             "teaches",
             "career_tests",
+            "club_marks",
             "identities",
             "must_change_password",
             "sees_whole_school",
@@ -101,6 +104,13 @@ class MeSerializer(serializers.ModelSerializer):
         from career.rights import manages
 
         return manages(obj)
+
+    def get_club_marks(self, obj: User) -> bool:
+        if obj.role != Role.MENTOR:
+            return False
+        from clubs.rights import mentored_clubs
+
+        return mentored_clubs(obj).filter(marks_enabled=True).exists()
 
     def get_domain(self, obj: User) -> str | None:
         return obj.domain_code

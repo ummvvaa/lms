@@ -50,17 +50,20 @@
   }
 }
 
-/* кружки ученика: однотипные карточки — четыре в ряд, на узком — сколько влезет */
+/* кружки ученика: однотипные карточки — до четырёх в ряд; два кружка делят ряд пополам */
 .clubs-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space) * 80), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(max(calc(var(--space) * 65), calc((100% - 3 * var(--gap-block)) / 4)), 1fr));
   gap: var(--gap-block);
   align-items: stretch;
 }
-@media (min-width: 1440px) {
-  .clubs-cards {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+/* значение строки — дни и время, дата — одной строкой */
+.clubs-cards .dir__line b {
+  white-space: nowrap;
+}
+/* время встречи в строке главной не переносится посреди себя */
+.clubs-time {
+  white-space: nowrap;
 }
 /* кнопка карточки — внизу, кнопки ряда одной высоты */
 .clubs-actions {
@@ -75,7 +78,27 @@
   color: var(--warn);
   overflow-wrap: anywhere;
 }
-/* задание: текст во всю ширину строки */
+/* задание: текст во всю ширину строки, кнопка файла справа */
 .dir__row.clubs-homework {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+/* файл задания: кнопка выбора, имя файла и «Убрать файл» в строку; само поле скрыто */
+.clubs-file {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 2);
+}
+.clubs-file__input {
+  display: none;
+}
+/* отметка у администратора — внутри карточки кружка: колонки поровну */
+.sport-pair.clubs-session {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 1100px) {
+  .sport-pair.clubs-session {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

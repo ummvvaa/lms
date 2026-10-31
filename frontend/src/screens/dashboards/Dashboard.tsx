@@ -16,6 +16,7 @@ import CuratorHome from '../curator/Home'
 import StudentHome from './StudentHome'
 import JuniorHome from './JuniorHome'
 import TeacherToday from '../academics/TeacherToday'
+import { MentorStudents } from '../clubs/MentorWork'
 
 export default function Dashboard() {
   const { me } = useAuth()
@@ -40,6 +41,9 @@ export default function Dashboard() {
       return <CuratorHome />
     case 'teacher':
       return <TeacherToday />
+    case 'mentor':
+      // ментор кружка: главная — ученики своего кружка (31.10.2026)
+      return <MentorStudents />
     case 'admin':
       return <AdminDashboard />
     default:

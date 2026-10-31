@@ -414,6 +414,7 @@ ADMIN_CLOSED_ROUTES: dict[str, str] = {
     "my-clubs": STUDENT_CABINET,
     "my-club-enroll": STUDENT_CABINET,
     "my-club-leave": STUDENT_CABINET,
+    "clubs-scan": STUDENT_CABINET,
     "my-tickets": STUDENT_CABINET,
     "my-ticket-claim": STUDENT_CABINET,
     "my-ticket-decline": STUDENT_CABINET,
@@ -718,10 +719,12 @@ class TeacherGateMiddleware:
 MENTOR_READ_ROUTES = frozenset(
     {
         "usage-registry",
-        # каркас: уведомления, фоновые операции, реестр подписей
+        # каркас: уведомления, фоновые операции, реестр подписей, раздел материалов
+        # (оболочка спрашивает его у всех ролей; ментору он закрыт ответом `has_access`)
         "notifications",
         "jobs",
         "domain-meta",
+        "materials-state",
         # кабинет ментора: свои кружки, ученики, задание, отметка, заметки
         "clubs-mentor",
         "clubs-mentor-club",

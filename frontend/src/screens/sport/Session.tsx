@@ -93,8 +93,8 @@ export default function Session() {
   )
 }
 
-/** Свежий токен, пока занятие идёт: перезапрос, когда срок истекает. */
-function useLiveToken(id: number, live: boolean) {
+/** Свежий токен, пока занятие идёт: перезапрос, когда срок истекает. Кружки берут его со своей ручки. */
+export function useLiveToken(id: number, live: boolean, fetchToken: (id: number) => Promise<SessionToken> = sessionToken) {
   const [token, setToken] = useState<SessionToken | null>(null)
   const [left, setLeft] = useState(0)
   useEffect(() => {
@@ -102,7 +102,7 @@ function useLiveToken(id: number, live: boolean) {
     let alive = true
     let timer: number | undefined
     const load = () =>
-      sessionToken(id)
+      fetchToken(id)
         .then((next) => {
           if (!alive) return
           setToken(next)
@@ -117,7 +117,7 @@ function useLiveToken(id: number, live: boolean) {
       alive = false
       window.clearTimeout(timer)
     }
-  }, [id, live])
+  }, [id, live, fetchToken])
   useEffect(() => {
     if (!live) return
     const tick = window.setInterval(() => setLeft((value) => Math.max(0, value - 1)), 1000)
