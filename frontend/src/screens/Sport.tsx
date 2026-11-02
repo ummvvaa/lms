@@ -45,7 +45,7 @@ export default function Sport() {
 
   return (
     <div className="lay-screen">
-      <ScreenHead title={t('Спорт')} subtitle={t('Секция, мероприятия школы и билеты на матчи')} />
+      <ScreenHead title={t('Спорт')} subtitle={t('Секции, мероприятия школы и билеты на матчи')} />
       {/* секция, мероприятия и билеты — вкладками (27.10.2026); мероприятия и соревнования — как были */}
       <SportTabs
         events={

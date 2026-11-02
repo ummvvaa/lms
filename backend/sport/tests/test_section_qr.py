@@ -74,13 +74,19 @@ def test_old_and_forged_codes_are_refused(enrolled, at):
 
 
 def test_foreign_session_is_named(enrolled, at):
+    """Другой час своей секции — «не твоё занятие»; чужая секция — гостевая отметка (02.11.2026)."""
     senior, _junior, _tennis = enrolled
+    at(13, 4)
+    other_hour = slot_of("Теннис", 5, 13, 10)
+    body = login(senior.user).post("/api/sport/scan/", {"token": _token(other_hour)}).json()
+    assert body["state"] == "foreign"
+    assert body["session"]["slot"].endswith("13:00–14:00") and body["mine"]["section"] == "Теннис"
+    assert not SectionMark.objects.exists()
     at(12, 4)
     volleyball = slot_of("Волейбол", 5, 12, 10)
     body = login(senior.user).post("/api/sport/scan/", {"token": _token(volleyball)}).json()
-    assert body["state"] == "foreign"
-    assert body["session"]["section"] == "Волейбол" and body["mine"]["section"] == "Теннис"
-    assert not SectionMark.objects.exists()
+    assert body["state"] == "guest" and body["session"]["section"] == "Волейбол"
+    assert SectionMark.objects.get().is_guest
 
 
 def test_outside_session_time_is_refused(enrolled, at):
@@ -137,9 +143,9 @@ def test_token_marks_only_own_student(enrolled, at, people):
     _senior, junior, tennis = enrolled
     at(12, 4)
     assert login(people["director_sport"]).post("/api/sport/scan/", {"token": _token(tennis)}).status_code == 403
-    # ученик 9 класса не записан на этот час — его отметка не ставится
-    assert login(junior.user).post("/api/sport/scan/", {"token": _token(tennis)}).json()["state"] == "not_enrolled"
-    assert not SectionMark.objects.exists()
+    # ученик 9 класса в эту секцию не записан — отметка только гостевая, в записанные он не попадает
+    assert login(junior.user).post("/api/sport/scan/", {"token": _token(tennis)}).json()["state"] == "guest"
+    assert list(SectionMark.objects.values_list("student_id", "is_guest")) == [(junior.pk, True)]
 
 
 def test_director_shows_code_only_while_live(enrolled, at, people):

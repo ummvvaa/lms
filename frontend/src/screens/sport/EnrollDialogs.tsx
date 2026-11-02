@@ -39,7 +39,9 @@ export function slotOptions(
     .filter((row) => section === undefined || row.id === section)
     .flatMap((row) =>
       row.slots
-        .filter((slot) => slot.parallel_from <= parallel && parallel <= slot.parallel_to && slot.id !== exclude)
+        .filter(
+          (slot) => slot.parallel_from <= parallel && parallel <= slot.parallel_to && slot.id !== exclude,
+        )
         .map((slot) => ({
           value: String(slot.id),
           title: t('{section}, {slot} · свободно {free}', {
@@ -126,11 +128,7 @@ export function MoveDialog({
           {t('Отмена')}
         </Button>
         <Button disabled={!slot || move.isPending} onClick={() => send(warned)}>
-          {warned
-            ? t('Всё равно перевести')
-            : assign
-              ? t('Назначить')
-              : t('Перевести')}
+          {warned ? t('Всё равно перевести') : assign ? t('Назначить') : t('Перевести')}
         </Button>
       </div>
     </Modal>
@@ -141,7 +139,13 @@ export function MoveDialog({
  * Директор записывает сам — и при закрытой записи: поиск ученика и час его
  * параллели. Прежние секции ученика остаются; ученик уже выбран — поиска нет.
  */
-export function EnrollDialog({ onClose, student: preset }: { onClose: () => void; student?: SectionStudent }) {
+export function EnrollDialog({
+  onClose,
+  student: preset,
+}: {
+  onClose: () => void
+  student?: SectionStudent
+}) {
   const sections = useSections()
   const enroll = useEnrollStudent()
   const [query, setQuery] = useState('')

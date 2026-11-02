@@ -251,9 +251,9 @@ def _lock_student(student) -> None:
 
 def _guests_become_members(student, slot: SectionSlot, now) -> None:
     """Записали на час гостя: его сегодняшняя и будущие отметки на этом часе — обычные."""
-    SectionMark.objects.filter(
-        student=student, slot=slot, is_guest=True, date__gte=timezone.localtime(now).date()
-    ).update(is_guest=False)
+    SectionMark.objects.filter(student=student, slot=slot, is_guest=True, date__gte=local_now().date()).update(
+        is_guest=False
+    )
 
 
 @transaction.atomic
@@ -550,23 +550,22 @@ def _slot_brief(slot: SectionSlot) -> dict:
 
 
 def mark_by_scan(*, student, slot_id: int, day: dt.date, now: dt.datetime | None = None) -> dict:
-    """Отметка по свежему коду. Ответ — состояние для экрана телефона, а не исключение."""
+    """Отметка по свежему коду. Ответ — состояние для экрана телефона, а не исключение.
+
+    Засчитывается в секцию отсканированного кода. Записан в неё на другой
+    час — «не твоё занятие»; не записан вовсе — гостевая отметка (02.11.2026).
+    """
     now = now or local_now()
     slot = SectionSlot.all_objects.select_related("section").filter(pk=slot_id).first()
     if slot is None or day != now.date() or day.weekday() != slot.weekday:
         return {"state": "stale"}
-    rows = active_list(student)
-    mine = next((r for r in rows if r.section_id == slot.section_id), None)
-    if mine is None:
-        if not rows:
-            return {"state": "not_enrolled", "session": _slot_brief(slot)}
-        other = rows[0]
-        own = _slot_brief(other.slot) if other.slot_id else {"section": other.section.title, "slot": ""}
-        return {"state": "foreign", "session": _slot_brief(slot), "mine": own}
-    if mine.slot_id is None:
+    mine = active_in(student, slot.section)
+    if mine is not None and mine.slot_id is None:
         return {"state": "no_hour", "session": _slot_brief(slot)}
-    if mine.slot_id != slot.pk:
+    if mine is not None and mine.slot_id != slot.pk:
         return {"state": "foreign", "session": _slot_brief(slot), "mine": _slot_brief(mine.slot)}
+    # не записан в эту секцию — пришёл гостем: отметка гостевая, директор может записать его на час
+    guest = mine is None
     state = session_state(slot, day, now)
     if state == "soon":
         return {"state": "not_started", "session": _slot_brief(slot), "starts_at": _at(day, slot.starts).isoformat()}
@@ -574,13 +573,16 @@ def mark_by_scan(*, student, slot_id: int, day: dt.date, now: dt.datetime | None
         return {"state": "ended", "session": _slot_brief(slot)}
     with transaction.atomic():
         row, created = SectionMark.objects.get_or_create(
-            student=student, slot=slot, date=day, defaults={"method": MarkMethod.QR, "marked_at": timezone.now()}
+            student=student,
+            slot=slot,
+            date=day,
+            defaults={"method": MarkMethod.QR, "marked_at": timezone.now(), "is_guest": guest},
         )
-    return {
-        "state": "marked" if created else "already",
-        "session": _slot_brief(slot),
-        "marked_at": timezone.localtime(row.marked_at).isoformat(),
-    }
+    if row.is_guest:
+        state = "guest" if created else "guest_already"
+    else:
+        state = "marked" if created else "already"
+    return {"state": state, "session": _slot_brief(slot), "marked_at": timezone.localtime(row.marked_at).isoformat()}
 
 
 @transaction.atomic

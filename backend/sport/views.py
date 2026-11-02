@@ -639,7 +639,8 @@ def students_sections(request):
 
 def _session_dict(slot: SectionSlot, day: dt.date, now=None) -> dict:
     enrolled = services.active_enrollments().filter(slot=slot).count()
-    came = SectionMark.objects.filter(slot=slot, date=day).count()
+    marks = SectionMark.objects.filter(slot=slot, date=day)
+    came = marks.filter(is_guest=False).count()
     return {
         **_slot_dict(slot),
         "title": slot.section.title,
@@ -648,6 +649,7 @@ def _session_dict(slot: SectionSlot, day: dt.date, now=None) -> dict:
         "state": services.session_state(slot, day, now),
         "enrolled": enrolled,
         "came": came,
+        "guests": marks.filter(is_guest=True).count(),
     }
 
 
@@ -684,7 +686,7 @@ def session(request, pk: int):
         .select_related("student", "student__group", "section", "slot")
         .order_by("student__last_name", "student__first_name")
     )
-    marks = {m.student_id: m for m in SectionMark.objects.filter(slot=slot, date=day)}
+    marks = {m.student_id: m for m in SectionMark.objects.filter(slot=slot, date=day, is_guest=False)}
     students = []
     for row in rows:
         mark = marks.get(row.student_id)
@@ -697,7 +699,31 @@ def session(request, pk: int):
             }
         )
     students.sort(key=lambda s: (not s["came"], s["at"] or "", s["short_name"]))
-    return Response({**_session_dict(slot, day), "students": students})
+    return Response({**_session_dict(slot, day), "students": students, "guest_rows": _guest_rows(slot, day)})
+
+
+def _guest_rows(slot: SectionSlot, day: dt.date) -> list[dict]:
+    """Гости занятия: кто отсканировал код секции, в которую не записан, и можно ли его записать на этот час.
+
+    Нельзя — `refusal` объясняет почему; можно сверх предела или лимита — `warnings`.
+    """
+    out = []
+    marks = SectionMark.objects.filter(slot=slot, date=day, is_guest=True).select_related("student", "student__group")
+    for mark in marks.order_by("marked_at"):
+        refusals, warnings = services.check(student=mark.student, slot=slot, by_director=True)
+        out.append(
+            {
+                **_brief(mark.student),
+                "at": _when(mark.marked_at),
+                "sections": [
+                    f"{row.section.title} {services.slot_words(row.slot) if row.slot_id else ''}".strip()
+                    for row in services.active_list(mark.student)
+                ],
+                "refusal": refusals[0] if refusals else "",
+                "warnings": warnings,
+            }
+        )
+    return out
 
 
 @extend_schema(responses={200: dict})
@@ -809,7 +835,7 @@ def _attendance_rows(request, slot: SectionSlot, first: dt.date, last: dt.date):
     marks = {
         (m.student_id, m.date): m
         for m in SectionMark.objects.filter(
-            slot=slot, date__gte=first, date__lte=last, student__in=[e.student_id for e in enrollments]
+            slot=slot, date__gte=first, date__lte=last, student__in=[e.student_id for e in enrollments], is_guest=False
         )
     }
     pct = services.month_percents(enrollments, f"{first:%Y-%m}")
@@ -829,6 +855,28 @@ def _attendance_rows(request, slot: SectionSlot, first: dt.date, last: dt.date):
             {"student": _brief(row.student), "cells": cells, "percent": value, "below": services.below_threshold(value)}
         )
     return dates, held, rows, marks
+
+
+def _attendance_guests(request, slot: SectionSlot, first: dt.date, last: dt.date, dates) -> list[dict]:
+    """Гости часа за месяц отдельным блоком: в процент записанных они не входят."""
+    visits: dict[int, dict] = {}
+    for mark in (
+        SectionMark.objects.filter(
+            slot=slot, date__gte=first, date__lte=last, is_guest=True, student__in=visible_students(request.user)
+        )
+        .select_related("student", "student__group")
+        .order_by("student__last_name", "student__first_name", "date")
+    ):
+        entry = visits.setdefault(mark.student_id, {"student": _brief(mark.student), "days": set()})
+        entry["days"].add(mark.date)
+    return [
+        {
+            "student": entry["student"],
+            "cells": ["guest" if day in entry["days"] else "" for day in dates],
+            "visits": len(entry["days"]),
+        }
+        for entry in visits.values()
+    ]
 
 
 def _attendance_slot(request):
@@ -854,6 +902,7 @@ def attendance(request):
         return _not_found()
     first, last = services.month_bounds(request.query_params.get("month"))
     dates, held, rows, marks = _attendance_rows(request, slot, first, last)
+    guests = _attendance_guests(request, slot, first, last, dates)
     values = [r["percent"] for r in rows if r["percent"] is not None]
     figures = {
         "average": round(sum(values) / len(values)) if values else None,
@@ -882,6 +931,7 @@ def attendance(request):
             "dates": [d.isoformat() for d in dates],
             "held": [d.isoformat() for d in sorted(held)],
             "rows": rows,
+            "guests": guests,
             "figures": figures,
             "sections": sections_list,
         }
@@ -903,10 +953,12 @@ def attendance_export(request):
         slots = slots.filter(pk=slot_id)
     elif section_id:
         slots = slots.filter(section_id=section_id)
-    words = {"qr": _("был"), "manual": _("вручную"), "absent": _("нет"), "": ""}
+    words = {"qr": _("был"), "manual": _("вручную"), "absent": _("нет"), "guest": _("гость"), "": ""}
     sheets = []
     for slot in slots.order_by("section__order", "weekday", "starts"):
         dates, _held, rows, _marks = _attendance_rows(request, slot, first, last)
+        # гости — строками ниже записанных, с пометкой «гость» и без процента
+        rows = rows + [{**g, "percent": None} for g in _attendance_guests(request, slot, first, last, dates)]
         if not rows:
             continue
         columns = [

@@ -193,6 +193,16 @@ body .sport-slot--on[data-variant][data-size] {
   padding-top: calc(var(--space) * 4);
   border-top: 1px solid var(--line);
 }
+/* гости занятия — под списком отметившихся, отдельным блоком */
+.sport-guests {
+  margin-top: calc(var(--space) * 4);
+  padding-top: calc(var(--space) * 4);
+  border-top: 1px solid var(--line);
+}
+/* почему гостя нельзя записать — тихой янтарной строкой под именем */
+.sport-why {
+  color: var(--warn);
+}
 /* предупреждение «сверх предела» — одна тихая янтарная строка на пункт */
 .sport-warn {
   display: flex;

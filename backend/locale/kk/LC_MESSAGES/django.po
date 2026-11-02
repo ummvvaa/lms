@@ -18988,3 +18988,7 @@ msgstr "Оқушы бұл секцияға жазылмаған"
 #: core/school_rules.py
 msgid "секция|секции|секций"
 msgstr "секция"
+
+#: sport/views
+msgid "гость"
+msgstr "қонақ"

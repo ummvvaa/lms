@@ -19069,3 +19069,7 @@ msgstr "The student is not enrolled in this section"
 #: core/school_rules.py
 msgid "секция|секции|секций"
 msgstr "section|sections"
+
+#: sport/views
+msgid "гость"
+msgstr "guest"

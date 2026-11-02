@@ -182,7 +182,8 @@ export interface StudentHit extends SectionStudent {
 export const useStudentSearch = (query: string) =>
   useQuery({
     queryKey: ['sport-student-search', query],
-    queryFn: () => get<{ rows: StudentHit[]; max: number }>(`/sport/students/?q=${encodeURIComponent(query)}`),
+    queryFn: () =>
+      get<{ rows: StudentHit[]; max: number }>(`/sport/students/?q=${encodeURIComponent(query)}`),
     enabled: query.trim().length >= 2,
     placeholderData: keepPreviousData,
   })
@@ -198,6 +199,8 @@ export interface SessionRow extends SlotRow {
   state: SessionState
   enrolled: number
   came: number
+  /** гостей на занятии — отсканировали код секции, в которую не записаны */
+  guests: number
 }
 
 export interface SessionStudent extends SectionStudent {
@@ -217,10 +220,19 @@ export const useSessionsToday = () =>
 export const useSession = (id: number | null, live: boolean) =>
   useQuery({
     queryKey: ['sport-session', id],
-    queryFn: () => get<SessionRow & { students: SessionStudent[] }>(`/sport/sessions/${id}/`),
+    queryFn: () =>
+      get<SessionRow & { students: SessionStudent[]; guest_rows: SessionGuest[] }>(`/sport/sessions/${id}/`),
     enabled: id !== null,
     refetchInterval: live ? 4_000 : false,
   })
+
+/** Гость занятия: записать на этот час можно, нельзя (`refusal`) или сверх предела (`warnings`). */
+export interface SessionGuest extends SectionStudent {
+  at: string | null
+  sections: string[]
+  refusal: string
+  warnings: string[]
+}
 
 export interface SessionToken {
   state: SessionState | 'none'
@@ -256,7 +268,17 @@ export function useSessionAction() {
 }
 
 export type ScanState =
-  'login' | 'marked' | 'already' | 'stale' | 'foreign' | 'not_started' | 'ended' | 'not_enrolled' | 'no_hour'
+  | 'login'
+  | 'marked'
+  | 'already'
+  | 'guest'
+  | 'guest_already'
+  | 'stale'
+  | 'foreign'
+  | 'not_started'
+  | 'ended'
+  | 'not_enrolled'
+  | 'no_hour'
 
 export interface ScanBrief {
   section: string
@@ -281,7 +303,7 @@ export const scan = (token: string | null) => post<ScanAnswer>('/sport/scan/', t
 
 /* --- Посещаемость ------------------------------------------------------- */
 
-export type MarkCell = '' | 'qr' | 'manual' | 'absent'
+export type MarkCell = '' | 'qr' | 'manual' | 'absent' | 'guest'
 
 export interface AttendanceData {
   section: number
@@ -291,6 +313,8 @@ export interface AttendanceData {
   dates: string[]
   held: string[]
   rows: { student: SectionStudent; cells: MarkCell[]; percent: number | null; below: boolean }[]
+  /** гости часа за месяц: в процент записанных не входят */
+  guests: { student: SectionStudent; cells: MarkCell[]; visits: number }[]
   figures: {
     average: number | null
     sessions: number

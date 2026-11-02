@@ -5,16 +5,20 @@
  * занятия посередине QR: код меняется каждые N секунд (настройка школы),
  * обратный отсчёт до смены, «На весь экран» и «Закончить занятие». Справа
  * «Пришли / Ещё нет» — опрос раз в несколько секунд, без вебсокетов,
- * и «Отметить» для пришедшего без телефона.
+ * и «Отметить» для пришедшего без телефона. Ниже — «Гости»: отсканировали
+ * код секции, в которую не записаны; записать на этот час — одним нажатием.
  */
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router'
 import {
+  confirmWarnings,
   sessionToken,
+  useEnrollStudent,
   useSession,
   useSessionAction,
   useSessionsToday,
+  type SessionGuest,
   type SessionRow,
   type SessionState,
   type SessionToken,
@@ -94,7 +98,11 @@ export default function Session() {
 }
 
 /** Свежий токен, пока занятие идёт: перезапрос, когда срок истекает. Кружки берут его со своей ручки. */
-export function useLiveToken(id: number, live: boolean, fetchToken: (id: number) => Promise<SessionToken> = sessionToken) {
+export function useLiveToken(
+  id: number,
+  live: boolean,
+  fetchToken: (id: number) => Promise<SessionToken> = sessionToken,
+) {
   const [token, setToken] = useState<SessionToken | null>(null)
   const [left, setLeft] = useState(0)
   useEffect(() => {
@@ -136,6 +144,7 @@ function SessionPanel({ row }: { row: SessionRow }) {
   const box = useRef<HTMLDivElement>(null)
   const url = token?.token ? `${window.location.origin}/s/${token.token}` : ''
   const students = session.data?.students ?? []
+  const guests = session.data?.guest_rows ?? []
   const came = students.filter((s) => s.came)
   const waiting = students.filter((s) => !s.came)
   const shown = tab === 'came' ? came : waiting
@@ -262,6 +271,7 @@ function SessionPanel({ row }: { row: SessionRow }) {
             ))}
           </div>
         )}
+        {guests.length > 0 && <Guests slot={row} guests={guests} />}
       </DataCard>
       {ending && (
         <Modal title={t('Закончить занятие?')} note={row.title} onClose={() => setEnding(false)}>
@@ -294,5 +304,98 @@ function SessionPanel({ row }: { row: SessionRow }) {
         </Modal>
       )}
     </>
+  )
+}
+
+/**
+ * Гости занятия: в процент записанных не входят. «Записать в эту секцию» —
+ * на этот час; нельзя — строка объясняет почему; сверх предела секций или
+ * лимита часа — сначала подтверждение.
+ */
+function Guests({ slot, guests }: { slot: SessionRow; guests: SessionGuest[] }) {
+  const enroll = useEnrollStudent()
+  const [confirm, setConfirm] = useState<SessionGuest | null>(null)
+  const send = (guest: SessionGuest, force: boolean) =>
+    enroll.mutate(
+      { student: guest.id, slot: slot.id, force },
+      {
+        onSuccess: () => {
+          toast.success(
+            t('{name} записан · {section}, {time}', {
+              name: guest.short_name,
+              section: slot.title,
+              time: slotTime(slot),
+            }),
+          )
+          setConfirm(null)
+        },
+        onError: (reason) => {
+          if (confirmWarnings(reason)) setConfirm(guest)
+          else toast.error(reason.message)
+        },
+      },
+    )
+  return (
+    <div className="sport-guests">
+      <div className="sport-list__head">
+        <span className="t-card">{t('Гости')}</span>
+        <Chip className="num">{guests.length}</Chip>
+      </div>
+      <p className="t-note">
+        {t('отсканировали код, но в эту секцию не записаны · в процент посещения не входят')}
+      </p>
+      <div className="dir__rows">
+        {guests.map((guest) => (
+          <div key={guest.id} className="dir__row">
+            <span className="dir__what">
+              <b className="dir__name">{guest.short_name}</b>
+              <span className="t-note">
+                {[
+                  t('{n} параллель', { n: guest.parallel }),
+                  guest.group,
+                  guest.at ? t('по QR · {time}', { time: formatTime(guest.at) }) : '',
+                  guest.sections.length ? t('секции: {list}', { list: guest.sections.join(', ') }) : '',
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+              {guest.refusal && <span className="t-note sport-why">{guest.refusal}</span>}
+            </span>
+            <span />
+            <span className="dir__acts">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={Boolean(guest.refusal) || enroll.isPending}
+                onClick={() => (guest.warnings.length ? setConfirm(guest) : send(guest, false))}
+              >
+                {t('Записать в эту секцию')}
+              </Button>
+            </span>
+          </div>
+        ))}
+      </div>
+      {confirm && (
+        <Modal title={t('Записать сверх предела?')} note={confirm.full_name} onClose={() => setConfirm(null)}>
+          <div className="sport-warn">
+            {(confirm.warnings.length ? confirm.warnings : (confirmWarnings(enroll.error) ?? [])).map(
+              (item) => (
+                <p key={item} className="t-note">
+                  {item}
+                </p>
+              ),
+            )}
+          </div>
+          <div className="acad__actions">
+            <Button variant="outline" onClick={() => setConfirm(null)}>
+              {t('Отмена')}
+            </Button>
+            <Button disabled={enroll.isPending} onClick={() => send(confirm, true)}>
+              {t('Всё равно записать')}
+            </Button>
+          </div>
+        </Modal>
+      )}
+    </div>
   )
 }

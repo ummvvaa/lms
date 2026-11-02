@@ -5,7 +5,8 @@
  * сервер проверил, что код свежий, и держит отметку в этом браузере две
  * минуты; здесь же форма входа, после входа отметка ставится сама.
  * Ответы: «Ты отмечен», «Уже отмечен», «Код устарел», «Это не твоё занятие»,
- * «Занятие ещё не началось / уже закончилось».
+ * «Занятие ещё не началось / уже закончилось». Код секции, в которую ученик
+ * не записан, — «Ты отмечен как гость» (02.11.2026).
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
@@ -166,7 +167,7 @@ function Result({
       {foot}
       {me && (
         <Button variant="outline" onClick={() => navigate(home)}>
-          {kind?.home?.label ?? t('Моя секция')}
+          {kind?.home?.label ?? t('Мои секции')}
         </Button>
       )}
     </>
@@ -190,7 +191,33 @@ function Answer({ answer, kind }: { answer: ScanAnswer; kind?: ScanKind }) {
           kind={kind}
           tone="good"
           title={answer.state === 'marked' ? t('Ты отмечен') : t('Уже отмечен')}
-          text={answer.state === 'marked' ? (kind?.wish ?? t('{where}. Хорошей тренировки!', { where })) : where}
+          text={
+            answer.state === 'marked' ? (kind?.wish ?? t('{where}. Хорошей тренировки!', { where })) : where
+          }
+          foot={
+            answer.marked_at && (
+              <div className="dir__line">
+                <span>{t('Отметка')}</span>
+                <b>
+                  {t('{day}, {date} · {time}', {
+                    day: formatWeekday(answer.marked_at, 'short'),
+                    date: formatDateLong(answer.marked_at),
+                    time: formatTime(answer.marked_at),
+                  })}
+                </b>
+              </div>
+            )
+          }
+        />
+      )
+    case 'guest':
+    case 'guest_already':
+      return (
+        <Result
+          kind={kind}
+          tone="good"
+          title={answer.state === 'guest' ? t('Ты отмечен как гость') : t('Уже отмечен как гость')}
+          text={t('{where}. Ты не записан в эту секцию — записать тебя может директор спорта', { where })}
           foot={
             answer.marked_at && (
               <div className="dir__line">
@@ -213,7 +240,7 @@ function Answer({ answer, kind }: { answer: ScanAnswer; kind?: ScanKind }) {
           kind={kind}
           tone="warn"
           title={t('Это не твоё занятие')}
-          text={t('Сейчас идёт {where} для параллелей {grades}. Ты записан на {mine}', {
+          text={t('Сейчас идёт {where} для параллелей {grades}. В этой секции ты записан на {mine}', {
             where,
             grades: session?.grades ?? '',
             mine: [answer.mine?.section, answer.mine?.slot].filter(Boolean).join(' · '),
@@ -268,7 +295,10 @@ function Answer({ answer, kind }: { answer: ScanAnswer; kind?: ScanKind }) {
           kind={kind}
           tone="bad"
           title={t('Код устарел')}
-          text={kind?.stale ?? t('QR меняется каждые несколько секунд. Отсканируй код с экрана директора спорта ещё раз')}
+          text={
+            kind?.stale ??
+            t('QR меняется каждые несколько секунд. Отсканируй код с экрана директора спорта ещё раз')
+          }
         />
       )
   }

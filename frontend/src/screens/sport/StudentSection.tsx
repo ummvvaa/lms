@@ -76,17 +76,17 @@ export default function StudentSection() {
           title={more ? t('Ещё одна секция') : t('Секций — {n} из {max}', { n: mine.length, max: data.max })}
           note={
             more
-              ? t('Можно ходить в несколько секций, если часы не совпадают · не больше {max}', { max: data.max })
+              ? t('Можно ходить в несколько секций, если часы не совпадают · не больше {max}', {
+                  max: data.max,
+                })
               : t('Больше секций по правилам школы нельзя · можно выйти из одной и выбрать другую')
           }
-          right={
-            more && (
-              <Button onClick={() => setChoosing('new')}>{t('Записаться ещё в секцию')}</Button>
-            )
-          }
+          right={more && <Button onClick={() => setChoosing('new')}>{t('Записаться ещё в секцию')}</Button>}
         />
       ) : (
-        <p className="t-note">{t('Запись закрыта · сменить или добавить секцию можно через директора спорта')}</p>
+        <p className="t-note">
+          {t('Запись закрыта · сменить или добавить секцию можно через директора спорта')}
+        </p>
       )}
     </div>
   )
@@ -154,7 +154,9 @@ function MySection({
             <Button onClick={onChange}>{t('Сменить время')}</Button>
           </div>
         ) : (
-          <p className="t-note">{t('Запись закрыта · выйти или сменить время можно через директора спорта')}</p>
+          <p className="t-note">
+            {t('Запись закрыта · выйти или сменить время можно через директора спорта')}
+          </p>
         )}
       </DataCard>
       <DataCard
@@ -358,7 +360,13 @@ function Choose({ data, section, onBack }: { data: MySectionData; section?: numb
                   slot={slot}
                   busy={enroll.isPending}
                   onPick={() => setConfirm({ section: row.title, slot })}
-                  action={picked.has(slot.id) ? t('выбрано') : section === undefined ? t('Записаться') : t('Выбрать')}
+                  action={
+                    picked.has(slot.id)
+                      ? t('выбрано')
+                      : section === undefined
+                        ? t('Записаться')
+                        : t('Выбрать')
+                  }
                 />
               ))}
             </div>
@@ -371,9 +379,7 @@ function Choose({ data, section, onBack }: { data: MySectionData; section?: numb
           note={t('{section}, {slot}', { section: confirm.section, slot: slotWords(confirm.slot) })}
           onClose={() => setConfirm(null)}
         >
-          <p className="t-note">
-            {t('Пока запись открыта, можно выйти и выбрать другую секцию или время')}
-          </p>
+          <p className="t-note">{t('Пока запись открыта, можно выйти и выбрать другую секцию или время')}</p>
           <div className="acad__actions">
             <Button variant="outline" onClick={() => setConfirm(null)}>
               {t('Отмена')}

@@ -5,6 +5,7 @@
  * сколько занятий прошло, сколько учеников ниже порога (настройка школы),
  * сколько отметок поставлено вручную. Таблица — ученики × даты занятий:
  * был по QR, вручную, не был. Пропуск — нет отметки на прошедшем занятии.
+ * Гости — отдельной таблицей ниже: в процент записанных они не входят.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -26,6 +27,7 @@ const CELL: Record<Exclude<MarkCell, ''>, { label: string; tone: Tone }> = {
   qr: { label: tk('был'), tone: 'good' },
   manual: { label: tk('вручную'), tone: 'info' },
   absent: { label: tk('нет'), tone: 'bad' },
+  guest: { label: tk('гость'), tone: 'neutral' },
 }
 
 function thisMonth(): string {
@@ -139,40 +141,78 @@ export default function SectionAttendance() {
           minWidth={phone ? undefined : `${360 + data.dates.length * 88}px`}
         />
       </DataCard>
+      {data.guests.length > 0 && (
+        <DataCard
+          title={t('Гости')}
+          note={t('отсканировали код этого часа, но в секцию не записаны · в процент не входят')}
+          count={data.guests.length}
+        >
+          <DataTable
+            columns={guestColumns(data, phone)}
+            rows={data.guests}
+            rowKey={(row) => row.student.id}
+            minWidth={phone ? undefined : `${360 + data.dates.length * 88}px`}
+          />
+        </DataCard>
+      )}
     </div>
   )
 }
 
+type Row = AttendanceData['rows'][number] | AttendanceData['guests'][number]
+
+function nameColumn(): Column<Row> {
+  return {
+    key: 'name',
+    title: t('Ученик'),
+    width: '220px',
+    phone: 'head',
+    cell: (row) => (
+      <>
+        <b className="dir__name">{row.student.short_name}</b>
+        <span className="t-note dir__sub">
+          {[t('{n} параллель', { n: row.student.parallel }), row.student.group].join(' · ')}
+        </span>
+      </>
+    ),
+  }
+}
+
+function dateColumns(data: AttendanceData, phone: boolean): Column<Row>[] {
+  return data.dates.map((date, index) => ({
+    key: date,
+    title: formatDayMonthShort(date),
+    width: '88px',
+    phone: phone ? ('hidden' as const) : undefined,
+    cell: (row: Row) => {
+      const cell = row.cells[index]
+      return cell ? (
+        <Chip tone={CELL[cell].tone} size="sm">
+          {t(CELL[cell].label)}
+        </Chip>
+      ) : null
+    },
+  }))
+}
+
+function guestColumns(data: AttendanceData, phone: boolean): Column<AttendanceData['guests'][number]>[] {
+  return [
+    nameColumn(),
+    ...dateColumns(data, phone),
+    {
+      key: 'visits',
+      title: t('Визитов'),
+      width: '180px',
+      align: 'right',
+      cell: (row) => <span className="num">{row.visits}</span>,
+    },
+  ]
+}
+
 function columns(data: AttendanceData, phone: boolean): Column<AttendanceData['rows'][number]>[] {
   return [
-    {
-      key: 'name',
-      title: t('Ученик'),
-      width: '220px',
-      phone: 'head',
-      cell: (row) => (
-        <>
-          <b className="dir__name">{row.student.short_name}</b>
-          <span className="t-note dir__sub">
-            {[t('{n} параллель', { n: row.student.parallel }), row.student.group].join(' · ')}
-          </span>
-        </>
-      ),
-    },
-    ...data.dates.map((date, index) => ({
-      key: date,
-      title: formatDayMonthShort(date),
-      width: '88px',
-      phone: phone ? ('hidden' as const) : undefined,
-      cell: (row: AttendanceData['rows'][number]) => {
-        const cell = row.cells[index]
-        return cell ? (
-          <Chip tone={CELL[cell].tone} size="sm">
-            {t(CELL[cell].label)}
-          </Chip>
-        ) : null
-      },
-    })),
+    nameColumn(),
+    ...dateColumns(data, phone),
     {
       key: 'percent',
       title: t('Посещение'),
