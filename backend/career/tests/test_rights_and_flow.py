@@ -564,6 +564,10 @@ def test_only_the_launcher_and_admin_cancel_an_analysis(passed, karta, teacher, 
     assert listing["run"]["can_cancel"] is True
     assert login(admin).post(f"/api/jobs/{job.pk}/cancel/").status_code == 200
     assert BackgroundJob.objects.get().status == BackgroundJob.Status.CANCELLED
+    # свой запуск учитель отменяет сам: маршрут открыт и шлюзом учителя
+    own = jobs.start(user=teacher, kind="career_analysis", title="Разбор", task_id="t-own", target=boston)
+    answer = login(teacher).post(f"/api/jobs/{own.pk}/cancel/")
+    assert answer.status_code == 200 and answer.json()["status"] == "cancelled"
 
 
 def test_stale_analysis_launch_fails_its_rows_with_no_answer(passed, karta, teacher, boston, pupils):

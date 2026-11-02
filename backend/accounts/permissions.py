@@ -292,6 +292,7 @@ CURATOR_WRITE_ROUTES = frozenset(
         "notifications-read",
         "job-dismiss",
         "job-retry",
+        "job-cancel",
         "auth-preferences",
         # учебная часть: уважительная причина за период, напоминание учителю,
         # проверка и отправка отчётов родителям
@@ -657,6 +658,7 @@ TEACHER_WRITE_ROUTES = frozenset(
         "notifications-read",
         "job-dismiss",
         "job-retry",
+        "job-cancel",
         "auth-preferences",
         # профтест: загрузка и включение тестов, назначение, разбор — учителю профориентации
         "career-tests",
@@ -746,6 +748,7 @@ MENTOR_WRITE_ROUTES = frozenset(
         "notifications-read",
         "job-dismiss",
         "job-retry",
+        "job-cancel",
         "auth-preferences",
         "clubs-homework",
         "clubs-homework-detail",
