@@ -26,8 +26,8 @@ def test_accepted_async_operation_emits_once_and_polling_does_not(make_user, mon
 
     api = APIClient()
     api.force_authenticate(make_user("admin"))
-    queued = SimpleNamespace(id="usage-task")
-    monkeypatch.setattr(getattr(views.background, task), "delay", lambda **kwargs: queued)
+    # задача не уходит в очередь: id запуска заводит сам `jobs.launch`
+    monkeypatch.setattr(getattr(views.background, task), "apply_async", lambda **kwargs: None)
     payload = {"domain": "exam"}
     if endpoint == "paste":
         payload["text"] = "Текст для разбора"
@@ -42,7 +42,7 @@ def test_accepted_async_operation_emits_once_and_polling_does_not(make_user, mon
         "AsyncResult",
         lambda task_id: SimpleNamespace(state="SUCCESS", successful=lambda: True, result={"done": True}),
     )
-    assert api.get(f"/api/tasks/status/{queued.id}/").status_code == 200
+    assert api.get(f"/api/tasks/status/{response.data['task']}/").status_code == 200
     assert tracked.call_count == 1
 
 

@@ -109,17 +109,23 @@ def start(
         task_id=task_id or "",
         link=link,
         retry_task=retry_task,
-        retry_payload=json.dumps(retry_payload or {}, ensure_ascii=False) if retry_payload else "",
+        retry_payload=_args(retry_payload) if retry_payload else "",
         target_model=target_model,
         target_id=target_id,
     )
 
 
-def active_for(*, kind: str, target=None, user=None) -> BackgroundJob | None:
+def _args(kwargs: dict) -> str:
+    return json.dumps(kwargs or {}, ensure_ascii=False)
+
+
+def active_for(*, kind: str, target=None, user=None, kwargs: dict | None = None) -> BackgroundJob | None:
     """Идущий запуск той же операции над тем же объектом.
 
     Объект есть — неважно, кто запускал: второй разбор той же группы
     не нужен никому. Объекта нет — запуск личный, сравниваем по автору.
+    `kwargs` — сравнивать ещё и аргументы: другой вопрос по тому же ученику
+    или другой вставленный текст — уже другой запуск, а двойной клик — тот же.
     """
     sweep()
     target_model, target_id = _target(target)
@@ -128,6 +134,8 @@ def active_for(*, kind: str, target=None, user=None) -> BackgroundJob | None:
         rows = rows.filter(target_model=target_model, target_id=target_id)
     else:
         rows = rows.filter(target_model="", owner=user)
+    if kwargs is not None:
+        rows = rows.filter(retry_payload=_args(kwargs))
     return rows.order_by("-created_at").first()
 
 
@@ -153,14 +161,17 @@ def launch(
     target=None,
     link: str = "",
     retry: bool = True,
+    same_args: bool = False,
 ) -> tuple[BackgroundJob, bool]:
     """Отдать операцию в фон, если такая же уже не идёт.
 
     Запись заводится до отправки задачи: иначе воркер мог бы взять её
     раньше, чем появится строка, и сигналы старта прошли бы мимо.
+    Без объекта «такая же» — с теми же аргументами (`same_args` всегда).
     Возвращает запуск и признак «заведён сейчас».
     """
-    running = active_for(kind=kind, target=target, user=user)
+    compare = kwargs if (same_args or target is None) and retry else None
+    running = active_for(kind=kind, target=target, user=user, kwargs=compare)
     if running is not None:
         return running, False
     task_id = uuid.uuid4().hex

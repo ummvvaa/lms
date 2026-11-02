@@ -138,15 +138,16 @@ def test_every_background_operation_opens_a_job(api, make_user, student, monkeyp
     """Каждая долгая операция заводит плашку — иначе человек ждёт вслепую."""
     from suggestions import views as suggestion_views
 
-    class FakeTask:
-        id = "fake-task"
+    sent: dict = {}
 
     user = make_user("director_exam")
     api.force_authenticate(user)
-    monkeypatch.setattr(suggestion_views.background.parse_paste, "delay", lambda **_kwargs: FakeTask())
+    # запись заводится до отправки задачи: id задачи придумывает сам запуск
+    monkeypatch.setattr(suggestion_views.background.parse_paste, "apply_async", lambda **kwargs: sent.update(kwargs))
     answer = api.post("/api/commands/paste/", {"text": "IELTS 7.0", "command": "paste_as_is"}, format="json")
     assert answer.status_code == 202
-    job = BackgroundJob.objects.get(task_id="fake-task")
+    job = BackgroundJob.objects.get(task_id=answer.data["task"])
+    assert sent["task_id"] == job.task_id and job.status == BackgroundJob.Status.QUEUED
     assert job.kind == "paste"
     assert job.retry_task == "suggestions.parse_paste"
 

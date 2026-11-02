@@ -259,3 +259,34 @@ def test_cancelled_launch_is_not_reopened_by_late_signals(make_user):
     job.refresh_from_db()
     assert job.status == BackgroundJob.Status.CANCELLED
     assert not Notification.objects.filter(recipient=user).exists()
+
+
+# --- Двойной запуск в ручках помощника -------------------------------------------
+
+
+@pytest.mark.django_db
+def test_double_click_on_explain_leads_to_the_running_one(api, make_user, student):
+    """Тот же ученик и та же программа — к идущему; другая программа — свой запуск."""
+    from universities.models import Program, University
+
+    university = University.objects.create(name="Вуз", country="Канада")
+    first, second = (Program.objects.create(university=university, name=n, level="bachelor") for n in ("CS", "Law"))
+    user = make_user("director_admission")
+    kwargs = {"student_id": student.pk, "program_id": first.pk, "actor_id": user.pk}
+    running = jobs.start(
+        user=user,
+        kind="explain_match",
+        title="x",
+        task_id="t-ex",
+        target=student,
+        retry_task="suggestions.explain_match",
+        retry_payload=kwargs,
+    )
+    api.force_authenticate(user)
+
+    again = api.post("/api/commands/explain-match/", {"student": student.pk, "program": first.pk}, format="json")
+    assert again.status_code == 200 and again.data["already"] is True and again.data["task"] == "t-ex"
+    other = api.post("/api/commands/explain-match/", {"student": student.pk, "program": second.pk}, format="json")
+    assert other.status_code == 202 and other.data["already"] is False
+    assert BackgroundJob.objects.filter(kind="explain_match").count() == 2
+    assert running.pk != other.data["job"]["id"]

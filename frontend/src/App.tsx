@@ -167,8 +167,12 @@ const queryClient = new QueryClient({
   // помнить об этом каждому. Таблица быстрого ввода и предложения пишут
   // своё, более точное сообщение сами и пометки не несут
   mutationCache: new MutationCache({
-    onSuccess: (_data, _variables, _context, mutation) => {
+    onSuccess: (data, _variables, _context, mutation) => {
       if (mutation.meta?.saved) toast.success(t('Сохранено'))
+      // ответ завёл фоновый запуск — плашка операций узнаёт о нём сразу,
+      // а не со следующим опросом, которого при тишине нет
+      if (data && typeof data === 'object' && ('task' in data || 'job' in data || 'run' in data || 'version_run' in data))
+        void queryClient.invalidateQueries({ queryKey: ['jobs'] })
     },
   }),
 })

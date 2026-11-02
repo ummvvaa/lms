@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from celery.result import AsyncResult
 from django.utils.translation import gettext as _
 from drf_spectacular.utils import extend_schema
@@ -22,6 +24,7 @@ from accounts.curators import curated_group_ids, picked_groups
 from core import jobs, usage
 from core.domains import DOMAINS, ROLE_ADMIN, ROLE_CURATOR, ROLE_STUDENT, curator_confirms, domain_of_role
 from core.scope import sees_student
+from students.models import Student
 from suggestions import commands as command_registry
 from suggestions import llm
 from suggestions import tasks as background
@@ -59,6 +62,7 @@ from suggestions.serializers import (
     UploadSerializer,
     VerifyRequirementsSerializer,
 )
+from universities.models import Program
 
 
 def _deny_students(request):
@@ -500,17 +504,27 @@ def paste(request):
         "domain_code": domain_code,
         "command": serializer.validated_data.get("command", "paste_as_is"),
     }
-    task = background.parse_paste.delay(**kwargs)
-    jobs.start(
+    job, created = jobs.launch(
         user=request.user,
         kind="paste",
         title=_("Разбор вставленного текста"),
-        task_id=task.id,
-        retry_task="suggestions.parse_paste",
-        retry_payload=kwargs,
+        task=background.parse_paste,
+        kwargs=kwargs,
     )
-    usage.track(request, "assistant.text.parse")
-    return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+    if created:
+        usage.track(request, "assistant.text.parse")
+    return _launched(job, created, request.user)
+
+
+def _launched(job, created: bool, viewer) -> Response:
+    """Ответ запуска: id задачи для опроса и сам запуск.
+
+    Такой же запуск уже шёл — новый не заведён, ответ ведёт к идущему (200).
+    """
+    return Response(
+        {"task": job.task_id, "job": jobs.payload(job, viewer), "already": not created},
+        status=status.HTTP_202_ACCEPTED if created else status.HTTP_200_OK,
+    )
 
 
 def _acting_domain(request, requested: str = ""):
@@ -570,17 +584,16 @@ def upload(request):
         "role": request.user.role,
         "domain_code": domain_code,
     }
-    task = background.parse_file.delay(**kwargs)
-    jobs.start(
+    job, created = jobs.launch(
         user=request.user,
         kind="parse_file",
         title=_("Разбор файла «{name}»").format(name=uploaded.name),
-        task_id=task.id,
-        retry_task="suggestions.parse_file",
-        retry_payload=kwargs,
+        task=background.parse_file,
+        kwargs=kwargs,
     )
-    usage.track(request, "assistant.file.parse")
-    return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+    if created:
+        usage.track(request, "assistant.file.parse")
+    return _launched(job, created, request.user)
 
 
 @extend_schema(responses={200: dict})
@@ -633,17 +646,18 @@ def explain_match(request):
         "program_id": serializer.validated_data["program"],
         "actor_id": request.user.pk,
     }
-    task = background.explain_match.delay(**kwargs)
-    jobs.start(
+    job, created = jobs.launch(
         user=request.user,
         kind="explain_match",
         title=_("Объяснение соответствия"),
-        task_id=task.id,
-        retry_task="suggestions.explain_match",
-        retry_payload=kwargs,
+        task=background.explain_match,
+        kwargs=kwargs,
+        target=Student.objects.filter(pk=student_id).first(),
+        same_args=True,
     )
-    usage.track(request, "assistant.match.explain")
-    return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+    if created:
+        usage.track(request, "assistant.match.explain")
+    return _launched(job, created, request.user)
 
 
 @extend_schema(request=EssayQuestionsSerializer, responses={202: dict})
@@ -667,18 +681,18 @@ def essay_questions(request):
         return Response({"detail": _("Эссе не найдено")}, status=status.HTTP_404_NOT_FOUND)
 
     kwargs = {"essay_id": essay.pk, "prompt": serializer.validated_data["prompt"], "actor_id": request.user.pk}
-    task = background.essay_questions.delay(**kwargs)
-    jobs.start(
+    job, created = jobs.launch(
         user=request.user,
         kind="essay_questions",
         title=_("Вопросы по эссе «{essay}»").format(essay=essay.title),
-        task_id=task.id,
         link="/essays",
-        retry_task="suggestions.essay_questions",
-        retry_payload=kwargs,
+        task=background.essay_questions,
+        kwargs=kwargs,
+        target=essay,
     )
-    usage.track(request, "assistant.essay.questions")
-    return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+    if created:
+        usage.track(request, "assistant.essay.questions")
+    return _launched(job, created, request.user)
 
 
 # --- Фаза 20: подключение модели ------------------------------------------
@@ -737,17 +751,16 @@ def run_operation(request):
         "role": request.user.role,
         "payload": payload.validated_data,
     }
-    task = background.run_operation.delay(**kwargs)
-    jobs.start(
+    job, created = jobs.launch(
         user=request.user,
         kind="operation",
         title=str(command_registry.get(code).title),
-        task_id=task.id,
-        retry_task="suggestions.run_operation",
-        retry_payload=kwargs,
+        task=background.run_operation,
+        kwargs=kwargs,
     )
-    usage.track(request, "assistant.operation.start")
-    return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+    if created:
+        usage.track(request, "assistant.operation.start")
+    return _launched(job, created, request.user)
 
 
 @extend_schema(request=ParseUniversitySerializer, responses={202: dict})
@@ -763,17 +776,16 @@ def parse_university(request):
     payload = ParseUniversitySerializer(data=request.data)
     payload.is_valid(raise_exception=True)
     kwargs = {"text": payload.validated_data["text"], "actor_id": request.user.pk, "role": request.user.role}
-    task = background.parse_university.delay(**kwargs)
-    jobs.start(
+    job, created = jobs.launch(
         user=request.user,
         kind="parse_university",
         title=_("Разбор вуза «{query}»").format(query=payload.validated_data["text"][:60]),
-        task_id=task.id,
-        retry_task="suggestions.parse_university",
-        retry_payload=kwargs,
+        task=background.parse_university,
+        kwargs=kwargs,
     )
-    usage.track(request, "assistant.university.parse")
-    return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+    if created:
+        usage.track(request, "assistant.university.parse")
+    return _launched(job, created, request.user)
 
 
 @extend_schema(request=VerifyRequirementsSerializer, responses={202: dict})
@@ -801,18 +813,18 @@ def verify_requirements(request):
         "actor_id": request.user.pk,
         "role": request.user.role,
     }
-    task = background.verify_requirements.delay(**kwargs)
-    jobs.start(
+    job, created = jobs.launch(
         user=request.user,
         kind="verify_requirements",
         title=_("Сверка требований с сайтом вуза"),
-        task_id=task.id,
         link="/directory",
-        retry_task="suggestions.verify_requirements",
-        retry_payload=kwargs,
+        task=background.verify_requirements,
+        kwargs=kwargs,
+        target=Program.objects.filter(pk=payload.validated_data["program"]).first(),
     )
-    usage.track(request, "assistant.requirements.verify")
-    return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+    if created:
+        usage.track(request, "assistant.requirements.verify")
+    return _launched(job, created, request.user)
 
 
 @extend_schema(request=ParseActivitySerializer, responses={202: dict})
@@ -836,17 +848,18 @@ def parse_activity(request):
         "actor_id": request.user.pk,
         "role": request.user.role,
     }
-    task = background.parse_activity.delay(**kwargs)
-    jobs.start(
+    job, created = jobs.launch(
         user=request.user,
         kind="parse_activity",
         title=_("Разбор описания активности"),
-        task_id=task.id,
-        retry_task="suggestions.parse_activity",
-        retry_payload=kwargs,
+        task=background.parse_activity,
+        kwargs=kwargs,
+        target=Student.objects.filter(pk=payload.validated_data["student"]).first(),
+        same_args=True,
     )
-    usage.track(request, "assistant.activity.parse")
-    return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+    if created:
+        usage.track(request, "assistant.activity.parse")
+    return _launched(job, created, request.user)
 
 
 @extend_schema(request=ParseImageSerializer, responses={202: dict})
@@ -884,25 +897,31 @@ def parse_image(request):
         image_from_bytes(raw)
     except InvalidImage as error:
         return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
-    task = background.parse_image.delay(
-        payload=raw,
-        media_type=info.content_type,
-        kind=payload.validated_data["kind"],
-        student_id=payload.validated_data["student"],
-        actor_id=request.user.pk,
-        role=request.user.role,
-    )
     # повтора у распознавания нет: файл живёт один запрос, и хранить
-    # картинку ради кнопки «повторить» мы не станем — её загружают заново
-    jobs.start(
+    # картинку ради кнопки «повторить» мы не станем — её загружают заново.
+    # Двойной запуск не ловится: картинку в аргументах не сравниваем
+    task_id = uuid.uuid4().hex
+    job = jobs.start(
         user=request.user,
         kind="parse_image",
         title=_("Распознавание изображения"),
-        task_id=task.id,
+        task_id=task_id,
         link=f"/students/{payload.validated_data['student']}",
+        target=Student.objects.filter(pk=payload.validated_data["student"]).first(),
+    )
+    background.parse_image.apply_async(
+        kwargs={
+            "payload": raw,
+            "media_type": info.content_type,
+            "kind": payload.validated_data["kind"],
+            "student_id": payload.validated_data["student"],
+            "actor_id": request.user.pk,
+            "role": request.user.role,
+        },
+        task_id=task_id,
     )
     usage.track(request, "assistant.image.parse")
-    return Response({"task": task.id}, status=status.HTTP_202_ACCEPTED)
+    return _launched(job, True, request.user)
 
 
 @extend_schema(responses={200: dict})
