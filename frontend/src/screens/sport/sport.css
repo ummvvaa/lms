@@ -181,6 +181,38 @@ body .sport-slot--on[data-variant][data-size] {
   margin-top: calc(var(--space) * 3);
 }
 
+/* «Ученики секций»: секции ученика чипами-кнопками, по нажатию — действия с записью */
+.roster-entries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 2);
+  padding-block: calc(var(--space) * 2);
+}
+.roster-entry[data-variant][data-size] {
+  gap: calc(var(--space) * 2);
+  white-space: nowrap;
+}
+.roster-count {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) * 3);
+}
+.roster-history {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(var(--space) * 6);
+}
+.roster-history > section {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 2);
+}
+.roster-bulk {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space) * 3);
+}
+
 /* «Мои секции»: по паре карточек на запись, столбиком */
 .sport-mine {
   display: flex;
@@ -198,6 +230,13 @@ body .sport-slot--on[data-variant][data-size] {
   margin-top: calc(var(--space) * 4);
   padding-top: calc(var(--space) * 4);
   border-top: 1px solid var(--line);
+}
+/* строка гостя: имя и пояснения сверху, кнопка записи под ними — колонка узкая */
+.dir__rows > .dir__row.sport-guest {
+  grid-template-columns: minmax(0, 1fr);
+}
+.sport-guest > .dir__acts {
+  justify-content: flex-start;
 }
 /* почему гостя нельзя записать — тихой янтарной строкой под именем */
 .sport-why {
@@ -263,6 +302,14 @@ body .sport-slot--on[data-variant][data-size] {
   }
 }
 @media (max-width: 759px) {
+  .roster-history {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .roster-entry[data-variant][data-size] {
+    white-space: normal;
+    text-align: left;
+    height: auto;
+  }
   .sport-session {
     grid-template-columns: minmax(0, 1fr);
   }

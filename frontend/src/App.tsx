@@ -141,6 +141,7 @@ const MentorHomework = lazy(() => import('./screens/clubs/MentorWork').then((m) 
 const MentorSession = lazy(() => import('./screens/clubs/MentorWork').then((m) => ({ default: m.MentorSession })))
 const MentorNotes = lazy(() => import('./screens/clubs/MentorWork').then((m) => ({ default: m.MentorNotes })))
 const SectionAttendance = lazy(() => import('./screens/sport/SectionAttendance'))
+const SectionStudents = lazy(() => import('./screens/sport/SectionStudents'))
 const Tickets = lazy(() => import('./screens/sport/Tickets'))
 // отметка по QR открывается камерой без меню: свой кусок и своя граница загрузки
 const Scan = lazy(() => import('./screens/sport/Scan'))
@@ -420,6 +421,7 @@ function Routing() {
         <Route path="/club-session" element={<MentorSession />} />
         <Route path="/club-notes" element={<MentorNotes />} />
         <Route path="/section-attendance" element={<SectionAttendance />} />
+        <Route path="/section-students" element={<SectionStudents />} />
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/overview" element={<OverviewDashboard />} />
         <Route path="/deadlines" element={<Deadlines />} />

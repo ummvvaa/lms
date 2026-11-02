@@ -11,6 +11,11 @@ urlpatterns = [
     path("sport/students/", views.student_search, name="sport-student-search"),
     path("sport/enrollments/", views.enrollments, name="sport-enrollments"),
     path("sport/enrollments/<int:pk>/", views.enrollment, name="sport-enrollment"),
+    # «Ученики секций»: список с фильтрами, выгрузка, история ученика, массовые действия
+    path("sport/roster/", views.roster, name="sport-roster"),
+    path("sport/roster/export/", views.roster_export, name="sport-roster-export"),
+    path("sport/roster/bulk/", views.roster_bulk, name="sport-roster-bulk"),
+    path("sport/roster/<int:pk>/history/", views.roster_history, name="sport-roster-history"),
     # занятие и QR: директор спорта и администратор показывают код и отмечают вручную
     path("sport/sessions/today/", views.sessions_today, name="sport-sessions-today"),
     path("sport/sessions/<int:pk>/", views.session, name="sport-session"),

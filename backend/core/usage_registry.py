@@ -138,6 +138,7 @@ SCREENS = (
     Screen("/sections", gettext_noop("Секции"), (ROLE_ADMIN, "director_sport")),
     Screen("/session", gettext_noop("Занятие и QR"), (ROLE_ADMIN, "director_sport")),
     Screen("/section-attendance", gettext_noop("Посещаемость секций"), (ROLE_ADMIN, "director_sport")),
+    Screen("/section-students", gettext_noop("Ученики секций"), (ROLE_ADMIN, "director_sport")),
     Screen("/tickets", gettext_noop("Билеты"), (ROLE_ADMIN, "director_sport")),
     Screen("/s/:token", gettext_noop("Отметка на занятии"), (ROLE_STUDENT,)),
     # кружки (31.10.2026): у администратора — раздел кружков, у ученика — свои кружки

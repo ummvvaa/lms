@@ -190,7 +190,13 @@ class NeedsConfirm(Refused):
 
 
 def check(
-    *, student, slot: SectionSlot, by_director: bool = False, keep: SectionEnrollment | None = None, rows=None
+    *,
+    student,
+    slot: SectionSlot,
+    by_director: bool = False,
+    keep: SectionEnrollment | None = None,
+    rows=None,
+    planned: int = 0,
 ) -> tuple[list[str], list[str]]:
     """Можно ли записать ученика на час: отказы и предупреждения, без записи.
 
@@ -198,6 +204,7 @@ def check(
     пересекается с другой секцией ученика. Предел секций и лимит часа
     ученика останавливают, а директору — предупреждение. `keep` — запись,
     которую переводят в другую секцию: её место и час в расчёт не идут.
+    `planned` — сколько мест на этот час уже займёт массовое действие до него.
     Одним путём идут запись, перевод, запись гостя и массовые действия.
     """
     refusals: list[str] = []
@@ -233,7 +240,7 @@ def check(
             )
         else:
             refusals.append(_("Больше секций нельзя: по правилам школы не больше {limit}").format(limit=limit))
-    busy = taken(slot)
+    busy = taken(slot) + planned
     if busy >= slot.capacity:
         if by_director:
             warnings.append(

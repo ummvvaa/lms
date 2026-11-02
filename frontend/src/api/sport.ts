@@ -188,6 +188,110 @@ export const useStudentSearch = (query: string) =>
     placeholderData: keepPreviousData,
   })
 
+/* --- «Ученики секций» ---------------------------------------------------- */
+
+export interface RosterEnrollment extends EnrollmentBrief {
+  weekday: number | null
+  starts: string
+  percent: number | null
+  below: boolean
+  enrolled_at: string
+  source: 'lms' | 'bot' | 'director'
+}
+
+export interface RosterStudent extends SectionStudent {
+  group_id: number | null
+}
+
+export interface RosterRow {
+  student: RosterStudent
+  enrollments: RosterEnrollment[]
+  last_mark: { date: string; section: string } | null
+  guest_visits: number
+  /** худший процент из записей ученика — для сортировки */
+  worst: number | null
+}
+
+export interface RosterData {
+  rows: RosterRow[]
+  shown: number
+  total: number
+  month: string
+  threshold: number
+  max: number
+  groups: { id: number; code: string }[]
+  hours: string[]
+  weekdays: number[]
+}
+
+/** Фильтры списка — строкой запроса: одна и та же для списка и для Excel. */
+export type RosterFilters = Record<string, string>
+
+export const rosterQuery = (filters: RosterFilters) => {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(filters)) if (value) query.set(key, value)
+  return query.toString()
+}
+
+export const useRoster = (filters: RosterFilters) =>
+  useQuery({
+    queryKey: ['sport-roster', filters],
+    queryFn: () => get<RosterData>(`/sport/roster/?${rosterQuery(filters)}`),
+    placeholderData: keepPreviousData,
+  })
+
+export interface RosterHistory {
+  student: RosterStudent
+  enrollments: {
+    id: number
+    section_title: string
+    slot_title: string
+    enrolled_at: string
+    source: string
+    source_title: string
+    created_by: string
+    slot_set_by: string
+    ended_at: string | null
+    ended_by: string
+  }[]
+  events: { id: number; at: string; text: string; author: string }[]
+  marks: { date: string; section: string; slot: string; method: string; guest: boolean }[]
+  guests: { date: string; section: string; slot: string }[]
+}
+
+export const useRosterHistory = (id: number | null) =>
+  useQuery({
+    queryKey: ['sport-roster-history', id],
+    queryFn: () => get<RosterHistory>(`/sport/roster/${id}/history/`),
+    enabled: id !== null,
+  })
+
+export type BulkAction = 'assign_hour' | 'move_hour' | 'remove'
+
+export interface BulkResult {
+  action: BulkAction
+  applied: boolean
+  ok: number
+  failed: number
+  rows: { student: RosterStudent; ok: boolean; reason: string; warnings: string[] }[]
+}
+
+export function useRosterBulk() {
+  const refresh = useSectionsRefresh()
+  return useMutation({
+    mutationFn: (body: {
+      action: BulkAction
+      students: number[]
+      slot?: number
+      section?: number
+      apply: boolean
+    }) => post<BulkResult>('/sport/roster/bulk/', body),
+    onSuccess: (result) => {
+      if (result.applied) refresh()
+    },
+  })
+}
+
 /* --- Занятие и QR ------------------------------------------------------- */
 
 export type SessionState = 'soon' | 'live' | 'past'

@@ -40,6 +40,10 @@ DIRECTOR_ROUTES = {
     "sport-ticket": ("get", None),
     "sport-ticket-export": ("get", None),
     "sport-ticket-missed": ("post", None),
+    "sport-roster": ("get", None),
+    "sport-roster-export": ("get", None),
+    "sport-roster-history": ("get", None),
+    "sport-roster-bulk": ("post", "bulk"),
 }
 
 #: ручки ученика: администратору закрыты с причиной «кабинет ученика»
@@ -97,6 +101,7 @@ def _url(name: str, world) -> str:
         "sport-ticket": world["drop"].pk,
         "sport-ticket-export": world["drop"].pk,
         "sport-ticket-missed": world["claim"].pk,
+        "sport-roster-history": world["senior"].pk,
     }.get(name)
     return reverse(name, kwargs={"pk": pk}) if pk else reverse(name)
 
@@ -106,6 +111,8 @@ def _body(kind, world):
         return {"student": world["junior"].pk, "slot": slot_of("Теннис", 3, 17, 8).pk}
     if kind == "move":
         return {"slot": slot_of("Теннис", 5, 13, 10).pk}
+    if kind == "bulk":
+        return {"action": "move_hour", "students": [world["senior"].pk], "slot": slot_of("Теннис", 5, 13, 10).pk}
     if kind == "mark":
         return {"student": world["senior"].pk, "date": "2026-10-24"}
     return kind or {}

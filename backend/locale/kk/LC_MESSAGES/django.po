@@ -18992,3 +18992,31 @@ msgstr "секция"
 #: sport/views
 msgid "гость"
 msgstr "қонақ"
+
+#: sport/roster
+msgid "Выберите секцию"
+msgstr "Секцияны таңдаңыз"
+
+#: sport/roster
+msgid "Не записан в секцию «{title}»"
+msgstr "«{title}» секциясына жазылмаған"
+
+#: sport/views
+msgid "Последняя отметка"
+msgstr "Соңғы белгі"
+
+#: sport/roster
+msgid "Уже на этом часе"
+msgstr "Осы сағатта тұр"
+
+#: sport/views
+msgid "Ученики секций"
+msgstr "Секция оқушылары"
+
+#: sport/views
+msgid "Ученики секций.xlsx"
+msgstr "Секция оқушылары.xlsx"
+
+#: sport/roster
+msgid "Час уже назначен: {slot}"
+msgstr "Сағат тағайындалған: {slot}"

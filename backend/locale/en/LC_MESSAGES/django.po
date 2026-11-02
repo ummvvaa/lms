@@ -19073,3 +19073,31 @@ msgstr "section|sections"
 #: sport/views
 msgid "гость"
 msgstr "guest"
+
+#: sport/roster
+msgid "Выберите секцию"
+msgstr "Choose a section"
+
+#: sport/roster
+msgid "Не записан в секцию «{title}»"
+msgstr "Not enrolled in “{title}”"
+
+#: sport/views
+msgid "Последняя отметка"
+msgstr "Last mark"
+
+#: sport/roster
+msgid "Уже на этом часе"
+msgstr "Already at this hour"
+
+#: sport/views
+msgid "Ученики секций"
+msgstr "Section students"
+
+#: sport/views
+msgid "Ученики секций.xlsx"
+msgstr "Section students.xlsx"
+
+#: sport/roster
+msgid "Час уже назначен: {slot}"
+msgstr "Hour already set: {slot}"

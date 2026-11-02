@@ -346,7 +346,7 @@ function Guests({ slot, guests }: { slot: SessionRow; guests: SessionGuest[] }) 
       </p>
       <div className="dir__rows">
         {guests.map((guest) => (
-          <div key={guest.id} className="dir__row">
+          <div key={guest.id} className="dir__row sport-guest">
             <span className="dir__what">
               <b className="dir__name">{guest.short_name}</b>
               <span className="t-note">
@@ -354,14 +354,15 @@ function Guests({ slot, guests }: { slot: SessionRow; guests: SessionGuest[] }) 
                   t('{n} параллель', { n: guest.parallel }),
                   guest.group,
                   guest.at ? t('по QR · {time}', { time: formatTime(guest.at) }) : '',
-                  guest.sections.length ? t('секции: {list}', { list: guest.sections.join(', ') }) : '',
                 ]
                   .filter(Boolean)
                   .join(' · ')}
               </span>
+              {guest.sections.length > 0 && (
+                <span className="t-note">{t('секции: {list}', { list: guest.sections.join(', ') })}</span>
+              )}
               {guest.refusal && <span className="t-note sport-why">{guest.refusal}</span>}
             </span>
-            <span />
             <span className="dir__acts">
               <Button
                 variant="outline"

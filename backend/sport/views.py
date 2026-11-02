@@ -1263,3 +1263,115 @@ def my_ticket_accept(request, pk: int):
     from sport import tickets
 
     return _my_drop_action(request, pk, lambda drop, me: tickets.accept(_own_claim(drop, me)))
+
+
+# --- «Ученики секций»: рабочий список директора спорта и администратора ------------------------
+
+
+def _roster_students(request):
+    return visible_students(request.user).filter(is_active=True)
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def roster(request):
+    """Ученики хотя бы с одной записью: фильтры вместе, «показано N из M»; убранные отовсюду — не здесь."""
+    from sport import roster as roster_service
+
+    if not _writer(request, ENROLLMENT):
+        return _no_rights()
+    filters = roster_service.Filters.of(request.query_params)
+    students = _roster_students(request)
+    rows, total = roster_service.roster(filters, students)
+    first, _last = services.month_bounds(filters.month)
+    return Response(
+        {
+            "rows": rows,
+            "shown": len(rows),
+            "total": total,
+            "month": f"{first:%Y-%m}",
+            "threshold": int(services.school_rules.value(services.school_rules.SPORT_ATTENDANCE_BELOW)),
+            "max": services.sections_max(),
+            **roster_service.facets(students),
+        }
+    )
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def roster_export(request):
+    """Excel того, что на экране с текущими фильтрами: строка на запись."""
+    from sport import roster as roster_service
+
+    if not _writer(request, ENROLLMENT):
+        return _no_rights()
+    filters = roster_service.Filters.of(request.query_params)
+    rows, _total = roster_service.roster(filters, _roster_students(request))
+    lines = [(row, item) for row in rows for item in row["enrollments"]]
+
+    def last_mark(line):
+        mark = line[0]["last_mark"]
+        return dt.date.fromisoformat(mark["date"]) if mark else ""
+
+    columns = [
+        Column(_("Ученик"), lambda line: line[0]["student"]["full_name"], 30),
+        Column(_("Группа"), lambda line: line[0]["student"]["group"], 10),
+        Column(_("Параллель"), lambda line: line[0]["student"]["parallel"], 8),
+        Column(_("Секция"), lambda line: line[1]["section_title"], 16),
+        Column(_("Час"), lambda line: line[1]["slot_title"] or _("час не выбран"), 18),
+        Column(_("Посещение, %"), lambda line: line[1]["percent"] if line[1]["percent"] is not None else "", 12),
+        Column(_("Последняя отметка"), last_mark, 14),
+    ]
+    return workbook_of_sheets(
+        filename=_("Ученики секций.xlsx"), sheets=[(_("Ученики секций"), columns, lines)], request=request
+    )
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def roster_history(request, pk: int):
+    """Панель истории ученика: когда и кем записан, переводы, выходы, последние отметки, гостевые визиты."""
+    from sport import roster as roster_service
+
+    if not _writer(request, ENROLLMENT):
+        return _no_rights()
+    student = _visible_student(request, pk)
+    if student is None:
+        return _not_found()
+    return Response(roster_service.history(student))
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def roster_bulk(request):
+    """Массовое действие по отмеченным: без `apply` — только итог, с `apply` — выполнить.
+
+    `action`: `assign_hour` (одна секция у всех, час из `slot`), `move_hour` (в час `slot`),
+    `remove` (из секции `section`). Отказ у одного ученика не отменяет остальных.
+    """
+    from sport import roster as roster_service
+
+    if not _writer(request, ENROLLMENT):
+        return _no_rights()
+    ids = request.data.get("students") or []
+    if not isinstance(ids, list) or not ids:
+        return _bad(_("Отметьте учеников"))
+    students = roster_service.students_of(ids, _roster_students(request))
+    slot = SectionSlot.objects.select_related("section").filter(pk=_int(request.data.get("slot"))).first()
+    section = Section.objects.filter(pk=_int(request.data.get("section"))).first()
+    try:
+        result = roster_service.bulk(
+            action=str(request.data.get("action") or ""),
+            students=students,
+            section=section,
+            slot=slot,
+            actor=request.user,
+            apply=str(request.data.get("apply", "")).lower() in ("1", "true", "yes"),
+        )
+    except services.Refused as error:
+        return _bad(str(error))
+    return Response(result)

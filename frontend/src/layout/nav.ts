@@ -54,11 +54,13 @@ export interface NavItem {
 }
 
 /**
- * Спортивные секции (27.10.2026): секции и часы, занятие с QR, посещаемость
- * и билеты. У директора спорта и у администратора — один и тот же набор.
+ * Спортивные секции (27.10.2026): секции и часы, ученики секций, занятие
+ * с QR, посещаемость и билеты. У директора спорта и у администратора — один и тот же набор.
  */
 const SPORT_SECTIONS: NavItem[] = [
   { path: '/sections', label: tk('Секции'), icon: 'court', group: 'sections' },
+  // кто в каких секциях: фильтры, переводы, массовые действия (02.11.2026)
+  { path: '/section-students', label: tk('Ученики секций'), icon: 'roster', group: 'sections', short: tk('Ученики') },
   { path: '/session', label: tk('Занятие и QR'), icon: 'qr', group: 'sections', short: tk('QR') },
   { path: '/section-attendance', label: tk('Посещаемость секций'), icon: 'checkin', group: 'sections' },
   { path: '/tickets', label: tk('Билеты'), icon: 'ticket', group: 'sections' },
@@ -694,6 +696,7 @@ export const STAFF_ONLY = [
   '/sport-events',
   // спортивные секции и билеты (27.10.2026)
   '/sections',
+  '/section-students',
   '/session',
   '/section-attendance',
   '/tickets',
@@ -741,6 +744,7 @@ export const SCREEN_ROLES: Record<string, Role[]> = {
   '/groups': ['admin'],
   // секции, занятие, посещаемость секций и билеты — директор спорта и администратор
   '/sections': ['director_sport', 'admin'],
+  '/section-students': ['director_sport', 'admin'],
   '/session': ['director_sport', 'admin'],
   '/section-attendance': ['director_sport', 'admin'],
   '/tickets': ['director_sport', 'admin'],
