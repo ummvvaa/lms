@@ -352,7 +352,12 @@ LLM = {
     "API_KEY": env("LLM_API_KEY", ""),
     "BASE_URL": env("LLM_BASE_URL", "https://api.openai.com"),
     "MODEL": env("LLM_MODEL", "gpt-6-sol"),
-    "TIMEOUT": int(env("LLM_TIMEOUT", "60")),
+    # фоновые операции: модель с рассуждением отвечает минутами. Запуск
+    # без признаков жизни дольше TIMEOUT × (RETRIES + 1) + 60 закрывается
+    "TIMEOUT": int(env("LLM_TIMEOUT", "600")),
+    # вызовы, которых человек ждёт на странице (помощник, сводка дня, версия
+    # разбора для ученика): короткий таймаут без повторов, дальше — правила
+    "SYNC_TIMEOUT": int(env("LLM_SYNC_TIMEOUT", "30")),
     # сеть моргает, провайдер отвечает 429 и 5xx — один такой ответ
     # не повод показывать директору ошибку
     "RETRIES": int(env("LLM_RETRIES", "2")),

@@ -18936,3 +18936,7 @@ msgstr "Фондық операцияны тоқтату"
 #: core/jobs
 msgid "нет ответа"
 msgstr "жауап жоқ"
+
+#: suggestions/providers
+msgid "модель не ответила за {seconds} с"
+msgstr "модель {seconds} с ішінде жауап бермеді"

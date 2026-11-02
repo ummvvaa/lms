@@ -172,3 +172,65 @@ def test_cut_off_by_max_tokens_is_logged(sent, caplog):
 
     assert answer.parsed is None
     assert any("max_tokens" in record.getMessage() and "25900" in record.getMessage() for record in caplog.records)
+
+
+@override_settings(LLM={**LIVE, "TIMEOUT": 600, "SYNC_TIMEOUT": 30, "RETRIES": 2})
+def test_page_calls_wait_briefly_and_say_so_on_timeout(monkeypatch):
+    """Человек ждёт на странице: короткий таймаут, без повторов, причина словами."""
+    import requests
+
+    seen: list[int] = []
+
+    def slow(url, json=None, headers=None, timeout=None):
+        seen.append(timeout)
+        raise requests.exceptions.ReadTimeout("Read timed out. (read timeout=30)")
+
+    monkeypatch.setattr(requests, "post", slow)
+    with pytest.raises(LLMUnavailable) as error:
+        AnthropicProvider().complete(system="s", user="u", timeout=30, retries=0)
+
+    assert seen == [30], "один заход с коротким таймаутом"
+    assert str(error.value) == "модель не ответила за 30 с"
+
+
+@override_settings(LLM={**LIVE, "TIMEOUT": 600, "RETRIES": 0})
+def test_background_calls_wait_the_long_timeout(sent):
+    box = sent(message(THINKING, {"type": "text", "text": "Ответ"}))
+    import requests
+
+    seen: list[int] = []
+    original = requests.post
+
+    def spy(url, json=None, headers=None, timeout=None):
+        seen.append(timeout)
+        return original(url, json=json, headers=headers, timeout=timeout)
+
+    requests.post = spy
+    try:
+        AnthropicProvider().complete(system="s", user="u")
+    finally:
+        requests.post = original
+    assert seen == [600] and box["json"]["model"] == "claude-opus-5-5"
+
+
+@pytest.mark.django_db
+@override_settings(LLM={**LIVE, "SYNC_TIMEOUT": 30, "RETRIES": 2})
+def test_complete_in_sync_mode_passes_the_short_limits(monkeypatch):
+    """`llm.complete(sync=True)` — короткий таймаут и ни одного повтора."""
+    from suggestions.providers import Completion, Usage
+
+    got: dict = {}
+
+    class Spy:
+        name = "anthropic"
+
+        def is_configured(self):
+            return True
+
+        def complete(self, **kwargs):
+            got.update(kwargs)
+            return Completion(content="ок", model="m", usage=Usage(1, 1), raw={})
+
+    monkeypatch.setattr("suggestions.llm.get_provider", lambda: Spy())
+    complete(system="s", user="u", purpose="test", sync=True)
+    assert got["timeout"] == 30 and got["retries"] == 0

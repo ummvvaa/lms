@@ -252,6 +252,8 @@ def _model_digest(*, headline: str, lines: list[str], user, domain) -> list[str]
             actor=user,
             role=getattr(user, "role", ""),
             max_tokens=500,
+            # сводка открывается при входе: не дождались — строки правил
+            sync=True,
         )
     except LLMUnavailable:
         return None

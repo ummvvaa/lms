@@ -160,6 +160,7 @@ def complete(
     max_tokens: int = 2000,
     search: dict | None = None,
     language: str | None = None,
+    sync: bool = False,
 ) -> LLMResponse:
     """Один вызов модели.
 
@@ -168,6 +169,10 @@ def complete(
 
     `search` — описание поиска по белому списку (`suggestions.websearch`).
     Без него модель в интернет не ходит вовсе.
+
+    `sync` — вызов из веб-запроса, человек ждёт на странице: короткий
+    таймаут `LLM_SYNC_TIMEOUT` и без повторов. Фоновые операции живут
+    с `LLM_TIMEOUT`: модель с рассуждением отвечает минутами.
 
     `language` — язык ответа человеку (ru, kk, en): к системному промпту
     добавляется правило языка. Не задан — ответ не текст для человека
@@ -190,8 +195,9 @@ def complete(
     raise_if_cancelled()
     started = time.monotonic()
     try:
+        limits = {"timeout": int(settings.LLM.get("SYNC_TIMEOUT", 30)), "retries": 0} if sync else {}
         answer = provider.complete(
-            system=system, user=user, schema=schema, images=images, max_tokens=max_tokens, search=search
+            system=system, user=user, schema=schema, images=images, max_tokens=max_tokens, search=search, **limits
         )
     except LLMUnavailable as error:
         record(

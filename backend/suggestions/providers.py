@@ -83,7 +83,10 @@ class Provider:
         images: list[Attachment] | None = None,
         max_tokens: int = 2000,
         search: dict | None = None,
+        timeout: int | None = None,
+        retries: int | None = None,
     ) -> Completion:  # pragma: no cover — переопределяется
+        """`timeout` и `retries` не заданы — из настроек (`LLM_TIMEOUT`, `LLM_RETRIES`)."""
         raise NotImplementedError
 
 
@@ -124,6 +127,8 @@ class AnthropicProvider(Provider):
         images: list[Attachment] | None = None,
         max_tokens: int = 2000,
         search: dict | None = None,
+        timeout: int | None = None,
+        retries: int | None = None,
     ) -> Completion:
         if not self.is_configured():
             raise LLMUnavailable(_("Ключ модели не задан"))
@@ -177,13 +182,16 @@ class AnthropicProvider(Provider):
         # условие договора и настройка учётной записи, а не заголовок
         # запроса; флаг остаётся как признак того, что оно оговорено
 
+        seconds = int(timeout or settings.LLM["TIMEOUT"])
         body = _with_retries(
             lambda: requests.post(
                 f"{settings.LLM['BASE_URL']}/v1/messages",
                 json=payload,
                 headers=headers,
-                timeout=settings.LLM["TIMEOUT"],
-            )
+                timeout=seconds,
+            ),
+            retries=retries,
+            timeout=seconds,
         )
 
         parsed, text = None, ""
@@ -292,6 +300,8 @@ class OpenAIProvider(Provider):
         images: list[Attachment] | None = None,
         max_tokens: int = 2000,
         search: dict | None = None,
+        timeout: int | None = None,
+        retries: int | None = None,
     ) -> Completion:
         if not self.is_configured():
             raise LLMUnavailable(_("Ключ модели не задан"))
@@ -323,13 +333,16 @@ class OpenAIProvider(Provider):
             "Authorization": f"Bearer {settings.LLM['API_KEY']}",
             "Content-Type": "application/json",
         }
+        seconds = int(timeout or settings.LLM["TIMEOUT"])
         body = _with_retries(
             lambda: requests.post(
                 f"{settings.LLM['BASE_URL']}/v1/responses",
                 json=payload,
                 headers=headers,
-                timeout=settings.LLM["TIMEOUT"],
-            )
+                timeout=seconds,
+            ),
+            retries=retries,
+            timeout=seconds,
         )
 
         text, searches = "", 0
@@ -424,9 +437,11 @@ NO_RETRY_ERROR_CODES = {
 MAX_RETRY_AFTER = 30.0
 
 
-def _with_retries(call) -> dict:
+def _with_retries(call, *, retries: int | None = None, timeout: int | None = None) -> dict:
     """Повторить вызов при временном сбое. Постоянную ошибку не повторяем."""
-    attempts = int(settings.LLM.get("RETRIES", 2)) + 1
+    import requests
+
+    attempts = int(settings.LLM.get("RETRIES", 2) if retries is None else retries) + 1
     delay = float(settings.LLM.get("RETRY_DELAY", 1.0))
     last = ""
 
@@ -434,6 +449,10 @@ def _with_retries(call) -> dict:
         wait_hint: float | None = None
         try:
             response = call()
+        except requests.exceptions.Timeout as error:
+            # человеку — сколько ждали, а не текст исключения библиотеки
+            last = _("модель не ответила за {seconds} с").format(seconds=timeout or settings.LLM["TIMEOUT"])
+            log.warning("Модель не ответила вовремя (%s из %s): %s", attempt + 1, attempts, error)
         except Exception as error:  # сеть моргнула
             last = str(error)
             log.warning("Модель недоступна (%s из %s): %s", attempt + 1, attempts, error)

@@ -19017,3 +19017,7 @@ msgstr "Cancelling a background operation"
 #: core/jobs
 msgid "нет ответа"
 msgstr "no answer"
+
+#: suggestions/providers
+msgid "модель не ответила за {seconds} с"
+msgstr "the model did not answer within {seconds} s"

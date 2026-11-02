@@ -316,6 +316,8 @@ def _voice(payload: dict, *, code: str, title: str, actor, role: str, students=N
             actor=actor,
             role=role,
             max_tokens=500,
+            # человек ждёт ответа в чате: без модели ответят правила
+            sync=True,
         )
     except LLMUnavailable:
         return {**payload, "offline": True, "note": _simple_mode_note()}
@@ -872,6 +874,7 @@ def _ask_model(system: str, question: str, *, actor, role: str) -> dict:
             actor=actor,
             role=role,
             max_tokens=700,
+            sync=True,
         )
     except LLMUnavailable as error:
         # лимит расходов и недоступный провайдер — разные вещи, и человеку
