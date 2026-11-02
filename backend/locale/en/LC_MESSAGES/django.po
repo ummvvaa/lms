@@ -18981,3 +18981,7 @@ msgstr "The file is larger than 20 MB"
 #: clubs
 msgid "Кружки ученика видят куратор и администратор"
 msgstr "A student's clubs are visible to the curator and the administrator"
+
+#: suggestions
+msgid "модель не вернула структурированный ответ"
+msgstr "the model did not return a structured answer"

@@ -213,6 +213,10 @@ def complete(
     # целиком ушедший на рассуждение, отказ или обрыв. Деньги за него
     # записаны, а вызывающий код получает причину, а не пустую строку
     empty = "" if (answer.content or "").strip() or answer.parsed is not None else empty_reason(answer.raw)
+    if schema and answer.parsed is None and not empty:
+        # просили структуру, а пришла проза: вызывающий код получил бы
+        # пустой словарь и молча ответил бы «ничего не найдено»
+        empty = _("модель не вернула структурированный ответ")
 
     record(
         actor=actor,

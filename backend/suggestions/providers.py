@@ -94,6 +94,20 @@ class AnthropicProvider(Provider):
     Договориться об этом можно только с провайдером — на уровне учётной
     записи (zero data retention); заголовка, который включал бы это
     из запроса, у него нет.
+
+    Структурированный ответ — инструмент `result` при `tool_choice: auto`
+    и требовании в системном тексте. Принудительный выбор (`tool`, `any`)
+    новые модели отвергают с 400. Строгий вывод по схеме
+    (`output_config.format`) не годится: он требует
+    `additionalProperties: false` у каждого объекта, а схемы операций
+    написаны открытыми, и он несовместим с цитатами, которые приносит поиск.
+    Модель может ответить текстом вместо вызова — тогда текст разбирается
+    как JSON (`_json_from_text`).
+
+    Рассуждение у новых моделей включено всегда и тратит тот же
+    `max_tokens`, что и ответ: к пределу операции добавляется запас
+    `LLM_REASONING_RESERVE`. Блоки `thinking` и `redacted_thinking`
+    текстом ответа не считаются.
     """
 
     name = "anthropic"
@@ -126,9 +140,14 @@ class AnthropicProvider(Provider):
             )
         content.append({"type": "text", "text": user})
 
+        if schema:
+            # выбор инструмента не навязать: требование — словами
+            system = f"{system}\n\n{RESULT_RULE_AFTER_SEARCH if search else RESULT_RULE}"
+
+        reserve = int(settings.LLM.get("REASONING_RESERVE", 0) or 0)
         payload: dict[str, Any] = {
             "model": settings.LLM["MODEL"],
-            "max_tokens": max_tokens,
+            "max_tokens": max_tokens + reserve,
             "system": system,
             "messages": [{"role": "user", "content": content}],
         }
@@ -142,11 +161,9 @@ class AnthropicProvider(Provider):
             tools.append({"name": "result", "description": description, "input_schema": schema})
         if tools:
             payload["tools"] = tools
-        if schema and not search:
-            payload["tool_choice"] = {"type": "tool", "name": "result"}
-        elif schema:
-            # с поиском ответ нельзя требовать сразу: модели надо сначала
-            # сходить на сайт, а уже потом заполнить структуру
+        if schema:
+            # `tool` и `any` новые модели отвергают с 400; с поиском `auto`
+            # нужен и так: сначала сайт, потом структура
             payload["tool_choice"] = {"type": "auto"}
 
         headers = {
@@ -170,11 +187,27 @@ class AnthropicProvider(Provider):
         )
 
         parsed, text = None, ""
-        for block in body.get("content", []):
+        for block in body.get("content") or []:
+            if not isinstance(block, dict):
+                continue
+            # `thinking` и `redacted_thinking` — рассуждение, не ответ
             if block.get("type") == "tool_use" and block.get("name") == "result":
                 parsed = block.get("input")
             elif block.get("type") == "text":
                 text += block.get("text", "")
+
+        if body.get("stop_reason") == "max_tokens":
+            usage = body.get("usage") or {}
+            log.warning(
+                "Ответ модели оборван по max_tokens (%s, израсходовано %s): поднимите LLM_REASONING_RESERVE",
+                payload["max_tokens"],
+                usage.get("output_tokens", "?"),
+            )
+        if schema and parsed is None and text.strip():
+            # модель ответила текстом, а не вызовом `result`
+            parsed = _json_from_text(text)
+            if parsed is None:
+                log.warning("Структурированный ответ не разобран: %s", text[:300])
 
         usage = body.get("usage") or {}
         server_tools = usage.get("server_tool_use") or {}
@@ -190,6 +223,35 @@ class AnthropicProvider(Provider):
             ),
             raw=body,
         )
+
+
+#: Требование ответить инструментом: навязать его через `tool_choice` нельзя
+RESULT_RULE = (  # i18n-skip: правило читает модель
+    "Ответь одним вызовом инструмента `result` с полями по его схеме. Текстом ответ не пиши."
+)
+RESULT_RULE_AFTER_SEARCH = (  # i18n-skip: правило читает модель
+    "Когда поиск закончен, ответь одним вызовом инструмента `result` с полями по его схеме. " "Итог текстом не пиши."
+)
+
+
+def _json_from_text(text: str) -> dict | None:
+    """Объект JSON из текста ответа: целиком, в ограде ``` или внутри прозы.
+
+    Схемы операций — объекты, поэтому всё, что не объект, — не ответ.
+    """
+    candidate = text.strip()
+    if candidate.startswith("```"):
+        candidate = candidate.strip("`").strip()
+        if candidate[:4].lower() == "json":
+            candidate = candidate[4:]
+    for piece in (candidate, candidate[candidate.find("{") : candidate.rfind("}") + 1]):
+        try:
+            value = json.loads(piece)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            return value
+    return None
 
 
 #: Сколько доменов принимает фильтр поиска OpenAI (`filters.allowed_domains`).

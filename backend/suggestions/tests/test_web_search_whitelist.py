@@ -382,13 +382,14 @@ def test_numbers_without_a_source_are_not_accepted(catalog, sent, asem):
 
 @pytest.mark.django_db
 @override_settings(LLM=LIVE)
-def test_structured_answer_is_still_demanded_without_search(sent):
-    """Без поиска ответ требуем сразу — лишнего хода модели не нужно."""
+def test_structured_answer_is_demanded_in_words_without_search(sent):
+    """Без поиска ответ требуем словами: принудительный выбор инструмента модель отвергает."""
     provider = AnthropicProvider()
     box = sent(answer(parsed={"name": "Вуз"}))
     provider.complete(system="s", user="u", schema={"type": "object"})
 
-    assert box["json"]["tool_choice"] == {"type": "tool", "name": "result"}
+    assert box["json"]["tool_choice"] == {"type": "auto"}
+    assert "`result`" in box["json"]["system"]
     assert box["json"]["messages"][0]["content"][-1]["text"] == "u"
 
 
