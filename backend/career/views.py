@@ -486,17 +486,34 @@ def analyses_view(request):
         "student", "student__group", "created_by", "edited_by"
     )
     run = jobs.latest_for(kind=JOB_KIND, target=group)
+    versions = _version_runs(list(rows), request.user)
     return Response(
         {
             "manage": rights.manages(request.user),
             "student_sees": STUDENT_SEES_ANALYSIS,
             "group": {"id": group.pk, "code": group.code, "parallel": group.parallel},
             "tests": [{"id": r["test_id"], "title": r["test__title"], "done": r["n"]} for r in done],
-            "analyses": [payloads.analysis_dict(a) for a in rows],
+            "analyses": [{**payloads.analysis_dict(a), "version_run": versions.get(a.pk)} for a in rows],
             # последний запуск по группе: «идёт с 11:42», отмена, причина сбоя
             "run": jobs.payload(run, request.user) if run else None,
         }
     )
+
+
+def _version_runs(rows: list[CareerAnalysis], viewer) -> dict[int, dict]:
+    """Последний запуск версии для ученика у каждого разбора — одним запросом."""
+    from career.tasks import VERSION_KIND
+    from core.models import BackgroundJob
+
+    if not rows:
+        return {}
+    out: dict[int, dict] = {}
+    found = BackgroundJob.objects.filter(
+        kind=VERSION_KIND, target_model="career.CareerAnalysis", target_id__in=[row.pk for row in rows]
+    ).order_by("created_at")
+    for job in found:
+        out[job.target_id] = jobs.payload(job, viewer)
+    return out
 
 
 def _start_analyses(request) -> Response:
@@ -588,23 +605,23 @@ def analysis_detail(request, pk: int):
     if row is None:
         return _not_found()
     if request.method == "GET":
-        return Response(payloads.analysis_dict(row))
+        return Response({**payloads.analysis_dict(row), "version_run": _version_runs([row], request.user).get(row.pk)})
     refused = _manager(request)
     if refused:
         return refused
     body = request.data if isinstance(request.data, dict) else {}
     edited = False
+    wants_version = False
     if "visible_to_student" in body:
         if row.status != AnalysisStatus.DONE and bool(body["visible_to_student"]):
             return _bad(_("Показать ученику можно только готовый разбор"))
-        # первый показ — версия для ученика пишется моделью; без неё показывать нечего (Г1)
-        if bool(body["visible_to_student"]) and not row.summary_student:
-            try:
-                analyses.write_student_version(row, actor=request.user)
-            except analyses.StudentVersionUnavailable as error:
-                return Response({"detail": str(error)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        row.visible_to_student = bool(body["visible_to_student"])
-        row.save(update_fields=["visible_to_student"])
+        # первый показ — версия для ученика пишется моделью; без неё показывать нечего (Г1).
+        # Переписывание идёт минутами — в фоне; разбор покажется ученику, когда версия готова
+        if bool(body["visible_to_student"]) and not row.summary_student and "summary_student" not in body:
+            wants_version = True
+        else:
+            row.visible_to_student = bool(body["visible_to_student"])
+            row.save(update_fields=["visible_to_student"])
     if "summary" in body:
         row.summary = str(body["summary"] or "").strip()
         edited = True
@@ -635,6 +652,25 @@ def analysis_detail(request, pk: int):
         row.edited_at = timezone.now()
         row.edited_by = request.user
         row.save(update_fields=["summary", "summary_student", "edited_at", "edited_by"])
+    if wants_version:
+        # после правок: модель переписывает уже исправленный текст учителя
+        from career.tasks import VERSION_KIND, student_version
+
+        job, _created = jobs.launch(
+            user=request.user,
+            kind=VERSION_KIND,
+            title=_("Версия разбора для ученика: {name}").format(name=student_brief(row.student)["short"]),
+            task=student_version,
+            kwargs={"analysis_id": row.pk, "actor_id": request.user.pk},
+            target=row,
+            link="/career-tests?tab=analyses",
+        )
+        job.refresh_from_db()
+        row.refresh_from_db()
+        return Response(
+            {**payloads.analysis_dict(row), "version_run": jobs.payload(job, request.user)},
+            status=status.HTTP_202_ACCEPTED,
+        )
     return Response(payloads.analysis_dict(row))
 
 

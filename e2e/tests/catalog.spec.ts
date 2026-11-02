@@ -173,7 +173,18 @@ test.describe("подбор словами", () => {
         )!.value,
       },
     });
-    const payload = await response.json();
+    expect([200, 202]).toContain(response.status());
+    // подбор идёт в фоне: результат — у запуска, читаем, пока не готов
+    let payload = (await response.json()).result;
+    await expect
+      .poll(
+        async () => {
+          payload = (await (await page.request.get("/api/catalog/pick/")).json()).result;
+          return payload !== null;
+        },
+        { timeout: 60_000, intervals: [1_000] },
+      )
+      .toBe(true);
 
     expect(payload.picks.length).toBeGreaterThan(0);
     for (const pick of payload.picks) {
@@ -195,10 +206,12 @@ test.describe("подбор словами", () => {
       page.waitForResponse((r) => r.url().includes("/api/catalog/pick/")),
       page.getByRole("button", { name: "Подобрать", exact: true }).click(),
     ]);
-    expect(response.status()).toBe(200);
+    expect([200, 202]).toContain(response.status());
 
+    // результат приходит опросом запуска, раз в 5 секунд
     await expect(page.locator(".catalog__note")).toContainText(
       "нет программ по запросу",
+      { timeout: 30_000 },
     );
     await expect(page.locator(".catalog__note")).toContainText("Япония");
   });

@@ -52,6 +52,38 @@ def analyze(self, analysis_ids: list[int] | None = None, **kwargs) -> dict:
     return {"done": done, "failed": failed}
 
 
+VERSION_KIND = "career_student_version"
+
+
+@shared_task(name="career.student_version", bind=True)
+def student_version(self, analysis_id: int = 0, actor_id: int = 0, **kwargs) -> dict:
+    """Версия разбора для ученика в фоне: переписывание целого разбора идёт минутами.
+
+    Получилась — разбор сразу показан ученику: за этим кнопку и нажимали.
+    Не получилась — причина у запуска, разбор ученику не показан.
+    """
+    from accounts.models import User
+    from career.analysis import StudentVersionUnavailable, write_student_version
+    from career.models import CareerAnalysis
+    from core import jobs
+    from core.i18n import language_of
+
+    task_id = getattr(getattr(self, "request", None), "id", "") or ""
+    row = CareerAnalysis.objects.filter(pk=analysis_id or kwargs.get("analysis_id")).first()
+    actor = User.objects.filter(pk=actor_id or kwargs.get("actor_id")).first()
+    if row is None:
+        return {"ok": False}
+    with translation.override(language_of(actor) if actor else row.language):
+        try:
+            write_student_version(row, actor=actor)
+        except StudentVersionUnavailable as error:
+            jobs.fail(task_id, str(error))
+            return {"ok": False}
+    row.visible_to_student = True
+    row.save(update_fields=["visible_to_student"])
+    return {"ok": True}
+
+
 def close_rows(job: BackgroundJob) -> None:
     """Запуск отменён или завис: его неразобранные строки закрываются так же."""
     from career.models import AnalysisStatus, CareerAnalysis

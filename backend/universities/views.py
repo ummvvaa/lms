@@ -15,7 +15,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core import usage
+from core import jobs, usage
 from core.actor import importing
 from core.deletion import ArchiveDeleteMixin, HardDeleteMixin
 from core.domains import ROLE_STUDENT, can_write
@@ -613,21 +613,57 @@ def review_addition(request, pk: int):
 
 
 @extend_schema(request=None, responses={200: dict})
-@api_view(["POST"])
+@api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def catalog_pick(request):
-    """Подбор по словесному запросу. Только программы справочника (инвариант №10)."""
-    from universities.picker import pick
+    """Подбор по словесному запросу. Только программы справочника (инвариант №10).
 
-    student = _student_for(request, request.data.get("student"))
+    Идёт в фоне: POST заводит запуск и отвечает сразу, GET отдаёт последний
+    запуск по ученику и его результат, когда он готов. Уйти со страницы
+    можно — подбор продолжится, а про конец скажет колокольчик.
+    """
+    from universities.tasks import PICK_KIND, pick_programs
+
+    raw = request.data.get("student") if request.method == "POST" else request.query_params.get("student")
+    student = _student_for(request, raw)
     if student is None:
         return Response({"detail": _("Ученик не найден")}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "GET":
+        run = jobs.latest_for(kind=PICK_KIND, target=student)
+        return Response(_pick_state(run, request.user))
 
     text = (request.data.get("text") or "").strip()
     if not text:
         return Response({"detail": _("Опишите, чего вы хотите")}, status=status.HTTP_400_BAD_REQUEST)
 
-    return Response(pick(student=student, text=text, actor=request.user).as_dict())
+    job, created = jobs.launch(
+        user=request.user,
+        kind=PICK_KIND,
+        title=_("Подбор вузов словами"),
+        task=pick_programs,
+        kwargs={"student_id": student.pk, "text": text, "actor_id": request.user.pk},
+        target=student,
+        link="/catalog?mode=pick",
+    )
+    if created:
+        usage.track(request, "catalog.pick.start")
+    job.refresh_from_db()
+    return Response(_pick_state(job, request.user), status=status.HTTP_202_ACCEPTED if created else status.HTTP_200_OK)
+
+
+def _pick_state(job, viewer) -> dict:
+    """Запуск подбора и его результат — результат только у готового запуска."""
+    if job is None:
+        return {"run": None, "result": None, "text": ""}
+    from celery.result import AsyncResult
+
+    result = None
+    if job.status == job.Status.DONE:
+        answer = AsyncResult(job.task_id)
+        result = answer.result if answer.successful() else None
+    text = json.loads(job.retry_payload or "{}").get("text", "")
+    return {"run": jobs.payload(job, viewer), "result": result, "text": text}
 
 
 # --- Стартовый справочник и подтверждение данных ---------------------------

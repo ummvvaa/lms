@@ -197,6 +197,7 @@ ACTIONS = (
     Action("report.sent.set", gettext_noop("Отметка об отправке отчёта"), "/reports"),
     Action("report.export.start", gettext_noop("Подготовка файлов отчётов"), "/reports"),
     Action("job.cancel", gettext_noop("Отмена фоновой операции"), "/dashboard"),
+    Action("catalog.pick.start", gettext_noop("Подбор вузов словами"), "/catalog"),
     Action("assistant.ask", gettext_noop("Вопрос помощнику"), "/assistant"),
     Action("assistant.text.parse", gettext_noop("Разбор текста помощником"), "/assistant"),
     Action("assistant.file.parse", gettext_noop("Разбор файла помощником"), "/assistant"),

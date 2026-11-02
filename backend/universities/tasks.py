@@ -169,3 +169,23 @@ def run_match_selection(run_id: int = 0, **kwargs) -> dict:
     from universities.selection import execute
 
     return execute(run_id or kwargs.get("run_id"))
+
+
+PICK_KIND = "pick_programs"
+
+
+@shared_task(bind=True, name="universities.pick_programs")
+def pick_programs(self, *, student_id: int, text: str, actor_id: int) -> dict:
+    """Подбор по словесному запросу в фоне: модель с рассуждением отвечает минутами."""
+    from django.utils import translation
+
+    from accounts.models import User
+    from students.models import Student
+    from universities.picker import pick
+
+    actor = User.objects.filter(pk=actor_id).first()
+    student = Student.objects.filter(pk=student_id).first()
+    if student is None:
+        return {"picks": [], "note": "", "offline": True, "filters": {"country": "", "major": ""}}
+    with translation.override(language_of(actor)):
+        return pick(student=student, text=text, actor=actor).as_dict()

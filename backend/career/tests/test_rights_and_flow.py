@@ -427,8 +427,10 @@ def test_student_sees_analysis_only_when_shown_and_teacher_edits_text(
         },
         format="json",
     )
-    assert edited.status_code == 200, edited.content
+    # версия для ученика пишется в фоне: ответ сразу, запуск в нём
+    assert edited.status_code == 202, edited.content
     body = edited.json()
+    assert body["version_run"]["status"] == "done" and body["visible_to_student"] is True
     assert body["summary"] == "Правка учителя" and body["edited_at"]
     assert body["edited_by"]["full_name"] == "Жанар Профориентатор"
     # первый показ — второй вызов модели: версия для ученика на «ты», учитель видит обе
@@ -472,9 +474,13 @@ def test_show_to_student_fails_without_the_model(passed, karta, teacher, boston,
     row = CareerAnalysis.objects.get()
     fake(FakeProvider(None, fail=True))
     refused = staff.patch(f"/api/career/analyses/{row.pk}/", {"visible_to_student": True}, format="json")
-    assert refused.status_code == 503 and "503" in refused.json()["detail"]
+    run = refused.json()["version_run"]
+    assert refused.status_code == 202 and run["status"] == "failed" and "503" in run["error"]
     row.refresh_from_db()
     assert not row.visible_to_student and row.summary_student == ""
+    # причина видна и при новом открытии разбора
+    again = staff.get(f"/api/career/analyses/{row.pk}/").json()
+    assert again["version_run"]["status"] == "failed"
 
 
 def test_analysis_requires_all_chosen_tests(passed, karta, teacher, boston, example_bytes, pupils, fake):

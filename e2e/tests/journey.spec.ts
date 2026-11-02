@@ -308,7 +308,17 @@ test("сквозной путь: от пустой базы до возврат�
     headers: { "X-CSRFToken": await csrfOf(learnerPage) },
   });
   expect(picked.ok()).toBeTruthy();
-  const pick = await picked.json();
+  // подбор идёт в фоне: результат — у запуска, читаем, пока не готов
+  let pick = (await picked.json()).result;
+  await expect
+    .poll(
+      async () => {
+        pick = (await (await learnerPage.request.get("/api/catalog/pick/")).json()).result;
+        return pick !== null;
+      },
+      { timeout: 60_000, intervals: [1_000] },
+    )
+    .toBe(true);
   for (const row of pick.picks ?? []) {
     expect(
       catalogNames,

@@ -19021,3 +19021,7 @@ msgstr "no answer"
 #: suggestions/providers
 msgid "модель не ответила за {seconds} с"
 msgstr "the model did not answer within {seconds} s"
+
+#: career/views
+msgid "Версия разбора для ученика: {name}"
+msgstr "Student version of the analysis: {name}"

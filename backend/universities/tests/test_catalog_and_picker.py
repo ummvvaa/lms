@@ -273,3 +273,35 @@ def test_picker_survives_a_list_of_strings(student, catalog, monkeypatch):
 
     assert result.offline is True, "подбор ушёл на правила"
     assert result.picks, "и всё равно что-то показал"
+
+
+# --- подбор в фоне ----------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_pick_goes_to_background_and_the_page_reads_the_result(api, student, catalog):
+    """POST отвечает сразу запуском, GET отдаёт последний запуск и его подбор."""
+    from core.models import BackgroundJob
+
+    started = api.post("/api/catalog/pick/", {"text": "хочу в Канаду на Computer Science"}, format="json")
+    assert started.status_code == 202
+    assert started.data["run"]["status"] == "done" and started.data["run"]["can_cancel"] is False
+    # результат читается тем же адресом и после ухода со страницы
+    state = api.get("/api/catalog/pick/").data
+    assert state["run"]["id"] == started.data["run"]["id"]
+    assert state["text"] == "хочу в Канаду на Computer Science"
+    assert state["result"]["picks"], "подбор правилами без ключа модели"
+    job = BackgroundJob.objects.get()
+    assert job.target_model == "students.Student" and job.target_id == student.pk
+
+
+@pytest.mark.django_db
+def test_second_pick_while_the_first_runs_leads_to_it(api, student, catalog):
+    from core import jobs
+    from core.models import BackgroundJob
+
+    running = jobs.start(user=student.user, kind="pick_programs", title="Подбор", task_id="t-p", target=student)
+    answer = api.post("/api/catalog/pick/", {"text": "Европа"}, format="json")
+    assert answer.status_code == 200 and answer.data["run"]["id"] == running.pk
+    assert answer.data["result"] is None and answer.data["run"]["can_cancel"] is True
+    assert BackgroundJob.objects.count() == 1

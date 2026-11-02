@@ -18940,3 +18940,7 @@ msgstr "жауап жоқ"
 #: suggestions/providers
 msgid "модель не ответила за {seconds} с"
 msgstr "модель {seconds} с ішінде жауап бермеді"
+
+#: career/views
+msgid "Версия разбора для ученика: {name}"
+msgstr "Оқушыға арналған талдау нұсқасы: {name}"
