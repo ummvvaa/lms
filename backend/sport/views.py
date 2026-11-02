@@ -52,6 +52,17 @@ def _bad(detail: str) -> Response:
     return Response({"detail": detail}, status=status.HTTP_400_BAD_REQUEST)
 
 
+def _refused(error: services.Refused) -> Response:
+    """Отказ — 400; «можно, но подтвердите» — 409 со списком предупреждений, повтор с `force`."""
+    if isinstance(error, services.NeedsConfirm):
+        return Response({"detail": str(error), "warnings": error.warnings}, status=status.HTTP_409_CONFLICT)
+    return _bad(str(error))
+
+
+def _force(request) -> bool:
+    return str(request.data.get("force", "")).lower() in ("1", "true", "yes")
+
+
 def _int(raw) -> int | None:
     return int(raw) if str(raw if raw is not None else "").isdigit() else None
 
@@ -198,9 +209,7 @@ def section(request, pk: int):
             "slots": [
                 {
                     **_slot_dict(slot, taken.get(slot.pk, 0)),
-                    "students": [
-                        _enrollment_dict(e, pct.get(e.student_id)) for e in enrollments if e.slot_id == slot.pk
-                    ],
+                    "students": [_enrollment_dict(e, pct.get(e.pk)) for e in enrollments if e.slot_id == slot.pk],
                 }
                 for slot in slots
             ],
@@ -354,30 +363,33 @@ def student_search(request):
             Q(last_name__icontains=word) | Q(first_name__icontains=word) | Q(group__code__icontains=word)
         )
     found = list(found.order_by("last_name", "first_name")[:20])
-    current = {
-        e.student_id: e
-        for e in SectionEnrollment.objects.filter(student__in=found, ended_at__isnull=True).select_related(
-            "section", "slot"
-        )
-    }
-    out = []
-    for student in found:
-        row = current.get(student.pk)
-        out.append(
+    current: dict[int, list[dict]] = {}
+    for e in (
+        SectionEnrollment.objects.filter(student__in=found, ended_at__isnull=True)
+        .select_related("section", "slot")
+        .order_by("enrolled_at", "id")
+    ):
+        current.setdefault(e.student_id, []).append(
             {
-                **_brief(student),
-                "section": row.section.title if row else "",
-                "slot": services.slot_words(row.slot) if row and row.slot_id else "",
+                "id": e.pk,
+                "section": e.section_id,
+                "section_title": e.section.title,
+                "slot": e.slot_id,
+                "slot_title": services.slot_words(e.slot) if e.slot_id else "",
             }
         )
-    return Response({"rows": out})
+    out = [{**_brief(student), "sections": current.get(student.pk, [])} for student in found]
+    return Response({"rows": out, "max": services.sections_max()})
 
 
 @extend_schema(request=None, responses={201: dict})
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def enrollments(request):
-    """Директор записывает ученика на час — и при закрытой записи; другая секция закрывает прежнюю запись."""
+    """Директор записывает ученика на час — и при закрытой записи. Прежние секции остаются.
+
+    Сверх предела секций или лимита часа — 409 с предупреждениями; повтор с `force` записывает.
+    """
     if not _writer(request, ENROLLMENT):
         return _no_rights()
     student = _visible_student(request, request.data.get("student"))
@@ -387,9 +399,9 @@ def enrollments(request):
     if slot is None:
         return _bad(_("Выберите час занятия"))
     try:
-        row = services.enroll(student=student, slot=slot, actor=request.user, by_director=True)
+        row = services.enroll(student=student, slot=slot, actor=request.user, by_director=True, force=_force(request))
     except services.Refused as error:
-        return _bad(str(error))
+        return _refused(error)
     return Response(_enrollment_dict(row), status=status.HTTP_201_CREATED)
 
 
@@ -397,7 +409,7 @@ def enrollments(request):
 @api_view(["PATCH", "DELETE"])
 @permission_classes([IsAuthenticated])
 def enrollment(request, pk: int):
-    """PATCH `slot` — перевести в другой час или назначить час; DELETE — убрать из секции."""
+    """PATCH `slot` — перевести в другой час, в другую секцию или назначить час; DELETE — убрать из секции."""
     if not _writer(request, ENROLLMENT):
         return _no_rights()
     row = (
@@ -409,18 +421,18 @@ def enrollment(request, pk: int):
         return _not_found()
     try:
         if request.method == "DELETE":
-            services.leave(student=row.student, actor=request.user, by_director=True)
+            services.leave(student=row.student, section=row.section, actor=request.user, by_director=True)
             return Response(status=status.HTTP_204_NO_CONTENT)
-        slot = SectionSlot.objects.filter(pk=_int(request.data.get("slot")), section=row.section).first()
+        slot = SectionSlot.objects.select_related("section").filter(pk=_int(request.data.get("slot"))).first()
         if slot is None:
-            return _bad(_("Выберите час этой секции"))
-        row = services.enroll(student=row.student, slot=slot, actor=request.user, by_director=True)
+            return _bad(_("Выберите час занятия"))
+        row = services.transfer(row, slot=slot, actor=request.user, force=_force(request))
     except services.Refused as error:
-        return _bad(str(error))
+        return _refused(error)
     return Response(_enrollment_dict(row))
 
 
-# --- Ученик: «Моя секция» ------------------------------------------------------------------
+# --- Ученик: «Мои секции» ------------------------------------------------------------------
 
 
 def _me_student(request):
@@ -451,47 +463,57 @@ def _marks_of(student, row: SectionEnrollment | None, limit: int = 8) -> list[di
     return out
 
 
+def _my_row(student, row: SectionEnrollment) -> dict:
+    marks = _marks_of(student, row)
+    last = services.local_now().date()
+    return {
+        "id": row.pk,
+        "section": row.section_id,
+        "section_title": row.section.title,
+        "address": row.section.address,
+        "slot": _slot_dict(row.slot) if row.slot_id else None,
+        "source": row.source,
+        "next_at": _when(services.next_session(row.slot)) if row.slot_id else None,
+        "percent": services.percent(row, dt.date(2000, 1, 1), last),
+        "marks": marks,
+        "came": sum(1 for m in marks if m["came"]),
+    }
+
+
 def _my_payload(student) -> dict:
-    row = services.active_of(student)
+    rows = services.active_list(student)
     settings_data = _settings_dict()
-    options: list[dict] = []
-    # выбор показывается при открытой записи, а записанному без часа — часы своей секции всегда
-    if row is not None and row.slot_id is None:
-        slots = list(services.slots_for(student, row.section))
-    elif settings_data["open"]:
+    # выбор — при открытой записи; записанному без часа часы его секции видны всегда
+    if settings_data["open"]:
         slots = list(services.slots_for(student))
     else:
-        slots = []
+        no_hour = [row.section_id for row in rows if row.slot_id is None]
+        slots = [slot for slot in services.slots_for(student) if slot.section_id in no_hour]
     taken = services.taken_map(slots)
+    mine_slots = [row.slot for row in rows if row.slot_id]
     by_section: dict[int, dict] = {}
     for slot in slots:
         entry = by_section.setdefault(
             slot.section_id,
             {"id": slot.section_id, "title": slot.section.title, "address": slot.section.address, "slots": []},
         )
-        entry["slots"].append(_slot_dict(slot, taken.get(slot.pk, 0)))
-    options = list(by_section.values())
-    mine = None
-    if row is not None:
-        marks = _marks_of(student, row)
-        last = services.local_now().date()
-        mine = {
-            "id": row.pk,
-            "section": row.section_id,
-            "section_title": row.section.title,
-            "address": row.section.address,
-            "slot": _slot_dict(row.slot) if row.slot_id else None,
-            "source": row.source,
-            "next_at": _when(services.next_session(row.slot)) if row.slot_id else None,
-            "percent": services.percent(row, dt.date(2000, 1, 1), last),
-            "marks": marks,
-            "came": sum(1 for m in marks if m["came"]),
-        }
+        clash = next(
+            (o for o in mine_slots if o.section_id != slot.section_id and services.overlap(o, slot)),
+            None,
+        )
+        entry["slots"].append(
+            {
+                **_slot_dict(slot, taken.get(slot.pk, 0)),
+                # час совпадает с другой своей секцией — записаться нельзя, ученик видит почему
+                "clash": f"{clash.section.title}, {services.slot_words(clash)}" if clash else "",
+            }
+        )
     return {
         **settings_data,
         "parallel": services.student_parallel(student),
-        "enrollment": mine,
-        "sections": options,
+        "max": services.sections_max(),
+        "enrollments": [_my_row(student, row) for row in rows],
+        "sections": list(by_section.values()),
     }
 
 
@@ -499,7 +521,7 @@ def _my_payload(student) -> dict:
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def my_section(request):
-    """Своя секция, ближайшее занятие, свои отметки; при открытой записи — часы своей группы классов."""
+    """Свои секции, ближайшие занятия, свои отметки; при открытой записи — часы своей группы классов."""
     me = _me_student(request)
     if me is None:
         return _forbid(_("Раздел — у ученика"))
@@ -510,7 +532,7 @@ def my_section(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def my_enroll(request):
-    """Записаться на час, сменить секцию или час; записанный без часа выбирает час и при закрытой записи."""
+    """Записаться на час ещё одной секции или сменить час своей; без часа — выбрать и при закрытой записи."""
     me = _me_student(request)
     if me is None:
         return _forbid(_("Записывается ученик"))
@@ -528,11 +550,18 @@ def my_enroll(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def my_leave(request):
+    """Выйти из одной своей секции: `section` — какой (или `enrollment` — id записи)."""
     me = _me_student(request)
     if me is None:
         return _forbid(_("Выходит из секции ученик"))
+    section = _int(request.data.get("section"))
+    if section is None and _int(request.data.get("enrollment")):
+        own = SectionEnrollment.objects.filter(pk=_int(request.data.get("enrollment")), student=me).first()
+        section = own.section_id if own else 0
+    if section is None:
+        return _bad(_("Выберите, из какой секции выйти"))
     try:
-        services.leave(student=me, actor=request.user)
+        services.leave(student=me, section=section, actor=request.user)
     except services.Refused as error:
         return _bad(str(error))
     return Response(_my_payload(me))
@@ -542,19 +571,23 @@ def my_leave(request):
 
 
 def _student_section(student) -> dict:
-    row = services.active_of(student)
-    if row is None:
-        return {"enrolled": False}
-    pct = services.month_percents([row]).get(student.pk)
+    rows = services.active_list(student)
+    pct = services.month_percents(rows)
     return {
-        "enrolled": True,
-        "section": row.section.title,
-        "address": row.section.address,
-        "slot": services.slot_words(row.slot) if row.slot_id else "",
-        "slot_day": row.slot.get_weekday_display() if row.slot_id else "",
-        "percent": pct,
-        "below": services.below_threshold(pct),
-        "marks": _marks_of(student, row, limit=4),
+        "enrolled": bool(rows),
+        "rows": [
+            {
+                "id": row.pk,
+                "section": row.section.title,
+                "address": row.section.address,
+                "slot": services.slot_words(row.slot) if row.slot_id else "",
+                "slot_day": row.slot.get_weekday_display() if row.slot_id else "",
+                "percent": pct.get(row.pk),
+                "below": services.below_threshold(pct.get(row.pk)),
+                "marks": _marks_of(student, row, limit=4),
+            }
+            for row in rows
+        ],
     }
 
 
@@ -562,7 +595,7 @@ def _student_section(student) -> dict:
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def student_section(request, pk: int):
-    """Блок «Секция» в карточке ученика — только чтение. Куратор — свои группы, чужой — 404."""
+    """Блок «Секции» в карточке ученика — все его записи, только чтение. Куратор — свои группы, чужой — 404."""
     if not can_read_cabinet(_role(request), ENROLLMENT):
         return _no_rights()
     student = _visible_student(request, pk)
@@ -575,7 +608,7 @@ def student_section(request, pk: int):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def students_sections(request):
-    """Колонки «Секция» и «Посещение секции» в списке учеников: по группе или по всем видимым."""
+    """Колонки «Секция» и «Посещение секции» в списке учеников: у ученика список записей, процент — у каждой."""
     if not can_read_cabinet(_role(request), ENROLLMENT):
         return _no_rights()
     students = visible_students(request.user).filter(is_active=True)
@@ -583,18 +616,21 @@ def students_sections(request):
     if group:
         students = students.filter(group_id=group)
     rows = list(
-        SectionEnrollment.objects.filter(student__in=students, ended_at__isnull=True).select_related("section", "slot")
+        SectionEnrollment.objects.filter(student__in=students, ended_at__isnull=True)
+        .select_related("section", "slot")
+        .order_by("enrolled_at", "id")
     )
     pct = services.month_percents(rows)
-    by_student = {
-        row.student_id: {
-            "section": row.section.title,
-            "slot": services.slot_words(row.slot) if row.slot_id else "",
-            "percent": pct.get(row.student_id),
-            "below": services.below_threshold(pct.get(row.student_id)),
-        }
-        for row in rows
-    }
+    by_student: dict[int, list[dict]] = {}
+    for row in rows:
+        by_student.setdefault(row.student_id, []).append(
+            {
+                "section": row.section.title,
+                "slot": services.slot_words(row.slot) if row.slot_id else "",
+                "percent": pct.get(row.pk),
+                "below": services.below_threshold(pct.get(row.pk)),
+            }
+        )
     return Response({"rows": {str(k): v for k, v in by_student.items()}})
 
 
@@ -788,7 +824,7 @@ def _attendance_rows(request, slot: SectionSlot, first: dt.date, last: dt.date):
                 cells.append("absent")
             else:
                 cells.append("")
-        value = pct.get(row.student_id)
+        value = pct.get(row.pk)
         rows.append(
             {"student": _brief(row.student), "cells": cells, "percent": value, "below": services.below_threshold(value)}
         )

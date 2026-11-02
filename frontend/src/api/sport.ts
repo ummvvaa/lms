@@ -4,7 +4,17 @@
  * «Моя секция», отметка по QR и билеты — у ученика; секция ученика — у куратора.
  */
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, get, patch, post } from './client'
+import { ApiError, api, get, patch, post } from './client'
+
+/**
+ * «Можно, но подтвердите»: сервер ответил 409 со списком предупреждений
+ * (сверх предела секций, сверх лимита часа). Повтор с `force` записывает.
+ */
+export function confirmWarnings(error: unknown): string[] | null {
+  if (!(error instanceof ApiError) || error.status !== 409) return null
+  const body = error.payload as { warnings?: unknown } | null
+  return Array.isArray(body?.warnings) ? body.warnings.map(String) : []
+}
 
 export interface SectionStudent {
   id: number
@@ -87,6 +97,10 @@ function useSectionsRefresh() {
     void queryClient.invalidateQueries({ queryKey: ['sport-sections'] })
     void queryClient.invalidateQueries({ queryKey: ['sport-section'] })
     void queryClient.invalidateQueries({ queryKey: ['sport-attendance'] })
+    void queryClient.invalidateQueries({ queryKey: ['sport-student-search'] })
+    void queryClient.invalidateQueries({ queryKey: ['sport-roster'] })
+    void queryClient.invalidateQueries({ queryKey: ['sport-roster-history'] })
+    void queryClient.invalidateQueries({ queryKey: ['sport-session'] })
   }
 }
 
@@ -129,7 +143,8 @@ export function useSaveSection() {
 export function useEnrollStudent() {
   const refresh = useSectionsRefresh()
   return useMutation({
-    mutationFn: (body: { student: number; slot: number }) => post<EnrollmentRow>('/sport/enrollments/', body),
+    mutationFn: (body: { student: number; slot: number; force?: boolean }) =>
+      post<EnrollmentRow>('/sport/enrollments/', body),
     onSuccess: refresh,
   })
 }
@@ -137,8 +152,8 @@ export function useEnrollStudent() {
 export function useMoveEnrollment() {
   const refresh = useSectionsRefresh()
   return useMutation({
-    mutationFn: ({ id, slot }: { id: number; slot: number }) =>
-      patch<EnrollmentRow>(`/sport/enrollments/${id}/`, { slot }),
+    mutationFn: ({ id, slot, force }: { id: number; slot: number; force?: boolean }) =>
+      patch<EnrollmentRow>(`/sport/enrollments/${id}/`, { slot, force }),
     onSuccess: refresh,
   })
 }
@@ -151,15 +166,23 @@ export function useRemoveEnrollment() {
   })
 }
 
+/** Запись ученика коротко: секция и час — в поиске и в строках списков. */
+export interface EnrollmentBrief {
+  id: number
+  section: number
+  section_title: string
+  slot: number | null
+  slot_title: string
+}
+
 export interface StudentHit extends SectionStudent {
-  section: string
-  slot: string
+  sections: EnrollmentBrief[]
 }
 
 export const useStudentSearch = (query: string) =>
   useQuery({
     queryKey: ['sport-student-search', query],
-    queryFn: () => get<{ rows: StudentHit[] }>(`/sport/students/?q=${encodeURIComponent(query)}`),
+    queryFn: () => get<{ rows: StudentHit[]; max: number }>(`/sport/students/?q=${encodeURIComponent(query)}`),
     enabled: query.trim().length >= 2,
     placeholderData: keepPreviousData,
   })
@@ -299,13 +322,16 @@ export const useSectionAttendance = (params: {
 
 export interface StudentSectionInfo {
   enrolled: boolean
-  section?: string
-  address?: string
-  slot?: string
-  slot_day?: string
-  percent?: number | null
-  below?: boolean
-  marks?: { date: string; came: boolean; method: string; at: string | null }[]
+  rows: {
+    id: number
+    section: string
+    address: string
+    slot: string
+    slot_day: string
+    percent: number | null
+    below: boolean
+    marks: { date: string; came: boolean; method: string; at: string | null }[]
+  }[]
 }
 
 export const useStudentSection = (id: number | null) =>
@@ -326,28 +352,33 @@ export const useStudentsSections = (group: number | null) =>
   useQuery({
     queryKey: ['sport-students-sections', group],
     queryFn: () =>
-      get<{ rows: Record<string, SectionColumn> }>(
+      get<{ rows: Record<string, SectionColumn[]> }>(
         `/sport/students/sections/${group ? `?group=${group}` : ''}`,
       ),
   })
 
-/* --- Ученик: «Моя секция» ------------------------------------------------ */
+/* --- Ученик: «Мои секции» ------------------------------------------------ */
+
+export interface MyEnrollment {
+  id: number
+  section: number
+  section_title: string
+  address: string
+  slot: SlotRow | null
+  source: string
+  next_at: string | null
+  percent: number | null
+  marks: { date: string; came: boolean; method: string; at: string | null }[]
+  came: number
+}
 
 export interface MySectionData extends EnrollSettings {
   parallel: number
-  enrollment: {
-    id: number
-    section: number
-    section_title: string
-    address: string
-    slot: SlotRow | null
-    source: string
-    next_at: string | null
-    percent: number | null
-    marks: { date: string; came: boolean; method: string; at: string | null }[]
-    came: number
-  } | null
-  sections: { id: number; title: string; address: string; slots: SlotRow[] }[]
+  /** во сколько секций ученик записывается сам — правило школы */
+  max: number
+  enrollments: MyEnrollment[]
+  /** `clash` — час совпадает с другой своей секцией: записаться нельзя */
+  sections: { id: number; title: string; address: string; slots: (SlotRow & { clash: string })[] }[]
 }
 
 export const useMySection = () =>
@@ -362,7 +393,7 @@ export function useMySectionAction() {
       onSuccess: done,
     }),
     leave: useMutation({
-      mutationFn: () => post<MySectionData>('/my/section/leave/'),
+      mutationFn: (section: number) => post<MySectionData>('/my/section/leave/', { section }),
       onSuccess: done,
     }),
   }

@@ -6,25 +6,21 @@
  * Слева секции с числом записанных и «N без часа», справа — карточка секции:
  * занятия по часам с полосой заполнения и список учеников часа. Ученика можно
  * перевести в другой час своей параллели, назначить час, убрать из секции
- * и записать самому — и при закрытой записи.
+ * и записать самому — и при закрытой записи. Окна записи — `EnrollDialogs`.
  */
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router'
 import { downloadFile } from '../../api/client'
 import {
   useEnrollSettings,
-  useEnrollStudent,
-  useMoveEnrollment,
   useRemoveEnrollment,
   useSaveSection,
   useSection,
   useSections,
-  useStudentSearch,
   type EnrollmentRow,
   type SectionDetail,
   type SlotDraft,
-  type SlotRow,
 } from '../../api/sport'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
@@ -35,6 +31,7 @@ import { Button } from '../../components/ui/button'
 import { Switch } from '../../components/ui/switch'
 import { t, tk } from '../../i18n'
 import { formatDateTimeLong, formatDayMonth } from '../../lib/format'
+import { EnrollDialog, MoveDialog } from './EnrollDialogs'
 import { WEEKDAYS, slotTime, slotWords } from './words'
 import '../directors/directors.css'
 import './sport.css'
@@ -282,7 +279,20 @@ function SlotStudents({ section, slot }: { section: SectionDetail; slot: Section
           </ShowAll>
         </div>
       )}
-      {moving && <MoveDialog row={moving} slots={others} onClose={() => setMoving(null)} />}
+      {moving && (
+        <MoveDialog
+          row={moving}
+          options={others.map((item) => ({
+            value: String(item.id),
+            title: t('{slot} · свободно {free} из {total}', {
+              slot: slotWords(item),
+              free: item.free ?? 0,
+              total: item.capacity,
+            }),
+          }))}
+          onClose={() => setMoving(null)}
+        />
+      )}
       {removing && (
         <Modal
           title={t('Убрать из секции?')}
@@ -353,188 +363,25 @@ function NoHour({ section }: { section: SectionDetail }) {
       {assigning && (
         <MoveDialog
           row={assigning}
-          slots={section.slots.filter(
-            (slot) =>
-              slot.parallel_from <= assigning.student.parallel &&
-              assigning.student.parallel <= slot.parallel_to,
-          )}
+          options={section.slots
+            .filter(
+              (slot) =>
+                slot.parallel_from <= assigning.student.parallel &&
+                assigning.student.parallel <= slot.parallel_to,
+            )
+            .map((item) => ({
+              value: String(item.id),
+              title: t('{slot} · свободно {free} из {total}', {
+                slot: slotWords(item),
+                free: item.free ?? 0,
+                total: item.capacity,
+              }),
+            }))}
           onClose={() => setAssigning(null)}
           assign
         />
       )}
     </div>
-  )
-}
-
-function MoveDialog({
-  row,
-  slots,
-  onClose,
-  assign = false,
-}: {
-  row: EnrollmentRow
-  slots: SlotRow[]
-  onClose: () => void
-  assign?: boolean
-}) {
-  const move = useMoveEnrollment()
-  const [slot, setSlot] = useState(String(slots[0]?.id ?? ''))
-  return (
-    <Modal
-      title={assign ? t('Назначить час') : t('Перевести в другой час')}
-      note={row.student.full_name}
-      onClose={onClose}
-    >
-      <Field
-        kind="select"
-        name="slot"
-        label={t('Час занятия')}
-        value={slot}
-        onChange={setSlot}
-        options={slots.map((item) => ({
-          value: String(item.id),
-          title: t('{slot} · свободно {free} из {total}', {
-            slot: slotWords(item),
-            free: item.free ?? 0,
-            total: item.capacity,
-          }),
-        }))}
-      />
-      {move.error && <ErrorNote error={move.error} />}
-      <div className="acad__actions">
-        <Button variant="outline" onClick={onClose}>
-          {t('Отмена')}
-        </Button>
-        <Button
-          disabled={!slot || move.isPending}
-          onClick={() =>
-            move.mutate(
-              { id: row.id, slot: Number(slot) },
-              {
-                onSuccess: () => {
-                  toast.success(assign ? t('Час назначен · ученик увидит его у себя') : t('Ученик переведён'))
-                  onClose()
-                },
-              },
-            )
-          }
-        >
-          {assign ? t('Назначить') : t('Перевести')}
-        </Button>
-      </div>
-    </Modal>
-  )
-}
-
-/** Директор записывает сам — и при закрытой записи: поиск ученика и час его параллели. */
-function EnrollDialog({ onClose }: { onClose: () => void }) {
-  const sections = useSections()
-  const enroll = useEnrollStudent()
-  const [query, setQuery] = useState('')
-  const found = useStudentSearch(query)
-  const [student, setStudent] = useState<number | null>(null)
-  const [slot, setSlot] = useState('')
-  const hit = found.data?.rows.find((row) => row.id === student) ?? null
-  const options = useMemo(
-    () =>
-      (sections.data?.rows ?? []).flatMap((section) =>
-        section.slots
-          .filter((row) => hit && row.parallel_from <= hit.parallel && hit.parallel <= row.parallel_to)
-          .map((row) => ({
-            value: String(row.id),
-            title: t('{section}, {slot} · свободно {free}', {
-              section: section.title,
-              slot: slotWords(row),
-              free: row.free ?? 0,
-            }),
-          })),
-      ),
-    [sections.data, hit],
-  )
-  return (
-    <Modal
-      title={t('Записать ученика')}
-      note={t('и при закрытой записи · одна секция на ученика')}
-      onClose={onClose}
-    >
-      <Field
-        name="search"
-        label={t('Ученик')}
-        value={query}
-        onChange={setQuery}
-        placeholder={t('Фамилия или группа')}
-        autoFocus
-      />
-      {query.trim().length >= 2 && (
-        <div className="dir__rows dir__picks">
-          {(found.data?.rows ?? []).map((row) => (
-            <div key={row.id} className="dir__row">
-              <span className="dir__what">
-                <b className="dir__name">{row.short_name}</b>
-                <span className="t-note">
-                  {[row.group, row.section ? `${row.section} ${row.slot}`.trim() : t('не записан')].join(
-                    ' · ',
-                  )}
-                </span>
-              </span>
-              <span />
-              <span className="dir__acts">
-                <Button
-                  variant={row.id === student ? 'secondary' : 'outline'}
-                  size="sm"
-                  aria-pressed={row.id === student}
-                  onClick={() => {
-                    setStudent(row.id)
-                    setSlot('')
-                  }}
-                >
-                  {row.id === student ? t('выбран') : t('Выбрать')}
-                </Button>
-              </span>
-            </div>
-          ))}
-          {found.data && found.data.rows.length === 0 && <EmptyNote what={tk('никого не нашли')} />}
-        </div>
-      )}
-      {hit && (
-        <Field
-          kind="select"
-          name="slot"
-          label={t('Час занятия')}
-          value={slot}
-          onChange={setSlot}
-          placeholder={t('Выберите час')}
-          options={options}
-          hint={
-            hit.section
-              ? t('прежняя запись в секцию «{section}» закроется', { section: hit.section })
-              : undefined
-          }
-        />
-      )}
-      {enroll.error && <ErrorNote error={enroll.error} />}
-      <div className="acad__actions">
-        <Button variant="outline" onClick={onClose}>
-          {t('Отмена')}
-        </Button>
-        <Button
-          disabled={!student || !slot || enroll.isPending}
-          onClick={() =>
-            enroll.mutate(
-              { student: student as number, slot: Number(slot) },
-              {
-                onSuccess: () => {
-                  toast.success(t('Ученик записан'))
-                  onClose()
-                },
-              },
-            )
-          }
-        >
-          {t('Записать')}
-        </Button>
-      </div>
-    </Modal>
   )
 }
 

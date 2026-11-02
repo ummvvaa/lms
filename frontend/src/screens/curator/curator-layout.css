@@ -215,6 +215,13 @@
   clip-path: inset(50%);
 }
 
+/* секций у ученика может быть несколько: каждая своей строкой в ячейке */
+.cstudents__section {
+  display: block;
+}
+.cstudents__section + .cstudents__section {
+  margin-top: var(--space);
+}
 .cstudents__docs {
   display: inline-grid;
   gap: calc(var(--space) * 1);

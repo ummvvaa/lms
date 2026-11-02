@@ -34,6 +34,7 @@ from sport.models import (
     SectionSlot,
     SessionEnd,
 )
+from students.models import Student
 
 #: событие в журнале ученика: записался, перевели, вышел
 EVENT = "sport_section"
@@ -138,12 +139,27 @@ def taken_map(slots) -> dict[int, int]:
     return {row["slot_id"]: row["n"] for row in rows}
 
 
-def active_of(student) -> SectionEnrollment | None:
-    return (
+def active_list(student) -> list[SectionEnrollment]:
+    """Все действующие записи ученика — по секциям, в порядке записи."""
+    return list(
         SectionEnrollment.objects.filter(student=student, ended_at__isnull=True)
+        .select_related("section", "slot")
+        .order_by("enrolled_at", "id")
+    )
+
+
+def active_in(student, section) -> SectionEnrollment | None:
+    """Действующая запись ученика в этой секции — в одной секции она одна."""
+    return (
+        SectionEnrollment.objects.filter(student=student, section=section, ended_at__isnull=True)
         .select_related("section", "slot")
         .first()
     )
+
+
+def sections_max() -> int:
+    """Во сколько секций ученик записывается сам — правило школы."""
+    return int(school_rules.value(school_rules.SPORT_SECTIONS_MAX))
 
 
 def slots_for(student, section: Section | None = None):
@@ -157,50 +173,124 @@ def slots_for(student, section: Section | None = None):
     return qs.order_by("section__order", "section__title", "weekday", "starts")
 
 
+def overlap(one: SectionSlot, other: SectionSlot) -> bool:
+    """Два часа совпадают по дню и хотя бы минутой по времени."""
+    return one.weekday == other.weekday and one.starts < other.ends and other.starts < one.ends
+
+
 # --- Запись ---------------------------------------------------------------------------------
 
 
-@transaction.atomic
-def enroll(*, student, slot: SectionSlot, actor, by_director: bool = False) -> SectionEnrollment:
-    """Записать ученика на час занятия, перевести в другой час или в другую секцию.
+class NeedsConfirm(Refused):
+    """Директору можно, но сначала подтвердить: сверх предела секций или лимита часа."""
 
-    Ученик записывается сам только при открытой записи; час для записи
-    без часа он выбирает и при закрытой. Директор записывает всегда.
-    Лимит проверяется под блокировкой строки занятия — и у директора тоже.
+    def __init__(self, warnings: list[str]):
+        super().__init__(" · ".join(warnings))
+        self.warnings = warnings
+
+
+def check(
+    *, student, slot: SectionSlot, by_director: bool = False, keep: SectionEnrollment | None = None, rows=None
+) -> tuple[list[str], list[str]]:
+    """Можно ли записать ученика на час: отказы и предупреждения, без записи.
+
+    Отказ — для всех: закрытая запись у ученика, чужая параллель, час
+    пересекается с другой секцией ученика. Предел секций и лимит часа
+    ученика останавливают, а директору — предупреждение. `keep` — запись,
+    которую переводят в другую секцию: её место и час в расчёт не идут.
+    Одним путём идут запись, перевод, запись гостя и массовые действия.
+    """
+    refusals: list[str] = []
+    warnings: list[str] = []
+    if slot.archived_at is not None or slot.section.archived_at is not None:
+        return [_("Такого занятия нет")], []
+    rows = [r for r in (active_list(student) if rows is None else rows) if keep is None or r.pk != keep.pk]
+    current = next((r for r in rows if r.section_id == slot.section_id), None)
+    if current is not None and current.slot_id == slot.pk:
+        return [], []
+    if not by_director and not is_open():
+        choosing_hour = current is not None and current.slot_id is None
+        if not choosing_hour:
+            refusals.append(_("Запись на секции закрыта — обратитесь к директору спорта"))
+    if not slot.fits(student_parallel(student)):
+        refusals.append(
+            _("Это занятие для параллелей {grades}").format(grades=f"{slot.parallel_from}–{slot.parallel_to}")
+        )
+    for row in rows:
+        if row.section_id != slot.section_id and row.slot_id and overlap(row.slot, slot):
+            refusals.append(
+                _("В это время у ученика секция «{title}», {slot}").format(
+                    title=row.section.title, slot=slot_words(row.slot)
+                )
+            )
+    limit = sections_max()
+    if current is None and len(rows) + 1 > limit:
+        if by_director:
+            warnings.append(
+                _("Сверх предела: секций у ученика станет {n}, по правилам школы — не больше {limit}").format(
+                    n=len(rows) + 1, limit=limit
+                )
+            )
+        else:
+            refusals.append(_("Больше секций нельзя: по правилам школы не больше {limit}").format(limit=limit))
+    busy = taken(slot)
+    if busy >= slot.capacity:
+        if by_director:
+            warnings.append(
+                _("Сверх лимита часа: мест {capacity}, записано {taken}").format(capacity=slot.capacity, taken=busy)
+            )
+        else:
+            refusals.append(_("На этот час мест нет"))
+    return refusals, warnings
+
+
+def _lock_student(student) -> None:
+    """Строка ученика под блокировкой: две записи одного ученика в разные секции идут по очереди."""
+    Student.objects.select_for_update().filter(pk=student.pk).first()
+
+
+def _guests_become_members(student, slot: SectionSlot, now) -> None:
+    """Записали на час гостя: его сегодняшняя и будущие отметки на этом часе — обычные."""
+    SectionMark.objects.filter(
+        student=student, slot=slot, is_guest=True, date__gte=timezone.localtime(now).date()
+    ).update(is_guest=False)
+
+
+@transaction.atomic
+def enroll(*, student, slot: SectionSlot, actor, by_director: bool = False, force: bool = False) -> SectionEnrollment:
+    """Записать ученика на час занятия или перевести в другой час той же секции.
+
+    Запись в другую секцию прежние записи не закрывает (02.11.2026): секций
+    у ученика может быть несколько, часы не пересекаются. Ученик записывается
+    сам только при открытой записи и в пределах правила школы; час для записи
+    без часа он выбирает и при закрытой. Директор записывает всегда, сверх
+    предела и лимита часа — только подтвердив (`force`). Лимит считается
+    под блокировкой строки занятия.
     """
     locked = SectionSlot.objects.select_for_update(of=("self",)).select_related("section").filter(pk=slot.pk).first()
     if locked is None or locked.section.archived_at is not None:
         raise Refused(_("Такого занятия нет"))
-    current = (
-        SectionEnrollment.objects.select_for_update(of=("self",))
-        .filter(student=student, ended_at__isnull=True)
-        .select_related("section", "slot")
-        .first()
-    )
-    if not by_director and not is_open():
-        choosing_hour = current is not None and current.slot_id is None and current.section_id == locked.section_id
-        if not choosing_hour:
-            raise Refused(_("Запись на секции закрыта — обратитесь к директору спорта"))
-    if not locked.fits(student_parallel(student)):
-        raise Refused(
-            _("Это занятие для параллелей {grades}").format(grades=f"{locked.parallel_from}–{locked.parallel_to}")
-        )
+    _lock_student(student)
+    rows = active_list(student)
+    current = next((r for r in rows if r.section_id == locked.section_id), None)
     if current is not None and current.slot_id == locked.pk:
         return current
-    if taken(locked) >= locked.capacity:
-        raise Refused(_("На этот час мест нет"))
+    refusals, warnings = check(student=student, slot=locked, by_director=by_director, rows=rows)
+    if refusals:
+        raise Refused(refusals[0])
+    if warnings and not force:
+        raise NeedsConfirm(warnings)
     now = timezone.now()
     where = f"{locked.section.title}, {slot_words(locked)}"
     with translation.override("ru"):
-        if current is not None and current.section_id == locked.section_id:
+        if current is not None:
             current.slot = locked
             current.slot_set_by = actor if by_director else None
             current.slot_set_at = now
             current.save(update_fields=["slot", "slot_set_by", "slot_set_at"])
             _event(student, _("Секция: час занятия — {where}").format(where=where), actor=actor)
+            _guests_become_members(student, locked, now)
             return current
-        if current is not None:
-            _close(current, actor=actor, now=now)
         row = SectionEnrollment.objects.create(
             student=student,
             section=locked.section,
@@ -212,7 +302,36 @@ def enroll(*, student, slot: SectionSlot, actor, by_director: bool = False) -> S
             slot_set_at=now,
         )
         _event(student, _("Секция: записан — {where}").format(where=where), actor=actor)
+    _guests_become_members(student, locked, now)
     return row
+
+
+@transaction.atomic
+def transfer(row: SectionEnrollment, *, slot: SectionSlot, actor, force: bool = False) -> SectionEnrollment:
+    """Директор переводит запись: в другой час этой секции или в другую секцию.
+
+    В другую секцию — прежняя запись закрывается, новая открывается одним
+    шагом: не прошла проверка — обе остаются как были.
+    """
+    if slot.section_id == row.section_id:
+        return enroll(student=row.student, slot=slot, actor=actor, by_director=True, force=force)
+    locked = SectionEnrollment.objects.select_for_update().filter(pk=row.pk, ended_at__isnull=True).first()
+    if locked is None:
+        raise Refused(_("Запись уже закрыта"))
+    _lock_student(row.student)
+    refusals, warnings = check(student=row.student, slot=slot, by_director=True, keep=locked)
+    if refusals:
+        raise Refused(refusals[0])
+    if warnings and not force:
+        raise NeedsConfirm(warnings)
+    _close(locked, actor=actor, now=timezone.now())
+    with translation.override("ru"):
+        _event(
+            row.student,
+            _("Секция: переведён из «{title}» в другую секцию").format(title=locked.section.title),
+            actor=actor,
+        )
+    return enroll(student=row.student, slot=slot, actor=actor, by_director=True, force=True)
 
 
 def _close(row: SectionEnrollment, *, actor, now) -> None:
@@ -222,13 +341,22 @@ def _close(row: SectionEnrollment, *, actor, now) -> None:
 
 
 @transaction.atomic
-def leave(*, student, actor, by_director: bool = False) -> SectionEnrollment:
-    """Выйти из секции: запись закрывается, место освобождается, история остаётся."""
-    current = SectionEnrollment.objects.select_for_update().filter(student=student, ended_at__isnull=True).first()
-    if current is None:
-        raise Refused(_("Ученик не записан ни в одну секцию"))
+def leave(*, student, actor, section=None, by_director: bool = False) -> SectionEnrollment:
+    """Выйти из одной секции: её запись закрывается, место освобождается, история остаётся.
+
+    Записей у ученика может быть несколько — выходят из конкретной секции.
+    """
+    query = SectionEnrollment.objects.select_for_update().filter(student=student, ended_at__isnull=True)
+    if section is not None:
+        query = query.filter(section=section)
+    rows = list(query.select_related("section")[:2])
+    if not rows:
+        raise Refused(_("Ученик не записан в эту секцию"))
+    if len(rows) > 1:
+        raise Refused(_("Выберите, из какой секции выйти"))
+    current = rows[0]
     if not by_director and not is_open():
-        raise Refused(_("Запись закрыта — сменить секцию можно через директора спорта"))
+        raise Refused(_("Запись закрыта — выйти из секции можно через директора спорта"))
     _close(current, actor=actor, now=timezone.now())
     with translation.override("ru"):
         _event(student, _("Секция: вышел из секции «{title}»").format(title=current.section.title), actor=actor)
@@ -241,7 +369,11 @@ def import_enrollment(*, student, section: Section, slot: SectionSlot | None, en
 
     Повторный перенос того же ученика в ту же секцию ничего не меняет.
     """
-    current = SectionEnrollment.objects.select_for_update().filter(student=student, ended_at__isnull=True).first()
+    current = (
+        SectionEnrollment.objects.select_for_update()
+        .filter(student=student, section=section, ended_at__isnull=True)
+        .first()
+    )
     if current is not None:
         return current, False
     row = SectionEnrollment.objects.create(
@@ -423,14 +555,18 @@ def mark_by_scan(*, student, slot_id: int, day: dt.date, now: dt.datetime | None
     slot = SectionSlot.all_objects.select_related("section").filter(pk=slot_id).first()
     if slot is None or day != now.date() or day.weekday() != slot.weekday:
         return {"state": "stale"}
-    mine = active_of(student)
+    rows = active_list(student)
+    mine = next((r for r in rows if r.section_id == slot.section_id), None)
     if mine is None:
-        return {"state": "not_enrolled", "session": _slot_brief(slot)}
-    if mine.slot_id is None and mine.section_id == slot.section_id:
+        if not rows:
+            return {"state": "not_enrolled", "session": _slot_brief(slot)}
+        other = rows[0]
+        own = _slot_brief(other.slot) if other.slot_id else {"section": other.section.title, "slot": ""}
+        return {"state": "foreign", "session": _slot_brief(slot), "mine": own}
+    if mine.slot_id is None:
         return {"state": "no_hour", "session": _slot_brief(slot)}
     if mine.slot_id != slot.pk:
-        own = _slot_brief(mine.slot) if mine.slot_id else {"section": mine.section.title, "slot": ""}
-        return {"state": "foreign", "session": _slot_brief(slot), "mine": own}
+        return {"state": "foreign", "session": _slot_brief(slot), "mine": _slot_brief(mine.slot)}
     state = session_state(slot, day, now)
     if state == "soon":
         return {"state": "not_started", "session": _slot_brief(slot), "starts_at": _at(day, slot.starts).isoformat()}
@@ -454,7 +590,7 @@ def mark_manually(*, student, slot: SectionSlot, day: dt.date, actor) -> tuple[S
         raise Refused(_("В этот день у часа нет занятия"))
     if day > local_now().date():
         raise Refused(_("Занятие ещё не прошло"))
-    mine = active_of(student)
+    mine = active_in(student, slot.section)
     if mine is None or mine.slot_id != slot.pk:
         raise Refused(_("Ученик записан не на этот час"))
     return SectionMark.objects.get_or_create(
@@ -511,25 +647,29 @@ def percent(row: SectionEnrollment, first: dt.date, last: dt.date, marks: set[dt
         return None
     if marks is None:
         marks = set(
-            SectionMark.objects.filter(student_id=row.student_id, slot_id=row.slot_id, date__in=dates).values_list(
-                "date", flat=True
-            )
+            SectionMark.objects.filter(
+                student_id=row.student_id, slot_id=row.slot_id, date__in=dates, is_guest=False
+            ).values_list("date", flat=True)
         )
     came = sum(1 for d in dates if d in marks)
     return round(100 * came / len(dates))
 
 
 def month_percents(rows, month: str | None = None) -> dict[int, int | None]:
-    """Посещение за месяц по ученикам — одним запросом отметок."""
+    """Посещение за месяц по записям (ключ — запись) — одним запросом отметок.
+
+    Записей у ученика может быть несколько: процент у каждой свой, по её часу.
+    Гостевые отметки в процент не входят.
+    """
     first, last = month_bounds(month)
     rows = list(rows)
     marks: dict[tuple[int, int], set[dt.date]] = {}
-    query = Q(date__gte=first, date__lte=last)
+    query = Q(date__gte=first, date__lte=last, is_guest=False)
     for mark in SectionMark.objects.filter(query, student_id__in=[r.student_id for r in rows]).values(
         "student_id", "slot_id", "date"
     ):
         marks.setdefault((mark["student_id"], mark["slot_id"]), set()).add(mark["date"])
-    return {r.student_id: percent(r, first, last, marks.get((r.student_id, r.slot_id), set())) for r in rows}
+    return {r.pk: percent(r, first, last, marks.get((r.student_id, r.slot_id), set())) for r in rows}
 
 
 def below_threshold(value) -> bool:

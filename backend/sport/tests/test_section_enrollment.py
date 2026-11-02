@@ -1,7 +1,7 @@
-"""Запись в секции: часы своей группы классов, лимит под блокировкой, одна секция на ученика.
+"""Запись в секции: часы своей группы классов, лимит под блокировкой, одна запись в секции.
 
 Границы, которые легко сломать тихо:
-* ученик видит только занятия своего класса и только свою запись;
+* ученик видит только занятия своего класса и только свои записи;
 * при закрытой записи выбора нет, но записанный без часа выбирает час своей секции;
 * последнее место часа достаётся одному из двоих одновременно нажавших;
 * выход закрывает запись, а не удаляет её: история остаётся, место освобождается;
@@ -36,7 +36,7 @@ def test_schedule_comes_with_the_migration():
 def test_closed_enrollment_hides_the_choice(pupils):
     senior, _junior = pupils
     body = login(senior.user).get("/api/my/section/").json()
-    assert body["open"] is False and body["enrollment"] is None and body["sections"] == []
+    assert body["open"] is False and body["enrollments"] == [] and body["sections"] == []
     answer = login(senior.user).post("/api/my/section/enroll/", {"slot": slot_of("Теннис", 5, 12, 10).pk})
     assert answer.status_code == 400
 
@@ -55,16 +55,18 @@ def test_student_sees_only_slots_of_his_grade(pupils, open_enroll):
     assert answer.status_code == 400
 
 
-def test_one_section_per_student_and_leaving_keeps_history(pupils, open_enroll):
+def test_leaving_one_section_keeps_history(pupils, open_enroll):
     senior, _junior = pupils
     api = login(senior.user)
-    assert api.post("/api/my/section/enroll/", {"slot": slot_of("Теннис", 5, 12, 10).pk}).status_code == 200
-    body = api.post("/api/my/section/enroll/", {"slot": slot_of("Футбол", 5, 12, 10).pk}).json()
-    assert body["enrollment"]["section_title"] == "Футбол"
-    assert SectionEnrollment.objects.filter(student=senior, ended_at__isnull=True).count() == 1
-    assert SectionEnrollment.objects.filter(student=senior).count() == 2
-    assert api.post("/api/my/section/leave/").json()["enrollment"] is None
-    assert SectionEnrollment.objects.filter(student=senior).count() == 2
+    tennis = slot_of("Теннис", 5, 12, 10)
+    assert api.post("/api/my/section/enroll/", {"slot": tennis.pk}).status_code == 200
+    # смена часа той же секции — перевод той же строки, а не вторая запись
+    body = api.post("/api/my/section/enroll/", {"slot": slot_of("Теннис", 5, 14, 10).pk}).json()
+    assert [r["slot"]["starts"] for r in body["enrollments"]] == ["14:00"]
+    assert SectionEnrollment.objects.filter(student=senior).count() == 1
+    assert api.post("/api/my/section/leave/", {"section": tennis.section_id}).json()["enrollments"] == []
+    assert SectionEnrollment.objects.filter(student=senior).count() == 1
+    assert SectionEnrollment.objects.get(student=senior).ended_at is not None
     assert AuditLog.objects.filter(student_id=senior.pk, field_name=services.EVENT).count() == 3
 
 
@@ -76,9 +78,11 @@ def test_full_slot_refuses(pupils, open_enroll):
     services.enroll(student=other, slot=slot, actor=None)
     answer = login(senior.user).post("/api/my/section/enroll/", {"slot": slot.pk})
     assert answer.status_code == 400
-    # и директору сверх лимита не записать
-    with pytest.raises(services.Refused):
+    # директору сверх лимита — только подтвердив
+    with pytest.raises(services.NeedsConfirm):
         services.enroll(student=senior, slot=slot, actor=None, by_director=True)
+    services.enroll(student=senior, slot=slot, actor=None, by_director=True, force=True)
+    assert services.taken(slot) == 2
 
 
 def test_moved_from_bot_chooses_hour_even_when_closed(pupils, tennis):
@@ -92,11 +96,11 @@ def test_moved_from_bot_chooses_hour_even_when_closed(pupils, tennis):
     # чужую секцию при закрытой записи не выбрать
     assert api.post("/api/my/section/enroll/", {"slot": slot_of("Футбол", 5, 12, 10).pk}).status_code == 400
     body = api.post("/api/my/section/enroll/", {"slot": slot_of("Теннис", 5, 13, 10).pk}).json()
-    assert body["enrollment"]["slot"]["starts"] == "13:00"
+    assert body["enrollments"][0]["slot"]["starts"] == "13:00"
     row = SectionEnrollment.objects.get(student=senior, ended_at__isnull=True)
     assert row.source == EnrollmentSource.BOT and row.slot_set_by is None
     # час выбран — запись закрыта, выйти нельзя
-    assert api.post("/api/my/section/leave/").status_code == 400
+    assert api.post("/api/my/section/leave/", {"section": tennis.pk}).status_code == 400
 
 
 def test_student_answer_has_no_other_students(pupils, open_enroll):
@@ -142,10 +146,7 @@ def test_director_enrolls_moves_assigns_and_removes_when_closed(people, pupils, 
     row_id = answer.json()["id"]
     moved = api.patch(f"/api/sport/enrollments/{row_id}/", {"slot": slot_of("Теннис", 5, 14, 10).pk}, format="json")
     assert moved.status_code == 200 and moved.json()["slot_title"].endswith("14:00–15:00")
-    # перевод — только в часы своей секции и своей группы классов
-    assert (
-        api.patch(f"/api/sport/enrollments/{row_id}/", {"slot": slot_of("Футбол", 5, 12, 10).pk}, format="json")
-    ).status_code == 400
+    # перевод — только в часы своей группы классов
     assert (
         api.patch(f"/api/sport/enrollments/{row_id}/", {"slot": slot_of("Теннис", 3, 17, 8).pk}, format="json")
     ).status_code == 400
@@ -227,7 +228,7 @@ def test_curator_reads_section_of_own_group_only(people, pupils):
     services.enroll(student=senior, slot=slot_of("Теннис", 5, 12, 10), actor=None, by_director=True)
     services.enroll(student=junior, slot=slot_of("Теннис", 3, 17, 8), actor=None, by_director=True)
     api = login(people["curator"])
-    assert api.get(f"/api/sport/students/{senior.pk}/section/").json()["section"] == "Теннис"
+    assert [r["section"] for r in api.get(f"/api/sport/students/{senior.pk}/section/").json()["rows"]] == ["Теннис"]
     assert api.get(f"/api/sport/students/{junior.pk}/section/").status_code == 404
     rows = api.get("/api/sport/students/sections/").json()["rows"]
     assert set(rows) == {str(senior.pk)}

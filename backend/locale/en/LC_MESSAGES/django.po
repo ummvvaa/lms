@@ -18293,10 +18293,6 @@ msgid "Запись в секцию"
 msgstr "Section enrollment"
 
 #: sport
-msgid "Запись закрыта — сменить секцию можно через директора спорта"
-msgstr "Enrollment is closed — ask the sports director to change your section"
-
-#: sport
 msgid "Запись на секции закрыта — обратитесь к директору спорта"
 msgstr "Section enrollment is closed — contact the sports director"
 
@@ -18540,10 +18536,6 @@ msgid "Срок жизни QR-кода на занятии"
 msgstr "Session QR code lifetime"
 
 #: sport
-msgid "Срок жизни QR-кода на занятии и порог посещения секции"
-msgstr "Session QR code lifetime and section attendance threshold"
-
-#: sport
 msgid "Старт раздачи"
 msgstr "Giveaway start"
 
@@ -18566,10 +18558,6 @@ msgstr "Enter the number of places"
 #: sport
 msgid "Ученик записан не на этот час"
 msgstr "The student is not enrolled in this hour"
-
-#: sport
-msgid "Ученик не записан ни в одну секцию"
-msgstr "The student is not enrolled in any section"
 
 #: sport
 msgid "Час"
@@ -19025,3 +19013,59 @@ msgstr "the model did not answer within {seconds} s"
 #: career/views
 msgid "Версия разбора для ученика: {name}"
 msgstr "Student version of the analysis: {name}"
+
+#: sport/services
+msgid "Больше секций нельзя: по правилам школы не больше {limit}"
+msgstr "No more sections: school rules allow no more than {limit}"
+
+#: sport/services
+msgid "В это время у ученика секция «{title}», {slot}"
+msgstr "The student has the section “{title}” at this time, {slot}"
+
+#: core/school_rules.py
+msgid "Во сколько секций ученик может записаться сам. Директор спорта может записать и сверх — с предупреждением. Часы двух секций не должны совпадать"
+msgstr "How many sections a student can join on their own. The sports director can enroll above that, with a warning. The hours of two sections must not overlap"
+
+#: sport/views
+msgid "Выберите, из какой секции выйти"
+msgstr "Choose which section to leave"
+
+#: sport/models
+msgid "Гость"
+msgstr "Guest"
+
+#: sport/services
+msgid "Запись закрыта — выйти из секции можно через директора спорта"
+msgstr "Enrollment is closed — to leave the section, ask the sports director"
+
+#: sport/services
+msgid "Запись уже закрыта"
+msgstr "The enrollment is already closed"
+
+#: sport/services
+msgid "Сверх лимита часа: мест {capacity}, записано {taken}"
+msgstr "Over the hour's limit: {capacity} places, {taken} enrolled"
+
+#: sport/services
+msgid "Сверх предела: секций у ученика станет {n}, по правилам школы — не больше {limit}"
+msgstr "Over the limit: the student will have {n} sections, school rules allow no more than {limit}"
+
+#: core/school_rules.py
+msgid "Секций на ученика"
+msgstr "Sections per student"
+
+#: sport/services
+msgid "Секция: переведён из «{title}» в другую секцию"
+msgstr "Section: moved from “{title}” to another section"
+
+#: core/school_rules.py
+msgid "Срок жизни QR-кода на занятии, порог посещения и число секций на ученика"
+msgstr "QR code lifetime at a session, attendance threshold and sections per student"
+
+#: sport/services
+msgid "Ученик не записан в эту секцию"
+msgstr "The student is not enrolled in this section"
+
+#: core/school_rules.py
+msgid "секция|секции|секций"
+msgstr "section|sections"

@@ -57,12 +57,14 @@ export default function CuratorStudents() {
   if (isLoading && !data) return <Loading kind="table" />
   if (error) return <ErrorNote error={error} />
 
-  const sectionOf = (row: CuratorStudentRow) => sections.data?.rows[String(row.id)]
+  // секций у ученика может быть несколько (02.11.2026): список, процент — у каждой
+  const sectionsOf = (row: CuratorStudentRow) => sections.data?.rows[String(row.id)] ?? []
+  const skips = (row: CuratorStudentRow) => sectionsOf(row).some((info) => info.below)
   const loaded = data?.results ?? []
-  const noSection = loaded.filter((row) => !sectionOf(row)).length
-  const skipping = loaded.filter((row) => sectionOf(row)?.below).length
+  const noSection = loaded.filter((row) => sectionsOf(row).length === 0).length
+  const skipping = loaded.filter(skips).length
   const rows = loaded.filter((row) =>
-    sectionFilter === 'none' ? !sectionOf(row) : sectionFilter === 'skip' ? Boolean(sectionOf(row)?.below) : true,
+    sectionFilter === 'none' ? sectionsOf(row).length === 0 : sectionFilter === 'skip' ? skips(row) : true,
   )
   // у выбранных групп без поступления нет колонок IELTS, SAT и документов
   // и задачи плана; в смешанном списке у строк 8–10 эти ячейки пустые
@@ -138,35 +140,38 @@ export default function CuratorStudents() {
       title: t('Секция'),
       width: '13%',
       cell: (row) => {
-        const info = sectionOf(row)
-        if (!info) return <span className="t-note">{t('не записан')}</span>
-        return (
-          <>
+        const list = sectionsOf(row)
+        if (list.length === 0) return <span className="t-note">{t('не записан')}</span>
+        return list.map((info) => (
+          <span key={info.section} className="cstudents__section">
             <b>{info.section}</b>
             <span className="t-note dir__sub">{info.slot || t('час не выбран')}</span>
-          </>
-        )
+          </span>
+        ))
       },
-      sortBy: (row) => sectionOf(row)?.section ?? '',
+      sortBy: (row) => sectionsOf(row)[0]?.section ?? '',
     },
     {
       key: 'section_pct',
       title: t('Посещение секции'),
       width: '15%',
       align: 'right',
-      cell: (row) => {
-        const info = sectionOf(row)
-        if (!info) return null
-        if (info.percent === null) return <span className="t-note">{t('занятий не было')}</span>
-        return info.below ? (
-          <Chip tone="warn" size="sm" className="num">
-            {`${info.percent}%`}
-          </Chip>
-        ) : (
-          <span className="num">{info.percent}%</span>
-        )
-      },
-      sortBy: (row) => sectionOf(row)?.percent ?? -1,
+      cell: (row) =>
+        sectionsOf(row).map((info) => (
+          <span key={info.section} className="cstudents__section">
+            {info.percent === null ? (
+              <span className="t-note">{t('занятий не было')}</span>
+            ) : info.below ? (
+              <Chip tone="warn" size="sm" className="num">
+                {`${info.percent}%`}
+              </Chip>
+            ) : (
+              <span className="num">{info.percent}%</span>
+            )}
+          </span>
+        )),
+      // по худшему проценту: «пропускает» хотя бы одну секцию — выше в списке
+      sortBy: (row) => Math.min(...sectionsOf(row).map((info) => info.percent ?? 101), 101),
     },
     {
       key: 'status',

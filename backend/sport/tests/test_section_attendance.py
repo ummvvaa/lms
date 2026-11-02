@@ -78,7 +78,7 @@ def test_student_sees_own_marks_and_percent(october):
         student=senior_row.student, slot=senior_row.slot, date=dt.date(2026, 10, 31), method=MarkMethod.QR
     )
     body = login(senior_row.student.user).get("/api/my/section/").json()
-    mine = body["enrollment"]
+    mine = body["enrollments"][0]
     assert mine["percent"] == 20 and mine["came"] == 1
     assert mine["marks"][0] == {"date": "2026-10-31", "came": True, "method": "qr", "at": mine["marks"][0]["at"]}
     text = login(senior_row.student.user).get("/api/my/section/").content.decode()

@@ -1,14 +1,22 @@
 /**
- * «Секция» ученика (макет StSections, 27.10.2026). Четыре состояния:
- * записан — своя секция, час, ближайшее занятие, адрес, посещение и свои
- * отметки, при открытой записи — «Выйти» и «Сменить»; перенесён из бота
- * без часа — «Выбери время» с часами своей параллели; не записан при
- * открытой записи — секции со свободными местами; при закрытой — одна строка.
+ * «Мои секции» ученика (макет StSections, 27.10.2026; несколько секций — 02.11.2026).
+ *
+ * На каждую запись — своя карточка: час, ближайшее занятие, адрес, посещение
+ * и свои отметки, при открытой записи — «Выйти» и «Сменить время» именно этой
+ * секции. Перенесённый из бота без часа — «Выбери время» с часами своей
+ * параллели. При открытой записи и свободном месте в пределе — «Записаться
+ * ещё в секцию»: час, совпадающий с другой своей секцией, закрыт с причиной.
  * Ученик видит только себя: чужих имён, средних и ярлыков здесь нет.
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useMySection, useMySectionAction, type MySectionData, type SlotRow } from '../../api/sport'
+import {
+  useMySection,
+  useMySectionAction,
+  type MyEnrollment,
+  type MySectionData,
+  type SlotRow,
+} from '../../api/sport'
 import Modal from '../../components/Modal'
 import { ShowAll } from '../../components/patterns'
 import { Chip, DataCard, EmptyNote, ErrorNote, Loading } from '../../components/ui'
@@ -23,14 +31,21 @@ const fail = (reason: unknown) => toast.error(reason instanceof Error ? reason.m
 
 export default function StudentSection() {
   const { data, isLoading, error } = useMySection()
-  const [changing, setChanging] = useState(false)
+  // что выбирает ученик: ещё одну секцию (`'new'`) или другой час своей (id секции)
+  const [choosing, setChoosing] = useState<'new' | number | null>(null)
   if (isLoading && !data) return <Loading kind="cards" />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
-  const mine = data.enrollment
-  if (mine && mine.slot === null) return <ChooseHour data={data} />
-  if (mine && !changing) return <MySection data={data} onChange={() => setChanging(true)} />
-  if (!data.open)
+  const mine = data.enrollments
+  if (choosing !== null && data.open)
+    return (
+      <Choose
+        data={data}
+        section={choosing === 'new' ? undefined : choosing}
+        onBack={() => setChoosing(null)}
+      />
+    )
+  if (mine.length === 0 && !data.open)
     return (
       <DataCard
         title={t('Запись на секции закрыта')}
@@ -39,18 +54,62 @@ export default function StudentSection() {
         )}
       />
     )
-  return <Choose data={data} onBack={mine ? () => setChanging(false) : undefined} />
+  if (mine.length === 0) return <Choose data={data} />
+  const more = data.open && mine.length < data.max
+  return (
+    <div className="sport-mine">
+      {mine.map((row, index) =>
+        row.slot === null ? (
+          <ChooseHour key={row.id} data={data} mine={row} />
+        ) : (
+          <MySection
+            key={row.id}
+            data={data}
+            mine={row}
+            main={index === 0}
+            onChange={() => setChoosing(row.section)}
+          />
+        ),
+      )}
+      {data.open ? (
+        <DataCard
+          title={more ? t('Ещё одна секция') : t('Секций — {n} из {max}', { n: mine.length, max: data.max })}
+          note={
+            more
+              ? t('Можно ходить в несколько секций, если часы не совпадают · не больше {max}', { max: data.max })
+              : t('Больше секций по правилам школы нельзя · можно выйти из одной и выбрать другую')
+          }
+          right={
+            more && (
+              <Button onClick={() => setChoosing('new')}>{t('Записаться ещё в секцию')}</Button>
+            )
+          }
+        />
+      ) : (
+        <p className="t-note">{t('Запись закрыта · сменить или добавить секцию можно через директора спорта')}</p>
+      )}
+    </div>
+  )
 }
 
-function MySection({ data, onChange }: { data: MySectionData; onChange: () => void }) {
+function MySection({
+  data,
+  mine,
+  main,
+  onChange,
+}: {
+  data: MySectionData
+  mine: MyEnrollment
+  main: boolean
+  onChange: () => void
+}) {
   const { leave } = useMySectionAction()
   const [leaving, setLeaving] = useState(false)
-  const mine = data.enrollment!
   const slot = mine.slot!
   return (
     <div className="lay-main">
       <DataCard
-        className="card--beam"
+        className={main ? 'card--beam' : undefined}
         title={mine.section_title}
         note={t('Моя секция')}
         right={
@@ -92,10 +151,10 @@ function MySection({ data, onChange }: { data: MySectionData; onChange: () => vo
             <Button variant="outline" onClick={() => setLeaving(true)}>
               {t('Выйти из секции')}
             </Button>
-            <Button onClick={onChange}>{t('Сменить секцию или время')}</Button>
+            <Button onClick={onChange}>{t('Сменить время')}</Button>
           </div>
         ) : (
-          <p className="t-note">{t('Запись закрыта · сменить секцию можно через директора спорта')}</p>
+          <p className="t-note">{t('Запись закрыта · выйти или сменить время можно через директора спорта')}</p>
         )}
       </DataCard>
       <DataCard
@@ -144,7 +203,7 @@ function MySection({ data, onChange }: { data: MySectionData; onChange: () => vo
               variant="destructive"
               disabled={leave.isPending}
               onClick={() =>
-                leave.mutate(undefined, {
+                leave.mutate(mine.section, {
                   onSuccess: () => {
                     toast.success(t('Ты вышел из секции · место освободилось'))
                     setLeaving(false)
@@ -163,9 +222,8 @@ function MySection({ data, onChange }: { data: MySectionData; onChange: () => vo
 }
 
 /** Перенесён из бота без часа: выбрать час своей параллели — и при закрытой записи. */
-function ChooseHour({ data }: { data: MySectionData }) {
+function ChooseHour({ data, mine }: { data: MySectionData; mine: MyEnrollment }) {
   const { enroll } = useMySectionAction()
-  const mine = data.enrollment!
   const slots = data.sections.find((row) => row.id === mine.section)?.slots ?? []
   return (
     <DataCard
@@ -213,23 +271,33 @@ function SlotLine({
   busy,
   action,
 }: {
-  slot: SlotRow
+  slot: SlotRow & { clash?: string }
   onPick: () => void
   busy: boolean
   action: string
 }) {
   const free = slot.free ?? 0
+  const clash = slot.clash ?? ''
   return (
     <div className="dir__row">
       <span className="dir__what">
         <b>{slotLong(slot)}</b>
         <span className="t-note">
-          {[slot.room, t('свободно {n} из {total}', { n: free, total: slot.capacity })]
+          {[
+            slot.room,
+            clash
+              ? t('в это время у тебя {clash}', { clash })
+              : t('свободно {n} из {total}', { n: free, total: slot.capacity }),
+          ]
             .filter(Boolean)
             .join(' · ')}
         </span>
       </span>
-      {free === 0 ? (
+      {clash ? (
+        <Chip tone="neutral" size="sm">
+          {t('время занято')}
+        </Chip>
+      ) : free === 0 ? (
         <Chip tone="neutral" size="sm">
           {t('мест нет')}
         </Chip>
@@ -237,7 +305,7 @@ function SlotLine({
         <span />
       )}
       <span className="dir__acts">
-        {free > 0 && (
+        {free > 0 && !clash && (
           <Button variant="outline" size="sm" disabled={busy} onClick={onPick}>
             {action}
           </Button>
@@ -247,19 +315,26 @@ function SlotLine({
   )
 }
 
-/** Запись открыта: секции со слотами своей параллели и свободными местами. */
-function Choose({ data, onBack }: { data: MySectionData; onBack?: () => void }) {
+/**
+ * Запись открыта: секции со слотами своей параллели и свободными местами.
+ * `section` — сменить время своей секции: показаны только её часы.
+ */
+function Choose({ data, section, onBack }: { data: MySectionData; section?: number; onBack?: () => void }) {
   const { enroll } = useMySectionAction()
   const [confirm, setConfirm] = useState<{ section: string; slot: SlotRow } | null>(null)
+  const own = new Set(data.enrollments.map((row) => row.section))
+  // ещё одна секция — без своих; смена времени — только своя
+  const shown = data.sections.filter((row) => (section === undefined ? !own.has(row.id) : row.id === section))
+  const picked = new Set(data.enrollments.map((row) => row.slot?.id).filter(Boolean))
   return (
     <>
       <DataCard
-        title={t('Выбери секцию и время')}
+        title={section === undefined ? t('Выбери секцию и время') : t('Выбери другое время')}
         note={[
           data.enroll_until
             ? t('запись открыта до {when}', { when: formatDateTimeLong(data.enroll_until) })
             : '',
-          t('Одна секция на ученика'),
+          t('Секций на ученика — не больше {max}, часы не должны совпадать', { max: data.max }),
         ]
           .filter(Boolean)
           .join(' · ')}
@@ -271,19 +346,19 @@ function Choose({ data, onBack }: { data: MySectionData; onBack?: () => void }) 
           )
         }
       >
-        {data.sections.length === 0 && <EmptyNote what={tk('для твоей параллели занятий нет')} />}
+        {shown.length === 0 && <EmptyNote what={tk('для твоей параллели занятий нет')} />}
       </DataCard>
       <div className="sport-choose">
-        {data.sections.map((section) => (
-          <DataCard key={section.id} title={section.title} note={section.address}>
+        {shown.map((row) => (
+          <DataCard key={row.id} title={row.title} note={row.address}>
             <div className="dir__rows">
-              {section.slots.map((slot) => (
+              {row.slots.map((slot) => (
                 <SlotLine
                   key={slot.id}
                   slot={slot}
                   busy={enroll.isPending}
-                  onPick={() => setConfirm({ section: section.title, slot })}
-                  action={data.enrollment?.slot?.id === slot.id ? t('выбрано') : t('Записаться')}
+                  onPick={() => setConfirm({ section: row.title, slot })}
+                  action={picked.has(slot.id) ? t('выбрано') : section === undefined ? t('Записаться') : t('Выбрать')}
                 />
               ))}
             </div>
@@ -297,7 +372,7 @@ function Choose({ data, onBack }: { data: MySectionData; onBack?: () => void }) 
           onClose={() => setConfirm(null)}
         >
           <p className="t-note">
-            {t('Ученик ходит в одну секцию. Пока запись открыта, можно отменить и выбрать другую')}
+            {t('Пока запись открыта, можно выйти и выбрать другую секцию или время')}
           </p>
           <div className="acad__actions">
             <Button variant="outline" onClick={() => setConfirm(null)}>

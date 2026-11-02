@@ -1,8 +1,9 @@
 """Спортивные секции и билеты (решение владельца, 27.10.2026).
 
 Секция — площадка и вид спорта, под ней занятия по часам (слоты) со своим
-лимитом и своей группой классов. Ученик записан ровно в одну секцию и на
-один час; перенесённый из бота может стоять без часа, пока не выберет.
+лимитом и своей группой классов. Ученик может ходить в несколько секций
+(предел — правило школы), в каждой — на один час; перенесённый из бота
+может стоять без часа, пока не выберет.
 Запись с историей — строками: выход закрывает строку, а не удаляет её
 (инвариант №5). Отметка — строка на ученика и занятие в дату; пропуск —
 это отсутствие отметки на прошедшем занятии, отдельно не хранится.
@@ -108,7 +109,11 @@ class EnrollmentSource(models.TextChoices):
 
 
 class SectionEnrollment(models.Model):
-    """Запись ученика в секцию. Активная — без `ended_at`, у ученика она одна.
+    """Запись ученика в секцию. Активная — без `ended_at`, в одной секции она одна.
+
+    Секций у ученика может быть несколько (02.11.2026): предел — правило
+    школы, часы двух записей не пересекаются. Смена часа в той же секции —
+    перевод той же строки, а не вторая запись.
 
     Час (`slot`) пуст только у перенесённых из бота, у кого в группе классов
     несколько занятий: ученик выбирает его сам или час назначает директор.
@@ -164,7 +169,9 @@ class SectionEnrollment(models.Model):
         ordering = ("-enrolled_at", "-id")
         constraints = [
             models.UniqueConstraint(
-                fields=("student",), condition=models.Q(ended_at__isnull=True), name="one_active_section"
+                fields=("student", "section"),
+                condition=models.Q(ended_at__isnull=True),
+                name="one_active_enrollment_per_section",
             ),
         ]
         indexes = [models.Index(fields=("slot", "ended_at")), models.Index(fields=("section", "ended_at"))]
@@ -179,7 +186,12 @@ class MarkMethod(models.TextChoices):
 
 
 class SectionMark(models.Model):
-    """Ученик пришёл на занятие в эту дату: по QR или отмечен директором вручную."""
+    """Ученик пришёл на занятие в эту дату: по QR или отмечен директором вручную.
+
+    Гость — отсканировал код секции, в которую не записан. Гостевая отметка
+    в процент посещения записанных не входит; записали гостя на этот час —
+    отметка становится обычной.
+    """
 
     student = models.ForeignKey(
         Student, verbose_name=gettext_lazy("Ученик"), related_name="section_marks", on_delete=models.CASCADE
@@ -199,6 +211,7 @@ class SectionMark(models.Model):
         blank=True,
     )
     marked_by_title = models.CharField(gettext_lazy("Кто отметил на момент отметки"), max_length=250, blank=True)
+    is_guest = models.BooleanField(gettext_lazy("Гость"), default=False)
 
     class Meta:
         verbose_name = gettext_lazy("Отметка на занятии")

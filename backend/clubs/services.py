@@ -242,26 +242,26 @@ def _event(student, text: str, *, actor) -> None:
 
 
 def sport_overlaps(student, club: Club) -> list[str]:
-    """Встречи кружка, которые идут одновременно со спортивной секцией ученика.
+    """Встречи кружка, которые идут одновременно с секциями ученика — со всеми его часами.
 
     Запись это не останавливает — ученик видит предупреждение и решает сам.
     """
-    row = sport.active_of(student)
-    if row is None or row.slot_id is None:
-        return []
-    slot = row.slot
     out = []
-    for meeting in club.meetings.all():
-        if meeting.weekday == slot.weekday and meeting.starts < slot.ends and slot.starts < meeting.ends:
-            out.append(
-                _("{day} {club} {club_time} и секция «{section}» {section_time}").format(
-                    day=sport.short_day(meeting.weekday),
-                    club=club.title,
-                    club_time=time_words(meeting),
-                    section=row.section.title,
-                    section_time=f"{slot.starts:%H:%M}–{slot.ends:%H:%M}",
+    for row in sport.active_list(student):
+        if row.slot_id is None:
+            continue
+        slot = row.slot
+        for meeting in club.meetings.all():
+            if meeting.weekday == slot.weekday and meeting.starts < slot.ends and slot.starts < meeting.ends:
+                out.append(
+                    _("{day} {club} {club_time} и секция «{section}» {section_time}").format(
+                        day=sport.short_day(meeting.weekday),
+                        club=club.title,
+                        club_time=time_words(meeting),
+                        section=row.section.title,
+                        section_time=f"{slot.starts:%H:%M}–{slot.ends:%H:%M}",
+                    )
                 )
-            )
     return out
 
 

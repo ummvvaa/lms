@@ -65,7 +65,7 @@ SECTIONS: tuple[Section, ...] = (
     Section(
         SPORT,
         gettext_lazy("Спортивные секции"),
-        gettext_lazy("Срок жизни QR-кода на занятии и порог посещения секции"),
+        gettext_lazy("Срок жизни QR-кода на занятии, порог посещения и число секций на ученика"),
     ),
     Section(
         GRADES,
@@ -215,6 +215,7 @@ POINTS = gettext_lazy("балл|балла|баллов")
 MB = gettext_lazy("МБ")
 PIECES = gettext_lazy("шт.")
 MAILS = gettext_lazy("письмо|письма|писем")
+SPORT_SECTIONS = gettext_lazy("секция|секции|секций")
 
 
 @dataclass(frozen=True)
@@ -244,6 +245,8 @@ ATTENDANCE_BELOW = "attendance_below"
 #: Секции: сколько секунд живёт QR-код на занятии и с какого посещения ученик «пропускает секцию»
 SPORT_QR_SECONDS = "sport_qr_seconds"
 SPORT_ATTENDANCE_BELOW = "sport_attendance_below"
+#: Секции: во сколько секций ученик записывается сам; директор спорта — и сверх, с предупреждением
+SPORT_SECTIONS_MAX = "sport_sections_max"
 #: Расчётная четвертная ниже — ученик отстаёт по предмету
 QUARTER_GRADE_BELOW = "quarter_grade_below"
 #: Средний ФО ниже этой доли от максимума — отстаёт по предмету «Только ФО»
@@ -1584,6 +1587,19 @@ RULES: tuple[Rule, ...] = (
         60,
         0,
         100,
+        section=SPORT,
+    ),
+    Rule(
+        SPORT_SECTIONS_MAX,
+        gettext_lazy("Секций на ученика"),
+        gettext_lazy(
+            "Во сколько секций ученик может записаться сам. Директор спорта может записать и сверх — "
+            "с предупреждением. Часы двух секций не должны совпадать"
+        ),
+        SPORT_SECTIONS,
+        2,
+        1,
+        5,
         section=SPORT,
     ),
     # --- ИИ ---
