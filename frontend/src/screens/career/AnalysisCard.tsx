@@ -7,14 +7,17 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useCareerAnalysisPatch, type CareerAnalysis, type CareerDirection } from '../../api/career'
+import { isActiveRun } from '../../api/hooks'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
+import RunState from '../../components/RunState'
 import { Row, Rows } from '../../components/patterns'
 import { Chip, ScreenTabs } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Switch } from '../../components/ui/switch'
 import { t } from '../../i18n'
 import { formatDateTime } from '../../lib/format'
+import { analysisTone } from './tone'
 
 type Version = 'teacher' | 'student'
 type Draft = { summary: string; summary_student: string; directions: Record<number, Partial<CareerDirection>> }
@@ -38,11 +41,28 @@ export default function AnalysisCard({ analysis, manage, studentSees = false, on
       },
       { onSuccess: () => setDraft((prev) => ({ ...prev, directions: {} })), onError: (error) => toast.error(error.message) },
     )
+  // версия для ученика пишется в фоне: пришла опросом — в черновик, если его не трогали
+  const [seenVersion, setSeenVersion] = useState(analysis.summary_student ?? '')
+  if ((analysis.summary_student ?? '') !== seenVersion) {
+    setSeenVersion(analysis.summary_student ?? '')
+    if (draft.summary_student === seenVersion) setDraft((prev) => ({ ...prev, summary_student: analysis.summary_student ?? '' }))
+  }
+  const versionRun = analysis.version_run ?? null
+  const writing = isActiveRun(versionRun)
   const show = (on: boolean) =>
     patch.mutate(
       { id: analysis.id, visible_to_student: on },
       {
         onSuccess: (fresh) => {
+          const started = fresh.version_run
+          if (started && isActiveRun(started)) {
+            toast.message(t('Версия для ученика пишется — окно можно закрыть, про готовность скажет колокольчик'))
+            return
+          }
+          if (started?.status === 'failed') {
+            toast.error(started.error || t('не получилось'))
+            return
+          }
           setDraft((prev) => ({ ...prev, summary_student: fresh.summary_student ?? prev.summary_student }))
           if (on) {
             setVersion('student')
@@ -61,7 +81,7 @@ export default function AnalysisCard({ analysis, manage, studentSees = false, on
   return (
     <Modal wide title={t('Разбор')} note={header} onClose={onClose}>
       <div className="toolbar mb-0">
-        <Chip tone={analysis.status === 'done' ? 'good' : analysis.status === 'failed' ? 'bad' : 'warn'} size="sm">
+        <Chip tone={analysisTone(analysis.status)} size="sm">
           {analysis.status_title}
         </Chip>
         <span className="t-note">{formatDateTime(analysis.created_at)}</span>
@@ -72,9 +92,12 @@ export default function AnalysisCard({ analysis, manage, studentSees = false, on
       {analysis.error && <p className="acad__note">{analysis.error}</p>}
       {manage && studentSees && analysis.status === 'done' && (
         <label className="field__check">
-          <Switch checked={analysis.visible_to_student} disabled={patch.isPending} onCheckedChange={(on) => show(Boolean(on))} />
-          <span className="field__checklabel">{patch.isPending && !analysis.visible_to_student ? t('Модель пишет версию для ученика…') : t('Показать ученику')}</span>
+          <Switch checked={analysis.visible_to_student} disabled={patch.isPending || writing} onCheckedChange={(on) => show(Boolean(on))} />
+          <span className="field__checklabel">{t('Показать ученику')}</span>
         </label>
+      )}
+      {manage && studentSees && !analysis.visible_to_student && (
+        <RunState run={versionRun} running={t('Модель пишет версию для ученика…')} onRestart={() => show(true)} restarting={patch.isPending} />
       )}
       {analysis.status === 'done' && studentSees && (
         <ScreenTabs

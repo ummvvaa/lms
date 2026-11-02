@@ -8,6 +8,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, get, patch, post } from './client'
+import { isActiveRun, RUN_POLL_MS, type JobRow } from './hooks'
 
 export interface CareerTestBrief {
   id: number
@@ -100,8 +101,10 @@ export interface CareerDirection {
 
 export interface CareerAnalysis {
   id: number
-  status: 'running' | 'done' | 'failed'
+  status: 'running' | 'done' | 'failed' | 'cancelled'
   status_title: string
+  /** последний запуск версии для ученика — только сотрудникам */
+  version_run?: JobRow | null
   summary: string
   error: string
   created_at: string
@@ -149,6 +152,8 @@ export interface CareerAnalyses {
   group: { id: number; code: string; parallel: number } | null
   tests: { id: number; title: string; done: number }[]
   analyses: CareerAnalysis[]
+  /** последний запуск разбора по группе */
+  run?: JobRow | null
 }
 
 export interface MyCareer {
@@ -225,13 +230,26 @@ export const useCareerAttempt = (id: number | null) =>
 export const useCareerRetake = () => useCareerMutation((id: number) => post<CareerAttempt>(`/career/attempts/${id}/retake/`))
 
 export const useCareerAnalyses = (group: number | null) =>
-  useQuery({ queryKey: [...KEY, 'analyses', group], queryFn: () => get<CareerAnalyses>(`/career/analyses/?group=${group}`), enabled: group !== null })
+  useQuery({
+    queryKey: [...KEY, 'analyses', group],
+    queryFn: () => get<CareerAnalyses>(`/career/analyses/?group=${group}`),
+    enabled: group !== null,
+    // пока разбор группы или версия для ученика идут — раз в 5 секунд
+    refetchInterval: (query) => {
+      const data = query.state.data
+      const busy = isActiveRun(data?.run) || (data?.analyses ?? []).some((row) => isActiveRun(row.version_run))
+      return busy ? RUN_POLL_MS : false
+    },
+  })
 
 export interface StartAnalysesResult {
   created: number
   reused: number
   skipped: { student: { id: number; full_name: string; short: string }; reason: string }[]
   job: number | null
+  /** разбор этой группы уже шёл — новый не заведён, `run` — идущий */
+  already?: boolean
+  run?: JobRow
 }
 
 export const useCareerStartAnalyses = () =>

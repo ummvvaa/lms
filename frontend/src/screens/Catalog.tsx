@@ -9,12 +9,14 @@
  */
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
+import { toast } from 'sonner'
 import { useTrack } from '../usage/context'
-import { useAddToMyList, useCatalog, useCatalogFacets, usePickPrograms, useRemoveFromMyList, useWhatIf, type CatalogCard } from '../api/hooks'
+import { useAddToMyList, useCatalog, useCatalogFacets, usePickPrograms, usePickState, useRemoveFromMyList, isActiveRun, useWhatIf, type CatalogCard } from '../api/hooks'
 import DataTable, { type Column } from '../components/DataTable'
 import Field from '../components/Field'
 import MatchCard from '../components/MatchCard'
 import PhoneFold from '../components/PhoneFold'
+import RunState from '../components/RunState'
 import { Row, Rows, Segmented } from '../components/patterns'
 import { Bar, Chip, counted, DataCard, ErrorNote, Loading, ScreenHead } from '../components/ui'
 import { Button } from '../components/ui/button'
@@ -168,6 +170,17 @@ function WhatIfPanel() {
 function PickPanel({ limitReached }: { limitReached: boolean }) {
   const [text, setText] = useState('')
   const pick = usePickPrograms()
+  // подбор идёт в фоне: со страницы можно уйти, вернувшись — увидеть идущий или готовый
+  const state = usePickState()
+  const run = state.data?.run ?? null
+  const busy = isActiveRun(run)
+  const result = state.data?.result ?? null
+  const start = (wish: string) =>
+    pick.mutate(wish, {
+      onSuccess: (fresh) => {
+        if (fresh.run && isActiveRun(fresh.run) && fresh.text !== wish.trim()) toast.message(t('Подбор уже идёт — дождитесь его или отмените'))
+      },
+    })
 
   return (
     <div className="lay-screen">
@@ -175,16 +188,27 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
         <DataCard title={t('Расскажите, чего хотите')} className="card--beam">
           <Field kind="textarea" name="wish" label={t('Что важно')} value={text} onChange={setText} rows={3} placeholder={t('Например: хочу в Канаду на Computer Science, важна стоимость обучения')} />
           <div className="acad__actions">
-            <Button size="sm" onClick={() => pick.mutate(text)} disabled={pick.isPending || text.trim() === ''}>
-              {pick.isPending ? t('Подбираю…') : t('Подобрать')}
-            </Button>
+            {busy || run?.status === 'failed' || run?.status === 'cancelled' ? (
+              <RunState
+                run={run}
+                running={t('Идёт подбор…')}
+                onRestart={() => start(text.trim() || state.data?.text || '')}
+                restarting={pick.isPending}
+                onChanged={() => void state.refetch()}
+              />
+            ) : (
+              <Button size="sm" onClick={() => start(text)} disabled={pick.isPending || text.trim() === ''}>
+                {t('Подобрать')}
+              </Button>
+            )}
           </div>
         </DataCard>
         {pick.error && <ErrorNote error={pick.error} />}
-        {pick.data && (
+        {result && (
           <>
+            {state.data?.text && <p className="t-note">{t('По запросу: {text}', { text: state.data.text })}</p>}
             <div className="grid grid--cards">
-              {pick.data.picks.map((row) => (
+              {result.picks.map((row) => (
                 <MatchCard key={row.program} card={row} actions={<AddButton card={row} limitReached={limitReached} />}>
                   <div className="catalog__why">
                     <p>
@@ -204,8 +228,8 @@ function PickPanel({ limitReached }: { limitReached: boolean }) {
                 </MatchCard>
               ))}
             </div>
-            {pick.data.note && <p className="t-note catalog__note">{pick.data.note}</p>}
-            {pick.data.picks.length === 0 && <DataCard title={t('Подобрать не из чего')} empty={t('справочник вузов ещё не наполнен')} />}
+            {result.note && <p className="t-note catalog__note">{result.note}</p>}
+            {result.picks.length === 0 && <DataCard title={t('Подобрать не из чего')} empty={t('справочник вузов ещё не наполнен')} />}
           </>
         )}
       </div>

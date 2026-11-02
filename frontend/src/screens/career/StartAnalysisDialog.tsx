@@ -49,6 +49,12 @@ export default function StartAnalysisDialog({ group, tests, onClose }: { group: 
       { group, tests: [...picked], students: chosenReady.map((row) => row.id), force },
       {
         onSuccess: (result) => {
+          if (result.already) {
+            // разбор этой группы уже идёт — новый не заведён, строка запуска на экране
+            toast.message(t('Разбор этой группы уже идёт'))
+            onClose()
+            return
+          }
           const parts = [
             result.created ? tn(result.created, 'запущен {n} разбор|запущено {n} разбора|запущено {n} разборов') : '',
             result.reused ? tn(result.reused, '{n} уже готов|{n} уже готовы|{n} уже готовы') : '',

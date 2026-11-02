@@ -11,19 +11,20 @@
  */
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
-import { useJobActions, useJobs } from '../api/hooks'
+import { isActiveRun, useJobActions, useJobs } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
 import Progress from './Progress'
 import { Row } from './patterns'
 import { Button } from './ui/button'
 import './jobs.css'
 import { t } from '../i18n'
+import { formatTime } from '../lib/format'
 
 export default function JobsPanel() {
   const { me } = useAuth()
   const navigate = useNavigate()
   const jobs = useJobs(Boolean(me))
-  const { dismiss, retry } = useJobActions()
+  const { dismiss, retry, cancel } = useJobActions()
 
   const rows = jobs.data?.results ?? []
   if (rows.length === 0) return null
@@ -35,10 +36,17 @@ export default function JobsPanel() {
           <Row
             title={job.title}
             note={
-              job.status === 'running' ? (
+              isActiveRun(job) ? (
                 <>
-                  {job.stage || t('идёт…')} · <b className="num">{job.percent}%</b>
-                  <Progress percent={job.percent} label={false} />
+                  {job.status === 'queued' ? t('в очереди') : job.stage || t('идёт…')}{' '}
+                  <span className="num">{t('с {time}', { time: formatTime(job.started_at ?? job.created_at) })}</span>
+                  {job.status === 'running' && (
+                    <>
+                      {' '}
+                      · <b className="num">{job.percent}%</b>
+                      <Progress percent={job.percent} label={false} />
+                    </>
+                  )}
                 </>
               ) : (
                 job.error || t('не получилось')
@@ -48,6 +56,21 @@ export default function JobsPanel() {
             openLabel={t('Перейти к результату')}
           />
           <div className="jobs__actions">
+            {isActiveRun(job) && job.can_cancel && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={cancel.isPending}
+                onClick={() =>
+                  cancel.mutate(job.id, {
+                    onSuccess: () => toast.success(t('Запуск отменён')),
+                    onError: (error) => toast.error(error.message),
+                  })
+                }
+              >
+                {t('Отменить')}
+              </Button>
+            )}
             {job.status === 'failed' && job.can_retry && (
               <Button
                 variant="outline"

@@ -519,6 +519,8 @@ export interface TaskState<T> {
   progress?: { stage: string }
   result?: T
   error?: string
+  /** запуск: «идёт с 11:42», отмена, причина сбоя */
+  job: JobRow | null
 }
 
 export interface PasteResult {
@@ -619,8 +621,9 @@ export function useTaskPolling<T>(taskId: string | null) {
     queryFn: () => get<TaskState<T>>(`/tasks/status/${taskId}/`),
     enabled: taskId !== null,
     refetchInterval: (query) => {
-      const state = query.state.data?.state
-      return state === 'SUCCESS' || state === 'FAILURE' ? false : 1000
+      const data = query.state.data
+      if (data?.job && !isActiveRun(data.job)) return false
+      return data?.state === 'SUCCESS' || data?.state === 'FAILURE' ? false : RUN_POLL_MS
     },
   })
 }
@@ -1980,9 +1983,29 @@ export interface PickResult {
   filters: { country: string; major: string }
 }
 
+/** Последний подбор словами: запуск и, когда он готов, результат. */
+export interface PickState {
+  run: JobRow | null
+  result: PickResult | null
+  text: string
+}
+
+export const usePickState = () =>
+  useQuery({
+    queryKey: ['catalog-pick'],
+    queryFn: () => get<PickState>('/catalog/pick/'),
+    refetchInterval: (query) => (isActiveRun(query.state.data?.run) ? RUN_POLL_MS : false),
+  })
+
+/** Подбор идёт в фоне: ответ — запуск, результат подтянет `usePickState`. */
 export function usePickPrograms() {
+  const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (text: string) => post<PickResult>('/catalog/pick/', { text }),
+    mutationFn: (text: string) => post<PickState>('/catalog/pick/', { text }),
+    onSuccess: (state) => {
+      queryClient.setQueryData(['catalog-pick'], state)
+      void queryClient.invalidateQueries({ queryKey: ['jobs'] })
+    },
   })
 }
 
@@ -4450,15 +4473,27 @@ export interface JobRow {
   id: number
   kind: string
   title: string
-  status: 'running' | 'done' | 'failed'
+  status: 'queued' | 'running' | 'done' | 'failed' | 'cancelled'
+  status_title: string
   stage: string
   percent: number
   link: string
   error: string
+  task: string
   can_retry: boolean
+  /** отменить может тот, кто запустил, и администратор */
+  can_cancel: boolean
   created_at: string
+  started_at: string | null
   finished_at: string | null
 }
+
+/** Запуск ещё не закончился: в очереди или идёт. */
+export const isActiveRun = (run: JobRow | null | undefined): boolean =>
+  run?.status === 'queued' || run?.status === 'running'
+
+/** Пока запуск идёт, экран спрашивает о нём раз в 5 секунд; закончился — опрос замолкает. */
+export const RUN_POLL_MS = 5000
 
 /** Что идёт в фоне прямо сейчас. Один опрос на всё приложение. */
 export const useJobs = (enabled = true) =>
@@ -4466,9 +4501,7 @@ export const useJobs = (enabled = true) =>
     queryKey: ['jobs'],
     queryFn: () => get<{ results: JobRow[] }>('/jobs/'),
     enabled,
-    // пока что-то идёт — раз в две секунды; когда всё тихо, опрос замолкает
-    refetchInterval: (query) =>
-      (query.state.data?.results ?? []).some((row) => row.status === 'running') ? 2000 : false,
+    refetchInterval: (query) => ((query.state.data?.results ?? []).some(isActiveRun) ? RUN_POLL_MS : false),
   })
 
 export function useJobActions() {
@@ -4481,6 +4514,11 @@ export function useJobActions() {
     }),
     retry: useMutation({
       mutationFn: (id: number) => post<JobRow>(`/jobs/${id}/retry/`),
+      onSuccess: invalidate,
+    }),
+    cancel: useMutation({
+      mutationFn: (id: number) => post<JobRow>(`/jobs/${id}/cancel/`),
+      // экраны со своей строкой запуска перечитают себя сами — по ключу из `onSuccess` вызова
       onSuccess: invalidate,
     }),
   }

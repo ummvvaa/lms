@@ -12,6 +12,7 @@ import { t, tn } from '../../i18n'
 import { formatDate, formatDateTime } from '../../lib/format'
 import AnalysisCard from './AnalysisCard'
 import ScoreBars from './ScoreBars'
+import { analysisTone } from './tone'
 
 export default function StudentCareerBlock({ studentId, manage = false }: { studentId: number; manage?: boolean }) {
   const query = useStudentCareer(studentId)
@@ -58,7 +59,7 @@ export default function StudentCareerBlock({ studentId, manage = false }: { stud
               title={row.tests.map((test) => test.title).join(', ')}
               note={[formatDateTime(row.created_at), tn(row.directions.length, '{n} направление|{n} направления|{n} направлений')].join(' · ')}
               right={
-                <Chip size="sm" tone={row.status === 'done' ? 'good' : row.status === 'failed' ? 'bad' : 'warn'}>
+                <Chip size="sm" tone={analysisTone(row.status)}>
                   {row.status === 'done' ? t('готов') : row.status_title}
                 </Chip>
               }

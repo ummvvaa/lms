@@ -57,3 +57,23 @@
   gap: calc(var(--space) * 1);
   flex: 0 0 auto;
 }
+
+/* Строка запуска на месте кнопки: «Идёт разбор… с 11:42» и «Отменить».
+   На телефоне переносится по словам, без горизонтальной прокрутки. */
+.runstate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  min-width: 0;
+}
+
+.runstate__text {
+  min-width: 0;
+  font-size: var(--type-note);
+}
+
+.runstate__reason {
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}

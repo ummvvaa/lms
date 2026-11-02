@@ -32,6 +32,8 @@ import {
   ScreenTabs,
   type Tone,
 } from '../../components/ui'
+import { isActiveRun } from '../../api/hooks'
+import RunState from '../../components/RunState'
 import { Button } from '../../components/ui/button'
 import { t, tk, tn } from '../../i18n'
 import { formatDate, formatDateTime } from '../../lib/format'
@@ -47,6 +49,7 @@ import TestDrawer from './TestDrawer'
 import StudentResultsCard from './StudentResultsCard'
 import UploadCard from './UploadCard'
 import './career-tests-layout.css'
+import { analysisTone } from './tone'
 
 type Tab = 'tests' | 'results' | 'analyses'
 const TABS: Tab[] = ['tests', 'results', 'analyses']
@@ -390,10 +393,12 @@ function AnalysesTab({ group, manage }: { group: number | null; manage: boolean 
   const rows = data.analyses
   const current = rows.find((row) => row.id === opened) ?? null
   const stateChip = (row: CareerAnalysis) => (
-    <Chip size="sm" tone={row.status === 'done' ? 'good' : row.status === 'failed' ? 'bad' : 'warn'}>
+    <Chip size="sm" tone={analysisTone(row.status)}>
       {row.status_title}
     </Chip>
   )
+  const run = data.run ?? null
+  const busy = isActiveRun(run)
   const columns: Column<CareerAnalysis>[] = [
     {
       key: 'student',
@@ -452,14 +457,27 @@ function AnalysesTab({ group, manage }: { group: number | null; manage: boolean 
     <>
       {manage && (
         <div className="toolbar">
-          <Button size="sm" onClick={() => setStarting(true)}>
-            {t('Разобрать')}
-          </Button>
-          <span className="t-note">
-            {t('Готовый разбор по тем же попыткам второй раз у модели не запрашивается')}
-          </span>
+          {busy || run?.status === 'failed' || run?.status === 'cancelled' ? (
+            // на месте кнопки — строка запуска: идёт, отменить, причина, заново
+            <RunState
+              run={run}
+              running={t('Идёт разбор…')}
+              onRestart={() => setStarting(true)}
+              onChanged={() => void query.refetch()}
+            />
+          ) : (
+            <>
+              <Button size="sm" onClick={() => setStarting(true)}>
+                {t('Разобрать')}
+              </Button>
+              <span className="t-note">
+                {t('Готовый разбор по тем же попыткам второй раз у модели не запрашивается')}
+              </span>
+            </>
+          )}
         </div>
       )}
+      {!manage && busy && <RunState run={run} running={t('Идёт разбор…')} />}
       {rows.length === 0 ? (
         <DataCard
           title={t('Разборы')}
