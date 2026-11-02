@@ -290,3 +290,27 @@ def test_double_click_on_explain_leads_to_the_running_one(api, make_user, studen
     assert other.status_code == 202 and other.data["already"] is False
     assert BackgroundJob.objects.filter(kind="explain_match").count() == 2
     assert running.pk != other.data["job"]["id"]
+
+
+@pytest.mark.django_db
+def test_selection_run_is_not_doubled_and_cancel_closes_it(make_user, student, monkeypatch):
+    """Прогон подбора идёт — второй не заводится; отменили — прогон не висит в «считается»."""
+    from universities import selection
+    from universities.models import MatchRun, MatchRunStatus
+    from universities.tasks import run_match_selection
+
+    student.user = make_user("student", student.email)
+    student.save(update_fields=["user"])
+    # в очередь задача не уходит: прогон остаётся «считается», запуск — в очереди
+    monkeypatch.setattr(run_match_selection, "apply_async", lambda **kwargs: None)
+
+    first = selection.start_run(student)
+    second = selection.start_run(student)
+    assert second.pk == first.pk and MatchRun.objects.count() == 1
+
+    job = BackgroundJob.objects.get(kind="selection")
+    assert job.target_model == "universities.MatchRun" and job.target_id == first.pk
+    jobs.cancel(job, by=student.user)
+    first.refresh_from_db()
+    assert first.status == MatchRunStatus.FAILED and first.error == "Запуск отменён"
+    assert selection.start_run(student).pk != first.pk, "после отмены — новый прогон"

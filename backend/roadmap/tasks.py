@@ -45,3 +45,12 @@ def generate_plan(plan_id: int = 0, **kwargs) -> dict:
         plan.generation_status = ApplicationPlan.Generation.FAILED
         plan.save(update_fields=["generation_status", "updated_at"])
         raise error
+
+
+def close_plan(job) -> None:
+    """Запуск плана отменён или завис: план не висит в «идёт»."""
+    from roadmap.models import ApplicationPlan
+
+    ApplicationPlan.objects.filter(pk=job.target_id, generation_status=ApplicationPlan.Generation.RUNNING).update(
+        generation_status=ApplicationPlan.Generation.FAILED
+    )

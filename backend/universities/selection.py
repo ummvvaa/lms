@@ -109,7 +109,25 @@ def goal_percents(student: Student, programs) -> dict[int, int]:
 
 
 def start_run(student: Student, *, major: str = "", level: str = "", countries: list[str] | None = None) -> MatchRun:
-    """Создать прогон со снимком профиля и поставить расчёт в очередь."""
+    """Создать прогон со снимком профиля и поставить расчёт в очередь.
+
+    Пока прогон этого ученика в очереди или считается, второй не заводится:
+    возвращается идущий.
+    """
+    import uuid
+
+    from core import jobs
+    from core.models import BackgroundJob
+    from universities.tasks import run_match_selection
+
+    jobs.sweep()
+    busy = BackgroundJob.objects.filter(
+        kind="selection", target_model="universities.MatchRun", status__in=jobs.ACTIVE
+    ).values_list("target_id", flat=True)
+    running = MatchRun.objects.filter(student=student, status=MatchRunStatus.RUNNING, pk__in=list(busy)).first()
+    if running is not None:
+        return running
+
     exam = getattr(student, "exam", None)
     run = MatchRun.objects.create(
         student=student,
@@ -122,23 +140,22 @@ def start_run(student: Student, *, major: str = "", level: str = "", countries: 
         snapshot_grade=parallel_of(student),
         snapshot_graduation_year=student.graduation_year,
     )
-    from core import jobs
-    from universities.tasks import run_match_selection
-
-    task = run_match_selection.delay(run.pk)
-    # та же плашка, что у остальных долгих операций (фаза 47): раньше
-    # у подбора была своя, а у разбора файла не было никакой
+    task_id = uuid.uuid4().hex
+    # та же плашка, что у остальных долгих операций (фаза 47); запись — до
+    # отправки задачи, чтобы старт и отмена её застали
     if getattr(student, "user", None) is not None:
         jobs.start(
             user=student.user,
             kind="selection",
             # плашка и колокольчик — ученика: название на его языке, кто бы ни запустил
             title=render(language_of(student.user), "Подбор вузов"),
-            task_id=task.id,
+            task_id=task_id,
             link=f"/selection/{run.pk}",
             retry_task="universities.run_match_selection",
             retry_payload={"run_id": run.pk},
+            target=run,
         )
+    run_match_selection.apply_async(args=[run.pk], task_id=task_id)
     return run
 
 

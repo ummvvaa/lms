@@ -189,3 +189,13 @@ def pick_programs(self, *, student_id: int, text: str, actor_id: int) -> dict:
         return {"picks": [], "note": "", "offline": True, "filters": {"country": "", "major": ""}}
     with translation.override(language_of(actor)):
         return pick(student=student, text=text, actor=actor).as_dict()
+
+
+def close_run(job) -> None:
+    """Запуск подбора отменён или завис: прогон не висит в «считается»."""
+    from universities.models import MatchRun, MatchRunStatus
+
+    reason = job.error or render(language_of(job.owner), "Запуск отменён")
+    MatchRun.objects.filter(pk=job.target_id, status=MatchRunStatus.RUNNING).update(
+        status=MatchRunStatus.FAILED, error=reason[:250], finished_at=timezone.now()
+    )

@@ -263,17 +263,21 @@ def ensure_for_program(student, program, *, user) -> ApplicationPlan | None:
         generation_status=ApplicationPlan.Generation.RUNNING,
     )
 
-    task = generate_plan.delay(plan.pk)
+    import uuid
+
+    task_id = uuid.uuid4().hex
     jobs.start(
         user=user,
         kind="plan",
         title=render(language_of(user), "План по вузу «{university}»", university=program.university.name),
-        task_id=task.id,
+        task_id=task_id,
         # плана у ученика на экране больше нет: задачи плана — на главной
         link=TASKS_PATH,
         retry_task="roadmap.generate_plan",
         retry_payload={"plan_id": plan.pk},
+        target=plan,
     )
+    generate_plan.apply_async(args=[plan.pk], task_id=task_id)
     return plan
 
 

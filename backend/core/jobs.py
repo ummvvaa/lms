@@ -54,6 +54,8 @@ ACTIVE = (BackgroundJob.Status.QUEUED, BackgroundJob.Status.RUNNING)
 #: общий механизм о разборах и отчётах не знает.
 CLOSE_HOOKS = {
     "career_analysis": "career.tasks.close_rows",
+    "selection": "universities.tasks.close_run",
+    "plan": "roadmap.tasks.close_plan",
 }
 
 
