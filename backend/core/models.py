@@ -349,9 +349,11 @@ class BackgroundJob(models.Model):
     """
 
     class Status(models.TextChoices):
+        QUEUED = "queued", gettext_lazy("В очереди")
         RUNNING = "running", gettext_lazy("Идёт")
         DONE = "done", gettext_lazy("Готово")
-        FAILED = "failed", gettext_lazy("Не получилось")
+        FAILED = "failed", gettext_lazy("Не получился")
+        CANCELLED = "cancelled", gettext_lazy("Отменён")
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -361,7 +363,11 @@ class BackgroundJob(models.Model):
     )
     kind = models.CharField(gettext_lazy("Вид операции"), max_length=40)
     title = models.CharField(gettext_lazy("Название"), max_length=200)
-    status = models.CharField(gettext_lazy("Состояние"), max_length=8, choices=Status.choices, default=Status.RUNNING)
+    status = models.CharField(gettext_lazy("Состояние"), max_length=10, choices=Status.choices, default=Status.QUEUED)
+    #: над чем запуск: ученик, группа, отчёт. По нему не даётся второй
+    #: такой же запуск, пока идёт первый
+    target_model = models.CharField(gettext_lazy("Над чем: модель"), max_length=60, blank=True)
+    target_id = models.PositiveBigIntegerField(gettext_lazy("Над чем: номер"), null=True, blank=True)
     stage = models.CharField(gettext_lazy("Этап"), max_length=120, blank=True)
     percent = models.PositiveSmallIntegerField(gettext_lazy("Процент"), default=0)
     steps_done = models.PositiveSmallIntegerField(gettext_lazy("Пройдено этапов"), default=0)
@@ -375,7 +381,18 @@ class BackgroundJob(models.Model):
     retry_payload = models.TextField(gettext_lazy("Аргументы повтора"), blank=True)
     #: плашку закрыли крестиком — операция при этом продолжается
     dismissed = models.BooleanField(gettext_lazy("Плашка скрыта"), default=False)
+    #: кто отменил: сам запустивший или администратор
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=gettext_lazy("Кто отменил"),
+        related_name="+",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(gettext_lazy("Запущена"), auto_now_add=True)
+    #: воркер взял задачу: с этого времени запуск «идёт»
+    started_at = models.DateTimeField(gettext_lazy("Началась"), null=True, blank=True)
     updated_at = models.DateTimeField(gettext_lazy("Обновлена"), auto_now=True)
     finished_at = models.DateTimeField(gettext_lazy("Закончена"), null=True, blank=True)
 
@@ -383,7 +400,11 @@ class BackgroundJob(models.Model):
         verbose_name = gettext_lazy("Фоновая операция")
         verbose_name_plural = gettext_lazy("Фоновые операции")
         ordering = ("-created_at",)
-        indexes = [models.Index(fields=("owner", "-created_at")), models.Index(fields=("status",))]
+        indexes = [
+            models.Index(fields=("owner", "-created_at")),
+            models.Index(fields=("status",)),
+            models.Index(fields=("kind", "target_model", "target_id")),
+        ]
 
     def __str__(self) -> str:
         return f"{self.title} · {self.get_status_display()}"

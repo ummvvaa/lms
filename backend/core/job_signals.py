@@ -16,10 +16,20 @@ log = logging.getLogger(__name__)
 
 
 def ready() -> None:
-    from celery.signals import task_failure, task_success
+    from celery.signals import task_failure, task_prerun, task_success
 
+    task_prerun.connect(_on_start, dispatch_uid="core.jobs.start")
     task_success.connect(_on_success, dispatch_uid="core.jobs.success")
     task_failure.connect(_on_failure, dispatch_uid="core.jobs.failure")
+
+
+def _on_start(task_id=None, **kwargs) -> None:
+    from core import jobs
+
+    try:
+        jobs.begin(task_id or "")
+    except Exception:  # плашка не должна ронять саму операцию
+        log.exception("не удалось отметить старт фоновой операции %s", task_id)
 
 
 def _on_success(sender=None, result=None, **kwargs) -> None:
@@ -38,6 +48,9 @@ def _on_failure(task_id=None, exception=None, **kwargs) -> None:
     from core import jobs
 
     if not task_id:
+        return
+    if isinstance(exception, jobs.Cancelled):
+        # отменённый запуск уже закрыт кнопкой — сбоем его не перекрашиваем
         return
     try:
         jobs.fail(task_id, str(exception) if exception else "")

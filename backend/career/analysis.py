@@ -169,7 +169,7 @@ def plan(students: list[Student], tests: list, *, force: bool = False) -> Plan:
         key = fingerprint_of(attempts)
         existing = (
             CareerAnalysis.objects.filter(student=student, fingerprint=key)
-            .exclude(status=AnalysisStatus.FAILED)
+            .exclude(status__in=(AnalysisStatus.FAILED, AnalysisStatus.CANCELLED))
             .first()
         )
         if existing is not None and not force:

@@ -281,6 +281,7 @@ class AnalysisStatus(models.TextChoices):
     RUNNING = "running", gettext_lazy("Идёт")
     DONE = "done", gettext_lazy("Готов")
     FAILED = "failed", gettext_lazy("Не получился")
+    CANCELLED = "cancelled", gettext_lazy("Отменён")
 
 
 class CareerAnalysis(models.Model):
@@ -296,7 +297,16 @@ class CareerAnalysis(models.Model):
     attempts = models.ManyToManyField(CareerAttempt, related_name="analyses", blank=True)
     fingerprint = models.CharField(gettext_lazy("Набор попыток"), max_length=200, db_index=True)
     status = models.CharField(
-        gettext_lazy("Состояние"), max_length=8, choices=AnalysisStatus.choices, default=AnalysisStatus.RUNNING
+        gettext_lazy("Состояние"), max_length=10, choices=AnalysisStatus.choices, default=AnalysisStatus.RUNNING
+    )
+    #: запуск, которым разбор считается: отмена и зависание закрывают его строки
+    job = models.ForeignKey(
+        "core.BackgroundJob",
+        verbose_name=gettext_lazy("Запуск"),
+        related_name="career_analyses",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
     )
     language = models.CharField(gettext_lazy("Язык разбора"), max_length=2, default="ru")
     summary = models.TextField(gettext_lazy("Общий вывод"), blank=True)

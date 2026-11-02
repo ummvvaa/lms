@@ -118,7 +118,7 @@ def test_dismiss_hides_the_row_but_not_the_work(api, make_user):
     assert api.post(f"/api/jobs/{job.pk}/dismiss/").status_code == 200
     assert api.get("/api/jobs/").data["results"] == []
     job.refresh_from_db()
-    assert job.status == BackgroundJob.Status.RUNNING, "операция продолжается"
+    assert job.status in jobs.ACTIVE, "операция продолжается"
 
 
 @pytest.mark.django_db

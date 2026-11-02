@@ -34,6 +34,7 @@ from career.models import (
     CareerTest,
     CareerTestOption,
 )
+from career.tasks import JOB_KIND
 from core import jobs, usage
 from core.domains import ROLE_ADMIN, ROLE_STUDENT
 from core.i18n import language_of
@@ -484,6 +485,7 @@ def analyses_view(request):
     rows = CareerAnalysis.objects.filter(student__in=students).select_related(
         "student", "student__group", "created_by", "edited_by"
     )
+    run = jobs.latest_for(kind=JOB_KIND, target=group)
     return Response(
         {
             "manage": rights.manages(request.user),
@@ -491,6 +493,8 @@ def analyses_view(request):
             "group": {"id": group.pk, "code": group.code, "parallel": group.parallel},
             "tests": [{"id": r["test_id"], "title": r["test__title"], "done": r["n"]} for r in done],
             "analyses": [payloads.analysis_dict(a) for a in rows],
+            # последний запуск по группе: «идёт с 11:42», отмена, причина сбоя
+            "run": jobs.payload(run, request.user) if run else None,
         }
     )
 
@@ -513,6 +517,20 @@ def _start_analyses(request) -> Response:
     if isinstance(picked, list):
         ids = [i for i in (_int(x) for x in picked) if i is not None]
         students = students.filter(pk__in=ids)
+    # разбор этой группы уже идёт — второй не заводим, кнопка ведёт к идущему
+    running = jobs.active_for(kind=JOB_KIND, target=group)
+    if running is not None:
+        return Response(
+            {
+                "created": 0,
+                "reused": 0,
+                "skipped": [],
+                "job": running.pk,
+                "already": True,
+                "run": jobs.payload(running, request.user),
+            },
+            status=status.HTTP_200_OK,
+        )
     plan = analyses.plan(list(students), tests_rows, force=bool(body.get("force")))
     language = language_of(request.user)
     created: list[CareerAnalysis] = [
@@ -526,13 +544,14 @@ def _start_analyses(request) -> Response:
         task_id = uuid.uuid4().hex
         job = jobs.start(
             user=request.user,
-            kind="career_analysis",
+            kind=JOB_KIND,
             title=_("Разбор профтеста: {n}").format(n=len(created)),
             task_id=task_id,
             link="/career-tests?tab=analyses",
-            retry_task="career.analyze",
-            retry_payload={"analysis_ids": [row.pk for row in created]},
+            # повтор — запуском заново с экрана: строки отменённого запуска закрыты
+            target=group,
         )
+        CareerAnalysis.objects.filter(pk__in=[row.pk for row in created]).update(job=job)
         job_id = job.pk
         analyze.apply_async(kwargs={"analysis_ids": [row.pk for row in created]}, task_id=task_id)
         usage.track(request, "career.analysis.start")

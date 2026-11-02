@@ -60,3 +60,11 @@ def purge_usage_events() -> int:
     from core.usage import purge_old_events
 
     return purge_old_events()
+
+
+@shared_task(name="core.sweep_stale_jobs", ignore_result=True)
+def sweep_stale_jobs() -> int:
+    """Зависшие запуски — в «Не получился» с причиной «нет ответа»."""
+    from core.jobs import sweep
+
+    return sweep()

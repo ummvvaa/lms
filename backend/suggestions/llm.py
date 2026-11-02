@@ -184,6 +184,10 @@ def complete(
     if not provider.is_configured():
         raise LLMUnavailable(_("Модель не настроена"))
 
+    from core.jobs import raise_if_cancelled
+
+    # запуск отменили, пока он стоял в очереди или собирал данные: не платим
+    raise_if_cancelled()
     started = time.monotonic()
     try:
         answer = provider.complete(
@@ -240,6 +244,8 @@ def complete(
         is_ok=not outside and not empty,
         error=_("поиск вышел за белый список: {urls}").format(urls=", ".join(outside[:3])) if outside else empty[:250],
     )
+    # отменили, пока модель думала: расход записан выше, ответ дальше не идёт
+    raise_if_cancelled()
     if outside:
         # это не «немного не тот источник», а ровно то, из-за чего белый
         # список и заведён: ответ целиком уходит в корзину

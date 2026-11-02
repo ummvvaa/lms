@@ -13,6 +13,7 @@ urlpatterns = [
     path("jobs/", views.jobs_list, name="jobs"),
     path("jobs/<int:pk>/dismiss/", views.job_dismiss, name="job-dismiss"),
     path("jobs/<int:pk>/retry/", views.job_retry, name="job-retry"),
+    path("jobs/<int:pk>/cancel/", views.job_cancel, name="job-cancel"),
     path("meta/domains/", views.domain_meta, name="domain-meta"),
     # кабинет куратора (фаза 61): главная, ученики, карточка, задачи
     path("curator/overview/", curator.overview, name="curator-overview"),

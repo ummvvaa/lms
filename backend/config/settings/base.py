@@ -402,6 +402,12 @@ SYNC_EXTRA_HOSTS = env_list("SYNC_EXTRA_HOSTS", "")
 # (`core.school_rules`, разделы «Напоминания» и «Дедлайны и окна»), не здесь
 
 CELERY_BEAT_SCHEDULE = {
+    "sweep-stale-jobs": {
+        "task": "core.sweep_stale_jobs",
+        # запуск без признаков жизни дольше `LLM_TIMEOUT × (LLM_RETRIES + 1) + 60`
+        # закрывается «нет ответа»; список запусков проверяет и сам при чтении
+        "schedule": crontab(minute="*"),
+    },
     "sport-tickets-tick": {
         "task": "sport.tickets_tick",
         # напоминание за 5 минут до старта раздачи и ответ из очереди, который истёк

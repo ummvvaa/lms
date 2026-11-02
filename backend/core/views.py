@@ -15,7 +15,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core import stored_text
+from core import stored_text, usage
 from core.archive import (
     blockers,
     confirm_word,
@@ -688,15 +688,35 @@ def job_dismiss(request, pk: int):
 @extend_schema(responses={200: dict})
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+def job_cancel(request, pk: int):
+    """Отменить запуск в очереди или идущий: тот, кто запустил, и администратор.
+
+    Чужой запуск для остальных — 404: по ответу не видно, что он есть.
+    """
+    from core import jobs
+    from core.models import BackgroundJob
+
+    job = BackgroundJob.objects.filter(pk=pk).first()
+    if job is None or (job.owner_id != request.user.pk and request.user.role != ROLE_ADMIN):
+        return Response({"detail": _("Такой операции нет")}, status=status.HTTP_404_NOT_FOUND)
+    if not jobs.cancel(job, by=request.user):
+        return Response({"detail": _("Запуск уже закончился — отменять нечего")}, status=status.HTTP_400_BAD_REQUEST)
+    usage.track(request, "job.cancel")
+    return Response(jobs.payload(job, request.user))
+
+
+@extend_schema(responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
 def job_retry(request, pk: int):
-    """Повторить сорвавшуюся операцию тем же вызовом."""
+    """Повторить сорвавшуюся или отменённую операцию тем же вызовом."""
     from core import jobs
     from core.models import BackgroundJob
 
     job = BackgroundJob.objects.filter(pk=pk, owner=request.user).first()
     if job is None:
         return Response({"detail": _("Такой операции нет")}, status=status.HTTP_404_NOT_FOUND)
-    if job.status != BackgroundJob.Status.FAILED:
+    if job.status not in (BackgroundJob.Status.FAILED, BackgroundJob.Status.CANCELLED):
         return Response({"detail": _("Повторять нечего: операция не сорвалась")}, status=status.HTTP_400_BAD_REQUEST)
     again = jobs.retry(job)
     if again is None:

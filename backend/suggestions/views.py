@@ -599,7 +599,9 @@ def task_status(request, task_id: str):
     if not BackgroundJob.objects.filter(task_id=task_id, owner=request.user).exists():
         return Response({"detail": _("Задача не найдена")}, status=status.HTTP_404_NOT_FOUND)
     result = AsyncResult(task_id)
-    payload: dict = {"id": task_id, "state": result.state}
+    job = BackgroundJob.objects.filter(task_id=task_id).first()
+    # состояние запуска — для строки «идёт с 11:42», отмены и причины сбоя
+    payload: dict = {"id": task_id, "state": result.state, "job": jobs.payload(job, request.user) if job else None}
     if result.state == "PROGRESS":
         payload["progress"] = result.info
     elif result.successful():

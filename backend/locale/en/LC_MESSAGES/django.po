@@ -18985,3 +18985,35 @@ msgstr "A student's clubs are visible to the curator and the administrator"
 #: suggestions
 msgid "модель не вернула структурированный ответ"
 msgstr "the model did not return a structured answer"
+
+#: core/jobs
+msgid "Запуск"
+msgstr "Run"
+
+#: core/jobs
+msgid "Запуск отменён"
+msgstr "The run was cancelled"
+
+#: core/jobs
+msgid "Запуск уже закончился — отменять нечего"
+msgstr "The run has already finished — there is nothing to cancel"
+
+#: core/jobs
+msgid "Над чем: модель"
+msgstr "Target: model"
+
+#: core/jobs
+msgid "Над чем: номер"
+msgstr "Target: number"
+
+#: core/jobs
+msgid "Началась"
+msgstr "Started"
+
+#: core/jobs
+msgid "Отмена фоновой операции"
+msgstr "Cancelling a background operation"
+
+#: core/jobs
+msgid "нет ответа"
+msgstr "no answer"

@@ -493,3 +493,86 @@ def test_admin_runs_analysis_for_any_group(passed, karta, admin, boston, fake):
         login(admin).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json").status_code
         == 202
     )
+
+
+# --- Запуск разбора: двойной запуск, отмена ------------------------------------------
+
+
+class CancelInFlight(FakeProvider):
+    """Пока модель думает над разбором, учитель нажимает «Отменить»."""
+
+    def complete(self, **kwargs):
+        from core import jobs
+        from core.models import BackgroundJob
+
+        job = BackgroundJob.objects.get(kind="career_analysis")
+        jobs.cancel(job, by=job.owner)
+        return super().complete(**kwargs)
+
+
+def test_second_analysis_of_the_same_group_leads_to_the_running_one(passed, karta, teacher, admin, boston, fake):
+    """Пока разбор группы в очереди или идёт, второй не заводится — ни тем же, ни другим."""
+    from core import jobs
+    from core.models import BackgroundJob
+
+    fake(FakeProvider(PARSED))
+    running = jobs.start(user=teacher, kind="career_analysis", title="Разбор", task_id="t-run", target=boston)
+    answer = login(admin).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
+
+    assert answer.status_code == 200 and answer.json()["already"] is True
+    assert answer.json()["job"] == running.pk
+    assert BackgroundJob.objects.count() == 1 and not CareerAnalysis.objects.exists()
+    listing = login(teacher).get(f"/api/career/analyses/?group={boston.pk}").json()
+    assert listing["run"]["status"] == "queued" and listing["run"]["can_cancel"] is True
+
+
+def test_cancelled_analysis_keeps_no_late_result(passed, karta, teacher, boston, fake):
+    """Отмена во время вызова: разбор «Отменён», направлений нет, расход в журнале."""
+    from core.models import BackgroundJob, Notification
+    from suggestions.models import LLMCall
+
+    fake(CancelInFlight(PARSED))
+    login(teacher).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
+
+    row = CareerAnalysis.objects.get()
+    assert row.status == AnalysisStatus.CANCELLED and row.summary == ""
+    assert not row.directions.exists(), "поздний разбор не сохраняется"
+    assert BackgroundJob.objects.get().status == BackgroundJob.Status.CANCELLED
+    assert LLMCall.objects.filter(purpose="career_test").count() == 1
+    assert not Notification.objects.filter(recipient=teacher).exists()
+    listing = login(teacher).get(f"/api/career/analyses/?group={boston.pk}").json()
+    assert listing["run"]["status"] == "cancelled" and listing["analyses"][0]["status_title"] == "Отменён"
+    # отменённый набор запускается заново без «Пересчитать»
+    fake(FakeProvider(PARSED))
+    again = login(teacher).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
+    assert again.json()["created"] == 1
+
+
+def test_only_the_launcher_and_admin_cancel_an_analysis(passed, karta, teacher, other_teacher, admin, boston):
+    from core import jobs
+    from core.models import BackgroundJob
+
+    job = jobs.start(user=teacher, kind="career_analysis", title="Разбор", task_id="t-a", target=boston)
+    assert login(other_teacher).post(f"/api/jobs/{job.pk}/cancel/").status_code == 404
+    listing = login(admin).get(f"/api/career/analyses/?group={boston.pk}").json()
+    assert listing["run"]["can_cancel"] is True
+    assert login(admin).post(f"/api/jobs/{job.pk}/cancel/").status_code == 200
+    assert BackgroundJob.objects.get().status == BackgroundJob.Status.CANCELLED
+
+
+def test_stale_analysis_launch_fails_its_rows_with_no_answer(passed, karta, teacher, boston, pupils):
+    import datetime as dt
+
+    from django.utils import timezone
+
+    from core import jobs
+    from core.models import BackgroundJob
+
+    job = jobs.start(user=teacher, kind="career_analysis", title="Разбор", task_id="t-st", target=boston)
+    jobs.begin("t-st")
+    row = CareerAnalysis.objects.create(student=pupils["aliya"], fingerprint="x", created_by=teacher, job=job)
+    BackgroundJob.objects.filter(pk=job.pk).update(updated_at=timezone.now() - jobs.stale_after() - dt.timedelta(1))
+
+    jobs.sweep()
+    row.refresh_from_db()
+    assert row.status == AnalysisStatus.FAILED and row.error == "нет ответа"
