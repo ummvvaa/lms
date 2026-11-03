@@ -6,17 +6,17 @@
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useCareerAnalysisPatch, type CareerAnalysis, type CareerDirection } from '../../api/career'
+import { useCareerAnalysisPatch, useCareerStartAnalyses, type CareerAnalysis, type CareerDirection } from '../../api/career'
 import { isActiveRun } from '../../api/hooks'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
 import RunState from '../../components/RunState'
-import { Row, Rows } from '../../components/patterns'
 import { Chip, ScreenTabs } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { Switch } from '../../components/ui/switch'
 import { t } from '../../i18n'
 import { formatDateTime } from '../../lib/format'
+import DirectionView, { DIRECTION_FIELDS, DirectionFacts, DirectionHead, DirectionPrograms } from './DirectionView'
 import { analysisTone } from './tone'
 
 type Version = 'teacher' | 'student'
@@ -72,6 +72,22 @@ export default function AnalysisCard({ analysis, manage, studentSees = false, on
         onError: (error) => toast.error(error.message),
       },
     )
+  // «Пересчитать» — тот же запуск разбора группы, по тем же тестам, для этого ученика
+  const start = useCareerStartAnalyses()
+  const recalc = () =>
+    start.mutate(
+      { group: analysis.group_id ?? 0, tests: analysis.tests.map((test) => test.id), students: analysis.student ? [analysis.student.id] : [], force: true },
+      {
+        onSuccess: (result) => {
+          toast.success(result.already ? t('Разбор этой группы уже идёт') : t('Пересчёт запущен — новый разбор появится в списке'))
+          onClose()
+        },
+        onError: (error) => toast.error(error.message),
+      },
+    )
+  // новые поля у старого разбора пусты — не выводятся, пока их не заполнили
+  const legacyOnly = new Set<keyof CareerDirection>(['title_abroad', 'next_steps'])
+  const shows = (direction: CareerDirection, name: keyof CareerDirection) => !analysis.legacy || !legacyOnly.has(name) || Boolean(field(direction, name))
   const studentReady = Boolean(analysis.has_student_version)
   const forStudent = version === 'student'
   const summaryText = forStudent ? analysis.summary_student ?? '' : analysis.summary
@@ -90,6 +106,17 @@ export default function AnalysisCard({ analysis, manage, studentSees = false, on
         {studentSees && analysis.visible_to_student && <Chip size="sm" tone="good">{t('показан ученику')}</Chip>}
       </div>
       {analysis.error && <p className="acad__note">{analysis.error}</p>}
+      {analysis.legacy && analysis.status === 'done' && (
+        <div className="warnline">
+          <span className="warnline__what">{t('Разбор по старым правилам')}</span>
+          <span>{t('Посчитан до перехода на поступление за рубеж и показан как есть')}</span>
+          {manage && analysis.group_id && (
+            <Button variant="outline" size="sm" disabled={start.isPending} onClick={recalc}>
+              {start.isPending ? t('Запускаю…') : t('Пересчитать')}
+            </Button>
+          )}
+        </div>
+      )}
       {manage && studentSees && analysis.status === 'done' && (
         <label className="field__check">
           <Switch checked={analysis.visible_to_student} disabled={patch.isPending || writing} onCheckedChange={(on) => show(Boolean(on))} />
@@ -125,44 +152,42 @@ export default function AnalysisCard({ analysis, manage, studentSees = false, on
         )
       )}
       {(forStudent ? studentReady : true) &&
-        analysis.directions.map((direction) => (
-          <div key={direction.id} className="canal__dir">
-            {manage ? (
-              <>
-                {!forStudent && <Field kind="text" name={`title-${direction.id}`} label={t('Направление')} value={field(direction, 'title')} onChange={(value) => setField(direction, 'title', value)} />}
-                {forStudent && <b>{field(direction, 'title')}</b>}
-                <Field
-                  kind="textarea"
-                  name={`why-${direction.id}-${version}`}
-                  label={t('Почему подходит')}
-                  rows={4}
-                  value={field(direction, forStudent ? 'reasoning_student' : 'reasoning')}
-                  onChange={(value) => setField(direction, forStudent ? 'reasoning_student' : 'reasoning', value)}
-                />
-                {!forStudent && (
-                  <>
-                    <Field kind="text" name={`prof-${direction.id}`} label={t('Профессии')} value={field(direction, 'professions')} onChange={(value) => setField(direction, 'professions', value)} />
-                    <Field kind="text" name={`subj-${direction.id}`} label={t('Предметы')} value={field(direction, 'subjects')} onChange={(value) => setField(direction, 'subjects', value)} />
-                    <Field kind="text" name={`exams-${direction.id}`} label={t('Экзамены')} value={field(direction, 'exams')} onChange={(value) => setField(direction, 'exams', value)} />
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <b>{direction.title}</b>
-                {reasonOf(direction) && <p className="acad__note">{reasonOf(direction)}</p>}
-                <p className="t-note">{[direction.professions, direction.subjects, direction.exams].filter(Boolean).join(' · ')}</p>
-              </>
-            )}
-            {direction.programs.length > 0 && (
-              <Rows>
-                {direction.programs.map((program) => (
-                  <Row key={program.id} icon="cap" title={program.name} note={`${program.university} · ${program.level_title}`} />
-                ))}
-              </Rows>
-            )}
-          </div>
-        ))}
+        analysis.directions.map((direction) =>
+          manage ? (
+            <div key={direction.id} className="canal__dir">
+              {forStudent ? (
+                <DirectionHead direction={direction} />
+              ) : (
+                <>
+                  <Field kind="textarea" rows={1} name={`title-${direction.id}`} label={t('Направление')} value={field(direction, 'title')} onChange={(value) => setField(direction, 'title', value)} />
+                  {shows(direction, 'title_abroad') && (
+                    <Field kind="textarea" rows={1} name={`abroad-${direction.id}`} label={t('Как называется за рубежом')} value={field(direction, 'title_abroad')} onChange={(value) => setField(direction, 'title_abroad', value)} />
+                  )}
+                </>
+              )}
+              <Field
+                kind="textarea"
+                name={`why-${direction.id}-${version}`}
+                label={t('Почему подходит')}
+                rows={3}
+                value={field(direction, forStudent ? 'reasoning_student' : 'reasoning')}
+                onChange={(value) => setField(direction, forStudent ? 'reasoning_student' : 'reasoning', value)}
+              />
+              {forStudent ? (
+                <DirectionFacts direction={direction} legacy={analysis.legacy} />
+              ) : (
+                <>
+                  {DIRECTION_FIELDS.filter(({ name }) => shows(direction, name)).map(({ name, label }) => (
+                    <Field key={name} kind="textarea" rows={2} name={`${name}-${direction.id}`} label={t(label)} value={field(direction, name)} onChange={(value) => setField(direction, name, value)} />
+                  ))}
+                  <DirectionPrograms direction={direction} legacy={analysis.legacy} />
+                </>
+              )}
+            </div>
+          ) : (
+            <DirectionView key={direction.id} direction={direction} reasoning={reasonOf(direction)} legacy={analysis.legacy} />
+          ),
+        )}
       <div className="toolbar ctest__foot">
         {manage && (
           <Button disabled={!dirty || patch.isPending} onClick={save}>

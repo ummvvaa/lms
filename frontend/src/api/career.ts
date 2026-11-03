@@ -90,10 +90,14 @@ export interface CareerDirection {
   id: number
   order: number
   title: string
+  /** как специальность называется в зарубежных вузах; у старых разборов пусто */
+  title_abroad: string
   reasoning: string
   professions: string
-  subjects: string
   exams: string
+  subjects: string
+  /** что сделать уже сейчас для портфолио — по шагу на строку; у старых разборов пусто */
+  next_steps: string
   programs: { id: number; name: string; university: string; level_title: string }[]
   /** объяснение для ученика, на «ты» — только сотрудникам; ученику приходит в `reasoning` */
   reasoning_student?: string
@@ -112,6 +116,8 @@ export interface CareerAnalysis {
   language: string
   visible_to_student: boolean
   edited_at: string | null
+  /** разбор считался по прежним правилам — показывается как есть, с плашкой */
+  legacy: boolean
   tests: { id: number; title: string; attempt: number; finished_at: string | null }[]
   directions: CareerDirection[]
   /** версия для ученика (пишется моделью при первом показе) — только сотрудникам */
@@ -119,6 +125,8 @@ export interface CareerAnalysis {
   has_student_version?: boolean
   /** только сотрудникам: ученику имена не приходят */
   student?: { id: number; full_name: string; short: string; group: string }
+  /** группа ученика — для «Пересчитать»; только сотрудникам */
+  group_id?: number | null
   created_by?: { id: number; full_name: string; short: string } | null
   edited_by?: { id: number; full_name: string; short: string } | null
 }

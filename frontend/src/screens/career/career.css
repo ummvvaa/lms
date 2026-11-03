@@ -168,6 +168,48 @@ body .tbl [data-slot='badge'].cbars__label {
   border-top: 0;
 }
 
+/* направление и под ним мелко — как оно называется за рубежом */
+.canal__head {
+  display: grid;
+  gap: calc(var(--space) * 1);
+}
+
+.canal__title,
+.canal__abroad {
+  overflow-wrap: anywhere;
+}
+
+.canal__abroad {
+  color: var(--ink-3);
+}
+
+/* подпись поля и текст под ней; текст целиком, шаги — по строке */
+.canal__fact {
+  display: grid;
+  gap: calc(var(--space) * 1);
+  min-width: 0;
+}
+
+.canal__fact > .eyebrow {
+  margin-bottom: 0;
+}
+
+.canal__text {
+  color: var(--ink-2);
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* поля правки растут по тексту, ничего не прячут под прокрутку */
+/* короче общего двойного поля: однострочное название не стоит высоким блоком */
+.canal__dir .field__control [data-slot='textarea'] {
+  min-height: var(--control-h);
+  field-sizing: content;
+  resize: none;
+}
+
 @media (max-width: 760px) {
   .ctake__item {
     flex-direction: column;

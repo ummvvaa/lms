@@ -6,12 +6,12 @@
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { useMyCareer, useMyStart, type CareerAnalysis, type MyCareer } from '../../api/career'
-import { Row, Rows } from '../../components/patterns'
 import { Bar, Chip, DataCard, ErrorNote, Loading, ScreenHead } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tn } from '../../i18n'
 import { formatDate } from '../../lib/format'
 import Icon from '../../layout/icons'
+import DirectionView from './DirectionView'
 import './career-my.css'
 
 type MyTest = MyCareer['tests'][number]
@@ -36,29 +36,9 @@ export function AnalysisCard({ analysis }: { analysis: CareerAnalysis }) {
   return (
     <DataCard title={t('Разбор от учителя')} note={analysis.tests.map((test) => test.title).join(' · ')}>
       {analysis.summary && <p className="acad__note">{analysis.summary}</p>}
-      <Rows>
-        {analysis.directions.map((direction) => (
-          <Row
-            key={direction.id}
-            icon="target"
-            title={direction.title}
-            note={[
-              direction.professions,
-              direction.subjects ? t('Предметы: {subjects}', { subjects: direction.subjects }) : '',
-              direction.exams ? t('Экзамены: {exams}', { exams: direction.exams }) : '',
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          />
-        ))}
-      </Rows>
-      {analysis.directions.map((direction) =>
-        direction.reasoning ? (
-          <p key={direction.id} className="t-note">
-            <b>{direction.title}.</b> {direction.reasoning}
-          </p>
-        ) : null,
-      )}
+      {analysis.directions.map((direction) => (
+        <DirectionView key={direction.id} direction={direction} reasoning={direction.reasoning} legacy={analysis.legacy} />
+      ))}
     </DataCard>
   )
 }
