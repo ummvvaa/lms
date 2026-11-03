@@ -334,7 +334,13 @@ PARSED = {
             "exams": "IELTS, SAT",
             "programs": [999999],
         },
-        {"title": "Право", "reasoning": "Юриспруденция — 6", "professions": "юрист", "subjects": "история", "exams": "IELTS"},
+        {
+            "title": "Право",
+            "reasoning": "Юриспруденция — 6",
+            "professions": "юрист",
+            "subjects": "история",
+            "exams": "IELTS",
+        },
         {"title": "Экология", "reasoning": "смежно с биологией", "professions": "эколог"},
     ],
 }
