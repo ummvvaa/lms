@@ -328,14 +328,14 @@ PARSED = {
     "directions": [
         {
             "title": "Биотехнологии",
-            "why": "Биология — 12, ярко выраженный интерес",
+            "reasoning": "Биология — 12, ярко выраженный интерес",
             "professions": "биотехнолог, генетик",
             "subjects": "биология, химия",
             "exams": "IELTS, SAT",
             "programs": [999999],
         },
-        {"title": "Право", "why": "Юриспруденция — 6", "professions": "юрист", "subjects": "история", "exams": "IELTS"},
-        {"title": "Экология", "why": "смежно с биологией", "professions": "эколог"},
+        {"title": "Право", "reasoning": "Юриспруденция — 6", "professions": "юрист", "subjects": "история", "exams": "IELTS"},
+        {"title": "Экология", "reasoning": "смежно с биологией", "professions": "эколог"},
     ],
 }
 

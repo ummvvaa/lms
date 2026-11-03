@@ -19101,3 +19101,23 @@ msgstr "Section students.xlsx"
 #: sport/roster
 msgid "Час уже назначен: {slot}"
 msgstr "Hour already set: {slot}"
+
+#: career/models.py
+msgid "Правила разбора"
+msgstr "Analysis rules"
+
+#: career/models.py
+msgid "Название за рубежом"
+msgstr "Name abroad"
+
+#: career/models.py
+msgid "Что подтянуть в школе"
+msgstr "What to improve at school"
+
+#: career/models.py
+msgid "Что сдавать для поступления"
+msgstr "Exams for admission"
+
+#: career/models.py
+msgid "Что сделать уже сейчас"
+msgstr "What to do right now"

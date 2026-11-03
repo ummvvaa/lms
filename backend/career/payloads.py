@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from academics.payloads import person, student_brief
+from career.analysis import RULES
 from career.models import CareerAnalysis, CareerAttempt, CareerTest
 from career.scoring import bounds
 
@@ -125,6 +126,8 @@ def analysis_dict(analysis: CareerAnalysis, *, for_student: bool = False) -> dic
         "language": analysis.language,
         "visible_to_student": analysis.visible_to_student,
         "edited_at": analysis.edited_at,
+        #: разбор считался по прежним правилам — показывается как есть, с плашкой
+        "legacy": analysis.rules < RULES,
         "tests": [
             {"id": a.test_id, "title": a.test.title, "attempt": a.pk, "finished_at": a.finished_at}
             for a in analysis.attempts.select_related("test").order_by("finished_at", "id")
@@ -134,10 +137,12 @@ def analysis_dict(analysis: CareerAnalysis, *, for_student: bool = False) -> dic
                 "id": d.pk,
                 "order": d.order,
                 "title": d.title,
+                "title_abroad": d.title_abroad,
                 "reasoning": d.reasoning_student if for_student else d.reasoning,
                 "professions": d.professions,
-                "subjects": d.subjects,
                 "exams": d.exams,
+                "subjects": d.subjects,
+                "next_steps": d.next_steps,
                 "programs": [
                     {"id": p.pk, "name": p.name, "university": p.university.name, "level_title": p.get_level_display()}
                     for p in d.programs.select_related("university")
@@ -154,6 +159,8 @@ def analysis_dict(analysis: CareerAnalysis, *, for_student: bool = False) -> dic
         for row, d in zip(out["directions"], analysis.directions.all(), strict=False):
             row["reasoning_student"] = d.reasoning_student
         out["student"] = student_brief(analysis.student)
+        # «Пересчитать» запускает разбор группы ученика по тем же тестам
+        out["group_id"] = analysis.student.group_id
         out["created_by"] = person(analysis.created_by)
         out["edited_by"] = person(analysis.edited_by)
     return out

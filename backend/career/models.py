@@ -325,6 +325,10 @@ class CareerAnalysis(models.Model):
     created_at = models.DateTimeField(gettext_lazy("Запущен"), auto_now_add=True)
     finished_at = models.DateTimeField(gettext_lazy("Готов"), null=True, blank=True)
     visible_to_student = models.BooleanField(gettext_lazy("Показан ученику"), default=False)
+    #: по каким правилам считался разбор: 1 — прежние (направления по всем шкалам
+    #: выше порога, школьные предметы); 2 — поступление за рубеж, направления только
+    #: по двум верхним диапазонам теста. Старые разборы не пересчитываются сами
+    rules = models.PositiveSmallIntegerField(gettext_lazy("Правила разбора"), default=2)
     edited_at = models.DateTimeField(gettext_lazy("Правил учитель"), null=True, blank=True)
     edited_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -346,17 +350,21 @@ class CareerAnalysis(models.Model):
 
 
 class CareerAnalysisDirection(models.Model):
-    """Одно направление разбора. Программы — только из справочника (инвариант 10)."""
+    """Одно направление разбора. Программы — только из каталога (инвариант 10)."""
 
     analysis = models.ForeignKey(CareerAnalysis, related_name="directions", on_delete=models.CASCADE)
     order = models.PositiveSmallIntegerField(gettext_lazy("Порядок"), default=1)
     title = models.CharField(gettext_lazy("Направление"), max_length=150)
+    #: как специальность называется в зарубежных вузах — по-английски
+    title_abroad = models.CharField(gettext_lazy("Название за рубежом"), max_length=150, blank=True)
     reasoning = models.TextField(gettext_lazy("Почему подходит"), blank=True)
     #: объяснение для ученика, на «ты»
     reasoning_student = models.TextField(gettext_lazy("Почему подходит — для ученика"), blank=True)
-    professions = models.CharField(gettext_lazy("Профессии"), max_length=300, blank=True)
-    subjects = models.CharField(gettext_lazy("Какие предметы нужны"), max_length=300, blank=True)
-    exams = models.CharField(gettext_lazy("Какие экзамены нужны"), max_length=300, blank=True)
+    professions = models.TextField(gettext_lazy("Профессии"), blank=True)
+    subjects = models.TextField(gettext_lazy("Что подтянуть в школе"), blank=True)
+    exams = models.TextField(gettext_lazy("Что сдавать для поступления"), blank=True)
+    #: что сделать уже сейчас для портфолио: олимпиады, проекты, летние школы
+    next_steps = models.TextField(gettext_lazy("Что сделать уже сейчас"), blank=True)
     programs = models.ManyToManyField(
         "universities.Program",
         verbose_name=gettext_lazy("Программы справочника"),

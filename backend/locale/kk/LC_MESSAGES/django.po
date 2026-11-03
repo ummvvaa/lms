@@ -19020,3 +19020,23 @@ msgstr "Секция оқушылары.xlsx"
 #: sport/roster
 msgid "Час уже назначен: {slot}"
 msgstr "Сағат тағайындалған: {slot}"
+
+#: career/models.py
+msgid "Правила разбора"
+msgstr "Талдау ережелері"
+
+#: career/models.py
+msgid "Название за рубежом"
+msgstr "Шетелдегі атауы"
+
+#: career/models.py
+msgid "Что подтянуть в школе"
+msgstr "Мектепте неге көңіл бөлу керек"
+
+#: career/models.py
+msgid "Что сдавать для поступления"
+msgstr "Түсу үшін не тапсыру керек"
+
+#: career/models.py
+msgid "Что сделать уже сейчас"
+msgstr "Қазір не істеу керек"

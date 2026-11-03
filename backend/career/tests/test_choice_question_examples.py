@@ -171,6 +171,6 @@ def test_prompt_carries_each_test_above_its_threshold(teacher, boston, pupils):
     text = analysis._prompt(student, attempts, [])
     assert f"Тест «{yov.title}»" in text and f"Тест «{kli.title}»" in text
     # Йовайши, порог 7: только «ii» (12); Климов, порог 4: всё, кроме «sign» (2)
-    assert "- Исследовательская (интеллектуальная) работа: 12 — ярко выраженная склонность" in text
+    assert "- Исследовательская (интеллектуальная) работа: 12 из 12 — ярко выраженная склонность" in text
     assert "Работа с людьми: 6" not in text
-    assert "- Человек — природа: 6" in text and "Человек — знаковая система" not in text
+    assert "- Человек — природа: 6 из 8" in text and "Человек — знаковая система" not in text

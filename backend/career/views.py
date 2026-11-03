@@ -635,11 +635,13 @@ def analysis_detail(request, pk: int):
             continue
         for field_name, limit in (
             ("title", 150),
+            ("title_abroad", 150),
             ("reasoning", 0),
             ("reasoning_student", 0),
-            ("professions", 300),
-            ("subjects", 300),
-            ("exams", 300),
+            ("professions", 0),
+            ("exams", 0),
+            ("subjects", 0),
+            ("next_steps", 0),
         ):
             if field_name in item:
                 value = str(item[field_name] or "").strip()
