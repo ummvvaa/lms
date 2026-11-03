@@ -108,24 +108,41 @@ def test_prompt_knows_the_school_prepares_for_abroad_and_carries_the_student(
     assert catalog.splitlines()[1].startswith(f"- id={program.pk}: Biology")
 
 
-def test_directions_only_from_two_top_ranges_and_at_most_three(aliya_passed, karta, teacher, boston, pupils, fake):
-    # «Карта интересов»: верхние диапазоны 8…12 и 5…7; 1…4 — «интерес выражен слабо»
-    _weaken(aliya_passed, "Юриспруденция", 3, "интерес выражен слабо")
+def test_directions_only_from_the_top_range(aliya_passed, karta, teacher, boston, pupils, fake):
+    # «Карта интересов»: верхний диапазон 8…12; 6 из 12 («выраженный интерес», 5…7) направления не даёт
     provider = fake(FakeProvider({"summary": "Сильнее всего — биология.", "directions": _directions(5)}))
     login(teacher).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
     prompt = provider.calls[0]["user"]
-    strong, weak = prompt.split("Шкалы ниже — без направлений")
-    assert "- Биология: 12 из 12 — ярко выраженный интерес" in strong.split("Сильные шкалы")[1]
-    assert "- Юриспруденция: 3 из 12 — интерес выражен слабо" in weak
+    strong, maybe = prompt.split("Можно присмотреться — без отдельных направлений")
+    assert "- Биология: 12 из 12 — ярко выраженный интерес" in strong.split("Сильные шкалы — верхний диапазон")[1]
+    assert "- Юриспруденция: 6 из 12 — выраженный интерес" in maybe
     assert "Юриспруденция" not in strong
-    assert f"от одного до {analysis.MAX_DIRECTIONS} направлений" in prompt
+    assert "Назови одно направление — сильная шкала одна." in prompt
     row = CareerAnalysis.objects.get()
     assert row.status == AnalysisStatus.DONE and row.rules == analysis.RULES
-    assert row.directions.count() == 3, "больше трёх направлений не сохраняется"
-    first = row.directions.first()
+    assert row.directions.count() == 1, "одна сильная шкала — одно направление, остальное отброшено"
+    first = row.directions.get()
     assert first.title_abroad == "Major 1"
     assert first.next_steps == "олимпиада по биологии\nлетняя школа\nпроект в лаборатории"
     assert len(first.professions) > 300, "длинный текст не режется"
+
+
+def test_several_top_scales_give_at_most_three_directions(aliya_passed, karta, teacher, boston, fake):
+    for title in ("Юриспруденция", "Химия", "Медицина"):
+        _weaken(aliya_passed, title, 9, "ярко выраженный интерес")
+    provider = fake(FakeProvider({"summary": "Биология, право, химия, медицина.", "directions": _directions(5)}))
+    login(teacher).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
+    assert "от одного до 3 направлений" in provider.calls[0]["user"]
+    assert CareerAnalysis.objects.get().directions.count() == 3
+
+
+def test_test_without_ranges_counts_every_scale_above_threshold(aliya_passed, karta, teacher, boston, fake):
+    karta.ranges.all().delete()
+    provider = fake(FakeProvider({"summary": "Биология и право.", "directions": _directions(5)}))
+    login(teacher).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
+    prompt = provider.calls[0]["user"]
+    assert "Можно присмотреться" not in prompt and "- Юриспруденция: 6 из 12" in prompt
+    assert CareerAnalysis.objects.get().directions.count() == 2
 
 
 def test_range_boundaries_count_own_scale_ranges_first():
@@ -134,10 +151,12 @@ def test_range_boundaries_count_own_scale_ranges_first():
             self.scale_id, self.low, self.high = scale_id, low, high
 
     common = [R(None, 8, 12), R(None, 5, 7), R(None, 1, 4)]
-    assert analysis.is_strong(common, 1, 5) and analysis.is_strong(common, 1, 12)
+    assert analysis.is_strong(common, 1, 12) and analysis.is_strong(common, 1, 8)
+    assert not analysis.is_strong(common, 1, 6), "второй диапазон направления не даёт"
     assert not analysis.is_strong(common, 1, 4)
+    assert analysis.is_strong(common, 1, 13), "выше верхней границы — тоже верхний"
     own = [*common, R(1, 10, 12), R(1, 7, 9), R(1, 0, 6)]
-    assert not analysis.is_strong(own, 1, 6) and analysis.is_strong(own, 2, 6)
+    assert not analysis.is_strong(own, 1, 9) and analysis.is_strong(own, 1, 10) and analysis.is_strong(own, 2, 9)
     assert analysis.is_strong([], 1, 1), "у теста без диапазонов сильна любая шкала выше порога"
 
 

@@ -3,7 +3,7 @@
 Школа в Казахстане готовит учеников к поступлению в зарубежные вузы:
 модель знает это из `SYSTEM` и не называет местных выпускных экзаменов.
 Модель получает не ответы, а профиль: шкалы с баллом не ниже порога теста
-с подписью диапазона, разделённые на сильные (два верхних диапазона теста —
+с подписью диапазона, разделённые на сильные (верхний диапазон теста —
 по ним строятся направления) и остальные («можно присмотреться»); параллель,
 баллы и цели по экзаменам из карточки, вузы из списка ученика. Имени ученика
 в запросе нет — только номер (как у остальных операций помощника).
@@ -36,8 +36,8 @@ from universities.models import AdmissionRequirement, Program, StudentUniversity
 CANDIDATES = 60
 #: направлений не больше трёх — сколько дают сильные шкалы
 MAX_DIRECTIONS = 3
-#: по скольким верхним диапазонам теста строятся направления
-STRONG_RANGES = 2
+#: по скольким верхним диапазонам теста строятся направления — только по самому верхнему
+STRONG_RANGES = 1
 #: правила, по которым считается новый разбор (`CareerAnalysis.rules`)
 RULES = 2
 MAX_TOKENS = 3200
@@ -52,12 +52,13 @@ SYSTEM = (  # i18n-skip: промпт ИИ — язык ответа модел�
 Правила, нарушать нельзя:
 - опирайся только на результаты тестов, баллы ученика и программы, которые даны ниже;
   ничего не додумывай о личности ученика;
-- направления строй только по сильным шкалам — тем, что попали в два верхних диапазона теста.
-  Направлений от одного до трёх, сколько дают сильные шкалы, и никогда не больше трёх;
-  первыми — направления по самым высоким баллам. Сильных шкал нет — направлений не давай
-  и честно скажи об этом в общем выводе;
-- шкалы ниже двух верхних диапазонов отдельных направлений не получают: назови их одной
-  фразой в общем выводе — «можно присмотреться»;
+- направления строй только по сильным шкалам — тем, что попали в самый верхний диапазон теста.
+  На одну сильную шкалу — одно направление; направлений не больше, чем сильных шкал,
+  и никогда не больше трёх; первыми — по самым высоким баллам. Сильных шкал нет —
+  направлений не давай и честно скажи об этом в общем выводе;
+- шкалы ниже верхнего диапазона отдельных направлений не получают никогда, даже если балл
+  заметный: назови их одной фразой в общем выводе («можно присмотреться: физика, 6 из 12»)
+  или упомяни внутри направления, если они его усиливают («вместе с интересом к физике»);
 - местные выпускные и вступительные экзамены (ЕНТ, ОГЭ, ЕГЭ и подобные) не упоминай никогда.
   Для поступления за рубеж сдают IELTS или TOEFL, SAT и другие экзамены, которые требуют
   программы из списка;
@@ -86,12 +87,12 @@ RESULT_SCHEMA = {  # i18n-skip: схема ответа для модели ИИ
     "properties": {
         "summary": {
             "type": "string",
-            "description": "общий вывод о профиле интересов, три–шесть предложений; шкалы ниже двух верхних "
-            "диапазонов — одной фразой «можно присмотреться»",
+            "description": "общий вывод о профиле интересов, три–шесть предложений; шкалы ниже верхнего "
+            "диапазона — одной фразой «можно присмотреться»",
         },
         "directions": {
             "type": "array",
-            "description": "от одного до трёх направлений по сильным шкалам; сильных нет — пустой список",
+            "description": "по направлению на сильную шкалу, не больше трёх; сильных нет — пустой список",
             "items": {
                 "type": "object",
                 "properties": {
@@ -154,7 +155,7 @@ class ScaleLine:
     score: int
     top: int
     label: str
-    #: в двух верхних диапазонах теста — по ней строится направление
+    #: в верхнем диапазоне теста — по ней строится направление
     strong: bool
 
     def __str__(self) -> str:
@@ -167,7 +168,7 @@ def fingerprint_of(attempts: list[CareerAttempt]) -> str:
 
 
 def is_strong(ranges: list[CareerRange], scale_id: int, score: int) -> bool:
-    """Балл в двух верхних диапазонах шкалы: свои диапазоны шкалы важнее общих.
+    """Балл в верхнем диапазоне шкалы: свои диапазоны шкалы важнее общих.
 
     У теста без диапазонов сравнивать не с чем — сильной считается любая
     шкала выше порога, как было до разделения.
@@ -315,7 +316,7 @@ def _prompt(student: Student, attempts: list[CareerAttempt], programs: list[Prog
     lines = student_lines(student)
     junior = parallel_of(student) < ADMISSION_PARALLEL
     lines += ["", "Результаты тестов профориентации:"]  # i18n-skip: промпт ИИ
-    any_strong = False
+    limit = direction_limit(attempts)
     for attempt in attempts:
         test = attempt.test
         when = timezone.localtime(attempt.finished_at).strftime("%d.%m.%Y") if attempt.finished_at else ""
@@ -330,14 +331,16 @@ def _prompt(student: Student, attempts: list[CareerAttempt], programs: list[Prog
         )  # i18n-skip: промпт ИИ
         strong = [row for row in rows if row.strong]
         weak = [row for row in rows if not row.strong]
-        any_strong = any_strong or bool(strong)
         if strong:
             lines.append(
-                "Сильные шкалы — два верхних диапазона теста, по ним строятся направления:"
+                "Сильные шкалы — верхний диапазон теста, по одному направлению на шкалу:"
             )  # i18n-skip: промпт ИИ
             lines.extend(str(row) for row in strong)
         if weak:
-            lines.append("Шкалы ниже — без направлений, одной фразой «можно присмотреться»:")  # i18n-skip: промпт ИИ
+            lines.append(
+                "Можно присмотреться — без отдельных направлений, одной фразой в выводе "
+                "или внутри направления, если усиливают его:"
+            )  # i18n-skip: промпт ИИ
             lines.extend(str(row) for row in weak)
     lines.append("")
     lines.append(
@@ -364,14 +367,16 @@ def _prompt(student: Student, attempts: list[CareerAttempt], programs: list[Prog
     else:
         lines.append("Программ в каталоге школы пока нет: список программ оставь пустым.")  # i18n-skip: промпт ИИ
     lines.append("")
-    if not any_strong:
+    if not limit:
         lines.append(
             "Сильных шкал нет: направлений не давай, в общем выводе честно скажи об этом "
             "и назови, к чему можно присмотреться."
         )  # i18n-skip: промпт ИИ
     else:
         lines.append(
-            f"Назови от одного до {MAX_DIRECTIONS} направлений — столько, сколько дают сильные шкалы."
+            "Назови одно направление — сильная шкала одна."
+            if limit == 1
+            else f"Назови от одного до {limit} направлений — не больше, чем сильных шкал."
         )  # i18n-skip: промпт ИИ
     if with_thresholds:
         lines.append(
@@ -384,8 +389,10 @@ def _prompt(student: Student, attempts: list[CareerAttempt], programs: list[Prog
     return "\n".join(lines)
 
 
-def has_strong(attempts: list[CareerAttempt]) -> bool:
-    return any(line.strong for attempt in attempts for line in profile(attempt))
+def direction_limit(attempts: list[CareerAttempt]) -> int:
+    """Сколько направлений можно: по одному на сильную шкалу, не больше `MAX_DIRECTIONS`."""
+    strong = {(attempt.test_id, line.title) for attempt in attempts for line in profile(attempt) if line.strong}
+    return min(MAX_DIRECTIONS, len(strong))
 
 
 def plan(students: list[Student], tests: list, *, force: bool = False) -> Plan:
@@ -443,7 +450,8 @@ def run(analysis: CareerAnalysis) -> CareerAnalysis:
     attempts = list(analysis.attempts.select_related("test").order_by("finished_at", "id"))
     programs = _candidates(student)
     known = {program.pk: program for program in programs}
-    strong = has_strong(attempts)
+    limit = direction_limit(attempts)
+    strong = limit > 0
     try:
         answer = complete(
             language=active_language(),
@@ -465,7 +473,8 @@ def run(analysis: CareerAnalysis) -> CareerAnalysis:
     parsed = answer.parsed if isinstance(answer.parsed, dict) else {}
     rows = parsed.get("directions")
     analysis.summary = _text(parsed.get("summary"))
-    # сильных шкал нет — направлений нет, даже если модель их прислала: честный общий вывод
+    # сильных шкал нет — направлений нет, даже если модель их прислала: честный общий вывод;
+    # направлений больше, чем сильных шкал, — лишние (по шкалам ниже верхнего диапазона) отброшены
     if not strong:
         rows = []
     empty = (not isinstance(rows, list) or not rows) if strong else not analysis.summary
@@ -478,7 +487,7 @@ def run(analysis: CareerAnalysis) -> CareerAnalysis:
 
     order = 0
     for item in rows:
-        if order >= MAX_DIRECTIONS:
+        if order >= limit:
             break
         if not isinstance(item, dict) or not _text(item.get("title")):
             continue

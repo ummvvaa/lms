@@ -361,7 +361,8 @@ def test_analysis_runs_on_positive_scales_only_and_is_cached(passed, karta, teac
     assert "Ахметова" not in prompt and "Алия" not in prompt
     row = CareerAnalysis.objects.get()
     assert row.status == AnalysisStatus.DONE and row.student == pupils["aliya"]
-    assert [d.title for d in row.directions.all()] == ["Биотехнологии", "Право", "Экология"]
+    # сильная шкала одна (биология 12 из 12): одно направление, право (6 из 12) отдельным не идёт
+    assert [d.title for d in row.directions.all()] == ["Биотехнологии"]
     assert row.directions.first().programs.count() == 0, "программа мимо справочника отброшена"
     # тот же набор второй раз — готовый разбор, модель не зовётся
     again = client.post("/api/career/analyses/", body, format="json")
