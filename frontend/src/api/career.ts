@@ -304,3 +304,44 @@ export const useMyAnswers = () =>
   })
 
 export const useMyFinish = () => useCareerMutation((attempt: number) => post<MyAttempt>(`/career/my/attempts/${attempt}/finish/`))
+
+// --- выгрузка разборов в Word --------------------------------------------------------
+
+export type ExportLanguage = 'ru' | 'kk' | 'en'
+export type ExportStatus = 'running' | 'done' | 'failed' | 'cancelled' | 'expired'
+
+/** Подготовка файлов в фоне: ход по ученикам, итог словами, файл — тому, кто запускал, и админу. */
+export interface CareerExport {
+  id: number
+  status: ExportStatus
+  status_title: string
+  language: ExportLanguage
+  total: number
+  done: number
+  /** «Готово 21, пропущено 4: нет готового разбора — …»; пометки о переводе — отдельными строками */
+  outcome: string
+  file_name: string
+  has_file: boolean
+  group: string
+  whole_group: boolean
+  created_at: string
+  expires_at: string | null
+  run: JobRow | null
+}
+
+/** Файл готов сразу (один ученик, модель не нужна) — адрес; иначе — подготовка в фоне. */
+export type StartExportResult = { ready: true; url: string } | { ready: false; export: CareerExport; already?: boolean }
+
+export const useCareerStartExport = () =>
+  useMutation({
+    mutationFn: (input: { language: ExportLanguage; group?: number; students?: number[] }) => post<StartExportResult>('/career/exports/', input),
+  })
+
+export const useCareerExport = (id: number | null) =>
+  useQuery({
+    queryKey: [...KEY, 'export', id],
+    queryFn: () => get<CareerExport>(`/career/exports/${id}/`),
+    enabled: id !== null,
+    // пока файлы готовятся — раз в 5 секунд, ход «7 из 25» обновляется сам
+    refetchInterval: (query) => (query.state.data?.status === 'running' ? RUN_POLL_MS : false),
+  })

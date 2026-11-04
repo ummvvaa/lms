@@ -17,6 +17,7 @@ import { Switch } from '../../components/ui/switch'
 import { t } from '../../i18n'
 import { formatDateTime } from '../../lib/format'
 import DirectionView, { DIRECTION_FIELDS, DirectionFacts, DirectionHead, DirectionPrograms } from './DirectionView'
+import ExportDialog from './ExportDialog'
 import InterestProfile from './InterestProfile'
 import { analysisTone } from './tone'
 
@@ -27,6 +28,7 @@ type Draft = { summary: string; summary_student: string; directions: Record<numb
 export default function AnalysisCard({ analysis, manage, studentSees = false, onClose }: { analysis: CareerAnalysis; manage: boolean; /** ученику разборы показываются (флаг сервера); нет — переключатель и вкладка «Для ученика» скрыты */ studentSees?: boolean; onClose: () => void }) {
   const patch = useCareerAnalysisPatch()
   const [version, setVersion] = useState<Version>('teacher')
+  const [exporting, setExporting] = useState(false)
   const [draft, setDraft] = useState<Draft>({ summary: analysis.summary, summary_student: analysis.summary_student ?? '', directions: {}, profile: {} })
   const dirty =
     draft.summary !== analysis.summary ||
@@ -210,10 +212,24 @@ export default function AnalysisCard({ analysis, manage, studentSees = false, on
             {patch.isPending ? t('Сохраняется…') : t('Сохранить правки')}
           </Button>
         )}
+        {manage && analysis.status === 'done' && analysis.student && (
+          // в файл идёт сохранённый текст: несохранённые правки сначала сохраняются кнопкой рядом
+          <Button variant="outline" disabled={dirty} onClick={() => setExporting(true)}>
+            {t('Скачать Word')}
+          </Button>
+        )}
         <Button variant="outline" onClick={onClose}>
           {t('Закрыть')}
         </Button>
       </div>
+      {exporting && analysis.student && (
+        <ExportDialog
+          note={analysis.student.full_name}
+          sourceLanguage={analysis.language}
+          scopes={[{ value: 'one', label: analysis.student.full_name, request: { students: [analysis.student.id] } }]}
+          onClose={() => setExporting(false)}
+        />
+      )}
     </Modal>
   )
 }

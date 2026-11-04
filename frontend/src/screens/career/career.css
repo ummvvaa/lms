@@ -317,3 +317,38 @@ body .tbl [data-slot='badge'].cbars__label {
 .cresults__head .tabs {
   margin: 0 0 calc(var(--space) * 2);
 }
+
+/* выгрузка в Word: строка над таблицей — «Отметить всех», сколько отмечено, «Скачать выбранные» */
+.cexport-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space) * 2);
+  padding-bottom: calc(var(--space) * 3);
+}
+
+.cexport-bulk__count {
+  white-space: nowrap;
+}
+
+/* итог подготовки файлов: готово, кого пропустили, у кого не получился перевод */
+.cexport__outcome {
+  display: grid;
+  gap: calc(var(--space) * 1);
+  padding-top: calc(var(--space) * 3);
+}
+
+.cexport__outcome .t-note {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* окно выгрузки: подпись и переключатель — одной группой */
+.cexport__pick {
+  display: grid;
+  gap: calc(var(--space) * 1);
+}
+
+.cexport__pick > .eyebrow {
+  margin-bottom: 0;
+}

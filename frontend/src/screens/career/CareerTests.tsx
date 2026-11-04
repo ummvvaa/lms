@@ -35,6 +35,7 @@ import {
 import { isActiveRun } from '../../api/hooks'
 import RunState from '../../components/RunState'
 import { Button } from '../../components/ui/button'
+import { Checkbox } from '../../components/ui/checkbox'
 import { t, tk, tn } from '../../i18n'
 import { formatDate, formatDateTime } from '../../lib/format'
 import { usePhone } from '../../phone'
@@ -43,6 +44,7 @@ import { useAuth } from '../../auth/AuthContext'
 import Icon from '../../layout/icons'
 import AnalysisCard from './AnalysisCard'
 import CuratorCareer from './CuratorCareer'
+import ExportDialog, { type ExportScope } from './ExportDialog'
 import AssignCard from './AssignCard'
 import StartAnalysisDialog from './StartAnalysisDialog'
 import TestDrawer from './TestDrawer'
@@ -380,11 +382,19 @@ function ResultsTab({ group, manage }: { group: number | null; manage: boolean }
 
 // --- Разборы ----------------------------------------------------------------------
 
-function AnalysesTab({ group, manage }: { group: number | null; manage: boolean }) {
+function AnalysesTab({ group, manage, exportId, onExportClosed }: { group: number | null; manage: boolean; /** выгрузка из колокольчика */ exportId: number | null; onExportClosed: () => void }) {
   const phone = usePhone()
   const query = useCareerAnalyses(group)
   const [starting, setStarting] = useState(false)
   const [opened, setOpened] = useState<number | null>(null)
+  // галочки — по ученику: у ученика может быть несколько разборов, файл у него один
+  const [checked, setChecked] = useState<number[]>([])
+  const [exporting, setExporting] = useState<ExportScope[] | null>(null)
+  const [pickedGroup, setPickedGroup] = useState(group)
+  if (pickedGroup !== group) {
+    setPickedGroup(group)
+    setChecked([])
+  }
   if (group === null) return <DataCard title={t('Разборы')} empty={t('выберите группу')} />
   if (query.isLoading) return <Loading kind="table" />
   if (query.error) return <ErrorNote error={query.error} />
@@ -399,7 +409,19 @@ function AnalysesTab({ group, manage }: { group: number | null; manage: boolean 
   )
   const run = data.run ?? null
   const busy = isActiveRun(run)
+  const readyIds = [...new Set(rows.filter((row) => row.status === 'done' && row.student).map((row) => row.student!.id))]
+  const pickedReady = checked.filter((id) => readyIds.includes(id))
+  const allChecked = readyIds.length > 0 && readyIds.every((id) => checked.includes(id))
+  const toggle = (id: number, on: boolean) => setChecked((old) => (on ? [...new Set([...old, id])] : old.filter((item) => item !== id)))
+  const pick = (row: CareerAnalysis) =>
+    row.status === 'done' && row.student ? (
+      <Checkbox aria-label={t('Отметить: {name}', { name: row.student.full_name })} checked={checked.includes(row.student.id)} onCheckedChange={(on) => toggle(row.student!.id, Boolean(on))} />
+    ) : null
+  const code = data.group?.code ?? ''
+  const groupScope: ExportScope = { value: 'group', label: t('Вся группа'), request: { group } }
+  const pickedScope: ExportScope = { value: 'picked', label: t('Отмеченные: {count}', { count: pickedReady.length }), request: { students: pickedReady } }
   const columns: Column<CareerAnalysis>[] = [
+    ...(manage ? [{ key: 'pick', title: '', width: '44px', phone: 'hidden', cell: pick } as Column<CareerAnalysis>] : []),
     {
       key: 'student',
       title: t('Ученик'),
@@ -475,6 +497,22 @@ function AnalysesTab({ group, manage }: { group: number | null; manage: boolean 
               </span>
             </>
           )}
+          {readyIds.length > 0 && (
+            <Button variant="outline" size="sm" className="ml-auto" onClick={() => setExporting([groupScope])}>
+              {t('Скачать группу')}
+            </Button>
+          )}
+        </div>
+      )}
+      {manage && readyIds.length > 0 && (
+        <div className="cexport-bulk">
+          <Button variant="link" size="sm" onClick={() => setChecked(allChecked ? [] : readyIds)}>
+            {allChecked ? t('Снять все') : t('Отметить всех')}
+          </Button>
+          {pickedReady.length > 0 && <b className="cexport-bulk__count">{t('Отмечено: {count}', { count: pickedReady.length })}</b>}
+          <Button variant="outline" size="sm" disabled={pickedReady.length === 0} onClick={() => setExporting([pickedScope, groupScope])}>
+            {t('Скачать выбранные ({count})', { count: pickedReady.length })}
+          </Button>
         </div>
       )}
       {!manage && busy && <RunState run={run} running={t('Идёт разбор…')} />}
@@ -493,7 +531,8 @@ function AnalysesTab({ group, manage }: { group: number | null; manage: boolean 
             {rows.map((row) => (
               <Row
                 key={row.id}
-                avatar={row.student?.full_name ?? ''}
+                lead={manage ? pick(row) ?? undefined : undefined}
+                avatar={manage && row.status === 'done' ? undefined : (row.student?.full_name ?? '')}
                 title={row.student?.full_name ?? ''}
                 note={[row.tests.map((test) => test.title).join(', '), formatDateTime(row.created_at)].join(
                   ' · ',
@@ -521,6 +560,14 @@ function AnalysesTab({ group, manage }: { group: number | null; manage: boolean 
           onClose={() => setOpened(null)}
         />
       )}
+      {exporting && (
+        <ExportDialog
+          note={exporting[0].value === 'group' ? t('Группа {code}: файл на каждого ученика с готовыми разборами', { code }) : t('Отмеченные ученики группы {code}', { code })}
+          scopes={exporting}
+          onClose={() => setExporting(null)}
+        />
+      )}
+      {exportId !== null && <ExportDialog note={t('Файлы разборов группы {code}', { code })} exportId={exportId} onClose={onExportClosed} />}
     </>
   )
 }
@@ -586,7 +633,18 @@ export default function CareerTests() {
       )}
       {tab === 'tests' && <TestsTab manage={manage} />}
       {tab === 'results' && <ResultsTab group={groupId} manage={manage} />}
-      {tab === 'analyses' && <AnalysesTab group={groupId} manage={manage} />}
+      {tab === 'analyses' && (
+        <AnalysesTab
+          group={groupId}
+          manage={manage}
+          exportId={Number(params.get('export')) || null}
+          onExportClosed={() => {
+            const copy = new URLSearchParams(params)
+            copy.delete('export')
+            setParams(copy, { replace: true })
+          }}
+        />
+      )}
       {uploading && <UploadCard onClose={() => setUploading(false)} />}
     </div>
   )

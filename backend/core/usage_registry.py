@@ -211,6 +211,9 @@ ACTIONS = (
     Action("assistant.image.parse", gettext_noop("Разбор изображения помощником"), "/assistant"),
     Action("career.test.upload", gettext_noop("Загрузка теста профориентации"), "/career-tests"),
     Action("career.analysis.start", gettext_noop("Запуск разбора профтеста"), "/career-tests"),
+    Action("career.export.word", gettext_noop("Скачивание разборов профтеста в Word"), "/career-tests"),
+    Action("career.export.start", gettext_noop("Подготовка файлов разборов профтеста"), "/career-tests"),
+    Action("career.export.file", gettext_noop("Скачивание подготовленных файлов профтеста"), "/career-tests"),
     Action("career.attempt.finish", gettext_noop("Сдача теста профориентации"), "/career/:id"),
     Action("export.download", gettext_noop("Скачивание выгрузки")),
 )

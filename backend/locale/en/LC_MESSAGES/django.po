@@ -19385,3 +19385,15 @@ msgstr "Career test analysis files: storage period"
 #: core/school_rules.py
 msgid "Сколько дней хранится подготовленный Word или архив разборов профтеста; потом файл удаляется, его можно подготовить заново"
 msgstr "How many days a prepared Word file or archive of career test analyses is kept; then the file is deleted and can be prepared again"
+
+#: core/usage_registry.py
+msgid "Скачивание разборов профтеста в Word"
+msgstr "Career test analyses downloaded as Word"
+
+#: core/usage_registry.py
+msgid "Подготовка файлов разборов профтеста"
+msgstr "Career test analysis files prepared"
+
+#: core/usage_registry.py
+msgid "Скачивание подготовленных файлов профтеста"
+msgstr "Prepared career test files downloaded"
