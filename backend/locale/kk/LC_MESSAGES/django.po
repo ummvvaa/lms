@@ -19040,3 +19040,135 @@ msgstr "Түсу үшін не тапсыру керек"
 #: career/models.py
 msgid "Что сделать уже сейчас"
 msgstr "Қазір не істеу керек"
+
+#: career/word.py
+msgid "Разбор результатов профтеста"
+msgstr "Кәсіптік тест нәтижелерін талдау"
+
+#: career/word.py
+msgid "Группа: {group}"
+msgstr "Топ: {group}"
+
+#: career/word.py
+msgid "Параллель: {n} класс"
+msgstr "Параллель: {n}-сынып"
+
+#: career/word.py
+msgid "Дата выгрузки: {date}"
+msgstr "Жүктеп алынған күні: {date}"
+
+#: career/word.py
+msgid "Выгрузил: {name}"
+msgstr "Жүктеп алған: {name}"
+
+#: career/word.py
+msgid "Общая картина по всем тестам"
+msgstr "Барлық тест бойынша жалпы көрініс"
+
+#: career/word.py
+msgid "Что повторяется в разных тестах"
+msgstr "Әр тестте не қайталанады"
+
+#: career/word.py
+msgid "Где тесты согласуются"
+msgstr "Тесттер қай жерде сәйкес келеді"
+
+#: career/word.py
+msgid "Где тесты расходятся"
+msgstr "Тесттер қай жерде алшақтайды"
+
+#: career/word.py
+msgid "Какие направления подтверждаются несколькими тестами"
+msgstr "Қай бағыттарды бірнеше тест растайды"
+
+#: career/word.py
+msgid "{score} из {top}"
+msgstr "{top} ішінен {score}"
+
+#: career/word.py
+msgid "Профиль интересов"
+msgstr "Қызығушылықтар бейіні"
+
+#: career/word.py
+msgid "Шкала"
+msgstr "Шкала"
+
+#: career/word.py
+msgid "Диапазон"
+msgstr "Диапазон"
+
+#: career/word.py
+msgid "Что значит"
+msgstr "Нені білдіреді"
+
+#: career/word.py
+msgid "Цветом выделены сильные шкалы — верхний диапазон теста: на них строятся направления."
+msgstr "Түспен күшті шкалалар белгіленген — тесттің жоғарғы диапазоны: бағыттар солардан құрылады."
+
+#: career/word.py
+msgid "Как называется за рубежом: {title}"
+msgstr "Шетелде қалай аталады: {title}"
+
+#: career/word.py
+msgid "Программы каталога"
+msgstr "Каталог бағдарламалары"
+
+#: career/word.py
+msgid "Тест пройден {date}"
+msgstr "Тест {date} тапсырылды"
+
+#: career/word.py
+msgid "«{test}» пройден {date}"
+msgstr "«{test}» {date} тапсырылды"
+
+#: career/word.py
+msgid "разбор от {date}"
+msgstr "талдау {date}"
+
+#: career/word.py
+msgid "Направления"
+msgstr "Бағыттар"
+
+#: career/word.py
+msgid "Направлений нет: сильных шкал в тестах нет, к чему присмотреться — в общем выводе."
+msgstr "Бағыттар жоқ: тесттерде күшті шкалалар жоқ, неге назар аудару керегі — жалпы қорытындыда."
+
+#: career/exports.py
+msgid "Word, язык: {language}"
+msgstr "Word, тілі: {language}"
+
+#: career/exports.py
+msgid "У ученика нет готового разбора"
+msgstr "Оқушының дайын талдауы жоқ"
+
+#: career/exports.py
+msgid "Файл нужно подготовить: перевод или общая картина по тестам"
+msgstr "Файлды дайындау керек: аударма немесе тесттер бойынша жалпы көрініс"
+
+#: core/labels.py
+msgid "Разборы профтеста выгружены в Word"
+msgstr "Кәсіптік тест талдаулары Word-қа жүктеп алынды"
+
+#: core/labels.py
+msgid "Выгрузка профтеста"
+msgstr "Кәсіптік тест экспорты"
+
+#: career/models.py
+msgid "Наибольший балл"
+msgstr "Ең жоғары балл"
+
+#: career/models.py
+msgid "Подпись диапазона"
+msgstr "Диапазон белгісі"
+
+#: career/models.py
+msgid "Что это значит"
+msgstr "Бұл нені білдіреді"
+
+#: career/models.py
+msgid "Что это значит — для ученика"
+msgstr "Бұл нені білдіреді — оқушы үшін"
+
+#: career/models.py
+msgid "Шкала профиля интересов"
+msgstr "Қызығушылықтар бейінінің шкаласы"

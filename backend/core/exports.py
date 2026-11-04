@@ -117,6 +117,7 @@ TRANSLIT = str.maketrans(  # i18n-skip: таблица транслита, не 
 EXTENSIONS = {
     "application/pdf": ".pdf",
     "application/zip": ".zip",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
     "text/csv": ".csv",
 }

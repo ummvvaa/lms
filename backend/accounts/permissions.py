@@ -221,6 +221,7 @@ CURATOR_READ_ROUTES = frozenset(
         "career-analyses",
         "career-analysis",
         "career-student",
+        "career-student-word",
     }
 )
 
@@ -630,6 +631,7 @@ TEACHER_READ_ROUTES = frozenset(
         "career-analyses",
         "career-analysis",
         "career-student",
+        "career-student-word",
     }
 )
 

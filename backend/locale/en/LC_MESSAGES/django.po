@@ -19121,3 +19121,135 @@ msgstr "Exams for admission"
 #: career/models.py
 msgid "Что сделать уже сейчас"
 msgstr "What to do right now"
+
+#: career/word.py
+msgid "Разбор результатов профтеста"
+msgstr "Career test analysis"
+
+#: career/word.py
+msgid "Группа: {group}"
+msgstr "Group: {group}"
+
+#: career/word.py
+msgid "Параллель: {n} класс"
+msgstr "Grade: {n}"
+
+#: career/word.py
+msgid "Дата выгрузки: {date}"
+msgstr "Exported on: {date}"
+
+#: career/word.py
+msgid "Выгрузил: {name}"
+msgstr "Exported by: {name}"
+
+#: career/word.py
+msgid "Общая картина по всем тестам"
+msgstr "Overall picture across all tests"
+
+#: career/word.py
+msgid "Что повторяется в разных тестах"
+msgstr "What recurs across tests"
+
+#: career/word.py
+msgid "Где тесты согласуются"
+msgstr "Where the tests agree"
+
+#: career/word.py
+msgid "Где тесты расходятся"
+msgstr "Where the tests differ"
+
+#: career/word.py
+msgid "Какие направления подтверждаются несколькими тестами"
+msgstr "Which directions several tests confirm"
+
+#: career/word.py
+msgid "{score} из {top}"
+msgstr "{score} of {top}"
+
+#: career/word.py
+msgid "Профиль интересов"
+msgstr "Interest profile"
+
+#: career/word.py
+msgid "Шкала"
+msgstr "Scale"
+
+#: career/word.py
+msgid "Диапазон"
+msgstr "Range"
+
+#: career/word.py
+msgid "Что значит"
+msgstr "What it means"
+
+#: career/word.py
+msgid "Цветом выделены сильные шкалы — верхний диапазон теста: на них строятся направления."
+msgstr "Strong scales — the top range of the test — are highlighted: the directions are built on them."
+
+#: career/word.py
+msgid "Как называется за рубежом: {title}"
+msgstr "Name abroad: {title}"
+
+#: career/word.py
+msgid "Программы каталога"
+msgstr "Catalogue programmes"
+
+#: career/word.py
+msgid "Тест пройден {date}"
+msgstr "Test taken on {date}"
+
+#: career/word.py
+msgid "«{test}» пройден {date}"
+msgstr "“{test}” taken on {date}"
+
+#: career/word.py
+msgid "разбор от {date}"
+msgstr "analysis of {date}"
+
+#: career/word.py
+msgid "Направления"
+msgstr "Directions"
+
+#: career/word.py
+msgid "Направлений нет: сильных шкал в тестах нет, к чему присмотреться — в общем выводе."
+msgstr "No directions: the tests have no strong scales; what to look at is in the summary."
+
+#: career/exports.py
+msgid "Word, язык: {language}"
+msgstr "Word, language: {language}"
+
+#: career/exports.py
+msgid "У ученика нет готового разбора"
+msgstr "The student has no finished analysis"
+
+#: career/exports.py
+msgid "Файл нужно подготовить: перевод или общая картина по тестам"
+msgstr "The file needs preparing: a translation or the overall picture across tests"
+
+#: core/labels.py
+msgid "Разборы профтеста выгружены в Word"
+msgstr "Career test analyses exported to Word"
+
+#: core/labels.py
+msgid "Выгрузка профтеста"
+msgstr "Career test export"
+
+#: career/models.py
+msgid "Наибольший балл"
+msgstr "Highest score"
+
+#: career/models.py
+msgid "Подпись диапазона"
+msgstr "Range label"
+
+#: career/models.py
+msgid "Что это значит"
+msgstr "What it means"
+
+#: career/models.py
+msgid "Что это значит — для ученика"
+msgstr "What it means — for the student"
+
+#: career/models.py
+msgid "Шкала профиля интересов"
+msgstr "Interest profile scale"

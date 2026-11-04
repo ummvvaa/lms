@@ -23,7 +23,7 @@ from rest_framework.response import Response
 
 from academics.payloads import student_brief
 from career import analysis as analyses
-from career import files, payloads, rights, scoring, services
+from career import exports, files, payloads, rights, scoring, services, word
 from career.models import (
     AnalysisStatus,
     AttemptStatus,
@@ -37,6 +37,7 @@ from career.models import (
 from career.tasks import JOB_KIND
 from core import jobs, usage
 from core.domains import ROLE_ADMIN, ROLE_STUDENT
+from core.exports import _disposition
 from core.i18n import language_of
 from students.models import Student, StudyGroup
 
@@ -684,6 +685,33 @@ def analysis_detail(request, pk: int):
             status=status.HTTP_202_ACCEPTED,
         )
     return Response(payloads.analysis_dict(row))
+
+
+# --- Выгрузка в Word --------------------------------------------------------------------
+
+
+@extend_schema(responses={200: bytes})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def student_word(request, pk: int):
+    """Word одного ученика сразу — когда модель не нужна; иначе 409 «нужно подготовить»."""
+    refused = _manager(request)
+    if refused:
+        return refused
+    student = Student.objects.select_related("group").filter(pk=pk).first()
+    if student is None or not rights.sees_student(request.user, student):
+        return _not_found()
+    language = exports.language_or_none(request.query_params.get("language")) or language_of(request.user)
+    try:
+        payload, name = exports.immediate(student, language=language, actor=request.user)
+    except exports.NeedsPreparation as error:
+        return Response({"detail": str(error), "prepare": True}, status=status.HTTP_409_CONFLICT)
+    except exports.Refused as error:
+        return _bad(str(error))
+    usage.track(request, "career.export.word")
+    response = HttpResponse(payload, content_type=word.DOCX_TYPE)
+    response["Content-Disposition"] = _disposition(name, word.DOCX_TYPE)
+    return response
 
 
 # --- Ученик ----------------------------------------------------------------------------
