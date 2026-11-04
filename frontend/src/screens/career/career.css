@@ -202,6 +202,56 @@ body .tbl [data-slot='badge'].cbars__label {
   overflow-wrap: anywhere;
 }
 
+/* профиль интересов: шкала, балл справа, подпись диапазона и смысл под ними */
+.cprof {
+  display: grid;
+  gap: calc(var(--space) * 2);
+  padding: calc(var(--space) * 3) 0;
+  border-top: 1px solid var(--line);
+}
+
+.cprof > .eyebrow {
+  margin-bottom: 0;
+}
+
+.cprof__test {
+  display: grid;
+  gap: calc(var(--space) * 3);
+}
+
+.cprof__testname {
+  color: var(--ink-3);
+}
+
+.cprof__row {
+  display: grid;
+  gap: calc(var(--space) * 1);
+  min-width: 0;
+}
+
+.cprof__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--space) * 3);
+}
+
+.cprof__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.cprof__score {
+  flex: none;
+  white-space: nowrap;
+}
+
+.cprof .field__control [data-slot='textarea'] {
+  min-height: var(--control-h);
+  field-sizing: content;
+  resize: none;
+}
+
 /* поля правки растут по тексту, ничего не прячут под прокрутку */
 /* короче общего двойного поля: однострочное название не стоит высоким блоком */
 .canal__dir .field__control [data-slot='textarea'] {

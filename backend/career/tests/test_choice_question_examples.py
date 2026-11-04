@@ -162,7 +162,7 @@ def test_scores_match_the_key_and_retake_archives(teacher, boston, pupils):
     assert fresh.pk != old.pk and CareerAttempt.objects.filter(student=a, test=kli).count() == 2
 
 
-def test_prompt_carries_each_test_above_its_threshold(teacher, boston, pupils):
+def test_prompt_splits_each_test_by_its_own_threshold(teacher, boston, pupils):
     yov, kli = _upload(teacher, YOVAISHI), _upload(teacher, KLIMOV)
     for test in (yov, kli):
         activate(test, [{"group": boston.pk, "students": None}], by=teacher)
@@ -170,7 +170,10 @@ def test_prompt_carries_each_test_above_its_threshold(teacher, boston, pupils):
     attempts = [_pass(student, yov, _first_ii), _pass(student, kli, _first)]
     text = analysis._prompt(student, attempts, [])
     assert f"Тест «{yov.title}»" in text and f"Тест «{kli.title}»" in text
-    # Йовайши, порог 7: только «ii» (12); Климов, порог 4: всё, кроме «sign» (2)
-    assert "- Исследовательская (интеллектуальная) работа: 12 из 12 — ярко выраженная склонность" in text
-    assert "Работа с людьми: 6" not in text
-    assert "- Человек — природа: 6 из 8" in text and "Человек — знаковая система" not in text
+    yov_part, kli_part = text.split(f"Тест «{yov.title}»")[1].split(f"Тест «{kli.title}»")
+    # Йовайши, порог 7: выше только «ii» (12); остальное — в профиле, ниже порога
+    assert "- Исследовательская (интеллектуальная) работа: 12 из 12 — ярко выраженная склонность" in yov_part
+    assert "- Работа с людьми: 6" in yov_part.split("ниже порога разбора (7):")[1]
+    # Климов, порог 4: всё, кроме «sign» (2); она — тоже в профиле, ниже порога
+    assert "- Человек — природа: 6 из 8" in kli_part.split("ниже порога разбора (4):")[0]
+    assert "Человек — знаковая система" in kli_part.split("ниже порога разбора (4):")[1]

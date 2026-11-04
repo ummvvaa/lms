@@ -1,10 +1,12 @@
-"""Разбор профтеста под поступление за рубеж (решение владельца, 03.11.2026).
+"""Разбор профтеста под поступление за рубеж (решения владельца, 03.11 и 04.11.2026).
 
 Модель знает, что школа в Казахстане готовит к зарубежным вузам, и получает
-баллы и вузы ученика; направления — только по двум верхним диапазонам теста
-и не больше трёх; цифры порогов — только из требований программ каталога;
-ученику 8–10 класса программы уходят ориентиром. Старые разборы открываются
-как есть, с пометкой «по старым правилам».
+баллы и вузы ученика; разбор подробный, объём частей задан в SYSTEM; профиль
+интересов — по каждой шкале теста; направлений два–четыре, каждое на сильной
+шкале (верхний диапазон теста), направление только из средних шкал отбрасывается;
+цифры порогов — только из требований программ каталога; ученику 8–10 класса
+программы уходят ориентиром. Старые разборы открываются как есть, с пометкой
+«по старым правилам».
 """
 
 from __future__ import annotations
@@ -17,7 +19,14 @@ from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 
 from career import analysis
-from career.models import AnalysisStatus, CareerAnalysis, CareerAnalysisDirection, CareerAttempt, CareerAttemptScore
+from career.models import (
+    AnalysisStatus,
+    CareerAnalysis,
+    CareerAnalysisDirection,
+    CareerAttempt,
+    CareerAttemptScore,
+)
+from career.payloads import analysis_dict
 from career.tests.conftest import FakeProvider, activate, answer_all, login
 from students.models import AttemptFormat, ExamAttempt, ExamType
 from universities.models import AdmissionRequirement, Program, StudentUniversity, University
@@ -54,11 +63,12 @@ def _program(name: str, university: str, country: str, **limits) -> Program:
     return program
 
 
-def _directions(n: int) -> list[dict]:
+def _directions(n: int, scales: tuple[str, ...] = ("Биология",)) -> list[dict]:
     return [
         {
             "title": f"Направление {i}",
             "title_abroad": f"Major {i}",
+            "scales": list(scales),
             "reasoning": "Интерес к биологии — самый высокий в тесте, 12 из 12",
             "professions": "биотехнолог, " * 40,
             "exams": "IELTS или TOEFL; SAT — важнее Math",
@@ -108,41 +118,159 @@ def test_prompt_knows_the_school_prepares_for_abroad_and_carries_the_student(
     assert catalog.splitlines()[1].startswith(f"- id={program.pk}: Biology")
 
 
-def test_directions_only_from_the_top_range(aliya_passed, karta, teacher, boston, pupils, fake):
-    # «Карта интересов»: верхний диапазон 8…12; 6 из 12 («выраженный интерес», 5…7) направления не даёт
+def test_system_asks_for_detail_and_sets_the_volume_of_every_part():
+    system = analysis.SYSTEM
+    assert "Пиши подробно и по делу" in system
+    assert "общий вывод — шесть–десять предложений" in system and "до отвергаемых" in system
+    assert "профиль интересов — по каждой шкале из списка, ни одной не пропуская" in system
+    assert "«почему подходит» — четыре–шесть предложений" in system
+    assert "«что сдавать для поступления» — по каждому экзамену отдельно" in system
+    assert "сколько не хватает или что порог уже пройден" in system
+    assert "«что подтянуть в школе» — каждый предмет с новой строки и с объяснением, зачем" in system
+    assert "«что сделать уже сейчас» — три–пять конкретных шагов" in system
+    assert "понятно для ученика и родителя" in system and "но не коротко" in system
+    assert "одно направление" not in system and "можно присмотреться: физика" not in system
+    assert analysis.MAX_TOKENS >= 12000, "подробный ответ с профилем не должен обрываться по max_tokens"
+    student = analysis.STUDENT_SYSTEM
+    assert "сохрани подробность" in student and "не короче исходной" in student
+
+
+def test_one_strong_scale_gives_two_to_four_directions(aliya_passed, karta, teacher, boston, fake):
+    # «Карта интересов»: верхний диапазон 8…12 — только биология (12); юриспруденция 6 — средняя
     provider = fake(FakeProvider({"summary": "Сильнее всего — биология.", "directions": _directions(5)}))
     login(teacher).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
     prompt = provider.calls[0]["user"]
-    strong, maybe = prompt.split("Можно присмотреться — без отдельных направлений")
-    assert "- Биология: 12 из 12 — ярко выраженный интерес" in strong.split("Сильные шкалы — верхний диапазон")[1]
-    assert "- Юриспруденция: 6 из 12 — выраженный интерес" in maybe
-    assert "Юриспруденция" not in strong
-    assert "Назови одно направление — сильная шкала одна." in prompt
+    strong = prompt.split("Сильные шкалы — верхний диапазон теста")[1].split("Средние шкалы")[0]
+    middle = prompt.split("Средние шкалы — выше порога разбора (1)")[1].split("Слабые и отвергаемые")[0]
+    low = prompt.split("Слабые и отвергаемые шкалы — ниже порога разбора (1):")[1]
+    assert "- Биология: 12 из 12 — ярко выраженный интерес" in strong and "Юриспруденция" not in strong
+    assert "- Юриспруденция: 6 из 12 — выраженный интерес" in middle
+    assert "- Физика: -12 из 12 — активно отрицается" in low
+    assert "Назови от двух до четырёх направлений" in prompt
+    assert "одна сильная шкала может дать несколько направлений" in prompt
     row = CareerAnalysis.objects.get()
     assert row.status == AnalysisStatus.DONE and row.rules == analysis.RULES
-    assert row.directions.count() == 1, "одна сильная шкала — одно направление, остальное отброшено"
-    first = row.directions.get()
+    assert row.directions.count() == 4, "одна сильная шкала — несколько направлений, не больше четырёх"
+    first = row.directions.first()
     assert first.title_abroad == "Major 1"
     assert first.next_steps == "олимпиада по биологии\nлетняя школа\nпроект в лаборатории"
     assert len(first.professions) > 300, "длинный текст не режется"
 
 
-def test_several_top_scales_give_at_most_three_directions(aliya_passed, karta, teacher, boston, fake):
+def test_direction_only_from_a_middle_scale_is_dropped(aliya_passed, karta, teacher, boston, fake):
+    law = _directions(1, ("Юриспруденция",))[0] | {"title": "Право"}
+    mixed = _directions(1, ("биология", "Юриспруденция"))[0] | {"title": "Биоэтика и право"}
+    bare = _directions(1, ())[0] | {"title": "Без опоры"}
+    biology = _directions(1)[0] | {"title": "Биотехнологии"}
+    fake(FakeProvider({"summary": "Биология и право.", "directions": [law, mixed, bare, biology]}))
+    login(teacher).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
+    row = CareerAnalysis.objects.get()
+    titles = list(row.directions.values_list("title", flat=True))
+    assert titles == ["Биоэтика и право", "Биотехнологии"], "средняя шкала дополняет, но сама направления не даёт"
+    assert list(row.directions.values_list("order", flat=True)) == [1, 2]
+
+
+def test_only_middle_directions_leave_the_analysis_failed(aliya_passed, karta, teacher, boston, fake):
+    fake(FakeProvider({"summary": "Право.", "directions": _directions(2, ("Юриспруденция",))}))
+    login(teacher).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
+    row = CareerAnalysis.objects.get()
+    assert row.status == AnalysisStatus.FAILED and row.directions.count() == 0
+    assert "без направлений" in row.error
+
+
+def test_interest_profile_holds_every_scale_of_the_test(aliya_passed, karta, teacher, boston, fake):
+    meanings = [
+        {"scale": "биология", "meaning": "Самый высокий интерес в тесте."},
+        {"scale": "Юриспруденция", "meaning": "Заметный интерес к праву."},
+        {"scale": "Физика", "meaning": "Физика сейчас отвергается."},
+        {"scale": "Шкала, которой нет", "meaning": "лишнее"},
+    ]
+    provider = fake(FakeProvider({"summary": "Биология.", "profile": meanings, "directions": _directions(2)}))
+    login(teacher).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
+    total = karta.scales.count()
+    assert f"все {total}, в том же порядке" in provider.calls[0]["user"]
+    row = CareerAnalysis.objects.get()
+    scales = list(row.scales.all())
+    assert len(scales) == total == 24, "в профиле все шкалы теста, и средние, и отвергаемые"
+    assert {s.title for s in scales} == set(karta.scales.values_list("title", flat=True))
+    by_title = {s.title: s for s in scales}
+    assert scales[0].title == "Биология" and scales[0].score == 12 and scales[0].top == 12
+    assert by_title["Биология"].meaning == "Самый высокий интерес в тесте."
+    assert by_title["Физика"].score == -12 and by_title["Физика"].label == "активно отрицается"
+    assert by_title["Физика"].meaning == "Физика сейчас отвергается."
+    assert by_title["Химия"].meaning == "", "шкала без объяснения модели остаётся с баллом и подписью"
+    body = login(teacher).get(f"/api/career/analyses/{row.pk}/").json()
+    assert len(body["profile"]) == 24 and body["profile"][0]["meaning"] == "Самый высокий интерес в тесте."
+    assert body["profile"][0]["test"] == karta.title and body["profile"][0]["meaning_student"] == ""
+
+
+def test_teacher_edits_profile_meaning(aliya_passed, karta, teacher, boston, fake):
+    fake(FakeProvider({"summary": "Биология.", "directions": _directions(2)}))
+    client = login(teacher)
+    client.post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
+    scale = CareerAnalysis.objects.get().scales.first()
+    response = client.patch(
+        f"/api/career/analyses/{scale.analysis_id}/",
+        {"profile": [{"id": scale.pk, "meaning": "  Правка учителя  ", "meaning_student": "Для тебя"}]},
+        format="json",
+    )
+    assert response.status_code == 200, response.content
+    scale.refresh_from_db()
+    assert (scale.meaning, scale.meaning_student) == ("Правка учителя", "Для тебя")
+    assert response.json()["edited_at"]
+
+
+def test_student_version_rewrites_profile_with_the_same_detail(aliya_passed, karta, teacher, boston, fake):
+    fake(
+        FakeProvider(
+            {
+                "summary": "Биология.",
+                "profile": [{"scale": "Биология", "meaning": "Высокий интерес."}],
+                "directions": _directions(2),
+            }
+        )
+    )
+    login(teacher).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
+    row = CareerAnalysis.objects.get()
+    provider = fake(
+        FakeProvider(
+            {
+                "summary": "У тебя самый сильный интерес — биология.",
+                "profile": [{"order": 1, "meaning": "Биология тебе интереснее всего."}],
+                "directions": [{"order": 1, "why": "Тебе подходит, потому что…"}],
+            }
+        )
+    )
+    analysis.write_student_version(row, actor=teacher)
+    prompt = provider.calls[0]["user"]
+    assert (
+        "Профиль интересов:" in prompt
+        and "Шкала 1: Биология, 12 из 12 — ярко выраженный интерес: Высокий интерес." in prompt
+    )
+    assert "Что сдавать для поступления:" in prompt
+    first = row.scales.get(order=1)
+    assert first.meaning_student == "Биология тебе интереснее всего."
+    mine = analysis_dict(row, for_student=True)
+    assert mine["profile"][0]["meaning"] == "Биология тебе интереснее всего."
+    assert "meaning_student" not in mine["profile"][0]
+
+
+def test_several_top_scales_give_at_most_four_directions(aliya_passed, karta, teacher, boston, fake):
     for title in ("Юриспруденция", "Химия", "Медицина"):
         _weaken(aliya_passed, title, 9, "ярко выраженный интерес")
-    provider = fake(FakeProvider({"summary": "Биология, право, химия, медицина.", "directions": _directions(5)}))
+    fake(FakeProvider({"summary": "Биология, право, химия, медицина.", "directions": _directions(6)}))
     login(teacher).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
-    assert "от одного до 3 направлений" in provider.calls[0]["user"]
-    assert CareerAnalysis.objects.get().directions.count() == 3
+    assert CareerAnalysis.objects.get().directions.count() == 4
 
 
 def test_test_without_ranges_counts_every_scale_above_threshold(aliya_passed, karta, teacher, boston, fake):
     karta.ranges.all().delete()
-    provider = fake(FakeProvider({"summary": "Биология и право.", "directions": _directions(5)}))
+    provider = fake(FakeProvider({"summary": "Биология и право.", "directions": _directions(3, ("Юриспруденция",))}))
     login(teacher).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
     prompt = provider.calls[0]["user"]
-    assert "Можно присмотреться" not in prompt and "- Юриспруденция: 6 из 12" in prompt
-    assert CareerAnalysis.objects.get().directions.count() == 2
+    strong = prompt.split("Сильные шкалы — верхний диапазон теста")[1].split("Слабые и отвергаемые")[0]
+    assert "Средние шкалы" not in prompt and "- Юриспруденция: 6 из 12" in strong
+    assert CareerAnalysis.objects.get().directions.count() == 3, "без диапазонов сильна любая шкала выше порога"
 
 
 def test_range_boundaries_count_own_scale_ranges_first():
@@ -168,10 +296,12 @@ def test_without_strong_scales_there_are_no_directions_and_an_honest_summary(
     honest = "Ярко выраженных интересов тест пока не показал; можно присмотреться к биологии."
     provider = fake(FakeProvider({"summary": honest, "directions": _directions(2)}))
     login(teacher).post("/api/career/analyses/", {"group": boston.pk, "tests": [karta.pk]}, format="json")
-    assert "Сильных шкал нет: направлений не давай" in provider.calls[0]["user"]
+    prompt = provider.calls[0]["user"]
+    assert "Сильных шкал нет: направлений не давай; профиль интересов и общий вывод напиши так же подробно" in prompt
     row = CareerAnalysis.objects.get()
     assert row.status == AnalysisStatus.DONE and row.summary == honest
     assert row.directions.count() == 0
+    assert row.scales.count() == karta.scales.count(), "без направлений профиль всё равно по всем шкалам"
 
 
 def test_thresholds_come_only_from_catalog_requirements(aliya_passed, karta, teacher, boston, pupils, fake):
@@ -224,13 +354,20 @@ def _old_analysis(student, attempt) -> CareerAnalysis:
 def test_old_analysis_opens_as_is_marked_old(aliya_passed, teacher, pupils):
     row = _old_analysis(pupils["aliya"], aliya_passed)
     body = login(teacher).get(f"/api/career/analyses/{row.pk}/").json()
-    assert body["legacy"] is True and body["summary"] == "Старый вывод"
+    assert body["legacy"] is True and body["summary"] == "Старый вывод" and body["profile"] == []
     direction = body["directions"][0]
     assert direction["subjects"] == "русский язык, литература"
     assert direction["title_abroad"] == "" and direction["next_steps"] == ""
     assert body["group_id"] == pupils["aliya"].group_id
     listing = login(teacher).get(f"/api/career/students/{pupils['aliya'].pk}/").json()
     assert listing["analyses"][0]["legacy"] is True
+
+
+def test_short_analysis_of_the_top_range_rules_opens_marked_old(aliya_passed, teacher, pupils):
+    row = _old_analysis(pupils["aliya"], aliya_passed)
+    CareerAnalysis.objects.filter(pk=row.pk).update(rules=2)
+    body = login(teacher).get(f"/api/career/analyses/{row.pk}/").json()
+    assert body["legacy"] is True and body["profile"] == [] and len(body["directions"]) == 1
 
 
 def test_teacher_edits_new_fields_without_cutting(aliya_passed, karta, teacher, boston, fake):
@@ -279,4 +416,27 @@ def test_migration_keeps_old_analyses_and_marks_them_old(db, pupils):
     assert (direction.professions, direction.subjects, direction.exams) == (text, text, text)
     assert direction.title_abroad == "" and direction.next_steps == ""
     fresh = Analysis.objects.create(student_id=pupils["aliya"].pk, fingerprint="2")
-    assert fresh.rules == analysis.RULES
+    assert fresh.rules == 2
+
+
+PROFILE = [("career", "0005_interest_profile")]
+
+
+def test_profile_migration_only_adds(db, pupils):
+    executor = MigrationExecutor(connection)
+    executor.migrate(AFTER)
+    old = executor.loader.project_state(AFTER).apps
+    Analysis = old.get_model("career", "CareerAnalysis")
+    Direction = old.get_model("career", "CareerAnalysisDirection")
+    row = Analysis.objects.create(student_id=pupils["aliya"].pk, fingerprint="1", status="done", summary="вывод")
+    Direction.objects.create(analysis=row, order=1, title="Право", reasoning="коротко")
+    connection.check_constraints()
+    executor = MigrationExecutor(connection)
+    executor.migrate(PROFILE)
+    new = executor.loader.project_state(PROFILE).apps
+    Analysis = new.get_model("career", "CareerAnalysis")
+    kept = Analysis.objects.get(pk=row.pk)
+    assert (kept.rules, kept.summary) == (2, "вывод")
+    assert new.get_model("career", "CareerAnalysisDirection").objects.get(analysis=kept).reasoning == "коротко"
+    assert new.get_model("career", "CareerAnalysisScale").objects.filter(analysis=kept).count() == 0
+    assert Analysis.objects.create(student_id=pupils["aliya"].pk, fingerprint="2").rules == analysis.RULES == 3

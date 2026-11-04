@@ -327,8 +327,9 @@ class CareerAnalysis(models.Model):
     visible_to_student = models.BooleanField(gettext_lazy("Показан ученику"), default=False)
     #: по каким правилам считался разбор: 1 — прежние (направления по всем шкалам
     #: выше порога, школьные предметы); 2 — поступление за рубеж, направления только
-    #: по двум верхним диапазонам теста. Старые разборы не пересчитываются сами
-    rules = models.PositiveSmallIntegerField(gettext_lazy("Правила разбора"), default=2)
+    #: по верхнему диапазону теста; 3 — подробный разбор с профилем интересов по всем
+    #: шкалам, два–четыре направления. Старые разборы не пересчитываются сами
+    rules = models.PositiveSmallIntegerField(gettext_lazy("Правила разбора"), default=3)
     edited_at = models.DateTimeField(gettext_lazy("Правил учитель"), null=True, blank=True)
     edited_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -379,3 +380,30 @@ class CareerAnalysisDirection(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+
+class CareerAnalysisScale(models.Model):
+    """Шкала в профиле интересов разбора — по каждой шкале теста, и сильной, и отвергаемой.
+
+    Балл, наибольший возможный и подпись диапазона — снимок попытки на момент
+    разбора; что значит балл — текст модели, его правит учитель.
+    """
+
+    analysis = models.ForeignKey(CareerAnalysis, related_name="scales", on_delete=models.CASCADE)
+    order = models.PositiveSmallIntegerField(gettext_lazy("Порядок"), default=1)
+    test_title = models.CharField(gettext_lazy("Тест"), max_length=200)
+    title = models.CharField(gettext_lazy("Шкала"), max_length=120)
+    score = models.SmallIntegerField(gettext_lazy("Балл"))
+    top = models.SmallIntegerField(gettext_lazy("Наибольший балл"), default=0)
+    label = models.CharField(gettext_lazy("Подпись диапазона"), max_length=120, blank=True)
+    meaning = models.TextField(gettext_lazy("Что это значит"), blank=True)
+    #: то же для ученика, на «ты»
+    meaning_student = models.TextField(gettext_lazy("Что это значит — для ученика"), blank=True)
+
+    class Meta:
+        verbose_name = gettext_lazy("Шкала профиля интересов")
+        verbose_name_plural = gettext_lazy("Профиль интересов")
+        ordering = ("order", "id")
+
+    def __str__(self) -> str:
+        return f"{self.title}: {self.score}"

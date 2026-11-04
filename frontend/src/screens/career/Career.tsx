@@ -12,6 +12,7 @@ import { t, tn } from '../../i18n'
 import { formatDate } from '../../lib/format'
 import Icon from '../../layout/icons'
 import DirectionView from './DirectionView'
+import InterestProfile from './InterestProfile'
 import './career-my.css'
 
 type MyTest = MyCareer['tests'][number]
@@ -36,6 +37,7 @@ export function AnalysisCard({ analysis }: { analysis: CareerAnalysis }) {
   return (
     <DataCard title={t('Разбор от учителя')} note={analysis.tests.map((test) => test.title).join(' · ')}>
       {analysis.summary && <p className="acad__note">{analysis.summary}</p>}
+      <InterestProfile profile={analysis.profile} />
       {analysis.directions.map((direction) => (
         <DirectionView key={direction.id} direction={direction} reasoning={direction.reasoning} legacy={analysis.legacy} />
       ))}

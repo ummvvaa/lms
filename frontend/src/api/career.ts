@@ -103,6 +103,20 @@ export interface CareerDirection {
   reasoning_student?: string
 }
 
+/** шкала профиля интересов разбора: балл и подпись — снимок попытки, смысл — текст модели */
+export interface CareerProfileScale {
+  id: number
+  order: number
+  test: string
+  title: string
+  score: number
+  top: number
+  label: string
+  meaning: string
+  /** смысл для ученика, на «ты» — только сотрудникам; ученику приходит в `meaning` */
+  meaning_student?: string
+}
+
 export interface CareerAnalysis {
   id: number
   status: 'running' | 'done' | 'failed' | 'cancelled'
@@ -119,6 +133,8 @@ export interface CareerAnalysis {
   /** разбор считался по прежним правилам — показывается как есть, с плашкой */
   legacy: boolean
   tests: { id: number; title: string; attempt: number; finished_at: string | null }[]
+  /** профиль интересов по всем шкалам теста; у разборов до 04.11.2026 пуст */
+  profile: CareerProfileScale[]
   directions: CareerDirection[]
   /** версия для ученика (пишется моделью при первом показе) — только сотрудникам */
   summary_student?: string
@@ -264,7 +280,7 @@ export const useCareerStartAnalyses = () =>
   useCareerMutation((input: { group: number; tests: number[]; students?: number[] | null; force?: boolean }) => post<StartAnalysesResult>('/career/analyses/', input))
 
 export const useCareerAnalysisPatch = () =>
-  useCareerMutation((input: { id: number; summary?: string; summary_student?: string; visible_to_student?: boolean; directions?: Partial<CareerDirection>[] }) => {
+  useCareerMutation((input: { id: number; summary?: string; summary_student?: string; visible_to_student?: boolean; directions?: Partial<CareerDirection>[]; profile?: Partial<CareerProfileScale>[] }) => {
     const { id, ...body } = input
     return patch<CareerAnalysis>(`/career/analyses/${id}/`, body)
   }, true)

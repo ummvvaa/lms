@@ -2009,6 +2009,7 @@ export const en: Record<string, string> = {
   'Потоки': 'Streams',
   'Потоков': 'Streams',
   'Почему подходит': 'Why it fits',
+  'Профиль интересов': 'Interest profile',
   'Почему подходит.': 'Why it fits.',
   'Почему такая оценка': 'Why this mark',
   'Почему такой процент': 'Why this percentage',

@@ -328,6 +328,7 @@ PARSED = {
     "directions": [
         {
             "title": "Биотехнологии",
+            "scales": ["Биология"],
             "reasoning": "Биология — 12, ярко выраженный интерес",
             "professions": "биотехнолог, генетик",
             "subjects": "биология, химия",
@@ -336,17 +337,23 @@ PARSED = {
         },
         {
             "title": "Право",
+            "scales": ["Юриспруденция"],
             "reasoning": "Юриспруденция — 6",
             "professions": "юрист",
             "subjects": "история",
             "exams": "IELTS",
         },
-        {"title": "Экология", "reasoning": "смежно с биологией", "professions": "эколог"},
+        {
+            "title": "Экология",
+            "scales": ["Биология", "Юриспруденция"],
+            "reasoning": "смежно с биологией",
+            "professions": "эколог",
+        },
     ],
 }
 
 
-def test_analysis_runs_on_positive_scales_only_and_is_cached(passed, karta, teacher, boston, pupils, fake):
+def test_analysis_runs_on_the_whole_profile_and_is_cached(passed, karta, teacher, boston, pupils, fake):
     provider = fake(FakeProvider(PARSED))
     client = login(teacher)
     body = {"group": boston.pk, "tests": [karta.pk]}
@@ -357,12 +364,13 @@ def test_analysis_runs_on_positive_scales_only_and_is_cached(passed, karta, teac
     assert len(provider.calls) == 1
     prompt = provider.calls[0]["user"]
     assert "Биология: 12" in prompt and "Юриспруденция: 6" in prompt
-    assert "Физика" not in prompt and "Математика" not in prompt, "минусы и нули в разбор не идут"
+    low = prompt.split("Слабые и отвергаемые шкалы")[1]
+    assert "- Физика: -12" in low and "- Математика: 0" in low, "минусы и нули — в профиле, ниже порога"
     assert "Ахметова" not in prompt and "Алия" not in prompt
     row = CareerAnalysis.objects.get()
     assert row.status == AnalysisStatus.DONE and row.student == pupils["aliya"]
-    # сильная шкала одна (биология 12 из 12): одно направление, право (6 из 12) отдельным не идёт
-    assert [d.title for d in row.directions.all()] == ["Биотехнологии"]
+    # право (6 из 12) без биологии отдельным направлением не идёт, вместе с ней — дополняет
+    assert [d.title for d in row.directions.all()] == ["Биотехнологии", "Экология"]
     assert row.directions.first().programs.count() == 0, "программа мимо справочника отброшена"
     # тот же набор второй раз — готовый разбор, модель не зовётся
     again = client.post("/api/career/analyses/", body, format="json")

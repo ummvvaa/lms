@@ -132,6 +132,20 @@ def analysis_dict(analysis: CareerAnalysis, *, for_student: bool = False) -> dic
             {"id": a.test_id, "title": a.test.title, "attempt": a.pk, "finished_at": a.finished_at}
             for a in analysis.attempts.select_related("test").order_by("finished_at", "id")
         ],
+        #: профиль интересов — по каждой шкале теста; у разборов до 04.11.2026 пуст
+        "profile": [
+            {
+                "id": scale.pk,
+                "order": scale.order,
+                "test": scale.test_title,
+                "title": scale.title,
+                "score": scale.score,
+                "top": scale.top,
+                "label": scale.label,
+                "meaning": scale.meaning_student if for_student else scale.meaning,
+            }
+            for scale in analysis.scales.all()
+        ],
         "directions": [
             {
                 "id": d.pk,
@@ -158,6 +172,8 @@ def analysis_dict(analysis: CareerAnalysis, *, for_student: bool = False) -> dic
         out["has_student_version"] = bool(analysis.summary_student)
         for row, d in zip(out["directions"], analysis.directions.all(), strict=False):
             row["reasoning_student"] = d.reasoning_student
+        for row, scale in zip(out["profile"], analysis.scales.all(), strict=False):
+            row["meaning_student"] = scale.meaning_student
         out["student"] = student_brief(analysis.student)
         # «Пересчитать» запускает разбор группы ученика по тем же тестам
         out["group_id"] = analysis.student.group_id

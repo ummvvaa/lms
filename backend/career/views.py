@@ -650,6 +650,16 @@ def analysis_detail(request, pk: int):
                 setattr(direction, field_name, value[:limit] if limit else value)
                 edited = True
         direction.save()
+    for item in body.get("profile") or []:
+        sid = _int((item or {}).get("id"))
+        scale = row.scales.filter(pk=sid).first() if sid else None
+        if scale is None:
+            continue
+        for field_name in ("meaning", "meaning_student"):
+            if field_name in item:
+                setattr(scale, field_name, str(item[field_name] or "").strip())
+                edited = True
+        scale.save()
     if edited:
         row.edited_at = timezone.now()
         row.edited_by = request.user

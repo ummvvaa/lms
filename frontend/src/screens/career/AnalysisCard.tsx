@@ -6,7 +6,7 @@
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useCareerAnalysisPatch, useCareerStartAnalyses, type CareerAnalysis, type CareerDirection } from '../../api/career'
+import { useCareerAnalysisPatch, useCareerStartAnalyses, type CareerAnalysis, type CareerDirection, type CareerProfileScale } from '../../api/career'
 import { isActiveRun } from '../../api/hooks'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
@@ -17,16 +17,22 @@ import { Switch } from '../../components/ui/switch'
 import { t } from '../../i18n'
 import { formatDateTime } from '../../lib/format'
 import DirectionView, { DIRECTION_FIELDS, DirectionFacts, DirectionHead, DirectionPrograms } from './DirectionView'
+import InterestProfile from './InterestProfile'
 import { analysisTone } from './tone'
 
 type Version = 'teacher' | 'student'
-type Draft = { summary: string; summary_student: string; directions: Record<number, Partial<CareerDirection>> }
+type Meaning = 'meaning' | 'meaning_student'
+type Draft = { summary: string; summary_student: string; directions: Record<number, Partial<CareerDirection>>; profile: Record<number, Partial<Record<Meaning, string>>> }
 
 export default function AnalysisCard({ analysis, manage, studentSees = false, onClose }: { analysis: CareerAnalysis; manage: boolean; /** ученику разборы показываются (флаг сервера); нет — переключатель и вкладка «Для ученика» скрыты */ studentSees?: boolean; onClose: () => void }) {
   const patch = useCareerAnalysisPatch()
   const [version, setVersion] = useState<Version>('teacher')
-  const [draft, setDraft] = useState<Draft>({ summary: analysis.summary, summary_student: analysis.summary_student ?? '', directions: {} })
-  const dirty = draft.summary !== analysis.summary || draft.summary_student !== (analysis.summary_student ?? '') || Object.keys(draft.directions).length > 0
+  const [draft, setDraft] = useState<Draft>({ summary: analysis.summary, summary_student: analysis.summary_student ?? '', directions: {}, profile: {} })
+  const dirty =
+    draft.summary !== analysis.summary ||
+    draft.summary_student !== (analysis.summary_student ?? '') ||
+    Object.keys(draft.directions).length > 0 ||
+    Object.keys(draft.profile).length > 0
   const field = (direction: CareerDirection, name: keyof CareerDirection) =>
     (draft.directions[direction.id]?.[name] as string | undefined) ?? ((direction[name] as string | undefined) ?? '')
   const setField = (direction: CareerDirection, name: keyof CareerDirection, value: string) =>
@@ -38,8 +44,9 @@ export default function AnalysisCard({ analysis, manage, studentSees = false, on
         summary: draft.summary,
         summary_student: draft.summary_student,
         directions: Object.entries(draft.directions).map(([id, body]) => ({ id: Number(id), ...body })),
+        profile: Object.entries(draft.profile).map(([id, body]) => ({ id: Number(id), ...body })),
       },
-      { onSuccess: () => setDraft((prev) => ({ ...prev, directions: {} })), onError: (error) => toast.error(error.message) },
+      { onSuccess: () => setDraft((prev) => ({ ...prev, directions: {}, profile: {} })), onError: (error) => toast.error(error.message) },
     )
   // версия для ученика пишется в фоне: пришла опросом — в черновик, если его не трогали
   const [seenVersion, setSeenVersion] = useState(analysis.summary_student ?? '')
@@ -92,6 +99,14 @@ export default function AnalysisCard({ analysis, manage, studentSees = false, on
   const forStudent = version === 'student'
   const summaryText = forStudent ? analysis.summary_student ?? '' : analysis.summary
   const reasonOf = (d: CareerDirection) => (forStudent ? (d.reasoning_student ?? '') : d.reasoning)
+  const meaningName: Meaning = forStudent ? 'meaning_student' : 'meaning'
+  const profileEdit = {
+    version,
+    value: (scale: CareerProfileScale) => draft.profile[scale.id]?.[meaningName] ?? scale[meaningName] ?? '',
+    onChange: (scale: CareerProfileScale, value: string) =>
+      setDraft((prev) => ({ ...prev, profile: { ...prev.profile, [scale.id]: { ...prev.profile[scale.id], [meaningName]: value } } })),
+  }
+  const profileRead = forStudent ? analysis.profile.map((scale) => ({ ...scale, meaning: scale.meaning_student ?? '' })) : analysis.profile
   const header = [analysis.student?.full_name ?? '', analysis.tests.map((test) => test.title).join(', ')].filter(Boolean).join(' · ')
 
   return (
@@ -151,6 +166,7 @@ export default function AnalysisCard({ analysis, manage, studentSees = false, on
           summaryText && <p className="acad__note">{summaryText}</p>
         )
       )}
+      {analysis.status === 'done' && (forStudent ? studentReady : true) && <InterestProfile profile={manage ? analysis.profile : profileRead} edit={manage ? profileEdit : undefined} />}
       {(forStudent ? studentReady : true) &&
         analysis.directions.map((direction) =>
           manage ? (
