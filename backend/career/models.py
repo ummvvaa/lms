@@ -407,3 +407,93 @@ class CareerAnalysisScale(models.Model):
 
     def __str__(self) -> str:
         return f"{self.title}: {self.score}"
+
+
+class CareerAnalysisTranslation(models.Model):
+    """Перевод разбора на другой язык — для выгрузки в Word; оригинал не трогается.
+
+    Делается моделью один раз и хранится; профориентолог правил разбор после
+    перевода (`edited_at` позже `created_at`) — перевод делается заново.
+    Шкалы и направления — строками по порядку в разборе.
+    """
+
+    analysis = models.ForeignKey(CareerAnalysis, related_name="translations", on_delete=models.CASCADE)
+    language = models.CharField(gettext_lazy("Язык"), max_length=2)
+    summary = models.TextField(gettext_lazy("Общий вывод"), blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Переведён"), auto_now_add=True)
+
+    class Meta:
+        verbose_name = gettext_lazy("Перевод разбора")
+        verbose_name_plural = gettext_lazy("Переводы разборов")
+        constraints = [
+            models.UniqueConstraint(fields=("analysis", "language"), name="uniq_career_translation_language")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.analysis_id} · {self.language}"
+
+
+class CareerScaleTranslation(models.Model):
+    """Шкала профиля интересов в переводе — по номеру строки профиля."""
+
+    translation = models.ForeignKey(CareerAnalysisTranslation, related_name="scales", on_delete=models.CASCADE)
+    order = models.PositiveSmallIntegerField(gettext_lazy("Порядок"))
+    test_title = models.CharField(gettext_lazy("Тест"), max_length=200, blank=True)
+    title = models.CharField(gettext_lazy("Шкала"), max_length=120, blank=True)
+    label = models.CharField(gettext_lazy("Подпись диапазона"), max_length=120, blank=True)
+    meaning = models.TextField(gettext_lazy("Что это значит"), blank=True)
+
+    class Meta:
+        verbose_name = gettext_lazy("Шкала в переводе")
+        verbose_name_plural = gettext_lazy("Шкалы в переводе")
+        ordering = ("order", "id")
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class CareerDirectionTranslation(models.Model):
+    """Направление в переводе; название за рубежом и программы не переводятся."""
+
+    translation = models.ForeignKey(CareerAnalysisTranslation, related_name="directions", on_delete=models.CASCADE)
+    order = models.PositiveSmallIntegerField(gettext_lazy("Порядок"))
+    title = models.CharField(gettext_lazy("Направление"), max_length=150, blank=True)
+    reasoning = models.TextField(gettext_lazy("Почему подходит"), blank=True)
+    professions = models.TextField(gettext_lazy("Профессии"), blank=True)
+    exams = models.TextField(gettext_lazy("Что сдавать для поступления"), blank=True)
+    subjects = models.TextField(gettext_lazy("Что подтянуть в школе"), blank=True)
+    next_steps = models.TextField(gettext_lazy("Что сделать уже сейчас"), blank=True)
+
+    class Meta:
+        verbose_name = gettext_lazy("Направление в переводе")
+        verbose_name_plural = gettext_lazy("Направления в переводе")
+        ordering = ("order", "id")
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class CareerOverview(models.Model):
+    """«Общая картина по всем тестам» — связка готовых разборов ученика на одном языке.
+
+    Пишется моделью сразу на языке выгрузки; хранится, пока набор разборов
+    и их правки не изменились (`basis`).
+    """
+
+    student = models.ForeignKey(Student, related_name="career_overviews", on_delete=models.CASCADE)
+    language = models.CharField(gettext_lazy("Язык"), max_length=2)
+    #: номера разборов и время их последней правки
+    basis = models.CharField(gettext_lazy("По каким разборам"), max_length=400)
+    repeats = models.TextField(gettext_lazy("Что повторяется в разных тестах"), blank=True)
+    agreements = models.TextField(gettext_lazy("Где тесты согласуются"), blank=True)
+    differences = models.TextField(gettext_lazy("Где тесты расходятся"), blank=True)
+    confirmed = models.TextField(gettext_lazy("Какие направления подтверждаются несколькими тестами"), blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Написана"))
+
+    class Meta:
+        verbose_name = gettext_lazy("Общая картина по тестам")
+        verbose_name_plural = gettext_lazy("Общие картины по тестам")
+        constraints = [models.UniqueConstraint(fields=("student", "language"), name="uniq_career_overview_language")]
+
+    def __str__(self) -> str:
+        return f"{self.student_id} · {self.language}"

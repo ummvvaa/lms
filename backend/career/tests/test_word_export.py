@@ -161,3 +161,145 @@ def test_file_name_has_no_characters_that_break_windows():
         last_name, first_name = 'Ахметова: "Алия"', "Мария / Анна"
 
     assert word.file_name(Pupil()) == "Ахметова_Алия_Мария_Анна_профтест.docx"
+
+
+# --- Перевод и общая картина ---------------------------------------------------------------
+
+KK = {
+    "summary": "Ең күшті қызығушылық — биология.",
+    "tests": [{"order": 1, "title": "Қызығушылықтар картасы"}],
+    "scales": [{"order": 1, "title": "Биология", "label": "айқын қызығушылық", "meaning": "Тесттегі ең күшті."}],
+    "directions": [
+        {"order": 1, "title": "Биотехнология", "reasoning": "Биологияға қызығушылық — 12 ішінен 12."},
+        {"order": 2, "title": "Генетика"},
+    ],
+}
+
+
+def test_translation_is_made_once_and_reused(analysed, teacher, pupils, fake):
+    from career import exports
+
+    provider = fake(FakeProvider(KK))
+    first = exports.build(pupils["aliya"], language="kk", actor=teacher, use_model=True)
+    assert len(provider.calls) == 1 and first.language == "kk" and not first.notes
+    from core.i18n import answer_rule
+
+    assert provider.calls[0]["system"].endswith(answer_rule("kk")), "перевод — на языке выгрузки"
+    second = exports.build(pupils["aliya"], language="kk", actor=teacher, use_model=True)
+    assert len(provider.calls) == 1, "второе скачивание на том же языке — без нового перевода"
+    document = _document(second.payload)
+    text = "\n".join(p.text for p in document.paragraphs)
+    assert "Ең күшті қызығушылық — биология." in text and "1. Биотехнология" in text
+    assert "Biotechnology 1" in text, "английское название специальности не переводится"
+    assert "Қызығушылықтар бейіні" in text, "подписи разделов — на языке выгрузки"
+    rows = {row.cells[0].text: row for row in document.tables[1].rows[1:]}
+    assert rows["Биология"].cells[2].text == "айқын қызығушылық"
+    assert rows["Биология"].cells[1].text == "12 ішінен 12"
+    # оригинал не тронут
+    analysed.refresh_from_db()
+    assert analysis_summary(analysed) == "Сильнее всего — биология."
+    # перевод сохранён — теперь файл отдаётся сразу, без подготовки
+    assert _word(login(teacher), pupils["aliya"], "kk").status_code == 200
+
+
+def analysis_summary(row) -> str:
+    return CareerAnalysis.objects.get(pk=row.pk).summary
+
+
+def test_edit_after_translation_drops_the_translation(analysed, teacher, pupils, fake):
+    from career import exports
+
+    provider = fake(FakeProvider(KK))
+    exports.build(pupils["aliya"], language="kk", actor=teacher, use_model=True)
+    login(teacher).patch(f"/api/career/analyses/{analysed.pk}/", {"summary": "Новая правка."}, format="json")
+    assert _word(login(teacher), pupils["aliya"], "kk").status_code == 409, "перевод устарел"
+    exports.build(pupils["aliya"], language="kk", actor=teacher, use_model=True)
+    assert len(provider.calls) == 2, "правка после перевода — перевод заново"
+    assert "Новая правка." in provider.calls[1]["user"], "переводится уже исправленный текст"
+    assert analysed.translations.count() == 1
+
+
+def test_translation_keeps_numbers_programmes_and_bans_local_exams():
+    from career import translation
+
+    system = translation.TRANSLATE_SYSTEM
+    for words in ("смысл и цифры не меняй", "не переводи названия вузов и программ", "ЕНТ, ОГЭ, ЕГЭ"):
+        assert words in system
+    assert "ҚБ, БЖБ, ТЖБ" in system and "Mock Test" in system, "казахский — по глоссарию школы"
+    assert "«шанс»" in translation.OVERVIEW_SYSTEM and "ЕНТ, ОГЭ, ЕГЭ" in translation.OVERVIEW_SYSTEM
+
+
+@pytest.fixture
+def two_analyses(analysed, karta, teacher, pupils, example_bytes):
+    """Второй готовый разбор Алии — по другому набору тестов."""
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from career.models import CareerTest
+
+    client = login(teacher)
+    response = client.post(
+        "/api/career/tests/", {"file": SimpleUploadedFile("second.xlsx", example_bytes)}, format="multipart"
+    )
+    second = CareerTest.objects.get(pk=response.data["id"])
+    CareerTest.objects.filter(pk=second.pk).update(title="Второй тест")
+    activate(second, [{"group": pupils["aliya"].group_id}], by=teacher)
+    _pass(pupils["aliya"], second)
+    from career import analysis
+
+    attempts = [a for t in (karta, second) for a in t.attempts.filter(student=pupils["aliya"])]
+    row = analysis.open_analysis(pupils["aliya"], attempts, actor=teacher, language="ru")
+    analysis.run(row)
+    row.refresh_from_db()
+    assert row.status == AnalysisStatus.DONE, row.error
+    return [analysed, row]
+
+
+OVERVIEW = {
+    "repeats": "Биология сильнее всего в обоих тестах.",
+    "agreements": "Оба теста указывают на естественные науки.",
+    "differences": "Не расходятся.",
+    "confirmed": "Биотехнологии подтверждаются двумя тестами.",
+}
+
+
+def test_several_analyses_get_the_overall_picture_once(two_analyses, teacher, pupils, fake):
+    from career import exports
+
+    assert _word(login(teacher), pupils["aliya"]).status_code == 409, "общей картины ещё нет"
+    provider = fake(FakeProvider(OVERVIEW))
+    prepared = exports.build(pupils["aliya"], language="ru", actor=teacher, use_model=True)
+    assert len(provider.calls) == 1
+    prompt = provider.calls[0]["user"]
+    assert "Разбор 1" in prompt and "Разбор 2" in prompt and "сильная шкала" in prompt
+    document = _document(prepared.payload)
+    headings = [p.text for p in document.paragraphs if p.style.name.startswith("Heading")]
+    assert headings.index("Общая картина по всем тестам") < headings.index("Общий вывод")
+    assert headings.count("Профиль интересов") == 2
+    # каждый разбор — с новой страницы
+    breaks = [p for p in document.paragraphs if p.style.name == "Heading 1" and p.paragraph_format.page_break_before]
+    assert len(breaks) == 2
+    assert "Биотехнологии подтверждаются двумя тестами." in "\n".join(p.text for p in document.paragraphs)
+    # сохранена: файл теперь сразу
+    assert _word(login(teacher), pupils["aliya"]).status_code == 200
+    assert len(provider.calls) == 1
+
+
+def test_overall_picture_is_rewritten_when_an_analysis_changes(two_analyses, teacher, pupils, fake):
+    from career import exports
+
+    provider = fake(FakeProvider(OVERVIEW))
+    exports.build(pupils["aliya"], language="ru", actor=teacher, use_model=True)
+    login(teacher).patch(f"/api/career/analyses/{two_analyses[0].pk}/", {"summary": "Правка."}, format="json")
+    assert _word(login(teacher), pupils["aliya"]).status_code == 409
+    exports.build(pupils["aliya"], language="ru", actor=teacher, use_model=True)
+    assert len(provider.calls) == 2
+
+
+def test_failed_translation_still_builds_the_file_in_the_analysis_language(analysed, teacher, pupils, fake):
+    from career import exports
+
+    fake(FakeProvider(fail=True))
+    prepared = exports.build(pupils["aliya"], language="en", actor=teacher, use_model=True)
+    assert prepared.language == "ru" and prepared.notes and "перевод не получился" in prepared.notes[0]
+    text = "\n".join(p.text for p in _document(prepared.payload).paragraphs)
+    assert "Сильнее всего — биология." in text and "Профиль интересов" in text

@@ -19253,3 +19253,67 @@ msgstr "What it means — for the student"
 #: career/models.py
 msgid "Шкала профиля интересов"
 msgstr "Interest profile scale"
+
+#: career/models.py
+msgid "Переведён"
+msgstr "Translated"
+
+#: career/models.py
+msgid "Перевод разбора"
+msgstr "Analysis translation"
+
+#: career/models.py
+msgid "Переводы разборов"
+msgstr "Analysis translations"
+
+#: career/models.py
+msgid "Шкала в переводе"
+msgstr "Translated scale"
+
+#: career/models.py
+msgid "Шкалы в переводе"
+msgstr "Translated scales"
+
+#: career/models.py
+msgid "Направление в переводе"
+msgstr "Translated direction"
+
+#: career/models.py
+msgid "Направления в переводе"
+msgstr "Translated directions"
+
+#: career/models.py
+msgid "По каким разборам"
+msgstr "Based on analyses"
+
+#: career/models.py
+msgid "Написана"
+msgstr "Written"
+
+#: career/models.py
+msgid "Общая картина по тестам"
+msgstr "Overall picture across tests"
+
+#: career/models.py
+msgid "Общие картины по тестам"
+msgstr "Overall pictures across tests"
+
+#: career/translation.py
+msgid "Модель вернула пустой перевод"
+msgstr "The model returned an empty translation"
+
+#: career/translation.py
+msgid "Модель вернула пустую общую картину"
+msgstr "The model returned an empty overall picture"
+
+#: career/exports.py
+msgid "нет готового разбора"
+msgstr "no finished analysis"
+
+#: career/exports.py
+msgid "перевод не получился ({reason}) — файл на языке разбора"
+msgstr "translation failed ({reason}) — the file is in the analysis language"
+
+#: career/exports.py
+msgid "общая картина не получилась ({reason})"
+msgstr "overall picture failed ({reason})"

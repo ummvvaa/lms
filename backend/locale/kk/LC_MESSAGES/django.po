@@ -19172,3 +19172,67 @@ msgstr "Бұл нені білдіреді — оқушы үшін"
 #: career/models.py
 msgid "Шкала профиля интересов"
 msgstr "Қызығушылықтар бейінінің шкаласы"
+
+#: career/models.py
+msgid "Переведён"
+msgstr "Аударылды"
+
+#: career/models.py
+msgid "Перевод разбора"
+msgstr "Талдау аудармасы"
+
+#: career/models.py
+msgid "Переводы разборов"
+msgstr "Талдау аудармалары"
+
+#: career/models.py
+msgid "Шкала в переводе"
+msgstr "Аудармадағы шкала"
+
+#: career/models.py
+msgid "Шкалы в переводе"
+msgstr "Аудармадағы шкалалар"
+
+#: career/models.py
+msgid "Направление в переводе"
+msgstr "Аудармадағы бағыт"
+
+#: career/models.py
+msgid "Направления в переводе"
+msgstr "Аудармадағы бағыттар"
+
+#: career/models.py
+msgid "По каким разборам"
+msgstr "Қай талдаулар бойынша"
+
+#: career/models.py
+msgid "Написана"
+msgstr "Жазылды"
+
+#: career/models.py
+msgid "Общая картина по тестам"
+msgstr "Тесттер бойынша жалпы көрініс"
+
+#: career/models.py
+msgid "Общие картины по тестам"
+msgstr "Тесттер бойынша жалпы көріністер"
+
+#: career/translation.py
+msgid "Модель вернула пустой перевод"
+msgstr "Модель бос аударма қайтарды"
+
+#: career/translation.py
+msgid "Модель вернула пустую общую картину"
+msgstr "Модель бос жалпы көрініс қайтарды"
+
+#: career/exports.py
+msgid "нет готового разбора"
+msgstr "дайын талдау жоқ"
+
+#: career/exports.py
+msgid "перевод не получился ({reason}) — файл на языке разбора"
+msgstr "аударма болмады ({reason}) — файл талдау тілінде"
+
+#: career/exports.py
+msgid "общая картина не получилась ({reason})"
+msgstr "жалпы көрініс болмады ({reason})"

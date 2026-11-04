@@ -703,14 +703,14 @@ def student_word(request, pk: int):
         return _not_found()
     language = exports.language_or_none(request.query_params.get("language")) or language_of(request.user)
     try:
-        payload, name = exports.immediate(student, language=language, actor=request.user)
+        prepared = exports.immediate(student, language=language, actor=request.user)
     except exports.NeedsPreparation as error:
         return Response({"detail": str(error), "prepare": True}, status=status.HTTP_409_CONFLICT)
     except exports.Refused as error:
         return _bad(str(error))
     usage.track(request, "career.export.word")
-    response = HttpResponse(payload, content_type=word.DOCX_TYPE)
-    response["Content-Disposition"] = _disposition(name, word.DOCX_TYPE)
+    response = HttpResponse(prepared.payload, content_type=word.DOCX_TYPE)
+    response["Content-Disposition"] = _disposition(prepared.name, word.DOCX_TYPE)
     return response
 
 
