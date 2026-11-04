@@ -456,6 +456,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "academics.build_monthly_reports",
         "schedule": crontab(hour=8, minute=0, day_of_week=5),
     },
+    # файлы разборов профтеста в Word: срок хранения — правило школы (по умолчанию 7 дней)
+    "purge-career-exports": {
+        "task": "career.purge_exports",
+        "schedule": crontab(hour=4, minute=40),
+    },
     # брошенные на полпути загрузки файлов ДЗ: строка и объект в хранилище
     "drop-stale-homework-uploads": {
         "task": "homework.drop_stale_uploads",

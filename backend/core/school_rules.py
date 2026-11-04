@@ -325,6 +325,8 @@ NEXT_MOCK_DAYS = "next_mock_days"
 #: Материалы олимпиадной группы, аудио заданий и тренировка
 MATERIAL_FILE_MB = "material_file_mb"
 MATERIAL_MAX_FILES = "material_max_files"
+#: Сколько дней хранится подготовленный файл разборов профтеста в Word, затем удаляется
+CAREER_EXPORT_DAYS = "career_export_days"
 PREP_AUDIO_MB = "prep_audio_mb"
 PRACTICE_SIZE = "practice_size"
 PRACTICE_WEAK_SHARE = "practice_weak_share"
@@ -1003,6 +1005,19 @@ RULES: tuple[Rule, ...] = (
         10,
         1,
         50,
+        section=FILES,
+    ),
+    Rule(
+        CAREER_EXPORT_DAYS,
+        gettext_lazy("Срок хранения файлов разборов профтеста"),
+        gettext_lazy(
+            "Сколько дней хранится подготовленный Word или архив разборов профтеста; потом файл удаляется, "
+            "его можно подготовить заново"
+        ),
+        DAYS,
+        7,
+        1,
+        90,
         section=FILES,
     ),
     Rule(

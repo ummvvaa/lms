@@ -19236,3 +19236,71 @@ msgstr "аударма болмады ({reason}) — файл талдау ті�
 #: career/exports.py
 msgid "общая картина не получилась ({reason})"
 msgstr "жалпы көрініс болмады ({reason})"
+
+#: career/views.py
+msgid "Отметьте хотя бы одного ученика"
+msgstr "Кемінде бір оқушыны белгілеңіз"
+
+#: career/views.py
+msgid "В группе нет учеников"
+msgstr "Топта оқушылар жоқ"
+
+#: career/views.py
+msgid "Файла нет: срок хранения истёк или файл ещё не готов"
+msgstr "Файл жоқ: сақтау мерзімі өтті немесе файл әлі дайын емес"
+
+#: career/exports.py
+msgid "Готово {count}"
+msgstr "Дайын: {count}"
+
+#: career/exports.py
+msgid "Готово {ready}, пропущено {skipped}: {parts}"
+msgstr "Дайын: {ready}, өткізілді: {skipped}: {parts}"
+
+#: career/exports.py
+msgid "Файлов нет: ни у кого из учеников нет готового разбора"
+msgstr "Файлдар жоқ: оқушылардың ешқайсысында дайын талдау жоқ"
+
+#: career/exports.py
+msgid "Word профтеста — группа {code}"
+msgstr "Кәсіптік тест Word — {code} тобы"
+
+#: career/exports.py
+msgid "Word профтеста — {name}"
+msgstr "Кәсіптік тест Word — {name}"
+
+#: career/exports.py
+msgid "Word профтеста — отмеченные ученики, {count}"
+msgstr "Кәсіптік тест Word — белгіленген оқушылар, {count}"
+
+#: career/models.py
+msgid "Готовится"
+msgstr "Дайындалуда"
+
+#: career/models.py
+msgid "Удалён по сроку"
+msgstr "Мерзімі бойынша жойылды"
+
+#: career/models.py
+msgid "Хранится до"
+msgstr "Сақталу мерзімі"
+
+#: career/models.py
+msgid "Выгрузка разборов в Word"
+msgstr "Талдауларды Word-қа экспорттау"
+
+#: career/models.py
+msgid "Выгрузки разборов в Word"
+msgstr "Талдауларды Word-қа экспорттаулар"
+
+#: core/jobs.py
+msgid "Файлы готовы: {title}"
+msgstr "Файлдар дайын: {title}"
+
+#: core/school_rules.py
+msgid "Срок хранения файлов разборов профтеста"
+msgstr "Кәсіптік тест талдауы файлдарының сақталу мерзімі"
+
+#: core/school_rules.py
+msgid "Сколько дней хранится подготовленный Word или архив разборов профтеста; потом файл удаляется, его можно подготовить заново"
+msgstr "Кәсіптік тест талдауларының дайындалған Word файлы немесе мұрағаты неше күн сақталады; кейін файл жойылады, оны қайта дайындауға болады"

@@ -56,6 +56,13 @@ CLOSE_HOOKS = {
     "career_analysis": "career.tasks.close_rows",
     "selection": "universities.tasks.close_run",
     "plan": "roadmap.tasks.close_plan",
+    "career_export": "career.tasks.close_export",
+}
+
+#: Своя фраза уведомления о конце — у операции, чей итог человек ждёт словами
+#: («Файлы готовы»); у остальных — общее «{title} — готово»
+DONE_TEMPLATES = {
+    "career_export": gettext_noop("Файлы готовы: {title}"),
 }
 
 
@@ -360,7 +367,7 @@ def _notify(job: BackgroundJob, *, done: bool) -> None:
                 job.owner,
                 kind=Notification.Kind.JOB_DONE,
                 # переводит `notify` — на язык получателя
-                template=gettext_noop("{title} — готово"),
+                template=DONE_TEMPLATES.get(job.kind, gettext_noop("{title} — готово")),
                 link=job.link or "/dashboard",
                 title=job.title,
             )

@@ -19317,3 +19317,71 @@ msgstr "translation failed ({reason}) — the file is in the analysis language"
 #: career/exports.py
 msgid "общая картина не получилась ({reason})"
 msgstr "overall picture failed ({reason})"
+
+#: career/views.py
+msgid "Отметьте хотя бы одного ученика"
+msgstr "Select at least one student"
+
+#: career/views.py
+msgid "В группе нет учеников"
+msgstr "The group has no students"
+
+#: career/views.py
+msgid "Файла нет: срок хранения истёк или файл ещё не готов"
+msgstr "No file: its storage period ended or it is not ready yet"
+
+#: career/exports.py
+msgid "Готово {count}"
+msgstr "Ready: {count}"
+
+#: career/exports.py
+msgid "Готово {ready}, пропущено {skipped}: {parts}"
+msgstr "Ready: {ready}, skipped: {skipped}: {parts}"
+
+#: career/exports.py
+msgid "Файлов нет: ни у кого из учеников нет готового разбора"
+msgstr "No files: none of the students has a finished analysis"
+
+#: career/exports.py
+msgid "Word профтеста — группа {code}"
+msgstr "Career test Word — group {code}"
+
+#: career/exports.py
+msgid "Word профтеста — {name}"
+msgstr "Career test Word — {name}"
+
+#: career/exports.py
+msgid "Word профтеста — отмеченные ученики, {count}"
+msgstr "Career test Word — selected students, {count}"
+
+#: career/models.py
+msgid "Готовится"
+msgstr "Being prepared"
+
+#: career/models.py
+msgid "Удалён по сроку"
+msgstr "Deleted after storage period"
+
+#: career/models.py
+msgid "Хранится до"
+msgstr "Kept until"
+
+#: career/models.py
+msgid "Выгрузка разборов в Word"
+msgstr "Analyses Word export"
+
+#: career/models.py
+msgid "Выгрузки разборов в Word"
+msgstr "Analyses Word exports"
+
+#: core/jobs.py
+msgid "Файлы готовы: {title}"
+msgstr "Files ready: {title}"
+
+#: core/school_rules.py
+msgid "Срок хранения файлов разборов профтеста"
+msgstr "Career test analysis files: storage period"
+
+#: core/school_rules.py
+msgid "Сколько дней хранится подготовленный Word или архив разборов профтеста; потом файл удаляется, его можно подготовить заново"
+msgstr "How many days a prepared Word file or archive of career test analyses is kept; then the file is deleted and can be prepared again"

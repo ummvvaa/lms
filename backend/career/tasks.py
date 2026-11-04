@@ -95,3 +95,54 @@ def close_rows(job: BackgroundJob) -> None:
     CareerAnalysis.objects.filter(job=job, status=AnalysisStatus.RUNNING).update(
         status=status, error=error[:300], finished_at=timezone.now()
     )
+
+
+EXPORT_KIND = "career_export"
+
+
+@shared_task(name="career.export_files", bind=True)
+def export_files(self, export_id: int = 0, students: list[int] | None = None, actor_id: int = 0, **kwargs) -> dict:
+    """Файлы разборов в Word: по ученику за раз, перевод и общая картина — моделью.
+
+    Повтор сорвавшегося запуска приходит с тем же номером выгрузки: ход
+    начинается заново, уже сохранённые переводы модель второй раз не зовут.
+    """
+    from accounts.models import User
+    from career import exports
+    from career.models import CareerExport, ExportStatus
+    from core.i18n import language_of
+    from students.models import Student
+
+    task_id = getattr(getattr(self, "request", None), "id", "") or ""
+    export = CareerExport.objects.select_related("group").filter(pk=export_id or kwargs.get("export_id")).first()
+    if export is None:
+        return {"ok": False}
+    actor = User.objects.filter(pk=actor_id or kwargs.get("actor_id")).first()
+    job = BackgroundJob.objects.filter(task_id=task_id).first() if task_id else None
+    export.job = job or export.job
+    export.status, export.done, export.outcome, export.finished_at = ExportStatus.RUNNING, 0, "", None
+    export.save(update_fields=["job", "status", "done", "outcome", "finished_at"])
+    ids = list(students or kwargs.get("students") or [])
+    rows = list(Student.objects.filter(pk__in=ids).select_related("group").order_by("last_name", "first_name", "id"))
+    # итог и причины — на языке того, кто запускал; подписи файла — на языке выгрузки
+    with translation.override(language_of(actor) if actor else export.language):
+        exports.run(export, students=rows, actor=actor, task_id=task_id)
+    return {"ok": True}
+
+
+@shared_task(name="career.purge_exports")
+def purge_exports() -> int:
+    """Файлы выгрузок со вышедшим сроком хранения — удалить (раз в сутки)."""
+    from career import exports
+
+    return exports.purge()
+
+
+def close_export(job: BackgroundJob) -> None:
+    """Подготовка отменена или зависла: выгрузка закрывается так же, файла нет."""
+    from career.models import CareerExport, ExportStatus
+
+    status = ExportStatus.CANCELLED if job.status == BackgroundJob.Status.CANCELLED else ExportStatus.FAILED
+    CareerExport.objects.filter(job=job, status=ExportStatus.RUNNING).update(
+        status=status, outcome=job.error if status == ExportStatus.FAILED else "", finished_at=timezone.now()
+    )

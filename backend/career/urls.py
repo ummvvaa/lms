@@ -20,6 +20,9 @@ urlpatterns = [
     path("career/analyses/<int:pk>/", views.analysis_detail, name="career-analysis"),
     path("career/students/<int:pk>/", views.student_results, name="career-student"),
     path("career/students/<int:pk>/word/", views.student_word, name="career-student-word"),
+    path("career/exports/", views.exports_view, name="career-exports"),
+    path("career/exports/<int:pk>/", views.export_detail, name="career-export"),
+    path("career/exports/<int:pk>/file/", views.export_file, name="career-export-file"),
     # --- ученик ---
     path("career/my/", views.my, name="career-my"),
     path("career/my/tests/<int:pk>/start/", views.my_start, name="career-my-start"),

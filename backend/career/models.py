@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext, gettext_lazy
 
 from materials.storage import private_storage
@@ -497,3 +498,67 @@ class CareerOverview(models.Model):
 
     def __str__(self) -> str:
         return f"{self.student_id} · {self.language}"
+
+
+def export_upload_to(instance, filename: str) -> str:
+    """Готовый файл выгрузки — в закрытом хранилище, без имени ученика в пути."""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "zip"
+    return f"career/exports/{instance.pk or 'new'}-{timezone.now():%Y%m%d%H%M%S}.{ext}"
+
+
+class ExportStatus(models.TextChoices):
+    RUNNING = "running", gettext_lazy("Готовится")
+    DONE = "done", gettext_lazy("Готов")
+    FAILED = "failed", gettext_lazy("Не получился")
+    CANCELLED = "cancelled", gettext_lazy("Отменён")
+    EXPIRED = "expired", gettext_lazy("Удалён по сроку")
+
+
+class CareerExport(models.Model):
+    """Подготовленный фоновым запуском файл разборов: Word ученика или архив.
+
+    Хранится ограниченное время (правило школы `career_export_days`), затем
+    файл удаляется, строка остаётся с итогом. Скачать может тот, кто
+    запускал, и администратор.
+    """
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=gettext_lazy("Кто запустил"),
+        related_name="career_exports",
+        on_delete=models.CASCADE,
+    )
+    job = models.ForeignKey(
+        "core.BackgroundJob",
+        verbose_name=gettext_lazy("Запуск"),
+        related_name="career_exports",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    #: группа целиком или группа отмеченных учеников — для имени архива и ссылки
+    group = models.ForeignKey(StudyGroup, related_name="career_exports", on_delete=models.SET_NULL, null=True)
+    whole_group = models.BooleanField(gettext_lazy("Вся группа"), default=False)
+    language = models.CharField(gettext_lazy("Язык"), max_length=2)
+    status = models.CharField(
+        gettext_lazy("Состояние"), max_length=10, choices=ExportStatus.choices, default=ExportStatus.RUNNING
+    )
+    total = models.PositiveSmallIntegerField(gettext_lazy("Учеников"), default=0)
+    done = models.PositiveSmallIntegerField(gettext_lazy("Готово"), default=0)
+    file = models.FileField(
+        gettext_lazy("Файл"), upload_to=export_upload_to, storage=private_storage, max_length=300, blank=True
+    )
+    file_name = models.CharField(gettext_lazy("Имя файла"), max_length=200, blank=True)
+    #: итог словами: сколько готово, кого пропустили и почему, у кого перевод не получился
+    outcome = models.TextField(gettext_lazy("Итог"), blank=True)
+    created_at = models.DateTimeField(gettext_lazy("Запущен"), auto_now_add=True)
+    finished_at = models.DateTimeField(gettext_lazy("Готов"), null=True, blank=True)
+    expires_at = models.DateTimeField(gettext_lazy("Хранится до"), null=True, blank=True)
+
+    class Meta:
+        verbose_name = gettext_lazy("Выгрузка разборов в Word")
+        verbose_name_plural = gettext_lazy("Выгрузки разборов в Word")
+        ordering = ("-created_at", "-id")
+
+    def __str__(self) -> str:
+        return self.file_name or str(self.pk)

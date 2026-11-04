@@ -287,6 +287,8 @@ def test_curator_and_asem_are_refused_on_every_career_route(request, who, passed
         "career-analysis": {"pk": 1},
         "career-student": {"pk": pupils["aliya"].pk},
         "career-student-word": {"pk": pupils["aliya"].pk},
+        "career-export": {"pk": 1},
+        "career-export-file": {"pk": 1},
     }
     client = login(request.getfixturevalue(who))
     checked = []
@@ -301,7 +303,7 @@ def test_curator_and_asem_are_refused_on_every_career_route(request, who, passed
             response = getattr(client, method)(url + query, {}, format="json")
             assert response.status_code == 403, f"{method.upper()} {name}: {response.status_code}"
             checked.append((name, method))
-    assert len({name for name, _ in checked}) == 14
+    assert len({name for name, _ in checked}) == 17
 
 
 def test_tests_list_counts(passed, karta, teacher):

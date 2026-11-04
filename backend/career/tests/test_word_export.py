@@ -303,3 +303,184 @@ def test_failed_translation_still_builds_the_file_in_the_analysis_language(analy
     assert prepared.language == "ru" and prepared.notes and "перевод не получился" in prepared.notes[0]
     text = "\n".join(p.text for p in _document(prepared.payload).paragraphs)
     assert "Сильнее всего — биология." in text and "Профиль интересов" in text
+
+
+# --- Подготовка в фоне: архив группы, отмена, сбой перевода, срок хранения ------------------
+
+
+@pytest.fixture
+def both_analysed(analysed, karta, teacher, pupils, fake) -> list[CareerAnalysis]:
+    """Готовые разборы Алии и Дамира на русском."""
+    _pass(pupils["damir"], karta)
+    fake(FakeProvider({"summary": "Биология — главное.", "profile": PROFILE, "directions": _directions()}))
+    login(teacher).post(
+        "/api/career/analyses/",
+        {"group": pupils["damir"].group_id, "tests": [karta.pk], "students": [pupils["damir"].pk]},
+        format="json",
+    )
+    return list(CareerAnalysis.objects.filter(status=AnalysisStatus.DONE).order_by("student__last_name"))
+
+
+def _start(client, **body):
+    return client.post("/api/career/exports/", body, format="json")
+
+
+def _zip(payload: bytes) -> dict[str, bytes]:
+    import zipfile
+
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        return {name: archive.read(name) for name in archive.namelist()}
+
+
+def test_one_student_without_model_work_is_ready_at_once(analysed, teacher, pupils):
+    response = _start(login(teacher), language="ru", students=[pupils["aliya"].pk])
+    assert response.status_code == 200 and response.json()["ready"] is True
+    assert response.json()["url"] == f"/career/students/{pupils['aliya'].pk}/word/?language=ru"
+    from career.models import CareerExport
+
+    assert not CareerExport.objects.exists(), "без фонового запуска"
+
+
+def test_group_zip_has_a_file_per_ready_student_and_skips_the_rest(analysed, teacher, pupils, boston):
+    from career.models import CareerExport
+
+    client = login(teacher)
+    response = _start(client, language="ru", group=boston.pk)
+    assert response.status_code == 202, response.content
+    export = CareerExport.objects.get()
+    state = client.get(f"/api/career/exports/{export.pk}/").json()
+    assert state["status"] == "done" and state["total"] == 2 and state["done"] == 2
+    assert state["outcome"] == "Готово 1, пропущено 1: нет готового разбора — Сериков Д."
+    assert state["file_name"].startswith("Профтест_BOSTON_") and state["file_name"].endswith(".zip")
+    file = client.get(f"/api/career/exports/{export.pk}/file/")
+    assert file.status_code == 200
+    files = _zip(b"".join(file.streaming_content))
+    assert list(files) == ["Ахметова_Алия_профтест.docx"]
+    assert "Профиль интересов" in [p.text for p in _document(files["Ахметова_Алия_профтест.docx"]).paragraphs]
+    # колокольчик: «Файлы готовы» со ссылкой на окно с файлом
+    from core.models import Notification
+
+    note = Notification.objects.get(recipient=teacher, kind=Notification.Kind.JOB_DONE, text__startswith="Файлы готовы")
+    assert note.text == "Файлы готовы: Word профтеста — группа BOSTON" and f"export={export.pk}" in note.link
+    # журнал — только по ученику, чей файл в архиве
+    assert list(AuditLog.objects.filter(field_name="career_export").values_list("student_id", flat=True)) == [
+        pupils["aliya"].pk
+    ]
+
+
+def test_one_selected_student_with_translation_gets_a_docx_not_a_zip(analysed, teacher, pupils, fake):
+    from career.models import CareerExport
+
+    fake(FakeProvider(KK))
+    client = login(teacher)
+    assert _start(client, language="kk", students=[pupils["aliya"].pk]).status_code == 202
+    export = CareerExport.objects.get()
+    assert export.file_name == "Ахметова_Алия_профтест.docx" and export.language == "kk"
+    payload = b"".join(client.get(f"/api/career/exports/{export.pk}/file/").streaming_content)
+    assert "Ең күшті қызығушылық — биология." in "\n".join(p.text for p in _document(payload).paragraphs)
+
+
+class FailsFirst(FakeProvider):
+    """Первый вызов модели не получается, остальные — да."""
+
+    def complete(self, **kwargs):
+        if not self.calls:
+            self.calls.append(kwargs)
+            from suggestions.providers import LLMUnavailable
+
+            raise LLMUnavailable("провайдер вернул 503")
+        return super().complete(**kwargs)
+
+
+def test_failed_translation_of_one_student_does_not_break_the_archive(both_analysed, teacher, pupils, boston, fake):
+    from career.models import CareerExport
+
+    fake(FailsFirst(KK))
+    client = login(teacher)
+    assert _start(client, language="kk", group=boston.pk).status_code == 202
+    export = CareerExport.objects.get()
+    assert export.status == "done"
+    files = _zip(b"".join(client.get(f"/api/career/exports/{export.pk}/file/").streaming_content))
+    assert sorted(files) == ["Ахметова_Алия_профтест.docx", "Сериков_Дамир_профтест.docx"]
+    lines = export.outcome.split("\n")
+    assert lines[0] == "Готово 2"
+    assert lines[1].startswith("Ахметова А.: перевод не получился") and "файл на языке разбора" in lines[1]
+    first = "\n".join(p.text for p in _document(files["Ахметова_Алия_профтест.docx"]).paragraphs)
+    second = "\n".join(p.text for p in _document(files["Сериков_Дамир_профтест.docx"]).paragraphs)
+    assert "Профиль интересов" in first, "у Алии — на русском"
+    assert "Қызығушылықтар бейіні" in second, "у Дамира — перевод"
+
+
+class CancelsDuringCall(FakeProvider):
+    """Пока модель переводит, подготовку отменяют."""
+
+    def complete(self, **kwargs):
+        from core import jobs
+        from core.models import BackgroundJob
+
+        job = BackgroundJob.objects.get(kind="career_export")
+        jobs.cancel(job, by=job.owner)
+        return super().complete(**kwargs)
+
+
+def test_cancelled_preparation_keeps_no_file(both_analysed, teacher, boston, fake):
+    from career.models import CareerExport
+    from core.models import BackgroundJob
+
+    fake(CancelsDuringCall(KK))
+    _start(login(teacher), language="kk", group=boston.pk)
+    export = CareerExport.objects.get()
+    assert export.status == "cancelled" and not export.file
+    assert BackgroundJob.objects.get(kind="career_export").status == BackgroundJob.Status.CANCELLED
+    assert not CareerAnalysis.objects.filter(translations__isnull=False).exists(), "поздний ответ не сохранён"
+
+
+def test_second_start_of_the_same_preparation_leads_to_the_running_one(analysed, teacher, pupils, boston):
+    from career.models import CareerExport
+    from core import jobs
+
+    job = jobs.start(user=teacher, kind="career_export", title="Word", task_id="t-1")
+    running = CareerExport.objects.create(
+        owner=teacher, job=job, group=boston, whole_group=True, language="kk", total=2
+    )
+    response = _start(login(teacher), language="kk", group=boston.pk)
+    assert response.status_code == 200 and response.json()["already"] is True
+    assert response.json()["export"]["id"] == running.pk and CareerExport.objects.count() == 1
+
+
+def test_only_the_owner_and_admin_download_the_prepared_file(analysed, teacher, admin, pupils, boston, make_user):
+    from career.models import CareerExport
+
+    _start(login(teacher), language="ru", group=boston.pk)
+    export = CareerExport.objects.get()
+    assert login(admin).get(f"/api/career/exports/{export.pk}/file/").status_code == 200
+    from academics.models import TeacherProfile
+
+    colleague = make_user(Role.TEACHER, "second.career@example.kz", full_name="Второй Профориентатор")
+    TeacherProfile.objects.create(user=colleague).subjects.set([teacher.teacher_profile.subjects.first()])
+    assert login(colleague).get(f"/api/career/exports/{export.pk}/file/").status_code == 404
+    assert login(colleague).get(f"/api/career/exports/{export.pk}/").status_code == 404
+
+
+def test_prepared_file_is_kept_for_the_school_rule_days_then_deleted(analysed, teacher, boston):
+    import datetime as dt
+
+    from django.utils import timezone
+
+    from career import exports
+    from career.models import CareerExport
+
+    client = login(teacher)
+    _start(client, language="ru", group=boston.pk)
+    export = CareerExport.objects.get()
+    assert abs((export.expires_at - export.finished_at) - dt.timedelta(days=7)) < dt.timedelta(seconds=1)
+    path = export.file.path
+    CareerExport.objects.filter(pk=export.pk).update(expires_at=timezone.now() - dt.timedelta(minutes=1))
+    assert exports.purge() == 1
+    export.refresh_from_db()
+    assert export.status == "expired" and not export.file
+    import os
+
+    assert not os.path.exists(path)
+    response = client.get(f"/api/career/exports/{export.pk}/file/")
+    assert response.status_code == 404 and "срок хранения" in response.json()["detail"]

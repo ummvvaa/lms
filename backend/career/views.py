@@ -33,6 +33,7 @@ from career.models import (
     CareerItemChoice,
     CareerTest,
     CareerTestOption,
+    ExportStatus,
 )
 from career.tasks import JOB_KIND
 from core import jobs, usage
@@ -711,6 +712,127 @@ def student_word(request, pk: int):
     usage.track(request, "career.export.word")
     response = HttpResponse(prepared.payload, content_type=word.DOCX_TYPE)
     response["Content-Disposition"] = _disposition(prepared.name, word.DOCX_TYPE)
+    return response
+
+
+def _export_for(request, pk: int):
+    """Выгрузка — тому, кто запускал, и администратору; остальным её нет."""
+    from career.models import CareerExport
+
+    row = CareerExport.objects.select_related("group", "job").filter(pk=pk).first()
+    if row is None or not exports.can_download(row, request.user):
+        return None
+    return row
+
+
+@extend_schema(request=dict, responses={200: dict, 202: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def exports_view(request):
+    """Скачать Word: `{"language": "kk", "group": 1}` или `{"language": "kk", "students": [ids]}`.
+
+    Один ученик, модель не нужна — `{"ready": true, "url": …}`, файл отдаётся сразу.
+    Иначе — подготовка в фоне: `{"ready": false, "export": {…}}`; такая же уже
+    идёт — ведём к ней (`already`).
+    """
+    from career.models import CareerExport
+
+    refused = _manager(request)
+    if refused:
+        return refused
+    body = request.data if isinstance(request.data, dict) else {}
+    language = exports.language_or_none(body.get("language")) or language_of(request.user)
+    whole_group = body.get("group") not in (None, "")
+    if whole_group:
+        group = _group_for(request, body.get("group"))
+        if group is None:
+            return _not_found()
+        students = list(
+            Student.objects.filter(group=group, is_active=True)
+            .select_related("group")
+            .order_by("last_name", "first_name", "id")
+        )
+    else:
+        ids = [i for i in (_int(x) for x in (body.get("students") or [])) if i is not None]
+        if not ids:
+            return _bad(_("Отметьте хотя бы одного ученика"))
+        students = list(
+            Student.objects.filter(pk__in=ids).select_related("group").order_by("last_name", "first_name", "id")
+        )
+        if len(students) != len(set(ids)) or not all(rights.sees_student(request.user, s) for s in students):
+            return _not_found()
+        group = students[0].group
+    if not students:
+        return _bad(_("В группе нет учеников"))
+    if not whole_group and len(students) == 1 and not exports.needs_model(students[0], language):
+        return Response(
+            {"ready": True, "url": f"/career/students/{students[0].pk}/word/?language={language}"},
+            status=status.HTTP_200_OK,
+        )
+    ids = [student.pk for student in students]
+    running = exports.running_for(request.user, group=group if whole_group else None, students=ids, language=language)
+    if running is not None:
+        return Response({"ready": False, "already": True, "export": exports.export_dict(running, request.user)})
+    export = CareerExport.objects.create(
+        owner=request.user, group=group, whole_group=whole_group, language=language, total=len(students)
+    )
+    from career.tasks import export_files
+
+    job, _created = jobs.launch(
+        user=request.user,
+        kind=exports.JOB_KIND,
+        title=exports.job_title(group, students, whole_group=whole_group),
+        task=export_files,
+        kwargs={"export_id": export.pk, "students": ids, "language": language, "actor_id": request.user.pk},
+        target=group if whole_group else None,
+        link=exports.link_of(export),
+        same_args=True,
+    )
+    CareerExport.objects.filter(pk=export.pk, job__isnull=True).update(job=job)
+    export.refresh_from_db()
+    usage.track(request, "career.export.start")
+    return Response(
+        {"ready": False, "export": exports.export_dict(export, request.user)}, status=status.HTTP_202_ACCEPTED
+    )
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def export_detail(request, pk: int):
+    """Ход и итог подготовки — тому, кто запускал, и администратору."""
+    refused = _manager(request)
+    if refused:
+        return refused
+    row = _export_for(request, pk)
+    if row is None:
+        return _not_found()
+    if row.status == ExportStatus.DONE and exports.is_expired(row):
+        exports.expire(row)
+    return Response(exports.export_dict(row, request.user))
+
+
+@extend_schema(responses={200: bytes})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def export_file(request, pk: int):
+    """Готовый файл: тому, кто запускал, и администратору, пока не вышел срок хранения."""
+    refused = _manager(request)
+    if refused:
+        return refused
+    row = _export_for(request, pk)
+    if row is None:
+        return _not_found()
+    if row.status == ExportStatus.DONE and exports.is_expired(row):
+        exports.expire(row)
+    if row.status != ExportStatus.DONE or not row.file:
+        return Response(
+            {"detail": _("Файла нет: срок хранения истёк или файл ещё не готов")}, status=status.HTTP_404_NOT_FOUND
+        )
+    kind = exports.ZIP_TYPE if row.file_name.endswith(".zip") else word.DOCX_TYPE
+    response = FileResponse(row.file.open("rb"), content_type=kind)
+    response["Content-Disposition"] = _disposition(row.file_name, kind)
+    usage.track(request, "career.export.file")
     return response
 
 
