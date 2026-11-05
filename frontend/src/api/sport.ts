@@ -405,6 +405,13 @@ export type ScanState =
   | 'ended'
   | 'not_enrolled'
   | 'no_hour'
+  /* печатный QR: нужно место ученика, отметка ждёт проверки, далеко, занятия нет, лист заменён, отклонена */
+  | 'need_geo'
+  | 'review'
+  | 'far'
+  | 'no_session'
+  | 'replaced'
+  | 'rejected'
 
 export interface ScanBrief {
   section: string
@@ -423,13 +430,29 @@ export interface ScanAnswer {
   marked_at?: string
   starts_at?: string
   hold_seconds?: number
+  /** печатный QR: после входа страница шлёт токен снова и спрашивает место */
+  geo?: boolean
+  guest?: boolean
+  /** расстояние до места секции словами: «350 м», «2,3 км» */
+  distance?: string
+  /** телефон определил место хуже радиуса секции */
+  inaccurate?: boolean
+  place?: { section: string; address: string }
 }
 
-export const scan = (token: string | null) => post<ScanAnswer>('/sport/scan/', token ? { token } : {})
+/** Место ученика из браузера: нужно серверу один раз — посчитать расстояние; не хранится. */
+export interface ScanPosition {
+  latitude: number
+  longitude: number
+  accuracy: number
+}
+
+export const scan = (token: string | null, position?: ScanPosition) =>
+  post<ScanAnswer>('/sport/scan/', token ? { token, ...position } : {})
 
 /* --- Посещаемость ------------------------------------------------------- */
 
-export type MarkCell = '' | 'qr' | 'manual' | 'absent' | 'guest'
+export type MarkCell = '' | 'qr' | 'printed' | 'manual' | 'absent' | 'guest'
 
 export interface AttendanceData {
   section: number

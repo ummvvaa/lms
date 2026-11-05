@@ -26,10 +26,10 @@ from core.exports import Column, file_response, workbook_of_sheets
 from core.scope import visible_students
 from sport import printed, services
 from sport.models import (
-    MarkMethod,
     Section,
     SectionEnrollment,
     SectionMark,
+    SectionMarkMethod,
     SectionSlot,
     Weekday,
 )
@@ -507,7 +507,7 @@ def _marks_of(student, row: SectionEnrollment | None, limit: int = 8) -> list[di
     today = services.local_now().date()
     since = max(timezone.localtime(row.slot_set_at or row.enrolled_at).date(), today - dt.timedelta(days=120))
     dates = services.held_dates(row.slot, since, today)[-limit:]
-    marks = {m.date: m for m in SectionMark.objects.filter(student=student, slot=row.slot, date__in=dates)}
+    marks = {m.date: m for m in SectionMark.objects.counted().filter(student=student, slot=row.slot, date__in=dates)}
     out = []
     for day in reversed(dates):
         mark = marks.get(day)
@@ -516,7 +516,7 @@ def _marks_of(student, row: SectionEnrollment | None, limit: int = 8) -> list[di
                 "date": day.isoformat(),
                 "came": mark is not None,
                 "method": mark.method if mark else "",
-                "at": _when(mark.marked_at) if mark and mark.method == MarkMethod.QR else None,
+                "at": _when(mark.marked_at) if mark and mark.method != SectionMarkMethod.MANUAL else None,
             }
         )
     return out
@@ -698,7 +698,8 @@ def students_sections(request):
 
 def _session_dict(slot: SectionSlot, day: dt.date, now=None) -> dict:
     enrolled = services.active_enrollments().filter(slot=slot).count()
-    marks = SectionMark.objects.filter(slot=slot, date=day)
+    every = SectionMark.objects.filter(slot=slot, date=day)
+    marks = every.counted()
     came = marks.filter(is_guest=False).count()
     return {
         **_slot_dict(slot),
@@ -745,7 +746,7 @@ def session(request, pk: int):
         .select_related("student", "student__group", "section", "slot")
         .order_by("student__last_name", "student__first_name")
     )
-    marks = {m.student_id: m for m in SectionMark.objects.filter(slot=slot, date=day, is_guest=False)}
+    marks = {m.student_id: m for m in SectionMark.objects.counted().filter(slot=slot, date=day, is_guest=False)}
     students = []
     for row in rows:
         mark = marks.get(row.student_id)
@@ -767,7 +768,11 @@ def _guest_rows(slot: SectionSlot, day: dt.date) -> list[dict]:
     Нельзя — `refusal` объясняет почему; можно сверх предела или лимита — `warnings`.
     """
     out = []
-    marks = SectionMark.objects.filter(slot=slot, date=day, is_guest=True).select_related("student", "student__group")
+    marks = (
+        SectionMark.objects.counted()
+        .filter(slot=slot, date=day, is_guest=True)
+        .select_related("student", "student__group")
+    )
     for mark in marks.order_by("marked_at"):
         refusals, warnings = services.check(student=mark.student, slot=slot, by_director=True)
         out.append(
@@ -858,6 +863,8 @@ def scan(request):
     идёт сейчас. Без токена ручка ставит отложенную отметку после входа.
     """
     token = str(request.data.get("token") or "")
+    if printed.is_print_token(token):
+        return _scan_printed(request, token)
     found = services.read_token(token) if token else None
     user = request.user
     if not user.is_authenticated:
@@ -878,6 +885,24 @@ def scan(request):
     return Response(services.mark_by_scan(student=me, slot_id=found[0], day=found[1]))
 
 
+def _scan_printed(request, token: str) -> Response:
+    """Печатный код: постоянная ссылка секции, отметка — по месту ученика.
+
+    Токен не устаревает, поэтому до входа держать его в сессии незачем: после
+    входа страница присылает его снова. Координаты приходят телом запроса,
+    нужны один раз — посчитать расстояние — и никуда не записываются.
+    """
+    section = printed.read_print_token(token)
+    if section is None:
+        return Response({"state": "replaced"})
+    if not request.user.is_authenticated:
+        return Response({"state": "login", "geo": True})
+    me = _me_student(request)
+    if me is None:
+        return _forbid(_("Отмечается на занятии ученик"))
+    return Response(printed.mark_by_print(student=me, section=section, position=printed.read_position(request.data)))
+
+
 # --- Посещаемость -----------------------------------------------------------------------------
 
 
@@ -893,7 +918,7 @@ def _attendance_rows(request, slot: SectionSlot, first: dt.date, last: dt.date):
     held = set(services.held_dates(slot, first, last))
     marks = {
         (m.student_id, m.date): m
-        for m in SectionMark.objects.filter(
+        for m in SectionMark.objects.counted().filter(
             slot=slot, date__gte=first, date__lte=last, student__in=[e.student_id for e in enrollments], is_guest=False
         )
     }
@@ -920,9 +945,8 @@ def _attendance_guests(request, slot: SectionSlot, first: dt.date, last: dt.date
     """Гости часа за месяц отдельным блоком: в процент записанных они не входят."""
     visits: dict[int, dict] = {}
     for mark in (
-        SectionMark.objects.filter(
-            slot=slot, date__gte=first, date__lte=last, is_guest=True, student__in=visible_students(request.user)
-        )
+        SectionMark.objects.counted()
+        .filter(slot=slot, date__gte=first, date__lte=last, is_guest=True, student__in=visible_students(request.user))
         .select_related("student", "student__group")
         .order_by("student__last_name", "student__first_name", "date")
     ):
@@ -968,7 +992,7 @@ def attendance(request):
         "sessions": len(held),
         "sessions_total": len(dates),
         "below": sum(1 for r in rows if r["below"]),
-        "manual": sum(1 for m in marks.values() if m.method == MarkMethod.MANUAL),
+        "manual": sum(1 for m in marks.values() if m.method == SectionMarkMethod.MANUAL),
         "threshold": int(services.school_rules.value(services.school_rules.SPORT_ATTENDANCE_BELOW)),
     }
     sections_list = [
@@ -1012,7 +1036,14 @@ def attendance_export(request):
         slots = slots.filter(pk=slot_id)
     elif section_id:
         slots = slots.filter(section_id=section_id)
-    words = {"qr": _("был"), "manual": _("вручную"), "absent": _("нет"), "guest": _("гость"), "": ""}
+    words = {
+        "qr": _("был"),
+        "printed": _("был"),
+        "manual": _("вручную"),
+        "absent": _("нет"),
+        "guest": _("гость"),
+        "": "",
+    }
     sheets = []
     for slot in slots.order_by("section__order", "weekday", "starts"):
         dates, _held, rows, _marks = _attendance_rows(request, slot, first, last)

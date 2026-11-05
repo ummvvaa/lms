@@ -17,18 +17,21 @@
 
 from __future__ import annotations
 
+import datetime as dt
+import math
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.core import signing
 from django.db import transaction
 from django.db.models import F
+from django.utils import timezone
 from django.utils.translation import gettext as _
 
 from core import school_rules
 from core.domains import Source
 from sport import services
-from sport.models import Section
+from sport.models import MarkStatus, Section, SectionMark, SectionMarkMethod, SectionSlot
 
 #: первая часть токена печатного кода
 PRINT_PREFIX = "p"
@@ -36,6 +39,12 @@ PRINT_PREFIX = "p"
 SECTION_LABEL = "sport.Section"
 LOCATION_FIELD = "location"
 QR_FIELD = "qr_version"
+#: средний радиус Земли, м — для формулы гаверсинуса
+EARTH_M = 6_371_008.8
+#: дальше стольких радиусов — отказ; между одним и этим числом — «на проверку»
+FAR_RADIUSES = 2
+#: потолок точности, которую есть смысл хранить: хуже — это уже «место неизвестно»
+ACCURACY_CAP = 1_000_000
 
 
 # --- Место секции ------------------------------------------------------------------------
@@ -193,3 +202,151 @@ def reissue(section: Section, *, actor) -> Section:
         source=Source.MANUAL,
     )
     return section
+
+
+# --- Расстояние -----------------------------------------------------------------------------
+
+
+def distance_m(lat_a: float, lng_a: float, lat_b: float, lng_b: float) -> float:
+    """Расстояние между двумя точками по формуле гаверсинуса, м."""
+    phi_a, phi_b = math.radians(lat_a), math.radians(lat_b)
+    d_phi = phi_b - phi_a
+    d_lambda = math.radians(lng_b - lng_a)
+    h = math.sin(d_phi / 2) ** 2 + math.cos(phi_a) * math.cos(phi_b) * math.sin(d_lambda / 2) ** 2
+    return 2 * EARTH_M * math.asin(min(1.0, math.sqrt(h)))
+
+
+def read_position(data) -> tuple[float, float, float] | None:
+    """Широта, долгота и точность из запроса. Нет или мусор — `None`: страница спросит место заново."""
+    try:
+        latitude = float(data.get("latitude"))
+        longitude = float(data.get("longitude"))
+        accuracy = float(data.get("accuracy"))
+    except (TypeError, ValueError):
+        return None
+    if not all(math.isfinite(value) for value in (latitude, longitude, accuracy)):
+        return None
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180 and accuracy >= 0):
+        return None
+    return latitude, longitude, accuracy
+
+
+def distance_words(metres: int) -> str:
+    """«350 м» или «2,3 км» — как ученик прочитает на телефоне."""
+    if metres < 1000:
+        return _("{n} м").format(n=metres)
+    return _("{n} км").format(n=f"{metres / 1000:.1f}".replace(".", ","))
+
+
+# --- Отметка ------------------------------------------------------------------------------
+
+
+def _live_slots(section: Section, now: dt.datetime) -> list[SectionSlot]:
+    """Занятия секции, которые идут сейчас: от начала до конца часа, не законченные раньше."""
+    day = now.date()
+    slots = SectionSlot.objects.filter(section=section, weekday=day.weekday()).select_related("section")
+    return [
+        slot for slot in slots.order_by("starts", "parallel_from") if services.session_state(slot, day, now) == "live"
+    ]
+
+
+def _place(section: Section) -> dict:
+    return {"section": section.title, "address": section.address}
+
+
+def mark_by_print(
+    *, student, section: Section, position: tuple[float, float, float] | None, now: dt.datetime | None = None
+) -> dict:
+    """Отметка по печатному коду. Ответ — состояние для экрана телефона, а не исключение.
+
+    Сначала время (идёт ли занятие секции), потом запись (свой час, гость,
+    «не твоё занятие»), потом место. Без координат отвечает `need_geo` —
+    и только когда всё остальное сошлось: спрашивать место у того, чьё
+    занятие не идёт, незачем.
+
+    Место: в радиусе и с точностью не хуже радиуса — отметка засчитана;
+    точность хуже радиуса или до двух радиусов — «на проверку»; дальше —
+    отказ. Повторный чистый скан засчитывает отметку, ждавшую проверки.
+    """
+    now = now or services.local_now()
+    day = now.date()
+    if not section.has_location:
+        return {"state": "replaced"}
+    live = _live_slots(section, now)
+    if not live:
+        return {"state": "no_session", "place": _place(section)}
+    grade = services.student_parallel(student)
+    fitting = next((slot for slot in live if slot.fits(grade)), live[0])
+    mine = services.active_in(student, section)
+    if mine is not None and mine.slot_id is None:
+        return {"state": "no_hour", "session": services._slot_brief(fitting)}
+    if mine is not None:
+        slot = next((item for item in live if item.pk == mine.slot_id), None)
+        if slot is None:
+            return {
+                "state": "foreign",
+                "session": services._slot_brief(fitting),
+                "mine": services._slot_brief(mine.slot),
+            }
+    else:
+        # не записан в эту секцию — гость, как по меняющемуся коду
+        slot = fitting
+    session = services._slot_brief(slot)
+    row = SectionMark.objects.filter(student=student, slot=slot, date=day).first()
+    if row is not None and row.status == MarkStatus.CONFIRMED:
+        return _answer("guest_already" if row.is_guest else "already", session, row)
+    if row is not None and row.status == MarkStatus.REJECTED:
+        return {"state": "rejected", "session": session}
+    if position is None:
+        return {"state": "need_geo", "session": session}
+
+    latitude, longitude, accuracy = position
+    radius = radius_of(section)
+    distance = round(distance_m(latitude, longitude, float(section.latitude), float(section.longitude)))
+    inaccurate = accuracy > radius
+    if distance > FAR_RADIUSES * radius:
+        return {
+            "state": "far",
+            "session": session,
+            "distance": distance_words(distance),
+            "inaccurate": inaccurate,
+        }
+    status = MarkStatus.PENDING if inaccurate or distance > radius else MarkStatus.CONFIRMED
+    measured = {"distance_m": distance, "accuracy_m": min(math.ceil(accuracy), ACCURACY_CAP)}
+    with transaction.atomic():
+        row, created = SectionMark.objects.get_or_create(
+            student=student,
+            slot=slot,
+            date=day,
+            defaults={
+                "method": SectionMarkMethod.PRINTED,
+                "marked_at": timezone.now(),
+                "is_guest": mine is None,
+                "status": status,
+                **measured,
+            },
+        )
+        if not created and row.status == MarkStatus.PENDING and status == MarkStatus.CONFIRMED:
+            # ждала проверки, а теперь ученик на месте и телефон видит его точно — проверять нечего
+            for key, value in measured.items():
+                setattr(row, key, value)
+            row.status = MarkStatus.CONFIRMED
+            row.method = SectionMarkMethod.PRINTED
+            row.save(update_fields=["status", "method", *measured])
+            created = True
+    if row.status == MarkStatus.REJECTED:
+        return {"state": "rejected", "session": session}
+    if row.status == MarkStatus.PENDING:
+        return {
+            **_answer("review", session, row),
+            "guest": row.is_guest,
+            "distance": distance_words(distance),
+            "inaccurate": inaccurate,
+        }
+    if row.is_guest:
+        return _answer("guest" if created else "guest_already", session, row)
+    return _answer("marked" if created else "already", session, row)
+
+
+def _answer(state: str, session: dict, row: SectionMark) -> dict:
+    return {"state": state, "session": session, "marked_at": timezone.localtime(row.marked_at).isoformat()}

@@ -24,6 +24,8 @@ from students.models import Student, StudyGroup
 SATURDAY = dt.date(2026, 10, 31)
 #: место тенниса в тестах — точка в Алматы; радиус 200 м по правилу школы
 LAT, LNG = Decimal("43.238949"), Decimal("76.889709")
+#: метров в градусе широты при радиусе Земли из `printed.EARTH_M`
+DEGREE_M = 111_195.08
 
 DIRECTORS = ("director_behavior", "director_exam", "director_admission", "director_talent", "director_sport")
 
@@ -120,3 +122,23 @@ def court(tennis):
     printed.set_location(tennis, point=(LAT, LNG), radius_m=None, actor=None)
     tennis.refresh_from_db()
     return tennis
+
+
+@pytest.fixture
+def member(pupils, court):
+    """Ученик 10 класса записан на теннис в субботу 12:00."""
+    senior, _junior = pupils
+    slot = slot_of("Теннис", 5, 12, 10)
+    services.enroll(student=senior, slot=slot, actor=None, by_director=True)
+    return senior, slot
+
+
+def away(metres: float, accuracy: float = 15) -> dict:
+    """Место ученика в стольких метрах к северу от точки секции: градус широты — 111 195 м."""
+    return {"latitude": float(LAT) + metres / DEGREE_M, "longitude": float(LNG), "accuracy": accuracy}
+
+
+def scan_printed(student, section, position: dict | None = None):
+    """Ученик открыл ссылку печатного кода секции; `position` — что прислал его телефон."""
+    body = {"token": printed.make_print_token(section), **(position or {})}
+    return login(student.user).post("/api/sport/scan/", body, format="json").json()

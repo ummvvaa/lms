@@ -309,6 +309,14 @@ a.sport-place__map {
 .sport-scan__text {
   font-size: var(--type-body);
 }
+/* как разрешить геолокацию: по блоку на iPhone и Android */
+.sport-scan__how {
+  display: grid;
+  gap: var(--space);
+  padding: calc(var(--space) * 3) calc(var(--space) * 4);
+  border-radius: var(--radius-inner);
+  background: var(--surface-2);
+}
 
 @media (max-width: 1279px) {
   .sport-session {

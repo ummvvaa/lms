@@ -26,10 +26,11 @@ from core.domains import Source
 from core.parallels import parallel_of
 from sport.models import (
     EnrollmentSource,
-    MarkMethod,
+    MarkStatus,
     Section,
     SectionEnrollment,
     SectionMark,
+    SectionMarkMethod,
     SectionSettings,
     SectionSlot,
     SessionEnd,
@@ -583,8 +584,15 @@ def mark_by_scan(*, student, slot_id: int, day: dt.date, now: dt.datetime | None
             student=student,
             slot=slot,
             date=day,
-            defaults={"method": MarkMethod.QR, "marked_at": timezone.now(), "is_guest": guest},
+            defaults={"method": SectionMarkMethod.QR, "marked_at": timezone.now(), "is_guest": guest},
         )
+        if not created and row.status != MarkStatus.CONFIRMED:
+            # по печатному коду отметка ждала проверки или была отклонена, а код с экрана
+            # директора ученик видит только на занятии — это и есть подтверждение
+            row.status = MarkStatus.CONFIRMED
+            row.method = SectionMarkMethod.QR
+            row.save(update_fields=["status", "method"])
+            created = True
     if row.is_guest:
         state = "guest" if created else "guest_already"
     else:
@@ -602,12 +610,22 @@ def mark_manually(*, student, slot: SectionSlot, day: dt.date, actor) -> tuple[S
     mine = active_in(student, slot.section)
     if mine is None or mine.slot_id != slot.pk:
         raise Refused(_("Ученик записан не на этот час"))
-    return SectionMark.objects.get_or_create(
+    row, created = SectionMark.objects.get_or_create(
         student=student,
         slot=slot,
         date=day,
-        defaults={"method": MarkMethod.MANUAL, "marked_by": actor, "marked_by_title": _title(actor)},
+        defaults={"method": SectionMarkMethod.MANUAL, "marked_by": actor, "marked_by_title": _title(actor)},
     )
+    if not created and row.status != MarkStatus.CONFIRMED:
+        # отметка по печатному коду ждала проверки или была отклонена: директор отметил сам — засчитана
+        row.status = MarkStatus.CONFIRMED
+        row.method = SectionMarkMethod.MANUAL
+        row.is_guest = False
+        row.marked_by = actor
+        row.marked_by_title = _title(actor)
+        row.save(update_fields=["status", "method", "is_guest", "marked_by", "marked_by_title"])
+        created = True
+    return row, created
 
 
 def unmark(*, student, slot: SectionSlot, day: dt.date) -> int:
@@ -656,9 +674,9 @@ def percent(row: SectionEnrollment, first: dt.date, last: dt.date, marks: set[dt
         return None
     if marks is None:
         marks = set(
-            SectionMark.objects.filter(
-                student_id=row.student_id, slot_id=row.slot_id, date__in=dates, is_guest=False
-            ).values_list("date", flat=True)
+            SectionMark.objects.counted()
+            .filter(student_id=row.student_id, slot_id=row.slot_id, date__in=dates, is_guest=False)
+            .values_list("date", flat=True)
         )
     came = sum(1 for d in dates if d in marks)
     return round(100 * came / len(dates))
@@ -668,14 +686,16 @@ def month_percents(rows, month: str | None = None) -> dict[int, int | None]:
     """Посещение за месяц по записям (ключ — запись) — одним запросом отметок.
 
     Записей у ученика может быть несколько: процент у каждой свой, по её часу.
-    Гостевые отметки в процент не входят.
+    Гостевые отметки и отметки «на проверку» в процент не входят.
     """
     first, last = month_bounds(month)
     rows = list(rows)
     marks: dict[tuple[int, int], set[dt.date]] = {}
     query = Q(date__gte=first, date__lte=last, is_guest=False)
-    for mark in SectionMark.objects.filter(query, student_id__in=[r.student_id for r in rows]).values(
-        "student_id", "slot_id", "date"
+    for mark in (
+        SectionMark.objects.counted()
+        .filter(query, student_id__in=[r.student_id for r in rows])
+        .values("student_id", "slot_id", "date")
     ):
         marks.setdefault((mark["student_id"], mark["slot_id"]), set()).add(mark["date"])
     return {r.pk: percent(r, first, last, marks.get((r.student_id, r.slot_id), set())) for r in rows}

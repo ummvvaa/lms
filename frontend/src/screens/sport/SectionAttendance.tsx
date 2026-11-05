@@ -25,6 +25,7 @@ import './sport.css'
 
 const CELL: Record<Exclude<MarkCell, ''>, { label: string; tone: Tone }> = {
   qr: { label: tk('был'), tone: 'good' },
+  printed: { label: tk('был'), tone: 'good' },
   manual: { label: tk('вручную'), tone: 'info' },
   absent: { label: tk('нет'), tone: 'bad' },
   guest: { label: tk('гость'), tone: 'neutral' },

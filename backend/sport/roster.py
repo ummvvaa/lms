@@ -130,19 +130,21 @@ def roster(filters: Filters, students=None) -> tuple[list[dict], int]:
     first, last = services.month_bounds(filters.month)
     ids = list(by_student)
     came = set(
-        SectionMark.objects.filter(student_id__in=ids, date__gte=first, date__lte=last, is_guest=False).values_list(
-            "student_id", flat=True
-        )
+        SectionMark.objects.counted()
+        .filter(student_id__in=ids, date__gte=first, date__lte=last, is_guest=False)
+        .values_list("student_id", flat=True)
     )
     guests = dict(
-        SectionMark.objects.filter(student_id__in=ids, date__gte=first, date__lte=last, is_guest=True)
+        SectionMark.objects.counted()
+        .filter(student_id__in=ids, date__gte=first, date__lte=last, is_guest=True)
         .values("student_id")
         .annotate(n=Count("id"))
         .values_list("student_id", "n")
     )
     latest: dict[int, dict] = {}
     for mark in (
-        SectionMark.objects.filter(student_id__in=ids, is_guest=False)
+        SectionMark.objects.counted()
+        .filter(student_id__in=ids, is_guest=False)
         .order_by("student_id", "-date", "-marked_at")
         .distinct("student_id")
         .values("student_id", "date", "slot__section__title")
@@ -224,7 +226,9 @@ def history(student) -> dict:
         .select_related("actor")
         .order_by("-created_at", "-id")[:40]
     )
-    marks = SectionMark.objects.filter(student=student).select_related("slot", "slot__section").order_by("-date")
+    marks = (
+        SectionMark.objects.counted().filter(student=student).select_related("slot", "slot__section").order_by("-date")
+    )
     return {
         "student": _brief(student),
         "enrollments": [

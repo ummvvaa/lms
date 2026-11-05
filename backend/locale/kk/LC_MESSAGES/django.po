@@ -19427,3 +19427,8 @@ msgstr "Жаңа QR"
 #: core/labels.py
 msgid "Печатный QR выпущен заново"
 msgstr "Басылған QR қайта шығарылды"
+
+#: sport/printed.py
+#, python-brace-format
+msgid "{n} км"
+msgstr "{n} км"

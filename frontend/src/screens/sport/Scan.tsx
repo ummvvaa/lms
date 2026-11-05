@@ -7,10 +7,17 @@
  * Ответы: «Ты отмечен», «Уже отмечен», «Код устарел», «Это не твоё занятие»,
  * «Занятие ещё не началось / уже закончилось». Код секции, в которую ученик
  * не записан, — «Ты отмечен как гость» (02.11.2026).
+ *
+ * Печатный код (05.11.2026) — постоянная ссылка секции: сервер сначала
+ * проверяет, идёт ли занятие и чьё оно, и только потом просит место
+ * (`need_geo`). Страница спрашивает геолокацию у браузера и шлёт широту,
+ * долготу и точность. Ответы: отмечен, «на проверке» (место неточно или чуть
+ * за радиусом), «далеко», «сейчас нет занятия». Запретил геолокацию —
+ * инструкция для iPhone и Android и «Попробовать снова»: без места отметки нет.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { scan, type ScanAnswer } from '../../api/sport'
+import { scan, type ScanAnswer, type ScanPosition } from '../../api/sport'
 import { LOGO, SCHOOL_NAME } from '../../branding'
 import { useAuth } from '../../auth/AuthContext'
 import Backdrop from '../../components/Backdrop'
@@ -29,7 +36,7 @@ function message(error: unknown, fallback: string): string {
 
 /** Чем страница отметки отличается у кружка: своя ручка, своя кнопка «назад», свои слова. */
 export interface ScanKind {
-  send: (token: string | null) => Promise<ScanAnswer>
+  send: (token: string | null, position?: ScanPosition) => Promise<ScanAnswer>
   /** кнопка под ответом: адрес и подпись */
   home?: { path: string; label: string }
   /** «Код устарел»: чей экран сканировать снова */
@@ -38,21 +45,75 @@ export interface ScanKind {
   wish?: string
 }
 
+/** Что с местом ученика: спрашиваем у браузера, запрещено, не определилось. */
+type Geo = 'idle' | 'asking' | 'denied' | 'failed'
+
+/** Сколько ждём место от телефона, мс: GPS в помещении отвечает не сразу. */
+const GEO_TIMEOUT = 15_000
+
+/** Место от браузера: высокая точность, свежее. Отказ — код ошибки Geolocation API (1 — запрещено). */
+function locate(): Promise<ScanPosition> {
+  return new Promise((resolve, reject) => {
+    if (!('geolocation' in navigator)) {
+      reject(new Error('unsupported'))
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) =>
+        resolve({ latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy }),
+      reject,
+      { enableHighAccuracy: true, timeout: GEO_TIMEOUT, maximumAge: 0 },
+    )
+  })
+}
+
 export default function Scan({ kind }: { kind?: ScanKind } = {}) {
   const send = kind?.send ?? scan
   const { token = '' } = useParams()
   const { me, isLoading, login } = useAuth()
   const [answer, setAnswer] = useState<ScanAnswer | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [geo, setGeo] = useState<Geo>('idle')
   const sent = useRef(false)
+  const asked = useRef(false)
+  const fail = useCallback(
+    (reason: unknown) => setError(message(reason, t('Не удалось отметиться'))),
+    [],
+  )
 
   useEffect(() => {
     if (isLoading || sent.current) return
     sent.current = true
-    send(token)
-      .then(setAnswer)
-      .catch((reason: unknown) => setError(message(reason, t('Не удалось отметиться'))))
-  }, [isLoading, token, send])
+    send(token).then(setAnswer).catch(fail)
+  }, [isLoading, token, send, fail])
+
+  /** Спросить место и отправить его с токеном печатного кода. */
+  const mark = useCallback(() => {
+    setGeo('asking')
+    locate()
+      .then((position) =>
+        send(token, position)
+          .then((next) => {
+            // сервер снова просит место — значит, телефон прислал не координаты
+            setGeo(next.state === 'need_geo' ? 'failed' : 'idle')
+            setAnswer(next)
+          })
+          .catch((reason: unknown) => {
+            setGeo('idle')
+            fail(reason)
+          }),
+      )
+      .catch((reason: unknown) =>
+        setGeo((reason as GeolocationPositionError | null)?.code === 1 ? 'denied' : 'failed'),
+      )
+  }, [send, token, fail])
+
+  // сервер проверил время и запись и просит место — спрашиваем браузер один раз, дальше по кнопке
+  useEffect(() => {
+    if (answer?.state !== 'need_geo' || asked.current) return
+    asked.current = true
+    mark()
+  }, [answer, mark])
 
   return (
     <div className="login">
@@ -65,30 +126,80 @@ export default function Scan({ kind }: { kind?: ScanKind } = {}) {
         {answer?.state === 'login' && !me ? (
           <ScanLogin
             onDone={() =>
-              send(null)
+              // меняющийся код ждёт входа на сервере, печатный не устаревает — шлём его снова
+              send(answer.geo ? token : null)
                 .then(setAnswer)
-                .catch((reason: unknown) => setError(message(reason, t('Не удалось отметиться'))))
+                .catch(fail)
             }
             login={login}
+            geo={Boolean(answer.geo)}
           />
         ) : error ? (
           <Result tone="bad" title={t('Не получилось отметиться')} text={error} kind={kind} />
-        ) : answer ? (
-          <Answer answer={answer} kind={kind} />
+        ) : geo === 'denied' ? (
+          <GeoDenied onRetry={mark} />
+        ) : geo === 'failed' ? (
+          <Result
+            kind={kind}
+            tone="warn"
+            title={t('Не удалось определить место')}
+            text={t(
+              'Включи геолокацию (GPS) на телефоне, выйди ближе к окну или на улицу и попробуй снова. Без геолокации отметки нет',
+            )}
+            foot={<Button onClick={mark}>{t('Попробовать снова')}</Button>}
+          />
+        ) : answer && answer.state !== 'need_geo' && geo !== 'asking' ? (
+          <Answer answer={answer} kind={kind} onRetry={mark} />
         ) : (
-          <p className="t-note">{t('Отмечаем…')}</p>
+          <p className="t-note">
+            {geo === 'asking' || answer?.state === 'need_geo'
+              ? t('Определяем, где ты… Разреши доступ к геолокации')
+              : t('Отмечаем…')}
+          </p>
         )}
       </div>
     </div>
   )
 }
 
+/** Ученик запретил геолокацию: как разрешить на iPhone и Android — и повтор. */
+function GeoDenied({ onRetry }: { onRetry: () => void }) {
+  return (
+    <>
+      <Chip tone="warn">{t('Разреши доступ к геолокации')}</Chip>
+      <p className="sport-scan__text">
+        {t('Отметка по этому коду ставится только рядом с местом занятия. Без геолокации отметки нет')}
+      </p>
+      <div className="sport-scan__how">
+        <b>iPhone</b>
+        <span className="t-note">
+          {t(
+            'Настройки → Конфиденциальность и безопасность → Службы геолокации: включи, ниже выбери Safari → «При использовании». В Safari нажми «аА» в строке адреса → Настройки веб-сайта → Геопозиция → Разрешить',
+          )}
+        </span>
+      </div>
+      <div className="sport-scan__how">
+        <b>Android</b>
+        <span className="t-note">
+          {t(
+            'Включи геолокацию в шторке телефона. В Chrome нажми значок слева от адреса → Разрешения → Местоположение → Разрешить',
+          )}
+        </span>
+      </div>
+      <Button onClick={onRetry}>{t('Попробовать снова')}</Button>
+    </>
+  )
+}
+
 function ScanLogin({
   onDone,
   login,
+  geo = false,
 }: {
   onDone: () => void
   login: (email: string, password: string) => Promise<unknown>
+  /** печатный код: после входа страница попросит геолокацию */
+  geo?: boolean
 }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -97,7 +208,11 @@ function ScanLogin({
   return (
     <>
       <h1 className="t-card">{t('Войди, чтобы отметиться')}</h1>
-      <p className="t-note">{t('После входа отметка поставится сама — код подождёт 2 минуты')}</p>
+      <p className="t-note">
+        {geo
+          ? t('После входа разреши доступ к геолокации — и отметка поставится сама')
+          : t('После входа отметка поставится сама — код подождёт 2 минуты')}
+      </p>
       <form
         className="login__form"
         onSubmit={(event) => {
@@ -174,7 +289,7 @@ function Result({
   )
 }
 
-function Answer({ answer, kind }: { answer: ScanAnswer; kind?: ScanKind }) {
+function Answer({ answer, kind, onRetry }: { answer: ScanAnswer; kind?: ScanKind; onRetry: () => void }) {
   const session = answer.session
   const where = session
     ? t('{section}, {day} {time}', {
@@ -285,6 +400,82 @@ function Answer({ answer, kind }: { answer: ScanAnswer; kind?: ScanKind }) {
           tone="warn"
           title={kind ? t('Ты не записан в этот кружок') : t('Ты не записан на это занятие')}
           text={where}
+        />
+      )
+    case 'review':
+      return (
+        <Result
+          kind={kind}
+          tone="warn"
+          title={t('Отметка на проверке')}
+          text={
+            answer.inaccurate
+              ? t(
+                  '{where}. Телефон определил место неточно, поэтому отметку подтвердит директор спорта. Подойди к нему, если он рядом',
+                  { where },
+                )
+              : t(
+                  '{where}. Ты в {distance} от места занятия — чуть дальше, чем нужно, поэтому отметку подтвердит директор спорта',
+                  { where, distance: answer.distance ?? '' },
+                )
+          }
+          foot={
+            answer.inaccurate && (
+              <Button variant="outline" onClick={onRetry}>
+                {t('Попробовать снова')}
+              </Button>
+            )
+          }
+        />
+      )
+    case 'far':
+      return (
+        <Result
+          kind={kind}
+          tone="bad"
+          title={t('Ты далеко от места занятия ({distance})', { distance: answer.distance ?? '' })}
+          text={
+            answer.inaccurate
+              ? t(
+                  'Телефон определил место неточно. Включи GPS, выйди ближе к окну или на улицу и попробуй снова',
+                )
+              : t('Отметиться можно только рядом с местом занятия: {where}', {
+                  where: [session?.section, session?.address].filter(Boolean).join(', '),
+                })
+          }
+          foot={<Button onClick={onRetry}>{t('Попробовать снова')}</Button>}
+        />
+      )
+    case 'no_session':
+      return (
+        <Result
+          kind={kind}
+          tone="warn"
+          title={t('Сейчас нет занятия этой секции')}
+          text={t('{section}. Отметиться можно с начала занятия до его конца', {
+            section: answer.place?.section ?? '',
+          })}
+        />
+      )
+    case 'replaced':
+      return (
+        <Result
+          kind={kind}
+          tone="bad"
+          title={t('Этот QR больше не действует')}
+          text={t('Отсканируй новый код на месте занятия или подойди к директору спорта')}
+        />
+      )
+    case 'rejected':
+      return (
+        <Result
+          kind={kind}
+          tone="bad"
+          title={t('Отметка отклонена')}
+          text={t(
+            '{where}. Директор спорта отклонил отметку на этом занятии. Подойди к нему — он может отметить тебя сам',
+            { where },
+          )}
         />
       )
     case 'login':
