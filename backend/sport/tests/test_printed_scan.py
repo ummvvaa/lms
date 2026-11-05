@@ -18,6 +18,7 @@ import datetime as dt
 import logging
 
 import pytest
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from core.models import AuditLog
@@ -224,13 +225,22 @@ def test_staff_cannot_mark_by_printed_code(people, member, at):
     assert not SectionMark.objects.exists()
 
 
-def test_changing_code_still_works_and_confirms_a_pending_mark(member, at):
+def test_old_changing_code_does_not_confirm_a_pending_mark(member, at):
+    """Меняющийся код секциям отключён: его токен отклоняется, ждущая проверки отметка остаётся ждать."""
     senior, slot = member
     at(12, 4)
     assert scan(senior, slot.section, away(350))["state"] == "review"
     token = services.make_token(slot, SATURDAY)[0]
     api = login(senior.user)
-    assert api.post("/api/sport/scan/", {"token": token}, format="json").json()["state"] == "marked"
+    assert api.post("/api/sport/scan/", {"token": token}, format="json").json() == {"state": "retired"}
     mark = SectionMark.objects.get(student=senior)
-    assert mark.status == MarkStatus.CONFIRMED and mark.method == SectionMarkMethod.QR
-    assert api.post("/api/sport/scan/", {"token": token}, format="json").json()["state"] == "already"
+    assert mark.status == MarkStatus.PENDING and mark.method == SectionMarkMethod.PRINTED
+
+
+def test_student_without_hour_is_not_marked(pupils, court, at):
+    """Перенесён из бота без часа: сначала выбрать время — отметки нет."""
+    senior, _junior = pupils
+    services.import_enrollment(student=senior, section=court, slot=None, enrolled_at=timezone.now())
+    at(12, 4)
+    assert scan(senior, court, away(10))["state"] == "no_hour"
+    assert not SectionMark.objects.exists()

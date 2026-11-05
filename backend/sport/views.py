@@ -810,9 +810,15 @@ def _guest_rows(slot: SectionSlot, day: dt.date) -> list[dict]:
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def session_token(request, pk: int):
-    """Свежий токен QR на идущее занятие. Фронт перезапрашивает его, когда истекает срок."""
+    """Токен меняющегося кода занятия. У секций отключён: код секции постоянный (`qr_url` занятия)."""
     if not _writer(request, MARK):
         return _no_rights()
+    if not services.ROTATING_QR:
+        # 404, а не 403: ручка не закрыта правами — её у секций больше нет
+        return Response(
+            {"detail": _("Меняющегося кода у секций больше нет: код секции постоянный — на экране занятия и на листе")},
+            status=status.HTTP_404_NOT_FOUND,
+        )
     slot = _session_slot(pk)
     if slot is None:
         return _not_found()
@@ -859,14 +865,18 @@ class ScanThrottle(UserRateThrottle):
 @permission_classes([AllowAny])
 @throttle_classes([ScanThrottle])
 def scan(request):
-    """Ученик отсканировал QR. Не вошёл — свежий код ждёт входа в этом браузере две минуты.
+    """Ученик отсканировал QR секции. Работает постоянный код секции — с проверкой места.
 
-    Токен даёт только одно — отметку своего ученика на занятии, которое
-    идёт сейчас. Без токена ручка ставит отложенную отметку после входа.
+    Токен даёт только одно — отметку своего ученика на занятии, которое идёт
+    сейчас. Меняющийся код у секций отключён: его токен (и запрос без токена
+    после входа) отклоняется ответом «код больше не работает» — странице
+    остаётся сказать: отсканируй QR на площадке.
     """
     token = str(request.data.get("token") or "")
     if printed.is_print_token(token):
         return _scan_printed(request, token)
+    if not services.ROTATING_QR:
+        return Response({"state": "retired"})
     found = services.read_token(token) if token else None
     user = request.user
     if not user.is_authenticated:

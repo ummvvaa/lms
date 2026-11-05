@@ -391,6 +391,7 @@ export const en: Record<string, string> = {
   'Отметка на проверке': 'Check-in under review',
   'Отметка отклонена': 'Check-in rejected',
   'Отметка по этому коду ставится только рядом с местом занятия. Без геолокации отметки нет': 'This code checks you in only near the session venue. There is no check-in without location',
+  'Отсканируй QR на площадке': 'Scan the QR at the venue',
   'Отсканируй новый код на месте занятия или подойди к директору спорта': 'Scan the new code at the session venue or go to the sport director',
   'Параллель {parallel}; год выпуска считается от группы': 'Parallel {parallel}; the graduation year is derived from the group',
   'Параллель и год выпуска — от группы; группы заводят на вкладке «Учебные группы»': 'Parallel and graduation year come from the group; groups are created on the “Study groups” tab',
@@ -491,6 +492,7 @@ export const en: Record<string, string> = {
   'Школьная почта': 'School email',
   'Эти колонки мастер не узнал или вы переназначаете их сами. Выберите, куда положить колонку; без выбора она будет пропущена.': 'The wizard did not recognise these columns, or you are reassigning them yourself. Choose where each column goes; without a choice it is skipped.',
   'Этот QR больше не действует': 'This QR no longer works',
+  'Этот код больше не работает': 'This code no longer works',
   'Язык и тема': 'Language and theme',
   'без оценок: сдан или не сдан по профтесту': 'no grades: passed or not passed by the career test',
   'ближе к лимиту': 'nearing the limit',
@@ -4280,7 +4282,6 @@ export const en: Record<string, string> = {
   // спортивные секции и билеты (27.10.2026)
   'LMS': 'LMS',
   'QR': 'QR',
-  'QR меняется каждые несколько секунд. Отсканируй код с экрана директора спорта ещё раз': 'The QR code changes every few seconds. Scan the code on the sports director\'s screen again',
   'QR-код отметки на занятии': 'Session check-in QR code',
   '{came} из {n}': '{came} of {n}',
   '{date}, {source}': '{date}, {source}',

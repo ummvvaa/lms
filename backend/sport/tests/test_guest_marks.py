@@ -18,7 +18,7 @@ from django.utils import timezone
 
 from sport import services
 from sport.models import SectionEnrollment, SectionMark, SectionSlot
-from sport.tests.conftest import login, slot_of
+from sport.tests.conftest import away, login, scan_printed, slot_of
 
 pytestmark = pytest.mark.django_db
 
@@ -128,12 +128,9 @@ def test_full_hour_takes_a_guest_only_after_confirm(people, pupils, saturday):
     assert api.post("/api/sport/enrollments/", {**payload, "force": True}, format="json").status_code == 201
 
 
-def test_student_page_says_guest(pupils, saturday):
-    """Ответ ручки отметки гостю — состояние «guest», без чужих имён."""
+def test_student_page_says_guest(pupils, saturday, court):
+    """Ответ ручки отметки гостю по коду секции — состояние «guest», без чужих имён."""
     senior, _junior = pupils
-    tennis = slot_of("Теннис", 5, 12, 10)
-    token, _left = services.make_token(tennis, saturday.date())
-    api = login(senior.user)
-    answer = api.post("/api/sport/scan/", {"token": token}, format="json").json()
-    assert answer["state"] == "guest"
+    answer = scan_printed(senior, court, away(20))
+    assert answer["state"] == "guest" and set(answer) == {"state", "session", "marked_at"}
     assert SectionMark.objects.get(student=senior).is_guest

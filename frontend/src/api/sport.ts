@@ -381,8 +381,6 @@ export interface SessionToken {
   expires_in: number
 }
 
-export const sessionToken = (id: number) => get<SessionToken>(`/sport/sessions/${id}/token/`)
-
 export function useSessionAction() {
   const queryClient = useQueryClient()
   const refresh = () => {
@@ -465,6 +463,8 @@ export type ScanState =
   | 'no_session'
   | 'replaced'
   | 'rejected'
+  /* меняющийся код секциям отключён: его токен больше не работает */
+  | 'retired'
 
 export interface ScanBrief {
   section: string

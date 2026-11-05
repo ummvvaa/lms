@@ -46,6 +46,11 @@ HOLD_SECONDS = 120
 HOLD_KEY = "sport_scan_hold"
 #: соль подписи токена QR: подпись от SECRET_KEY, другой подписью токен не подделать
 TOKEN_SALT = "sport.section-mark"
+#: Меняющийся код у секций отключён (решение владельца, 05.11.2026): у секции один
+#: постоянный код — на экране «Занятие и QR» и на печатном листе (`sport.printed`).
+#: Сам механизм ниже (токен на окно времени, удержание до входа, `mark_by_scan`) оставлен:
+#: тем же устройством работает отметка кружков, а маршруты секций к нему больше не ведут.
+ROTATING_QR = False
 
 
 class Refused(ValueError):
@@ -581,13 +586,6 @@ def mark_by_scan(*, student, slot_id: int, day: dt.date, now: dt.datetime | None
             date=day,
             defaults={"method": SectionMarkMethod.QR, "marked_at": timezone.now(), "is_guest": guest},
         )
-        if not created and row.status != MarkStatus.CONFIRMED:
-            # по печатному коду отметка ждала проверки или была отклонена, а код с экрана
-            # директора ученик видит только на занятии — это и есть подтверждение
-            row.status = MarkStatus.CONFIRMED
-            row.method = SectionMarkMethod.QR
-            row.save(update_fields=["status", "method"])
-            created = True
     if row.is_guest:
         state = "guest" if created else "guest_already"
     else:
@@ -617,7 +615,8 @@ def mark_manually(*, student, slot: SectionSlot, day: dt.date, actor) -> tuple[S
         defaults={"method": SectionMarkMethod.MANUAL, "marked_by": actor, "marked_by_title": _title(actor)},
     )
     if not created and row.status != MarkStatus.CONFIRMED:
-        # отметка по печатному коду ждала проверки или была отклонена: директор отметил сам — засчитана
+        # отметка по коду ждала проверки или была отклонена: директор отметил сам — засчитана.
+        # Отклонённую больше ничто не возвращает — ни повторный скан, ни что-либо ещё
         row.status = MarkStatus.CONFIRMED
         row.method = SectionMarkMethod.MANUAL
         row.is_guest = False

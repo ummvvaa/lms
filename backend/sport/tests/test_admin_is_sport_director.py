@@ -36,7 +36,6 @@ DIRECTOR_ROUTES = {
     "sport-student-section": ("get", None),
     "sport-sessions-today": ("get", None),
     "sport-session": ("get", None),
-    "sport-session-token": ("get", None),
     "sport-session-mark": ("post", "mark"),
     "sport-attendance": ("get", None),
     "sport-attendance-export": ("get", None),
@@ -49,6 +48,9 @@ DIRECTOR_ROUTES = {
     "sport-roster-history": ("get", None),
     "sport-roster-bulk": ("post", "bulk"),
 }
+
+#: ручка меняющегося кода: секциям отключена (05.11.2026) — директору и администратору отвечает 404 с причиной
+RETIRED_ROUTES = {"sport-session-token"}
 
 #: ручки ученика: администратору закрыты с причиной «кабинет ученика»
 STUDENT_ROUTES = {
@@ -70,7 +72,7 @@ def _sport_routes() -> set[str]:
 
 
 def test_route_list_matches_the_app():
-    assert set(DIRECTOR_ROUTES) | STUDENT_ROUTES == _sport_routes()
+    assert set(DIRECTOR_ROUTES) | STUDENT_ROUTES | RETIRED_ROUTES == _sport_routes()
 
 
 @pytest.fixture
@@ -146,6 +148,12 @@ def test_admin_passes_every_sport_director_route(people, world, role, name):
     url = _url(name, world)
     answer = getattr(api, method)(url, _body(kind, world), format="json") if method != "get" else api.get(url)
     assert answer.status_code < 300, (name, answer.status_code, answer.content[:200])
+
+
+@pytest.mark.parametrize("role", ["director_sport", "admin"])
+def test_retired_route_refuses_both_alike(people, world, role):
+    answer = login(people[role]).get(_url("sport-session-token", world))
+    assert answer.status_code == 404 and answer.json()["detail"]
 
 
 def test_student_routes_are_closed_to_the_admin_with_reason(people):

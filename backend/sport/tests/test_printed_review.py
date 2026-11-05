@@ -14,6 +14,7 @@ import datetime as dt
 import pytest
 from django.utils import timezone
 
+from sport import services
 from sport.models import MarkStatus, SectionMark, SectionMarkMethod
 from sport.tests.conftest import SATURDAY, away, login, slot_of
 from sport.tests.conftest import scan_printed as scan
@@ -73,6 +74,11 @@ def test_rejected_mark_stays_out_and_director_can_still_mark_by_hand(people, mem
     assert director.get(f"/api/sport/sessions/{slot.pk}/").json()["came"] == 0
     # отклонённую повторный скан не возвращает
     assert scan(senior, slot.section, away(5))["state"] == "rejected"
+    # и прежний меняющийся код тоже: отклонённую засчитывает только ручная отметка директора
+    old = services.make_token(slot, SATURDAY)[0]
+    assert login(senior.user).post("/api/sport/scan/", {"token": old}, format="json").json() == {"state": "retired"}
+    mark.refresh_from_db()
+    assert mark.status == MarkStatus.REJECTED
     assert director.post(f"/api/sport/marks/{mark.pk}/review/", {"decision": "maybe"}, format="json").status_code == 400
     made = director.post(f"/api/sport/sessions/{slot.pk}/marks/", {"student": senior.pk}, format="json")
     assert made.status_code == 201

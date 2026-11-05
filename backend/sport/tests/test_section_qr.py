@@ -1,4 +1,10 @@
-"""Отметка по QR: свежий подписанный код, своё занятие, только пока оно идёт.
+"""Занятие секции у директора и отказ от меняющегося кода (решение владельца, 05.11.2026).
+
+У секции один постоянный код — на экране «Занятие и QR» и на печатном листе
+(`test_printed_sheet.py`, `test_printed_scan.py`). Меняющийся код секциям
+отключён: его токен отклоняется, ручка выдачи закрыта. Механизм в сервисе
+оставлен — тем же устройством работают кружки, — поэтому он проверяется здесь
+на уровне сервиса. Ручная отметка директора остаётся и пишется в журнал.
 
 Время замораживается на субботу 31.10.2026, 12:04 по Алматы — идёт теннис
 12:00–13:00 для 10–11 классов.
@@ -47,57 +53,51 @@ def _token(slot, at_seconds=None):
     return services.make_token(slot, SATURDAY, at=at_seconds)[0]
 
 
-def test_fresh_code_marks_once(enrolled, at):
+def test_changing_code_is_retired_for_sections(enrolled, at, people):
+    """Токен меняющегося кода секции больше не отмечает никого: ни вошедшего, ни после входа."""
     senior, _junior, tennis = enrolled
     at(12, 4)
-    api = login(senior.user)
-    body = api.post("/api/sport/scan/", {"token": _token(tennis)}).json()
-    assert body["state"] == "marked" and body["session"]["section"] == "Теннис"
-    assert api.post("/api/sport/scan/", {"token": _token(tennis)}).json()["state"] == "already"
-    assert SectionMark.objects.filter(student=senior, slot=tennis, date=SATURDAY, method=MarkMethod.QR).count() == 1
+    token = _token(tennis)
+    assert login(senior.user).post("/api/sport/scan/", {"token": token}).json() == {"state": "retired"}
+    # сотруднику и не вошедшему — тот же ответ; до входа код в браузере больше не держится
+    assert login(people["director_sport"]).post("/api/sport/scan/", {"token": token}).json() == {"state": "retired"}
+    browser = APIClient()
+    assert browser.post("/api/sport/scan/", {"token": token}).json() == {"state": "retired"}
+    assert services.HOLD_KEY not in browser.session
+    browser.force_login(senior.user)
+    assert browser.post("/api/sport/scan/", {}).json() == {"state": "retired"}
+    assert browser.post("/api/sport/scan/", {"token": "мусор"}).json() == {"state": "retired"}
+    assert not SectionMark.objects.exists()
 
 
-def test_old_and_forged_codes_are_refused(enrolled, at):
+def test_director_gets_no_changing_code(enrolled, at, people):
+    """Ручки выдачи меняющегося кода у секций больше нет — директору и администратору 404 с причиной."""
+    _senior, _junior, tennis = enrolled
+    at(12, 10)
+    for role in ("director_sport", "admin"):
+        api = login(people[role])
+        answer = api.get(f"/api/sport/sessions/{tennis.pk}/token/")
+        assert answer.status_code == 404 and "постоянный" in answer.json()["detail"], role
+        today = api.get("/api/sport/sessions/today/").json()["rows"]
+        assert {row["state"] for row in today if row["id"] == tennis.pk} == {"live"}
+
+
+def test_changing_code_mechanism_is_kept_for_clubs(enrolled, at):
+    """Механизм токена на окно времени остался в сервисе: свежий читается, старый и подделанный — нет."""
     senior, _junior, tennis = enrolled
     moment = at(12, 4)
-    api = login(senior.user)
     ttl = services.ttl()
+    assert services.ROTATING_QR is False
+    assert services.read_token(_token(tennis)) == (tennis.pk, SATURDAY)
     # предыдущее окно принимается — запас на дрожание часов, позапрошлое уже нет
-    assert api.post("/api/sport/scan/", {"token": _token(tennis, moment.timestamp() - ttl)}).json()["state"] == "marked"
-    SectionMark.objects.all().delete()
-    assert api.post("/api/sport/scan/", {"token": _token(tennis, moment.timestamp() - 2 * ttl)}).json()["state"] == (
-        "stale"
-    )
-    token = _token(tennis)
-    forged = token.replace(f"{tennis.pk}.", f"{tennis.pk + 1}.", 1)
-    assert api.post("/api/sport/scan/", {"token": forged}).json()["state"] == "stale"
-    assert not SectionMark.objects.exists()
-
-
-def test_foreign_session_is_named(enrolled, at):
-    """Другой час своей секции — «не твоё занятие»; чужая секция — гостевая отметка (02.11.2026)."""
-    senior, _junior, _tennis = enrolled
-    at(13, 4)
-    other_hour = slot_of("Теннис", 5, 13, 10)
-    body = login(senior.user).post("/api/sport/scan/", {"token": _token(other_hour)}).json()
-    assert body["state"] == "foreign"
-    assert body["session"]["slot"].endswith("13:00–14:00") and body["mine"]["section"] == "Теннис"
-    assert not SectionMark.objects.exists()
-    at(12, 4)
-    volleyball = slot_of("Волейбол", 5, 12, 10)
-    body = login(senior.user).post("/api/sport/scan/", {"token": _token(volleyball)}).json()
-    assert body["state"] == "guest" and body["session"]["section"] == "Волейбол"
-    assert SectionMark.objects.get().is_guest
-
-
-def test_outside_session_time_is_refused(enrolled, at):
-    senior, _junior, tennis = enrolled
-    at(11, 50)
-    # код до начала занятия директору не выдаётся, но и подписанный заранее не сработает
-    body = login(senior.user).post("/api/sport/scan/", {"token": _token(tennis)}).json()
-    assert body["state"] == "not_started"
-    at(13, 1)
-    assert login(senior.user).post("/api/sport/scan/", {"token": _token(tennis)}).json()["state"] == "ended"
+    assert services.read_token(_token(tennis, moment.timestamp() - ttl)) == (tennis.pk, SATURDAY)
+    assert services.read_token(_token(tennis, moment.timestamp() - 2 * ttl)) is None
+    forged = _token(tennis).replace(f"{tennis.pk}.", f"{tennis.pk + 1}.", 1)
+    assert services.read_token(forged) is None
+    # сервис отметки по такому токену живёт (его путём идут тесты гостей), но маршрут секций к нему не ведёт
+    answer = services.mark_by_scan(student=senior, slot_id=tennis.pk, day=SATURDAY)
+    assert answer["state"] == "marked"
+    assert SectionMark.objects.filter(student=senior, method=MarkMethod.QR).count() == 1
 
 
 def test_session_runs_by_schedule_and_cannot_be_ended_early(enrolled, at, people):
@@ -109,65 +109,6 @@ def test_session_runs_by_schedule_and_cannot_be_ended_early(enrolled, at, people
     assert api.get(f"/api/sport/sessions/{tennis.pk}/").json()["state"] == "live"
     at(13, 0)
     assert api.get(f"/api/sport/sessions/{tennis.pk}/").json()["state"] == "past"
-
-
-def test_scan_before_login_waits_for_login(enrolled, at):
-    senior, _junior, tennis = enrolled
-    at(12, 4)
-    browser = APIClient()
-    assert browser.post("/api/sport/scan/", {"token": _token(tennis)}).json()["state"] == "login"
-    # вход в том же браузере, через минуту код уже сменился — отметка ставится по удержанию
-    browser.force_login(senior.user)
-    at(12, 5)
-    assert browser.post("/api/sport/scan/", {}).json()["state"] == "marked"
-    # другой браузер удержания не получает
-    other = login(senior.user)
-    assert other.post("/api/sport/scan/", {}).json()["state"] == "stale"
-
-
-def test_hold_expires_after_two_minutes(enrolled, at):
-    senior, _junior, tennis = enrolled
-    at(12, 4)
-    browser = APIClient()
-    browser.post("/api/sport/scan/", {"token": _token(tennis)})
-    browser.force_login(senior.user)
-    at(12, 7)
-    assert browser.post("/api/sport/scan/", {}).json()["state"] == "stale"
-
-
-def test_student_without_hour_is_not_marked(pupils, at, tennis):
-    senior, _junior = pupils
-    services.import_enrollment(student=senior, section=tennis, slot=None, enrolled_at=timezone.now())
-    at(12, 4)
-    body = login(senior.user).post("/api/sport/scan/", {"token": _token(slot_of("Теннис", 5, 12, 10))}).json()
-    assert body["state"] == "no_hour"
-
-
-def test_token_marks_only_own_student(enrolled, at, people):
-    """Токен не даёт ничего, кроме отметки вошедшего ученика: сотруднику он бесполезен."""
-    _senior, junior, tennis = enrolled
-    at(12, 4)
-    assert login(people["director_sport"]).post("/api/sport/scan/", {"token": _token(tennis)}).status_code == 403
-    # ученик 9 класса в эту секцию не записан — отметка только гостевая, в записанные он не попадает
-    assert login(junior.user).post("/api/sport/scan/", {"token": _token(tennis)}).json()["state"] == "guest"
-    assert list(SectionMark.objects.values_list("student_id", "is_guest")) == [(junior.pk, True)]
-
-
-def test_director_shows_code_only_while_live(enrolled, at, people):
-    _senior, _junior, tennis = enrolled
-    api = login(people["director_sport"])
-    at(11, 30)
-    assert api.get(f"/api/sport/sessions/{tennis.pk}/token/").json() == {
-        "state": "soon",
-        "token": "",
-        "ttl": services.ttl(),
-        "expires_in": 0,
-    }
-    at(12, 10)
-    body = api.get(f"/api/sport/sessions/{tennis.pk}/token/").json()
-    assert body["state"] == "live" and body["token"] and 0 < body["expires_in"] <= services.ttl()
-    today = api.get("/api/sport/sessions/today/").json()["rows"]
-    assert {row["state"] for row in today if row["id"] == tennis.pk} == {"live"}
 
 
 def test_manual_mark_and_roster(enrolled, at, people):

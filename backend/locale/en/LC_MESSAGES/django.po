@@ -19545,3 +19545,7 @@ msgstr "Section: marked by hand — {where}"
 #, python-brace-format
 msgid "Секция: отметка снята — {where}"
 msgstr "Section: mark removed — {where}"
+
+#: sport/views.py
+msgid "Меняющегося кода у секций больше нет: код секции постоянный — на экране занятия и на листе"
+msgstr "Sections no longer have a changing code: the section code is permanent — on the session screen and on the sheet"
