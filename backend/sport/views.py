@@ -712,6 +712,9 @@ def _session_dict(slot: SectionSlot, day: dt.date, now=None) -> dict:
         "guests": marks.filter(is_guest=True).count(),
         # ждут решения директора: в «пришли» и в гостей не идут, пока не подтверждены
         "pending": every.pending().count(),
+        # постоянный код секции — тот же, что на печатном листе; без места секции кода нет
+        "has_location": slot.section.has_location,
+        "qr_url": printed.print_url(slot.section) if slot.section.has_location else "",
     }
 
 
@@ -822,20 +825,6 @@ def session_token(request, pk: int):
 
 
 @extend_schema(request=None, responses={200: dict})
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def session_end(request, pk: int):
-    """«Закончить занятие»: отметки по QR на сегодня закрываются, остальные — пропуск."""
-    if not _writer(request, MARK):
-        return _no_rights()
-    slot = _session_slot(pk)
-    if slot is None:
-        return _not_found()
-    services.end_session(slot, actor=request.user)
-    return Response(_session_dict(slot, services.local_now().date()))
-
-
-@extend_schema(request=None, responses={200: dict})
 @api_view(["POST", "DELETE"])
 @permission_classes([IsAuthenticated])
 def session_mark(request, pk: int):
@@ -850,7 +839,7 @@ def session_mark(request, pk: int):
         return _not_found()
     day = _date(request.data.get("date") or request.query_params.get("date")) or services.local_now().date()
     if request.method == "DELETE":
-        services.unmark(student=student, slot=slot, day=day)
+        services.unmark(student=student, slot=slot, day=day, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
     try:
         _mark, created = services.mark_manually(student=student, slot=slot, day=day, actor=request.user)

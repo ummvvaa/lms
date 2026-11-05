@@ -33,7 +33,6 @@ from sport.models import (
     SectionMarkMethod,
     SectionSettings,
     SectionSlot,
-    SessionEnd,
 )
 from students.models import Student
 
@@ -437,10 +436,12 @@ def _at(day: dt.date, moment: dt.time) -> dt.datetime:
 
 
 def session_state(slot: SectionSlot, day: dt.date, now: dt.datetime | None = None) -> str:
-    """«soon» — ещё не началось, «live» — идёт, «past» — закончилось (или закончено раньше)."""
+    """«soon» — ещё не началось, «live» — идёт, «past» — закончилось. Только по расписанию.
+
+    «Закончить занятие» убрано 05.11.2026: кнопка была нужна меняющемуся коду,
+    а отметка по постоянному коду секции идёт по времени занятия из расписания.
+    """
     now = now or local_now()
-    if SessionEnd.objects.filter(slot=slot, date=day).exists():
-        return "past"
     if now < _at(day, slot.starts):
         return "soon"
     if now < _at(day, slot.ends):
@@ -476,12 +477,6 @@ def next_session(slot: SectionSlot, now: dt.datetime | None = None) -> dt.dateti
         if candidate.weekday() == slot.weekday and _at(candidate, slot.ends) > now:
             return _at(candidate, slot.starts)
     return _at(day + dt.timedelta(days=7), slot.starts)
-
-
-def end_session(slot: SectionSlot, *, actor, day: dt.date | None = None) -> SessionEnd:
-    day = day or local_now().date()
-    row, _created = SessionEnd.objects.get_or_create(slot=slot, date=day, defaults={"ended_by": actor})
-    return row
 
 
 # --- QR -------------------------------------------------------------------------------
@@ -600,9 +595,14 @@ def mark_by_scan(*, student, slot_id: int, day: dt.date, now: dt.datetime | None
     return {"state": state, "session": _slot_brief(slot), "marked_at": timezone.localtime(row.marked_at).isoformat()}
 
 
+def _session_words(slot: SectionSlot, day: dt.date) -> str:
+    """«Теннис, Сб 12:00–13:00, 31.10.2026» — занятие в дату для журнала ученика."""
+    return f"{slot.section.title}, {slot_words(slot)}, {day:%d.%m.%Y}"
+
+
 @transaction.atomic
 def mark_manually(*, student, slot: SectionSlot, day: dt.date, actor) -> tuple[SectionMark, bool]:
-    """Директор отмечает пришедшего без телефона: на занятие его часа, не в будущем."""
+    """Директор отмечает пришедшего без телефона: на занятие его часа, не в будущем. Запись — в журнал ученика."""
     if day.weekday() != slot.weekday:
         raise Refused(_("В этот день у часа нет занятия"))
     if day > local_now().date():
@@ -625,12 +625,19 @@ def mark_manually(*, student, slot: SectionSlot, day: dt.date, actor) -> tuple[S
         row.marked_by_title = _title(actor)
         row.save(update_fields=["status", "method", "is_guest", "marked_by", "marked_by_title"])
         created = True
+    if created:
+        with translation.override("ru"):
+            _event(student, _("Секция: отмечен вручную — {where}").format(where=_session_words(slot, day)), actor=actor)
     return row, created
 
 
-def unmark(*, student, slot: SectionSlot, day: dt.date) -> int:
-    """Снять отметку, поставленную по ошибке."""
+@transaction.atomic
+def unmark(*, student, slot: SectionSlot, day: dt.date, actor=None) -> int:
+    """Снять отметку, поставленную по ошибке. Запись — в журнал ученика."""
     deleted, _rows = SectionMark.objects.filter(student=student, slot=slot, date=day).delete()
+    if deleted:
+        with translation.override("ru"):
+            _event(student, _("Секция: отметка снята — {where}").format(where=_session_words(slot, day)), actor=actor)
     return deleted
 
 

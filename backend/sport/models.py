@@ -285,7 +285,11 @@ class SectionMark(models.Model):
 
 
 class SessionEnd(models.Model):
-    """Директор закончил занятие раньше расписания: отметки по QR на эту дату закрыты."""
+    """Директор закончил занятие раньше расписания — так было при меняющемся коде.
+
+    С 05.11.2026 кнопки «Закончить занятие» нет и строки не создаются: занятие
+    идёт по расписанию. Таблица оставлена — прежние строки остаются историей.
+    """
 
     slot = models.ForeignKey(
         SectionSlot, verbose_name=gettext_lazy("Занятие"), related_name="ends_early", on_delete=models.CASCADE

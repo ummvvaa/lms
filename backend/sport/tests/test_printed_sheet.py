@@ -64,6 +64,24 @@ def test_sheet_is_printed_by_director_and_admin_only(people, pupils, tennis):
     assert tennis.qr_version == 1
 
 
+def test_session_shows_the_same_permanent_code_as_the_sheet(people, court, at):
+    """На экране «Занятие и QR» — тот же код, что на листе; после нового выпуска — новый; без места кода нет."""
+    at(12, 10)
+    api = login(people["director_sport"])
+    slot = slot_of("Теннис", 5, 12, 10)
+    row = next(item for item in api.get("/api/sport/sessions/today/").json()["rows"] if item["id"] == slot.pk)
+    assert row["has_location"] is True and row["qr_url"] == printed.print_url(court)
+    assert api.get(f"/api/sport/sessions/{slot.pk}/").json()["qr_url"] == printed.print_url(court)
+    old = row["qr_url"]
+    api.post(f"/api/sport/sections/{court.pk}/reissue/")
+    court.refresh_from_db()
+    fresh = api.get(f"/api/sport/sessions/{slot.pk}/").json()["qr_url"]
+    assert fresh == printed.print_url(court) and fresh != old
+    # у секции без места кода на экране нет — отметка только вручную
+    other = next(item for item in api.get("/api/sport/sessions/today/").json()["rows"] if item["title"] != "Теннис")
+    assert other["has_location"] is False and other["qr_url"] == ""
+
+
 def test_sheet_code_carries_the_section_link(court, settings):
     from sport import poster
 

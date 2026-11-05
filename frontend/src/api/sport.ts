@@ -112,6 +112,8 @@ function useSectionsRefresh() {
     void queryClient.invalidateQueries({ queryKey: ['sport-roster'] })
     void queryClient.invalidateQueries({ queryKey: ['sport-roster-history'] })
     void queryClient.invalidateQueries({ queryKey: ['sport-session'] })
+    // новый выпуск кода и место секции меняют код на экране «Занятие и QR»
+    void queryClient.invalidateQueries({ queryKey: ['sport-sessions-today'] })
   }
 }
 
@@ -329,6 +331,10 @@ export interface SessionRow extends SlotRow {
   guests: number
   /** отметок по печатному QR, которые ждут решения директора */
   pending: number
+  /** у секции задано место — у неё есть постоянный код */
+  has_location: boolean
+  /** ссылка постоянного кода секции — та же, что на печатном листе; без места пусто */
+  qr_url: string
 }
 
 export type MarkMethod = 'qr' | 'printed' | 'manual'
@@ -384,10 +390,6 @@ export function useSessionAction() {
     void queryClient.invalidateQueries({ queryKey: ['sport-sessions-today'] })
   }
   return {
-    end: useMutation({
-      mutationFn: (id: number) => post<SessionRow>(`/sport/sessions/${id}/end/`),
-      onSuccess: refresh,
-    }),
     mark: useMutation({
       mutationFn: ({ id, student }: { id: number; student: number }) =>
         post<{ created: boolean }>(`/sport/sessions/${id}/marks/`, { student }),

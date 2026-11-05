@@ -178,10 +178,6 @@ def test_outside_session_time_is_refused_before_asking_the_place(member, at):
     assert scan(senior, court, away(5))["state"] == "no_session"
     at(12, 4, day=SATURDAY + dt.timedelta(days=1))
     assert scan(senior, court, away(5))["state"] == "no_session"
-    # занятие закончено директором раньше — отметки закрыты
-    at(12, 4)
-    services.end_session(slot, actor=None, day=SATURDAY)
-    assert scan(senior, court, away(5))["state"] == "no_session"
     assert not SectionMark.objects.exists()
 
 

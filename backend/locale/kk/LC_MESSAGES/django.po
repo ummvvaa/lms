@@ -19454,3 +19454,13 @@ msgstr "радиустан тыс: орыннан {distance}, радиус {radi
 #, python-brace-format
 msgid "место определено неточно: ±{accuracy}, радиус {radius} м"
 msgstr "орын дәл анықталмаған: ±{accuracy}, радиус {radius} м"
+
+#: sport/services.py
+#, python-brace-format
+msgid "Секция: отмечен вручную — {where}"
+msgstr "Секция: қолмен белгіленді — {where}"
+
+#: sport/services.py
+#, python-brace-format
+msgid "Секция: отметка снята — {where}"
+msgstr "Секция: белгі алынды — {where}"

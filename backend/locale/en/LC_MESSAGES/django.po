@@ -19535,3 +19535,13 @@ msgstr "outside the radius: {distance} from the place, radius {radius} m"
 #, python-brace-format
 msgid "место определено неточно: ±{accuracy}, радиус {radius} м"
 msgstr "imprecise location: ±{accuracy}, radius {radius} m"
+
+#: sport/services.py
+#, python-brace-format
+msgid "Секция: отмечен вручную — {where}"
+msgstr "Section: marked by hand — {where}"
+
+#: sport/services.py
+#, python-brace-format
+msgid "Секция: отметка снята — {where}"
+msgstr "Section: mark removed — {where}"

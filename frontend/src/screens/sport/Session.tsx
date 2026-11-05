@@ -1,16 +1,16 @@
 /**
  * «Занятие и QR» — директор спорта и администратор (макет SSession, 27.10.2026).
  *
- * Слева — занятия сегодня со статусами «прошло / идёт / скоро». У идущего
- * занятия посередине QR: код меняется каждые N секунд (настройка школы),
- * обратный отсчёт до смены, «На весь экран» и «Закончить занятие». Справа
- * «Пришли / Ещё нет» — опрос раз в несколько секунд, без вебсокетов,
- * и «Отметить» для пришедшего без телефона. Ниже — «Гости»: отсканировали
- * код секции, в которую не записаны; записать на этот час — одним нажатием.
+ * Слева — занятия сегодня со статусами «прошло / идёт / скоро»; занятие идёт
+ * по расписанию, открывать и заканчивать его не нужно. Посередине — код
+ * секции: он постоянный, тот же, что на печатном листе у площадки
+ * (05.11.2026); «Скачать QR для печати» и «На весь экран». У секции без
+ * места кода нет — отметка только вручную. Справа «Пришли / Ещё нет» — опрос
+ * раз в несколько секунд, «Отметить» для пришедшего без телефона и «Снять
+ * отметку» у отмеченного вручную. Ниже — «Гости»: отсканировали код секции,
+ * в которую не записаны; записать на этот час — одним нажатием.
  *
- * Печатный QR (05.11.2026): у отметки виден способ — по меняющемуся QR, по
- * печатному (с расстоянием до места секции) или вручную. Сверху — «На
- * проверку»: отметки по печатному коду с неточным местом или чуть за
+ * Сверху — «На проверку»: отметки по коду с неточным местом или чуть за
  * радиусом, за все дни; «Подтвердить» засчитывает, «Отклонить» — нет.
  * Пока отметка ждёт, она нигде не считается.
  */
@@ -19,7 +19,6 @@ import { toast } from 'sonner'
 import { useSearchParams } from 'react-router'
 import {
   confirmWarnings,
-  sessionToken,
   useEnrollStudent,
   usePendingMarks,
   useReviewMark,
@@ -39,6 +38,7 @@ import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, type Tone } 
 import { Button } from '../../components/ui/button'
 import { t, tk } from '../../i18n'
 import { formatDateLong, formatDayMonth, formatTime } from '../../lib/format'
+import { downloadQrSheet } from './printQr'
 import QrCode from './QrCode'
 import { slotTime } from './words'
 import '../directors/directors.css'
@@ -50,13 +50,11 @@ const STATE: Record<SessionState, { label: string; tone: Tone }> = {
   soon: { label: tk('скоро'), tone: 'info' },
 }
 
-/** Как отмечен: «по меняющемуся QR · 12:04», «по печатному QR · 12:04 · 35 м», «вручную · 12:04». */
+/** Как отмечен: «по QR · 16:21 · 40 м» (расстояние — у отметки с проверкой места) или «вручную · 16:30». */
 function howWords(method: MarkMethod | '', at: string | null, distance: string): string {
   const time = at ? formatTime(at) : ''
   if (method === 'manual') return t('вручную · {time}', { time })
-  if (method === 'printed')
-    return [t('по печатному QR · {time}', { time }), distance].filter(Boolean).join(' · ')
-  return t('по меняющемуся QR · {time}', { time })
+  return [t('по QR · {time}', { time }), distance].filter(Boolean).join(' · ')
 }
 
 export default function Session() {
@@ -72,7 +70,9 @@ export default function Session() {
     <div className="lay-screen">
       <ScreenHead
         title={t('Занятие и QR')}
-        subtitle={t('{date} · открой занятие и покажи код ученикам', { date: formatDateLong(data.date) })}
+        subtitle={t('{date} · код секции постоянный, отметка — по коду и вручную', {
+          date: formatDateLong(data.date),
+        })}
       />
       <PendingMarks />
       {data.rows.length === 0 ? (
@@ -188,12 +188,11 @@ function PendingMarks() {
   )
 }
 
-/** Свежий токен, пока занятие идёт: перезапрос, когда срок истекает. Кружки берут его со своей ручки. */
-export function useLiveToken(
-  id: number,
-  live: boolean,
-  fetchToken: (id: number) => Promise<SessionToken> = sessionToken,
-) {
+/**
+ * Свежий токен меняющегося кода, пока занятие идёт: перезапрос, когда срок истекает.
+ * У секций код постоянный (05.11.2026) — хук остался кружкам, они берут токен со своей ручки.
+ */
+export function useLiveToken(id: number, live: boolean, fetchToken: (id: number) => Promise<SessionToken>) {
   const [token, setToken] = useState<SessionToken | null>(null)
   const [left, setLeft] = useState(0)
   useEffect(() => {
@@ -227,13 +226,12 @@ export function useLiveToken(
 
 function SessionPanel({ row }: { row: SessionRow }) {
   const live = row.state === 'live'
-  const { token, left } = useLiveToken(row.id, live)
   const session = useSession(row.id, live)
   const actions = useSessionAction()
-  const [ending, setEnding] = useState(false)
   const [tab, setTab] = useState<'came' | 'wait'>('came')
   const box = useRef<HTMLDivElement>(null)
-  const url = token?.token ? `${window.location.origin}/s/${token.token}` : ''
+  // код секции постоянный: тот же, что на печатном листе; после «Выпустить новый QR» — новый
+  const url = session.data?.qr_url ?? row.qr_url
   const students = session.data?.students ?? []
   const guests = session.data?.guest_rows ?? []
   const came = students.filter((s) => s.came)
@@ -253,39 +251,39 @@ function SessionPanel({ row }: { row: SessionRow }) {
           .join(' · ')}
       >
         <div className="sport-qr" ref={box}>
-          {live && url ? (
+          {url ? (
             <>
               <QrCode value={url} />
-              <p className="sport-qr__count">
-                {t('новый код через')} <b className="num">{left}</b>
-              </p>
               <p className="t-note">
-                {t('Фото кода, отправленное другу, через {n} секунд не сработает', { n: token?.ttl ?? 20 })}
+                {row.state === 'soon'
+                  ? t('Код постоянный — он же на листе у площадки. Отметка откроется в {time}', {
+                      time: row.starts,
+                    })
+                  : row.state === 'live'
+                    ? t('Код постоянный — он же на листе у площадки. Отметка идёт до {time}', {
+                        time: row.ends,
+                      })
+                    : t('Занятие закончилось — отметка по коду закрыта, вручную отметить можно')}
               </p>
             </>
           ) : (
-            <EmptyNote
-              what={
-                row.state === 'soon'
-                  ? tk('Код откроется в начале занятия')
-                  : tk('Занятие закончилось, отметки закрыты')
-              }
-            />
+            <p className="t-note sport-why">
+              {t('Место секции не задано — отметка только вручную, обратитесь к администратору')}
+            </p>
           )}
         </div>
-        {live && (
+        {url && (
           <div className="acad__actions">
+            <Button variant="outline" onClick={() => void downloadQrSheet(row.section, row.title)}>
+              {t('Скачать QR для печати')}
+            </Button>
             <Button
               variant="outline"
-              disabled={!url}
               onClick={() => {
                 void box.current?.requestFullscreen?.().catch(() => undefined)
               }}
             >
               {t('На весь экран')}
-            </Button>
-            <Button variant="destructive" onClick={() => setEnding(true)}>
-              {t('Закончить занятие')}
             </Button>
           </div>
         )}
@@ -312,16 +310,12 @@ function SessionPanel({ row }: { row: SessionRow }) {
               <div key={student.id} className="dir__row">
                 <span className="dir__what">
                   <b className="dir__name">{student.short_name}</b>
-                  <span className="t-note">
-                    {[
-                      t('{n} параллель', { n: student.parallel }),
-                      student.came && student.at
-                        ? howWords(student.method, student.at, student.distance)
-                        : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </span>
+                  <span className="t-note">{t('{n} параллель', { n: student.parallel })}</span>
+                  {student.came && student.at && (
+                    <span className="t-note sport-how">
+                      {howWords(student.method, student.at, student.distance)}
+                    </span>
+                  )}
                 </span>
                 <span />
                 <span className="dir__acts">
@@ -331,9 +325,18 @@ function SessionPanel({ row }: { row: SessionRow }) {
                           variant="ghost"
                           size="sm"
                           disabled={actions.unmark.isPending}
-                          onClick={() => actions.unmark.mutate({ id: row.id, student: student.id })}
+                          onClick={() =>
+                            actions.unmark.mutate(
+                              { id: row.id, student: student.id },
+                              {
+                                onSuccess: () =>
+                                  toast.success(t('{name} — отметка снята', { name: student.short_name })),
+                                onError: (reason) => toast.error(reason.message),
+                              },
+                            )
+                          }
                         >
-                          {t('Снять')}
+                          {t('Снять отметку')}
                         </Button>
                       )
                     : row.state !== 'soon' && (
@@ -362,36 +365,6 @@ function SessionPanel({ row }: { row: SessionRow }) {
         )}
         {guests.length > 0 && <Guests slot={row} guests={guests} />}
       </DataCard>
-      {ending && (
-        <Modal title={t('Закончить занятие?')} note={row.title} onClose={() => setEnding(false)}>
-          <p className="t-note">
-            {t('Отметились {came} из {n}, остальные — пропуск. Вручную отметить можно и после.', {
-              came: came.length,
-              n: students.length,
-            })}
-          </p>
-          <div className="acad__actions">
-            <Button variant="outline" onClick={() => setEnding(false)}>
-              {t('Отмена')}
-            </Button>
-            <Button
-              disabled={actions.end.isPending}
-              onClick={() =>
-                actions.end.mutate(row.id, {
-                  onSuccess: () => {
-                    toast.success(
-                      t('Занятие закончено · {came} отмечены, остальные — пропуск', { came: came.length }),
-                    )
-                    setEnding(false)
-                  },
-                })
-              }
-            >
-              {t('Закончить')}
-            </Button>
-          </div>
-        </Modal>
-      )}
     </>
   )
 }
@@ -442,11 +415,13 @@ function Guests({ slot, guests }: { slot: SessionRow; guests: SessionGuest[] }) 
                 {[
                   t('{n} параллель', { n: guest.parallel }),
                   guest.group,
-                  guest.at ? howWords(guest.method, guest.at, guest.distance) : '',
                 ]
                   .filter(Boolean)
                   .join(' · ')}
               </span>
+              {guest.at && (
+                <span className="t-note sport-how">{howWords(guest.method, guest.at, guest.distance)}</span>
+              )}
               {guest.sections.length > 0 && (
                 <span className="t-note">{t('секции: {list}', { list: guest.sections.join(', ') })}</span>
               )}

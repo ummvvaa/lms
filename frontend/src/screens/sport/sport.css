@@ -275,6 +275,10 @@ a.sport-place__map {
     justify-self: start;
   }
 }
+/* способ отметки «по QR · 16:21 · 40 м» — одной строкой, без переноса */
+.sport-how {
+  white-space: nowrap;
+}
 /* почему гостя нельзя записать — тихой янтарной строкой под именем */
 .sport-why {
   color: var(--warn);

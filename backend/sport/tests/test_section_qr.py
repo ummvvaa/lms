@@ -12,6 +12,7 @@ import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from core.models import AuditLog
 from sport import services
 from sport.models import MarkMethod, SectionMark
 from sport.tests.conftest import login, slot_of
@@ -99,11 +100,15 @@ def test_outside_session_time_is_refused(enrolled, at):
     assert login(senior.user).post("/api/sport/scan/", {"token": _token(tennis)}).json()["state"] == "ended"
 
 
-def test_ended_early_session_closes_marks(enrolled, at, people):
-    senior, _junior, tennis = enrolled
+def test_session_runs_by_schedule_and_cannot_be_ended_early(enrolled, at, people):
+    """«Закончить занятие» убрано: занятие идёт по расписанию, ручки конца занятия нет."""
+    _senior, _junior, tennis = enrolled
     at(12, 30)
-    assert login(people["director_sport"]).post(f"/api/sport/sessions/{tennis.pk}/end/").status_code == 200
-    assert login(senior.user).post("/api/sport/scan/", {"token": _token(tennis)}).json()["state"] == "ended"
+    api = login(people["director_sport"])
+    assert api.post(f"/api/sport/sessions/{tennis.pk}/end/").status_code == 404
+    assert api.get(f"/api/sport/sessions/{tennis.pk}/").json()["state"] == "live"
+    at(13, 0)
+    assert api.get(f"/api/sport/sessions/{tennis.pk}/").json()["state"] == "past"
 
 
 def test_scan_before_login_waits_for_login(enrolled, at):
@@ -175,6 +180,19 @@ def test_manual_mark_and_roster(enrolled, at, people):
     assert [(s["id"], s["came"], s["method"]) for s in roster["students"]] == [(senior.pk, True, "manual")]
     assert api.delete(f"/api/sport/sessions/{tennis.pk}/marks/?student={senior.pk}").status_code == 204
     assert not SectionMark.objects.exists()
+    # отметка вручную и её снятие — в журнале ученика, с автором
+    journal = list(
+        AuditLog.objects.filter(student_id=senior.pk, field_name=services.EVENT)
+        .order_by("id")
+        .values_list("new_value", "actor__email")
+    )[-2:]
+    assert journal == [
+        ("Секция: отмечен вручную — Теннис, Сб 12:00–13:00, 31.10.2026", "director_sport@sec.kz"),
+        ("Секция: отметка снята — Теннис, Сб 12:00–13:00, 31.10.2026", "director_sport@sec.kz"),
+    ]
+    # повторное снятие ничего не снимает и в журнал не пишет
+    assert api.delete(f"/api/sport/sessions/{tennis.pk}/marks/?student={senior.pk}").status_code == 204
+    assert AuditLog.objects.filter(student_id=senior.pk, new_value__startswith="Секция: отметка снята").count() == 1
 
 
 @pytest.mark.parametrize("role", ["director_exam", "director_talent", "curator", "teacher"])

@@ -38,6 +38,7 @@ import { Switch } from '../../components/ui/switch'
 import { t, tk } from '../../i18n'
 import { formatDateTimeLong, formatDayMonth } from '../../lib/format'
 import { EnrollDialog, MoveDialog } from './EnrollDialogs'
+import { downloadQrSheet } from './printQr'
 import { WEEKDAYS, slotTime, slotWords } from './words'
 import '../directors/directors.css'
 import './sport.css'
@@ -181,10 +182,7 @@ function SectionCard({ id }: { id: number }) {
   if (!data) return null
   const slot = data.slots.find((row) => row.id === slotId) ?? data.slots[0]
   // места нет — сервер отвечает, к кому идти; кнопка это и показывает
-  const print = () =>
-    downloadFile(`/sport/sections/${data.id}/print/`, t('QR {title}.pdf', { title: data.title }))
-      .then(() => toast.success(t('Лист с QR скачан · распечатайте и повесьте на месте занятия')))
-      .catch(fail)
+  const print = () => void downloadQrSheet(data.id, data.title)
   return (
     <DataCard
       className="card--beam"
