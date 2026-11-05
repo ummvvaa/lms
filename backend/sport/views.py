@@ -24,7 +24,7 @@ from rest_framework.throttling import UserRateThrottle
 from core.domains import ROLE_STUDENT, can_read_cabinet, can_write_cabinet
 from core.exports import Column, workbook_of_sheets
 from core.scope import visible_students
-from sport import services
+from sport import printed, services
 from sport.models import (
     MarkMethod,
     Section,
@@ -36,6 +36,8 @@ from sport.models import (
 from students.models import Student
 
 SECTION = "sport.Section"
+#: место секции для печатного QR: задаёт только администратор
+LOCATION = "sport.Section.location"
 ENROLLMENT = "sport.SectionEnrollment"
 MARK = "sport.SectionMark"
 
@@ -168,6 +170,7 @@ def sections(request):
                 "title": section.title,
                 "sport_type": section.sport_type_id,
                 "address": section.address,
+                "has_location": section.has_location,
                 "enrolled": counts.get(section.pk, 0),
                 "no_hour": no_hour.get(section.pk, 0),
                 "capacity": sum(slot.capacity for slot in own),
@@ -187,7 +190,10 @@ def section(request, pk: int):
     row = Section.objects.filter(pk=pk).first()
     if row is None:
         return _not_found()
+    may_place = can_write_cabinet(_role(request), LOCATION)
     if request.method == "PATCH":
+        if "location" in request.data and not may_place:
+            return _forbid(_("Место секции задаёт администратор"))
         try:
             _save_section(row, request.data, actor=request.user)
         except services.Refused as error:
@@ -206,6 +212,9 @@ def section(request, pk: int):
             "id": row.pk,
             "title": row.title,
             "address": row.address,
+            # печатный QR работает, когда у секции задано место; сами координаты — только администратору
+            "has_location": row.has_location,
+            **({"location": _location_dict(row)} if may_place else {}),
             "slots": [
                 {
                     **_slot_dict(slot, taken.get(slot.pk, 0)),
@@ -216,6 +225,15 @@ def section(request, pk: int):
             "no_hour": [_enrollment_dict(e) for e in enrollments if e.slot_id is None],
         }
     )
+
+
+def _location_dict(row: Section) -> dict:
+    """Место секции в форме администратора: точка строкой, свой радиус и радиус по правилу школы."""
+    return {
+        "point": printed.point_words(row),
+        "radius_m": row.radius_m,
+        "default_radius_m": printed.default_radius(),
+    }
 
 
 def _clock(raw) -> dt.time | None:
@@ -250,7 +268,10 @@ def _slot_fields(data) -> dict:
 
 
 def _save_section(row: Section, data, *, actor) -> None:
-    """Адрес и занятия одним сохранением. Занятие, которого нет в списке, убирается.
+    """Адрес, место и занятия одним сохранением. Занятие, которого нет в списке, убирается.
+
+    Место (`location`: точка строкой «43.23, 76.94» и свой радиус) приходит только
+    от администратора — право проверено вызывающим; пустая точка место убирает.
 
     Записанных на убранное занятие переводят в час из `moves` (`{id: куда}`)
     или оставляют «без часа» — тогда ученик видит плашку «Выбери время».
@@ -265,6 +286,11 @@ def _save_section(row: Section, data, *, actor) -> None:
     with transaction.atomic():
         row.address = address[:250]
         row.save(update_fields=["address"])
+        if "location" in data:
+            place = data.get("location") or {}
+            point = printed.parse_point(place.get("point"))
+            radius = printed.check_radius(place.get("radius_m")) if point is not None else None
+            printed.set_location(row, point=point, radius_m=radius, actor=actor)
         if given is None:
             return
         keep: list[int] = []

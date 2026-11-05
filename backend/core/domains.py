@@ -1380,6 +1380,9 @@ CABINET_WRITERS: dict[str, tuple[str, ...]] = {
     # секции, отметки на занятиях и раздачи билетов (27.10.2026): администратор — всё,
     # что директор спорта, во всех блоках (решение владельца)
     "sport.Section": ("director_sport", ROLE_ADMIN),
+    # место секции для печатного QR (05.11.2026): координаты и радиус задаёт только администратор,
+    # директор спорта печатает лист и выпускает новый код правом секции
+    "sport.Section.location": (ROLE_ADMIN,),
     "sport.SectionEnrollment": ("director_sport", ROLE_ADMIN),
     "sport.SectionMark": ("director_sport", ROLE_ADMIN),
     "sport.TicketDrop": ("director_sport", ROLE_ADMIN),

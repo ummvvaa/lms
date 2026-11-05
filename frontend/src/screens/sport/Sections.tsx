@@ -7,6 +7,9 @@
  * занятия по часам с полосой заполнения и список учеников часа. Ученика можно
  * перевести в другой час своей параллели, назначить час, убрать из секции
  * и записать самому — и при закрытой записи. Окна записи — `EnrollDialogs`.
+ *
+ * Место секции для печатного QR (координаты и радиус) видит и правит только
+ * администратор — в «Изменить секцию» (05.11.2026).
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -221,6 +224,16 @@ function SectionCard({ id }: { id: number }) {
   )
 }
 
+/** Широта и долгота из строки «43.23, 76.94» — только чтобы открыть карту; проверяет место сервер. */
+function mapLink(point: string): string | null {
+  const found = /^\s*(-?\d+(?:\.\d+)?)[\s,;]+(-?\d+(?:\.\d+)?)\s*$/.exec(point)
+  if (!found) return null
+  const [latitude, longitude] = [Number(found[1]), Number(found[2])]
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null
+  // Яндекс Карты: метка в точке, сначала долгота, потом широта
+  return `https://yandex.ru/maps/?pt=${longitude},${latitude}&z=17&l=map`
+}
+
 function sourceWords(row: EnrollmentRow): string {
   return t('{date}, {source}', {
     date: formatDayMonth(row.enrolled_at),
@@ -395,6 +408,11 @@ type Draft = SlotDraft & { taken: number }
 function EditSectionDialog({ section, onClose }: { section: SectionDetail; onClose: () => void }) {
   const save = useSaveSection()
   const [address, setAddress] = useState(section.address)
+  // место секции приходит только администратору — у директора спорта этих полей нет
+  const place = section.location
+  const [point, setPoint] = useState(place?.point ?? '')
+  const [radius, setRadius] = useState(place?.radius_m ? String(place.radius_m) : '')
+  const map = mapLink(point)
   const [slots, setSlots] = useState<Draft[]>(() =>
     section.slots.map((row) => ({
       id: row.id,
@@ -422,6 +440,40 @@ function EditSectionDialog({ section, onClose }: { section: SectionDetail; onClo
   return (
     <Modal title={t('Изменить секцию')} note={section.title} onClose={onClose} wide>
       <Field name="address" label={t('Адрес площадки')} value={address} onChange={setAddress} />
+      {place && (
+        <>
+          <span className="t-card">{t('Место секции · для отметки по печатному QR')}</span>
+          <div className="sport-place">
+            <Field
+              name="point"
+              label={t('Координаты: широта, долгота')}
+              value={point}
+              onChange={setPoint}
+              placeholder="43.238949, 76.889709"
+              hint={t('Скопируйте точку из 2ГИС или Яндекс Карт одной строкой. Пусто — печатного QR у секции нет')}
+            />
+            <Field
+              kind="number"
+              name="radius"
+              label={t('Радиус, м')}
+              value={radius}
+              min={1}
+              onChange={(value) => setRadius(String(value ?? ''))}
+              placeholder={String(place.default_radius_m)}
+              hint={t('Пусто — {n} м по правилу школы', { n: place.default_radius_m })}
+            />
+            {map ? (
+              <a className="sport-place__map" href={map} target="_blank" rel="noreferrer">
+                {t('Открыть на карте')}
+              </a>
+            ) : (
+              <span className="t-note sport-place__map">
+                {point.trim() ? t('Координаты — два числа через запятую') : t('Координаты не заданы')}
+              </span>
+            )}
+          </div>
+        </>
+      )}
       <span className="t-card">{t('Занятия · лимит на каждый час')}</span>
       <div className="sport-edit">
         {slots.map((row, index) => (
@@ -552,6 +604,9 @@ function EditSectionDialog({ section, onClose }: { section: SectionDetail; onClo
                   capacity: row.capacity,
                 })),
                 moves: Object.fromEntries(Object.entries(moves).map(([key, value]) => [key, value || null])),
+                ...(place
+                  ? { location: { point: point.trim(), radius_m: radius.trim() ? Number(radius) : null } }
+                  : {}),
               },
               {
                 onSuccess: () => {

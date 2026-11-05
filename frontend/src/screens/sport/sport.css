@@ -238,6 +238,26 @@ body .sport-slot--on[data-variant][data-size] {
 .sport-guest > .dir__acts {
   justify-content: flex-start;
 }
+/* место секции в «Изменить секцию»: координаты широко, радиус узко, под ними ссылка на карту */
+.sport-place {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: calc(var(--space) * 3);
+  align-items: start;
+}
+.sport-place__map {
+  grid-column: 1 / -1;
+}
+a.sport-place__map {
+  justify-self: start;
+  color: var(--accent);
+  font-weight: 600;
+}
+@media (max-width: 759px) {
+  .sport-place {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 /* почему гостя нельзя записать — тихой янтарной строкой под именем */
 .sport-why {
   color: var(--warn);

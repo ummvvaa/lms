@@ -50,6 +50,8 @@ export interface SectionRow {
   title: string
   sport_type: number | null
   address: string
+  /** у секции задано место — работает печатный QR */
+  has_location: boolean
   enrolled: number
   no_hour: number
   capacity: number
@@ -70,10 +72,19 @@ export interface EnrollmentRow {
   percent: number | null
 }
 
+/** Место секции для печатного QR: точка строкой «широта, долгота» и свой радиус. Видит только администратор. */
+export interface SectionLocation {
+  point: string
+  radius_m: number | null
+  default_radius_m: number
+}
+
 export interface SectionDetail {
   id: number
   title: string
   address: string
+  has_location: boolean
+  location?: SectionLocation
   slots: (SlotRow & { students: EnrollmentRow[] })[]
   no_hour: EnrollmentRow[]
 }
@@ -135,6 +146,8 @@ export function useSaveSection() {
       address: string
       slots: SlotDraft[]
       moves: Record<string, string | number | null>
+      /** место секции — только от администратора; пустая точка место убирает */
+      location?: { point: string; radius_m: number | null }
     }) => patch<SectionDetail>(`/sport/sections/${id}/`, body),
     onSuccess: refresh,
   })

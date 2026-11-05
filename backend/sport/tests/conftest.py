@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from decimal import Decimal
 
 import pytest
 from django.utils import timezone
@@ -17,6 +18,9 @@ from rest_framework.test import APIClient
 from accounts.curators import assign
 from sport.models import Section, SectionSlot
 from students.models import Student, StudyGroup
+
+#: место тенниса в тестах — точка в Алматы; радиус 200 м по правилу школы
+LAT, LNG = Decimal("43.238949"), Decimal("76.889709")
 
 DIRECTORS = ("director_behavior", "director_exam", "director_admission", "director_talent", "director_sport")
 

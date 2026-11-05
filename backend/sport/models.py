@@ -51,6 +51,13 @@ class Section(Archivable):
         blank=True,
     )
     address = models.CharField(gettext_lazy("Адрес площадки"), max_length=250)
+    #: место секции для отметки по печатному QR — задаёт администратор; пусто — печатного кода нет
+    latitude = models.DecimalField(gettext_lazy("Широта"), max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(gettext_lazy("Долгота"), max_digits=9, decimal_places=6, null=True, blank=True)
+    #: свой радиус секции; пусто — правило школы «Радиус отметки по геолокации»
+    radius_m = models.PositiveIntegerField(gettext_lazy("Радиус отметки, м"), null=True, blank=True)
+    #: номер выпуска печатного QR: «Выпустить новый QR» прибавляет единицу, прежний код перестаёт работать
+    qr_version = models.PositiveIntegerField(gettext_lazy("Выпуск печатного QR"), default=1)
     order = models.PositiveSmallIntegerField(gettext_lazy("Порядок в списке"), default=0)
     is_fictional = models.BooleanField(gettext_lazy("Вымышленная"), default=False)
     created_at = models.DateTimeField(gettext_lazy("Добавлена"), auto_now_add=True)
@@ -62,6 +69,10 @@ class Section(Archivable):
 
     def __str__(self) -> str:
         return self.title
+
+    @property
+    def has_location(self) -> bool:
+        return self.latitude is not None and self.longitude is not None
 
 
 class SectionSlot(Archivable):
@@ -181,16 +192,48 @@ class SectionEnrollment(models.Model):
 
 
 class MarkMethod(models.TextChoices):
+    """Как отмечен на занятии — общий список секций и кружков."""
+
     QR = "qr", gettext_lazy("По QR")
     MANUAL = "manual", gettext_lazy("Вручную")
 
 
+class SectionMarkMethod(models.TextChoices):
+    """Способы отметки на занятии секции: к общим добавлен печатный QR — у кружков его нет."""
+
+    QR = "qr", gettext_lazy("По QR")
+    PRINTED = "printed", gettext_lazy("По печатному QR")
+    MANUAL = "manual", gettext_lazy("Вручную")
+
+
+class MarkStatus(models.TextChoices):
+    """Засчитана ли отметка. «На проверку» и «отклонена» в посещаемость не идут."""
+
+    CONFIRMED = "confirmed", gettext_lazy("Засчитана")
+    PENDING = "pending", gettext_lazy("На проверку")
+    REJECTED = "rejected", gettext_lazy("Отклонена")
+
+
+class MarkQuerySet(models.QuerySet):
+    def counted(self):
+        """Засчитанные отметки: только они идут в «пришли», процент посещения и выгрузки."""
+        return self.filter(status=MarkStatus.CONFIRMED)
+
+    def pending(self):
+        return self.filter(status=MarkStatus.PENDING)
+
+
 class SectionMark(models.Model):
-    """Ученик пришёл на занятие в эту дату: по QR или отмечен директором вручную.
+    """Ученик пришёл на занятие в эту дату: по QR, по печатному QR или отмечен директором вручную.
 
     Гость — отсканировал код секции, в которую не записан. Гостевая отметка
     в процент посещения записанных не входит; записали гостя на этот час —
     отметка становится обычной.
+
+    Печатный QR (05.11.2026) проверяет место: у отметки остаются расстояние
+    до точки секции и точность телефона. Сами координаты ученика не хранятся.
+    Неточное место или «чуть за радиусом» — отметка «на проверку»: решает
+    директор спорта, до решения она нигде не считается.
     """
 
     student = models.ForeignKey(
@@ -201,7 +244,7 @@ class SectionMark(models.Model):
     )
     date = models.DateField(gettext_lazy("Дата занятия"))
     marked_at = models.DateTimeField(gettext_lazy("Когда отмечен"), default=timezone.now)
-    method = models.CharField(gettext_lazy("Как отмечен"), max_length=8, choices=MarkMethod.choices)
+    method = models.CharField(gettext_lazy("Как отмечен"), max_length=8, choices=SectionMarkMethod.choices)
     marked_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=gettext_lazy("Кто отметил вручную"),
@@ -212,6 +255,23 @@ class SectionMark(models.Model):
     )
     marked_by_title = models.CharField(gettext_lazy("Кто отметил на момент отметки"), max_length=250, blank=True)
     is_guest = models.BooleanField(gettext_lazy("Гость"), default=False)
+    status = models.CharField(
+        gettext_lazy("Состояние"), max_length=10, choices=MarkStatus.choices, default=MarkStatus.CONFIRMED
+    )
+    distance_m = models.PositiveIntegerField(gettext_lazy("Расстояние до места секции, м"), null=True, blank=True)
+    accuracy_m = models.PositiveIntegerField(gettext_lazy("Точность места, м"), null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=gettext_lazy("Кто проверил"),
+        related_name="+",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    reviewed_by_title = models.CharField(gettext_lazy("Кто проверил на момент проверки"), max_length=250, blank=True)
+    reviewed_at = models.DateTimeField(gettext_lazy("Когда проверена"), null=True, blank=True)
+
+    objects = MarkQuerySet.as_manager()
 
     class Meta:
         verbose_name = gettext_lazy("Отметка на занятии")
