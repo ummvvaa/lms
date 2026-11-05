@@ -1,16 +1,28 @@
-"""Место секции для отметки по печатному QR (решение владельца, 05.11.2026).
+"""Печатный QR секции с проверкой места (решение владельца, 05.11.2026).
 
-Печатный код вешают на площадке один раз, а от «сфотографировал и переслал
-другу» защищает геолокация: отметка засчитывается только рядом с местом
-секции. Место — точка (широта, долгота) и радиус; радиус по умолчанию —
-правило школы, у секции можно задать свой. Задаёт место администратор.
+Меняющийся код на экране директора остаётся как был. Печатный код вешают
+на площадке один раз: в нём постоянная ссылка с подписью секции, а от
+«сфотографировал и переслал другу» защищает геолокация — отметка
+засчитывается, только если ученик рядом с местом секции и только пока
+идёт занятие.
+
+Токен — «p.секция.выпуск.подпись» той же солью, что у меняющегося кода
+(`services.TOKEN_SALT`). Буква в начале отличает его от токена занятия
+(«занятие.дата.окно.подпись»): один не читается как другой. «Выпустить
+новый QR» прибавляет номер выпуска — прежний лист перестаёт работать сразу.
+
+Координаты ученика нужны один раз — посчитать расстояние. В базу и в журнал
+идут только расстояние до точки секции и точность телефона.
 """
 
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
+from django.conf import settings
+from django.core import signing
 from django.db import transaction
+from django.db.models import F
 from django.utils.translation import gettext as _
 
 from core import school_rules
@@ -18,9 +30,12 @@ from core.domains import Source
 from sport import services
 from sport.models import Section
 
-#: модель секции в журнале и поле места
+#: первая часть токена печатного кода
+PRINT_PREFIX = "p"
+#: модель секции в журнале и поля: место и выпуск печатного кода
 SECTION_LABEL = "sport.Section"
 LOCATION_FIELD = "location"
+QR_FIELD = "qr_version"
 
 
 # --- Место секции ------------------------------------------------------------------------
@@ -126,3 +141,55 @@ def set_location(
         source=source,
     )
     return True
+
+
+# --- Токен печатного кода ------------------------------------------------------------------
+
+
+def make_print_token(section: Section) -> str:
+    """Постоянный токен секции: «p.секция.выпуск.подпись». От времени не зависит."""
+    return services._signer().sign(f"{PRINT_PREFIX}.{section.pk}.{section.qr_version}")
+
+
+def is_print_token(token) -> bool:
+    return str(token or "").startswith(f"{PRINT_PREFIX}.")
+
+
+def read_print_token(token) -> Section | None:
+    """Секция действующего печатного кода. Подделанный, прежнего выпуска, секция в архиве — `None`."""
+    try:
+        raw = services._signer().unsign(str(token or ""))
+        prefix, section_id, version = raw.split(".")
+        if prefix != PRINT_PREFIX:
+            return None
+        section_value, version_value = int(section_id), int(version)
+    except (signing.BadSignature, ValueError):
+        return None
+    return Section.objects.filter(pk=section_value, qr_version=version_value).first()
+
+
+def print_url(section: Section) -> str:
+    """Ссылка печатного кода — та же страница отметки, что у меняющегося: `/s/<токен>`."""
+    return f"{settings.FRONTEND_BASE_URL.rstrip('/')}/s/{make_print_token(section)}"
+
+
+@transaction.atomic
+def reissue(section: Section, *, actor) -> Section:
+    """«Выпустить новый QR»: прежний лист перестаёт работать сразу. Пишется в журнал изменений."""
+    from core.models import AuditLog
+
+    Section.all_objects.filter(pk=section.pk).update(qr_version=F("qr_version") + 1)
+    old = section.qr_version
+    section.refresh_from_db(fields=["qr_version"])
+    AuditLog.objects.create(
+        actor=actor if getattr(actor, "pk", None) else None,
+        actor_role=getattr(actor, "role", "") or "",
+        model_label=SECTION_LABEL,
+        object_id=str(section.pk),
+        field_name=QR_FIELD,
+        domain_code="sport",
+        old_value=str(old),
+        new_value=str(section.qr_version),
+        source=Source.MANUAL,
+    )
+    return section

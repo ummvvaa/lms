@@ -67,8 +67,9 @@ EXTRA_TITLES: dict[str, tuple[Any, Any]] = {
     "clubs.ClubHomework.published": (gettext_lazy("Задание кружка опубликовано"), gettext_lazy("Задание")),
     "clubs.ClubHomework.edited": (gettext_lazy("Задание кружка изменено"), gettext_lazy("Задание")),
     "clubs.ClubHomework.withdrawn": (gettext_lazy("Задание кружка снято"), gettext_lazy("Задание")),
-    # место секции для отметки по печатному QR (05.11.2026): задаёт администратор
+    # печатный QR секции (05.11.2026): место задаёт администратор, новый выпуск гасит прежний лист
     "sport.Section.location": (gettext_lazy("Место секции для отметки"), gettext_lazy("Место секции")),
+    "sport.Section.qr_version": (gettext_lazy("Печатный QR выпущен заново"), gettext_lazy("Новый QR")),
     "sport.SectionSettings.enroll_until": (
         gettext_lazy("Запись на секции открыта до"),
         gettext_lazy("Запись открыта до"),

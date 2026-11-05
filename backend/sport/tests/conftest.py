@@ -16,9 +16,12 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from accounts.curators import assign
+from sport import printed, services
 from sport.models import Section, SectionSlot
 from students.models import Student, StudyGroup
 
+#: суббота, на которую тесты печатного QR замораживают время: в 12:04 идёт теннис 12:00–13:00 для 10–11
+SATURDAY = dt.date(2026, 10, 31)
 #: место тенниса в тестах — точка в Алматы; радиус 200 м по правилу школы
 LAT, LNG = Decimal("43.238949"), Decimal("76.889709")
 
@@ -96,3 +99,24 @@ def open_enroll():
     from sport import services
 
     services.set_enroll_until(timezone.now() + dt.timedelta(days=7), actor=None)
+
+
+@pytest.fixture
+def at(monkeypatch):
+    """Подменить «сейчас» для сервиса и подписи: часы Алматы и секунды эпохи вместе."""
+
+    def move(hour: int, minute: int = 0, day: dt.date = SATURDAY):
+        moment = timezone.make_aware(dt.datetime.combine(day, dt.time(hour, minute)))
+        monkeypatch.setattr(services, "local_now", lambda: timezone.localtime(moment))
+        monkeypatch.setattr(services, "seconds_now", lambda: moment.timestamp())
+        return moment
+
+    return move
+
+
+@pytest.fixture
+def court(tennis):
+    """Теннис с заданным местом — у него работает печатный QR."""
+    printed.set_location(tennis, point=(LAT, LNG), radius_m=None, actor=None)
+    tennis.refresh_from_db()
+    return tennis

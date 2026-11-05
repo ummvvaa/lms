@@ -153,6 +153,15 @@ export function useSaveSection() {
   })
 }
 
+/** «Выпустить новый QR»: прежний печатный лист перестаёт работать сразу. */
+export function useReissueQr() {
+  const refresh = useSectionsRefresh()
+  return useMutation({
+    mutationFn: (id: number) => post<{ id: number; qr_version: number }>(`/sport/sections/${id}/reissue/`),
+    onSuccess: refresh,
+  })
+}
+
 export function useEnrollStudent() {
   const refresh = useSectionsRefresh()
   return useMutation({

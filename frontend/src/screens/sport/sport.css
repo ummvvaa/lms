@@ -238,6 +238,11 @@ body .sport-slot--on[data-variant][data-size] {
 .sport-guest > .dir__acts {
   justify-content: flex-start;
 }
+/* действия карточки секции: печать, правка и «…» в одну строку */
+.sport-head {
+  flex-wrap: wrap;
+  gap: calc(var(--space) * 2);
+}
 /* место секции в «Изменить секцию»: координаты широко, радиус узко, под ними ссылка на карту */
 .sport-place {
   display: grid;

@@ -19496,3 +19496,15 @@ msgstr "Latitude must be between −90 and 90"
 #: core/school_rules.py
 msgid "м"
 msgstr "m"
+
+#: sport/views.py
+msgid "Место секции не задано, обратитесь к администратору"
+msgstr "The section place is not set, contact the administrator"
+
+#: core/labels.py
+msgid "Новый QR"
+msgstr "New QR"
+
+#: core/labels.py
+msgid "Печатный QR выпущен заново"
+msgstr "Printed QR reissued"

@@ -8,11 +8,12 @@
 from __future__ import annotations
 
 import datetime as dt
+from decimal import Decimal
 
 import pytest
 from django.utils import timezone
 
-from sport import services, tickets
+from sport import printed, services, tickets
 from sport.models import Section, TicketDrop
 from sport.tests.conftest import login, slot_of
 
@@ -23,6 +24,8 @@ DIRECTOR_ROUTES = {
     "sport-sections": ("get", None),
     "sport-sections-export": ("get", None),
     "sport-section": ("get", None),
+    "sport-section-print": ("get", None),
+    "sport-section-reissue": ("post", None),
     "sport-settings": ("patch", {"enroll_until": None}),
     "sport-student-search": ("get", None),
     "sport-enrollments": ("post", "enroll"),
@@ -84,6 +87,8 @@ def world(pupils):
         pickup="Кабинет",
     )
     claim = tickets.claim(drop=drop, student=senior)
+    # печатный QR: у тенниса задано место
+    printed.set_location(slot.section, point=(Decimal("43.238949"), Decimal("76.889709")), radius_m=None, actor=None)
     return {"senior": senior, "junior": junior, "slot": slot, "drop": drop, "claim": claim}
 
 
@@ -92,6 +97,8 @@ def _url(name: str, world) -> str:
 
     pk = {
         "sport-section": Section.objects.get(title="Теннис").pk,
+        "sport-section-print": Section.objects.get(title="Теннис").pk,
+        "sport-section-reissue": Section.objects.get(title="Теннис").pk,
         "sport-enrollment": world["senior"].section_enrollments.get(ended_at__isnull=True).pk,
         "sport-student-section": world["senior"].pk,
         "sport-session": world["slot"].pk,

@@ -7,6 +7,9 @@ urlpatterns = [
     path("sport/sections/", views.sections, name="sport-sections"),
     path("sport/sections/export/", views.sections_export, name="sport-sections-export"),
     path("sport/sections/<int:pk>/", views.section, name="sport-section"),
+    # печатный QR секции: лист A4 для печати и новый выпуск кода (прежний перестаёт работать)
+    path("sport/sections/<int:pk>/print/", views.section_print, name="sport-section-print"),
+    path("sport/sections/<int:pk>/reissue/", views.section_reissue, name="sport-section-reissue"),
     path("sport/settings/", views.enroll_settings, name="sport-settings"),
     path("sport/students/", views.student_search, name="sport-student-search"),
     path("sport/enrollments/", views.enrollments, name="sport-enrollments"),

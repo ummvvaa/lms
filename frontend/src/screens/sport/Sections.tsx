@@ -8,8 +8,10 @@
  * перевести в другой час своей параллели, назначить час, убрать из секции
  * и записать самому — и при закрытой записи. Окна записи — `EnrollDialogs`.
  *
- * Место секции для печатного QR (координаты и радиус) видит и правит только
- * администратор — в «Изменить секцию» (05.11.2026).
+ * Печатный QR (05.11.2026): «Скачать QR для печати» отдаёт лист A4 с постоянным
+ * кодом секции, «Выпустить новый QR» гасит прежний лист. Код работает, когда
+ * у секции задано место; место (координаты и радиус) видит и правит только
+ * администратор — в «Изменить секцию».
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -17,6 +19,7 @@ import { useSearchParams } from 'react-router'
 import { downloadFile } from '../../api/client'
 import {
   useEnrollSettings,
+  useReissueQr,
   useRemoveEnrollment,
   useSaveSection,
   useSection,
@@ -172,21 +175,44 @@ function SectionCard({ id }: { id: number }) {
   const { data, isLoading, error } = useSection(id)
   const [slotId, setSlotId] = useState<number | null>(null)
   const [editing, setEditing] = useState(false)
+  const [reissuing, setReissuing] = useState(false)
   if (isLoading && !data) return <Loading />
   if (error) return <ErrorNote error={error} />
   if (!data) return null
   const slot = data.slots.find((row) => row.id === slotId) ?? data.slots[0]
+  // места нет — сервер отвечает, к кому идти; кнопка это и показывает
+  const print = () =>
+    downloadFile(`/sport/sections/${data.id}/print/`, t('QR {title}.pdf', { title: data.title }))
+      .then(() => toast.success(t('Лист с QR скачан · распечатайте и повесьте на месте занятия')))
+      .catch(fail)
   return (
     <DataCard
       className="card--beam"
       title={data.title}
       note={data.address}
       right={
-        <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-          {t('Изменить секцию')}
-        </Button>
+        <span className="dir__acts sport-head">
+          <Button variant="outline" size="sm" onClick={print}>
+            {t('Скачать QR для печати')}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+            {t('Изменить секцию')}
+          </Button>
+          {data.has_location && (
+            <RowMenu>
+              <RowMenuItem onClick={() => setReissuing(true)}>{t('Выпустить новый QR')}</RowMenuItem>
+            </RowMenu>
+          )}
+        </span>
       }
     >
+      {!data.has_location && (
+        <p className="t-note sport-why">
+          {data.location
+            ? t('Место секции не задано — печатный QR не работает. Задайте координаты в «Изменить секцию»')
+            : t('Место секции не задано — печатный QR не работает. Обратитесь к администратору')}
+        </p>
+      )}
       <div className="sport-slots">
         {data.slots.map((row) => {
           const taken = row.taken ?? 0
@@ -220,7 +246,51 @@ function SectionCard({ id }: { id: number }) {
         <EmptyNote what={tk('у секции нет занятий')} who={tk('добавьте занятие в «Изменить секцию»')} />
       )}
       {editing && <EditSectionDialog section={data} onClose={() => setEditing(false)} />}
+      {reissuing && <ReissueDialog section={data} onClose={() => setReissuing(false)} onDone={print} />}
     </DataCard>
+  )
+}
+
+/** «Выпустить новый QR»: прежний лист перестаёт работать сразу — поэтому с подтверждением. */
+function ReissueDialog({
+  section,
+  onClose,
+  onDone,
+}: {
+  section: SectionDetail
+  onClose: () => void
+  onDone: () => void
+}) {
+  const reissue = useReissueQr()
+  return (
+    <Modal title={t('Выпустить новый QR?')} note={section.title} onClose={onClose}>
+      <p className="t-note">
+        {t(
+          'Старый лист перестанет работать сразу: ученики по нему не отметятся. Новый лист скачается — распечатайте его и повесьте вместо старого. Выпуск записывается в журнал изменений.',
+        )}
+      </p>
+      <div className="acad__actions">
+        <Button variant="outline" onClick={onClose}>
+          {t('Отмена')}
+        </Button>
+        <Button
+          variant="destructive"
+          disabled={reissue.isPending}
+          onClick={() =>
+            reissue.mutate(section.id, {
+              onSuccess: () => {
+                toast.success(t('Новый QR выпущен · старый лист больше не работает'))
+                onClose()
+                onDone()
+              },
+              onError: fail,
+            })
+          }
+        >
+          {t('Выпустить новый')}
+        </Button>
+      </div>
+    </Modal>
   )
 }
 

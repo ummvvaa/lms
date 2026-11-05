@@ -22,7 +22,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
 from core.domains import ROLE_STUDENT, can_read_cabinet, can_write_cabinet
-from core.exports import Column, workbook_of_sheets
+from core.exports import Column, file_response, workbook_of_sheets
 from core.scope import visible_students
 from sport import printed, services
 from sport.models import (
@@ -335,6 +335,39 @@ def enroll_settings(request):
             value = timezone.make_aware(value)
         services.set_enroll_until(value, actor=request.user)
     return Response(_settings_dict())
+
+
+@extend_schema(responses={200: None})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def section_print(request, pk: int):
+    """«Скачать QR для печати»: лист A4 с постоянным кодом секции. Без места секции кода нет."""
+    from sport import poster
+
+    if not _writer(request):
+        return _no_rights()
+    row = Section.objects.filter(pk=pk).first()
+    if row is None:
+        return _not_found()
+    if not row.has_location:
+        return _bad(_("Место секции не задано, обратитесь к администратору"))
+    return file_response(content=poster.render(row), filename=poster.filename(row), content_type="application/pdf")
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def section_reissue(request, pk: int):
+    """«Выпустить новый QR»: прежний лист перестаёт работать сразу; запись — в журнал изменений."""
+    if not _writer(request):
+        return _no_rights()
+    row = Section.objects.filter(pk=pk).first()
+    if row is None:
+        return _not_found()
+    if not row.has_location:
+        return _bad(_("Место секции не задано, обратитесь к администратору"))
+    printed.reissue(row, actor=request.user)
+    return Response({"id": row.pk, "qr_version": row.qr_version})
 
 
 @extend_schema(responses={200: None})
