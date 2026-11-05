@@ -710,6 +710,8 @@ def _session_dict(slot: SectionSlot, day: dt.date, now=None) -> dict:
         "enrolled": enrolled,
         "came": came,
         "guests": marks.filter(is_guest=True).count(),
+        # ждут решения директора: в «пришли» и в гостей не идут, пока не подтверждены
+        "pending": every.pending().count(),
     }
 
 
@@ -756,10 +758,19 @@ def session(request, pk: int):
                 "came": mark is not None,
                 "method": mark.method if mark else "",
                 "at": _when(mark.marked_at) if mark else None,
+                # расстояние до места секции — только у отметки по печатному коду
+                "distance": _distance(mark),
             }
         )
     students.sort(key=lambda s: (not s["came"], s["at"] or "", s["short_name"]))
     return Response({**_session_dict(slot, day), "students": students, "guest_rows": _guest_rows(slot, day)})
+
+
+def _distance(mark) -> str:
+    """«35 м» у отметки по печатному коду; у остальных способов расстояния нет."""
+    if mark is None or mark.method != SectionMarkMethod.PRINTED or mark.distance_m is None:
+        return ""
+    return printed.distance_words(mark.distance_m)
 
 
 def _guest_rows(slot: SectionSlot, day: dt.date) -> list[dict]:
@@ -779,6 +790,8 @@ def _guest_rows(slot: SectionSlot, day: dt.date) -> list[dict]:
             {
                 **_brief(mark.student),
                 "at": _when(mark.marked_at),
+                "method": mark.method,
+                "distance": _distance(mark),
                 "sections": [
                     f"{row.section.title} {services.slot_words(row.slot) if row.slot_id else ''}".strip()
                     for row in services.active_list(mark.student)
@@ -901,6 +914,59 @@ def _scan_printed(request, token: str) -> Response:
     if me is None:
         return _forbid(_("Отмечается на занятии ученик"))
     return Response(printed.mark_by_print(student=me, section=section, position=printed.read_position(request.data)))
+
+
+# --- «На проверку»: отметки по печатному коду с неточным местом ---------------------------------
+
+
+def _pending_dict(mark: SectionMark) -> dict:
+    return {
+        "id": mark.pk,
+        "student": _brief(mark.student),
+        "slot": mark.slot_id,
+        "section": mark.slot.section.title,
+        "slot_title": services.slot_words(mark.slot),
+        "date": mark.date.isoformat(),
+        "at": _when(mark.marked_at),
+        "guest": mark.is_guest,
+        "distance": printed.distance_words(mark.distance_m or 0),
+        "why": printed.why_pending(mark),
+    }
+
+
+@extend_schema(responses={200: dict})
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def marks_pending(request):
+    """Отметки, которые ждут решения директора: за все дни, новые сверху. Нигде не считаются, пока ждут."""
+    if not _writer(request, MARK):
+        return _no_rights()
+    rows = (
+        SectionMark.objects.pending()
+        .filter(student__in=visible_students(request.user))
+        .select_related("student", "student__group", "slot", "slot__section")
+        .order_by("-date", "-marked_at")
+    )
+    return Response({"rows": [_pending_dict(mark) for mark in rows]})
+
+
+@extend_schema(request=None, responses={200: dict})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def mark_review(request, pk: int):
+    """«Подтвердить» или «Отклонить» отметку на проверке: `decision` — `confirm` или `reject`."""
+    if not _writer(request, MARK):
+        return _no_rights()
+    decision = str(request.data.get("decision") or "")
+    if decision not in ("confirm", "reject"):
+        return _bad(_("Выберите: подтвердить или отклонить"))
+    if not SectionMark.objects.filter(pk=pk, student__in=visible_students(request.user)).exists():
+        return _not_found()
+    try:
+        mark = printed.review(pk, confirm=decision == "confirm", actor=request.user)
+    except services.Refused as error:
+        return _bad(str(error))
+    return Response({"id": mark.pk, "status": mark.status})
 
 
 # --- Посещаемость -----------------------------------------------------------------------------

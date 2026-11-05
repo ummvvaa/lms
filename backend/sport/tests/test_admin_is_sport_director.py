@@ -14,7 +14,7 @@ import pytest
 from django.utils import timezone
 
 from sport import printed, services, tickets
-from sport.models import Section, TicketDrop
+from sport.models import MarkStatus, Section, SectionMark, SectionMarkMethod, TicketDrop
 from sport.tests.conftest import login, slot_of
 
 pytestmark = pytest.mark.django_db
@@ -26,6 +26,8 @@ DIRECTOR_ROUTES = {
     "sport-section": ("get", None),
     "sport-section-print": ("get", None),
     "sport-section-reissue": ("post", None),
+    "sport-marks-pending": ("get", None),
+    "sport-mark-review": ("post", "review"),
     "sport-settings": ("patch", {"enroll_until": None}),
     "sport-student-search": ("get", None),
     "sport-enrollments": ("post", "enroll"),
@@ -87,9 +89,19 @@ def world(pupils):
         pickup="Кабинет",
     )
     claim = tickets.claim(drop=drop, student=senior)
-    # печатный QR: у тенниса задано место
+    # печатный QR: у тенниса задано место, одна отметка ждёт проверки
     printed.set_location(slot.section, point=(Decimal("43.238949"), Decimal("76.889709")), radius_m=None, actor=None)
-    return {"senior": senior, "junior": junior, "slot": slot, "drop": drop, "claim": claim}
+    pending = SectionMark.objects.create(
+        student=junior,
+        slot=slot,
+        date=dt.date(2026, 10, 24),
+        method=SectionMarkMethod.PRINTED,
+        status=MarkStatus.PENDING,
+        distance_m=250,
+        accuracy_m=20,
+        is_guest=True,
+    )
+    return {"senior": senior, "junior": junior, "slot": slot, "drop": drop, "claim": claim, "pending": pending}
 
 
 def _url(name: str, world) -> str:
@@ -99,6 +111,7 @@ def _url(name: str, world) -> str:
         "sport-section": Section.objects.get(title="Теннис").pk,
         "sport-section-print": Section.objects.get(title="Теннис").pk,
         "sport-section-reissue": Section.objects.get(title="Теннис").pk,
+        "sport-mark-review": world["pending"].pk,
         "sport-enrollment": world["senior"].section_enrollments.get(ended_at__isnull=True).pk,
         "sport-student-section": world["senior"].pk,
         "sport-session": world["slot"].pk,
@@ -120,6 +133,8 @@ def _body(kind, world):
         return {"slot": slot_of("Теннис", 5, 13, 10).pk}
     if kind == "bulk":
         return {"action": "move_hour", "students": [world["senior"].pk], "slot": slot_of("Теннис", 5, 13, 10).pk}
+    if kind == "review":
+        return {"decision": "confirm"}
     if kind == "mark":
         return {"student": world["senior"].pk, "date": "2026-10-24"}
     return kind or {}

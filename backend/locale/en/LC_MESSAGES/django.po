@@ -19513,3 +19513,25 @@ msgstr "Printed QR reissued"
 #, python-brace-format
 msgid "{n} км"
 msgstr "{n} km"
+
+#: sport/views.py
+msgid "Выберите: подтвердить или отклонить"
+msgstr "Choose: confirm or reject"
+
+#: sport/printed.py
+msgid "Отметка уже проверена"
+msgstr "This check-in has already been reviewed"
+
+#: sport/printed.py
+msgid "Отметки нет"
+msgstr "No such check-in"
+
+#: sport/printed.py
+#, python-brace-format
+msgid "за радиусом: {distance} от места, радиус {radius} м"
+msgstr "outside the radius: {distance} from the place, radius {radius} m"
+
+#: sport/printed.py
+#, python-brace-format
+msgid "место определено неточно: ±{accuracy}, радиус {radius} м"
+msgstr "imprecise location: ±{accuracy}, radius {radius} m"

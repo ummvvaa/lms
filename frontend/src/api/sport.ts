@@ -327,12 +327,18 @@ export interface SessionRow extends SlotRow {
   came: number
   /** гостей на занятии — отсканировали код секции, в которую не записаны */
   guests: number
+  /** отметок по печатному QR, которые ждут решения директора */
+  pending: number
 }
+
+export type MarkMethod = 'qr' | 'printed' | 'manual'
 
 export interface SessionStudent extends SectionStudent {
   came: boolean
-  method: '' | 'qr' | 'manual'
+  method: '' | MarkMethod
   at: string | null
+  /** расстояние до места секции — у отметки по печатному QR */
+  distance: string
 }
 
 export const useSessionsToday = () =>
@@ -355,6 +361,8 @@ export const useSession = (id: number | null, live: boolean) =>
 /** Гость занятия: записать на этот час можно, нельзя (`refusal`) или сверх предела (`warnings`). */
 export interface SessionGuest extends SectionStudent {
   at: string | null
+  method: MarkMethod
+  distance: string
   sections: string[]
   refusal: string
   warnings: string[]
@@ -391,6 +399,49 @@ export function useSessionAction() {
       onSuccess: refresh,
     }),
   }
+}
+
+/* --- «На проверку»: отметки по печатному QR с неточным местом ------------ */
+
+export interface PendingMark {
+  id: number
+  student: SectionStudent
+  slot: number
+  section: string
+  slot_title: string
+  date: string
+  at: string | null
+  guest: boolean
+  distance: string
+  /** почему ждёт проверки — словами с сервера */
+  why: string
+}
+
+export const usePendingMarks = () =>
+  useQuery({
+    queryKey: ['sport-marks-pending'],
+    queryFn: () => get<{ rows: PendingMark[] }>('/sport/marks/pending/'),
+    refetchInterval: 10_000,
+  })
+
+export function useReviewMark() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, decision }: { id: number; decision: 'confirm' | 'reject' }) =>
+      post<{ id: number; status: string }>(`/sport/marks/${id}/review/`, { decision }),
+    onSuccess: () => {
+      for (const key of [
+        'sport-marks-pending',
+        'sport-session',
+        'sport-sessions-today',
+        'sport-attendance',
+        'sport-roster',
+        'sport-roster-history',
+        'sport-section',
+      ])
+        void queryClient.invalidateQueries({ queryKey: [key] })
+    },
+  })
 }
 
 export type ScanState =

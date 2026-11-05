@@ -19432,3 +19432,25 @@ msgstr "Басылған QR қайта шығарылды"
 #, python-brace-format
 msgid "{n} км"
 msgstr "{n} км"
+
+#: sport/views.py
+msgid "Выберите: подтвердить или отклонить"
+msgstr "Таңдаңыз: растау немесе қабылдамау"
+
+#: sport/printed.py
+msgid "Отметка уже проверена"
+msgstr "Белгі тексеріліп қойған"
+
+#: sport/printed.py
+msgid "Отметки нет"
+msgstr "Белгі жоқ"
+
+#: sport/printed.py
+#, python-brace-format
+msgid "за радиусом: {distance} от места, радиус {radius} м"
+msgstr "радиустан тыс: орыннан {distance}, радиус {radius} м"
+
+#: sport/printed.py
+#, python-brace-format
+msgid "место определено неточно: ±{accuracy}, радиус {radius} м"
+msgstr "орын дәл анықталмаған: ±{accuracy}, радиус {radius} м"

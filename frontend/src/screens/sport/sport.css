@@ -263,6 +263,18 @@ a.sport-place__map {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+/* строка «На проверку» на телефоне: имя и причина, под ними чип «гость» и две кнопки решения */
+@media (max-width: 759px) {
+  .dir__rows > .dir__row.sport-review {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sport-review > .dir__acts {
+    justify-content: flex-start;
+  }
+  .sport-review > [data-slot='badge'] {
+    justify-self: start;
+  }
+}
 /* почему гостя нельзя записать — тихой янтарной строкой под именем */
 .sport-why {
   color: var(--warn);

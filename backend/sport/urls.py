@@ -25,6 +25,9 @@ urlpatterns = [
     path("sport/sessions/<int:pk>/token/", views.session_token, name="sport-session-token"),
     path("sport/sessions/<int:pk>/end/", views.session_end, name="sport-session-end"),
     path("sport/sessions/<int:pk>/marks/", views.session_mark, name="sport-session-mark"),
+    # отметки по печатному QR с неточным местом: ждут решения директора спорта
+    path("sport/marks/pending/", views.marks_pending, name="sport-marks-pending"),
+    path("sport/marks/<int:pk>/review/", views.mark_review, name="sport-mark-review"),
     # посещаемость секций: директор спорта, администратор и куратор своих групп
     path("sport/attendance/", views.attendance, name="sport-attendance"),
     path("sport/attendance/export/", views.attendance_export, name="sport-attendance-export"),

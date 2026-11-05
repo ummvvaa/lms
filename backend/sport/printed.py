@@ -350,3 +350,39 @@ def mark_by_print(
 
 def _answer(state: str, session: dict, row: SectionMark) -> dict:
     return {"state": state, "session": session, "marked_at": timezone.localtime(row.marked_at).isoformat()}
+
+
+# --- «На проверку» --------------------------------------------------------------------------
+
+
+def why_pending(mark: SectionMark) -> str:
+    """Почему отметка ждёт проверки — одной строкой для директора."""
+    radius = radius_of(mark.slot.section)
+    if mark.accuracy_m is not None and mark.accuracy_m > radius:
+        return _("место определено неточно: ±{accuracy}, радиус {radius} м").format(
+            accuracy=distance_words(mark.accuracy_m), radius=radius
+        )
+    return _("за радиусом: {distance} от места, радиус {radius} м").format(
+        distance=distance_words(mark.distance_m or 0), radius=radius
+    )
+
+
+@transaction.atomic
+def review(mark_id: int, *, confirm: bool, actor) -> SectionMark:
+    """Директор решает по отметке «на проверку»: засчитать или отклонить. Второй раз — отказ."""
+    row = (
+        SectionMark.objects.select_for_update(of=("self",))
+        .select_related("slot", "slot__section", "student")
+        .filter(pk=mark_id)
+        .first()
+    )
+    if row is None:
+        raise services.Refused(_("Отметки нет"))
+    if row.status != MarkStatus.PENDING:
+        raise services.Refused(_("Отметка уже проверена"))
+    row.status = MarkStatus.CONFIRMED if confirm else MarkStatus.REJECTED
+    row.reviewed_by = actor if getattr(actor, "pk", None) else None
+    row.reviewed_by_title = services._title(actor)
+    row.reviewed_at = timezone.now()
+    row.save(update_fields=["status", "reviewed_by", "reviewed_by_title", "reviewed_at"])
+    return row

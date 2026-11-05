@@ -7,6 +7,12 @@
  * «Пришли / Ещё нет» — опрос раз в несколько секунд, без вебсокетов,
  * и «Отметить» для пришедшего без телефона. Ниже — «Гости»: отсканировали
  * код секции, в которую не записаны; записать на этот час — одним нажатием.
+ *
+ * Печатный QR (05.11.2026): у отметки виден способ — по меняющемуся QR, по
+ * печатному (с расстоянием до места секции) или вручную. Сверху — «На
+ * проверку»: отметки по печатному коду с неточным местом или чуть за
+ * радиусом, за все дни; «Подтвердить» засчитывает, «Отклонить» — нет.
+ * Пока отметка ждёт, она нигде не считается.
  */
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -15,9 +21,13 @@ import {
   confirmWarnings,
   sessionToken,
   useEnrollStudent,
+  usePendingMarks,
+  useReviewMark,
   useSession,
   useSessionAction,
   useSessionsToday,
+  type MarkMethod,
+  type PendingMark,
   type SessionGuest,
   type SessionRow,
   type SessionState,
@@ -28,7 +38,7 @@ import { Segmented } from '../../components/patterns'
 import { Chip, DataCard, EmptyNote, ErrorNote, Loading, ScreenHead, type Tone } from '../../components/ui'
 import { Button } from '../../components/ui/button'
 import { t, tk } from '../../i18n'
-import { formatDateLong, formatTime } from '../../lib/format'
+import { formatDateLong, formatDayMonth, formatTime } from '../../lib/format'
 import QrCode from './QrCode'
 import { slotTime } from './words'
 import '../directors/directors.css'
@@ -38,6 +48,15 @@ const STATE: Record<SessionState, { label: string; tone: Tone }> = {
   past: { label: tk('прошло'), tone: 'neutral' },
   live: { label: tk('идёт'), tone: 'good' },
   soon: { label: tk('скоро'), tone: 'info' },
+}
+
+/** Как отмечен: «по меняющемуся QR · 12:04», «по печатному QR · 12:04 · 35 м», «вручную · 12:04». */
+function howWords(method: MarkMethod | '', at: string | null, distance: string): string {
+  const time = at ? formatTime(at) : ''
+  if (method === 'manual') return t('вручную · {time}', { time })
+  if (method === 'printed')
+    return [t('по печатному QR · {time}', { time }), distance].filter(Boolean).join(' · ')
+  return t('по меняющемуся QR · {time}', { time })
 }
 
 export default function Session() {
@@ -55,6 +74,7 @@ export default function Session() {
         title={t('Занятие и QR')}
         subtitle={t('{date} · открой занятие и покажи код ученикам', { date: formatDateLong(data.date) })}
       />
+      <PendingMarks />
       {data.rows.length === 0 ? (
         <DataCard title={t('Занятия сегодня')} empty={t('сегодня занятий секций нет')} />
       ) : (
@@ -94,6 +114,77 @@ export default function Session() {
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * «На проверку»: отметки по печатному QR, которым сервер не поверил сразу —
+ * телефон определил место неточно или ученик чуть за радиусом. Список за все
+ * дни: отметка не теряется, если директор открыл экран после занятия.
+ * Пустой очереди на экране нет.
+ */
+function PendingMarks() {
+  const { data } = usePendingMarks()
+  const review = useReviewMark()
+  const rows = data?.rows ?? []
+  if (rows.length === 0) return null
+  const decide = (mark: PendingMark, decision: 'confirm' | 'reject') =>
+    review.mutate(
+      { id: mark.id, decision },
+      {
+        onSuccess: () =>
+          toast.success(
+            decision === 'confirm'
+              ? t('{name} — отметка засчитана', { name: mark.student.short_name })
+              : t('{name} — отметка отклонена', { name: mark.student.short_name }),
+          ),
+        onError: (reason) => toast.error(reason.message),
+      },
+    )
+  return (
+    <DataCard
+      title={t('На проверку')}
+      count={rows.length}
+      note={t('печатный QR · не считаются до решения')}
+    >
+      <div className="dir__rows">
+        {rows.map((mark) => (
+          <div key={mark.id} className="dir__row sport-review">
+            <span className="dir__what">
+              <b className="dir__name">{mark.student.short_name}</b>
+              <span className="t-note">
+                {[
+                  mark.section,
+                  mark.slot_title,
+                  mark.at
+                    ? t('{date}, {time}', { date: formatDayMonth(mark.date), time: formatTime(mark.at) })
+                    : formatDayMonth(mark.date),
+                  t('{n} параллель', { n: mark.student.parallel }),
+                  mark.student.group,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+              <span className="t-note sport-why">{mark.why}</span>
+            </span>
+            {mark.guest ? <Chip size="sm">{t('гость')}</Chip> : <span />}
+            <span className="dir__acts">
+              <Button size="sm" disabled={review.isPending} onClick={() => decide(mark, 'confirm')}>
+                {t('Подтвердить')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={review.isPending}
+                onClick={() => decide(mark, 'reject')}
+              >
+                {t('Отклонить')}
+              </Button>
+            </span>
+          </div>
+        ))}
+      </div>
+    </DataCard>
   )
 }
 
@@ -225,9 +316,7 @@ function SessionPanel({ row }: { row: SessionRow }) {
                     {[
                       t('{n} параллель', { n: student.parallel }),
                       student.came && student.at
-                        ? student.method === 'manual'
-                          ? t('вручную · {time}', { time: formatTime(student.at) })
-                          : t('по QR · {time}', { time: formatTime(student.at) })
+                        ? howWords(student.method, student.at, student.distance)
                         : '',
                     ]
                       .filter(Boolean)
@@ -353,7 +442,7 @@ function Guests({ slot, guests }: { slot: SessionRow; guests: SessionGuest[] }) 
                 {[
                   t('{n} параллель', { n: guest.parallel }),
                   guest.group,
-                  guest.at ? t('по QR · {time}', { time: formatTime(guest.at) }) : '',
+                  guest.at ? howWords(guest.method, guest.at, guest.distance) : '',
                 ]
                   .filter(Boolean)
                   .join(' · ')}
