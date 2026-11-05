@@ -92,6 +92,10 @@ body .sport-slot--on[data-variant][data-size] {
   flex-direction: column;
   gap: calc(var(--space) * 2);
 }
+/* список под плитками часов и блок «без часа» не прилипают к тому, что над ними */
+.sport-slots ~ .sport-list {
+  margin-top: calc(var(--space) * 4);
+}
 .sport-list--warn {
   padding: calc(var(--space) * 3);
   border-radius: var(--radius-inner);
@@ -231,12 +235,18 @@ body .sport-slot--on[data-variant][data-size] {
   padding-top: calc(var(--space) * 4);
   border-top: 1px solid var(--line);
 }
-/* строка гостя: имя и пояснения сверху, кнопка записи под ними — колонка узкая */
-.dir__rows > .dir__row.sport-guest {
+/* строка отметившегося и гостя: имя и пояснения сверху, кнопка под ними — колонка узкая, имя не ломается */
+.dir__rows > .dir__row.sport-guest,
+.sport-roster > .dir__row {
   grid-template-columns: minmax(0, 1fr);
 }
-.sport-guest > .dir__acts {
+.sport-guest > .dir__acts,
+.sport-roster > .dir__row > .dir__acts {
   justify-content: flex-start;
+}
+/* кнопки под кодом секции — с отступом от подписи */
+.sport-code-acts {
+  margin-top: calc(var(--space) * 4);
 }
 /* действия карточки секции: печать, правка и «…» в одну строку */
 .sport-head {

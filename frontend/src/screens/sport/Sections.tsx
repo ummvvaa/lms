@@ -518,7 +518,9 @@ function EditSectionDialog({ section, onClose }: { section: SectionDetail; onClo
               value={point}
               onChange={setPoint}
               placeholder="43.238949, 76.889709"
-              hint={t('Скопируйте точку из 2ГИС или Яндекс Карт одной строкой. Пусто — печатного QR у секции нет')}
+              hint={t(
+                'Скопируйте точку из 2ГИС или Яндекс Карт одной строкой. Пусто — печатного QR у секции нет',
+              )}
             />
             <Field
               kind="number"

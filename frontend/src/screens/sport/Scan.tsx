@@ -76,10 +76,7 @@ export default function Scan({ kind }: { kind?: ScanKind } = {}) {
   const [geo, setGeo] = useState<Geo>('idle')
   const sent = useRef(false)
   const asked = useRef(false)
-  const fail = useCallback(
-    (reason: unknown) => setError(message(reason, t('Не удалось отметиться'))),
-    [],
-  )
+  const fail = useCallback((reason: unknown) => setError(message(reason, t('Не удалось отметиться'))), [])
 
   useEffect(() => {
     if (isLoading || sent.current) return

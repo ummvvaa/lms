@@ -13,6 +13,11 @@
  * Значение и его смысл — у вызывающего: компонент отдаёт строку
  * (у галочки — да или нет), ничего не переводит и не проверяет.
  *
+ * Время (`kind="time"`) — текст с маской «ЧЧ:ММ», а не нативное поле:
+ * то рисует «04:00 PM» при 12-часовых настройках устройства, а время
+ * в LMS везде 24-часовое, на всех языках. Вызывающему уходит либо
+ * полное «16:00», либо пустая строка — как от нативного поля.
+ *
  * `Field.Row` ставит два или три поля в ряд, на телефоне — друг под другом.
  * `Field.Static` — подпись и значение без поля, когда править нечего.
  */
@@ -20,6 +25,7 @@ import { type ReactNode, useId, useRef, useState } from 'react'
 import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
 import { t } from '../i18n'
+import { fullClock, maskClock, shownClock } from '../lib/clock'
 import { EyeIcon, EyeOffIcon } from 'lucide-react'
 import { Textarea } from './ui/textarea'
 import { SelectField } from './SelectField'
@@ -99,6 +105,8 @@ function Field(props: FieldProps) {
   const id = props.id ?? `field-${generated}`
   // пароль показывается по глазку: набранное с ошибкой видно без повторного ввода (11.10.2026)
   const [shown, setShown] = useState(false)
+  // поле времени: что набрано сейчас, пока оно ещё не полное «ЧЧ:ММ»
+  const [draft, setDraft] = useState<string | null>(null)
   const hintId = `${id}-hint`
   const errorId = `${id}-error`
   const invalid = Boolean(props.error)
@@ -183,6 +191,38 @@ function Field(props: FieldProps) {
           </option>
         ))}
       </SelectField>
+    )
+  } else if (props.kind === 'time') {
+    const { onChange } = props
+    control = (
+      <Input
+        {...shared}
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder={props.placeholder ?? '00:00'}
+        maxLength={5}
+        className="field__clock"
+        // пока человек набирает — показываем набранное, иначе значение из данных
+        value={draft ?? shownClock(props.value)}
+        readOnly={props.readOnly}
+        autoFocus={props.autoFocus}
+        onFocus={filterFocus}
+        onChange={(event) => {
+          const next = maskClock(event.target.value)
+          setDraft(next)
+          const full = fullClock(next)
+          if (full) onChange?.(full)
+          else if (next === '') onChange?.('')
+        }}
+        onBlur={() => {
+          // недописанное «9» или «16:» дописывается; не время — поле возвращается к прежнему значению
+          const full = draft === null ? null : fullClock(draft, true)
+          if (full) onChange?.(full)
+          setDraft(null)
+          filterBlur()
+        }}
+      />
     )
   } else {
     const kind = props.kind ?? 'text'

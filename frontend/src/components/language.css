@@ -54,6 +54,11 @@
   min-width: 0;
 }
 
+/* время «16:00» — цифры одной ширины */
+.field__clock {
+  font-variant-numeric: tabular-nums;
+}
+
 .field__control [data-slot='native-select-wrapper'] {
   width: 100%;
 }

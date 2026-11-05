@@ -142,11 +142,7 @@ function PendingMarks() {
       },
     )
   return (
-    <DataCard
-      title={t('На проверку')}
-      count={rows.length}
-      note={t('печатный QR · не считаются до решения')}
-    >
+    <DataCard title={t('На проверку')} count={rows.length} note={t('печатный QR · не считаются до решения')}>
       <div className="dir__rows">
         {rows.map((mark) => (
           <div key={mark.id} className="dir__row sport-review">
@@ -273,7 +269,7 @@ function SessionPanel({ row }: { row: SessionRow }) {
           )}
         </div>
         {url && (
-          <div className="acad__actions">
+          <div className="acad__actions sport-code-acts">
             <Button variant="outline" onClick={() => void downloadQrSheet(row.section, row.title)}>
               {t('Скачать QR для печати')}
             </Button>
@@ -317,12 +313,11 @@ function SessionPanel({ row }: { row: SessionRow }) {
                     </span>
                   )}
                 </span>
-                <span />
-                <span className="dir__acts">
-                  {student.came
-                    ? student.method === 'manual' && (
+                {student.came
+                  ? student.method === 'manual' && (
+                      <span className="dir__acts">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           disabled={actions.unmark.isPending}
                           onClick={() =>
@@ -338,8 +333,10 @@ function SessionPanel({ row }: { row: SessionRow }) {
                         >
                           {t('Снять отметку')}
                         </Button>
-                      )
-                    : row.state !== 'soon' && (
+                      </span>
+                    )
+                  : row.state !== 'soon' && (
+                      <span className="dir__acts">
                         <Button
                           variant="outline"
                           size="sm"
@@ -357,8 +354,8 @@ function SessionPanel({ row }: { row: SessionRow }) {
                         >
                           {t('Отметить')}
                         </Button>
-                      )}
-                </span>
+                      </span>
+                    )}
               </div>
             ))}
           </div>
@@ -412,12 +409,7 @@ function Guests({ slot, guests }: { slot: SessionRow; guests: SessionGuest[] }) 
             <span className="dir__what">
               <b className="dir__name">{guest.short_name}</b>
               <span className="t-note">
-                {[
-                  t('{n} параллель', { n: guest.parallel }),
-                  guest.group,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
+                {[t('{n} параллель', { n: guest.parallel }), guest.group].filter(Boolean).join(' · ')}
               </span>
               {guest.at && (
                 <span className="t-note sport-how">{howWords(guest.method, guest.at, guest.distance)}</span>
