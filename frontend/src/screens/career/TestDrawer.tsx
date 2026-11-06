@@ -4,7 +4,8 @@
  * разбора, кому открыт, файл, шкалы, утверждения с ключом и интерпретация. Текст утверждений
  * и шкал здесь не правится — тест перезагружается файлом, иначе ключ разошёлся
  * бы с файлом (решение владельца, 08.10.2026). Удаление: без попыток — насовсем,
- * с попытками — в архив.
+ * с попытками — в архив; удаляют автор и администратор — тест общий для всех
+ * учителей профориентации (решение владельца, 06.11.2026).
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -30,7 +31,8 @@ export default function TestDrawer({ row, manage, onClose }: { row: CareerTestRo
   const [assigning, setAssigning] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const test = query.data
-  const used = row.done + row.in_progress > 0
+  // попытки считаются по всей школе, а не по группам смотрящего
+  const used = row.used
   const dirty = title.trim() !== row.title || Number(threshold) !== row.analysis_min_score
   const thresholdOk = Number.isInteger(Number(threshold)) && threshold.trim() !== ''
 
@@ -52,7 +54,7 @@ export default function TestDrawer({ row, manage, onClose }: { row: CareerTestRo
           {patch.isPending ? t('Сохраняется…') : t('Сохранить')}
         </Button>
       )}
-      {manage && (
+      {manage && row.can_remove && (
         <Button variant="outline" onClick={() => setDeleting(true)}>
           {used ? t('В архив') : t('Удалить')}
         </Button>
@@ -64,7 +66,7 @@ export default function TestDrawer({ row, manage, onClose }: { row: CareerTestRo
   )
 
   return (
-    <Modal wide title={row.title} note={[formatDate(row.created_at), row.created_by?.short ?? '', row.file_name].filter(Boolean).join(' · ')} onClose={onClose}>
+    <Modal wide title={row.title} note={[formatDate(row.created_at), row.created_by ? t('загрузил: {name}', { name: row.created_by.short }) : '', row.file_name].filter(Boolean).join(' · ')} onClose={onClose}>
       {query.isLoading && <Loading />}
       {query.error && <ErrorNote error={query.error} />}
       <div className="toolbar mb-0">

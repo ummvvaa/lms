@@ -87,15 +87,33 @@ def _own_student(request) -> Student | None:
 
 
 def _test_or_none(user, pk: int) -> CareerTest | None:
-    test = CareerTest.objects.filter(pk=pk, archived_at__isnull=True).first()
-    if test is None:
+    """Живой тест — любому, кто ведёт профтест: тест общий для школы.
+
+    Кто загрузил и кому назначен, не важно (решение владельца, 06.11.2026);
+    граница по группам — только у учеников, назначений и результатов.
+    """
+    if not rights.manages(user):
         return None
+    return CareerTest.objects.filter(pk=pk, archived_at__isnull=True).first()
+
+
+def _scope_group_ids(user) -> set[int] | None:
+    """Группы, по которым человеку считаются назначения и попытки; администратору — все (None)."""
     if getattr(user, "role", "") == ROLE_ADMIN:
-        return test
-    # учитель видит тесты, назначенные его группам, и свои загрузки
-    mine = test.created_by_id == user.pk
-    shared = test.assignments.filter(group_id__in=rights.visible_group_ids(user)).exists()
-    return test if mine or shared else None
+        return None
+    return set(rights.visible_group_ids(user))
+
+
+def _scoped_groups(test: CareerTest, scope: set[int] | None) -> list[dict]:
+    rows = services.assigned_groups(test)
+    if scope is None:
+        return rows
+    return [row for row in rows if row["group"].pk in scope]
+
+
+def _can_remove(user, test: CareerTest) -> bool:
+    """Удалить или убрать в архив — автор и администратор: тест общий, чужой не трогаем."""
+    return getattr(user, "role", "") == ROLE_ADMIN or test.created_by_id == user.pk
 
 
 def _int(raw) -> int | None:
@@ -115,20 +133,22 @@ def _group_for(request, raw) -> StudyGroup | None:
 # --- Тесты: список, загрузка, включение, назначение ---------------------------------
 
 
-def _counts(tests: list[CareerTest]) -> dict[int, dict]:
-    """Сколько назначено, сдано и идёт — по каждому тесту одним проходом."""
+def _counts(tests: list[CareerTest], scope: set[int] | None) -> dict[int, dict]:
+    """Сколько назначено, сдано и идёт — по каждому тесту одним проходом.
+
+    Учителю — по его группам, администратору — по всем (`scope is None`).
+    """
     out = {test.pk: {"assigned": 0, "done": 0, "in_progress": 0} for test in tests}
     ids = list(out)
-    for row in (
-        CareerAttempt.objects.filter(test_id__in=ids, archived_at__isnull=True)
-        .values("test_id", "status")
-        .annotate(n=Count("id"))
-    ):
+    attempts = CareerAttempt.objects.filter(test_id__in=ids, archived_at__isnull=True)
+    if scope is not None:
+        attempts = attempts.filter(student__group_id__in=scope)
+    for row in attempts.values("test_id", "status").annotate(n=Count("id")):
         key = "done" if row["status"] == AttemptStatus.DONE else "in_progress"
         out[row["test_id"]][key] = row["n"]
     for test in tests:
         seen: set[int] = set()
-        for entry in services.assigned_groups(test):
+        for entry in _scoped_groups(test, scope):
             seen.update(services.assigned_student_ids(test, entry["group"]))
         out[test.pk]["assigned"] = len(seen)
     return out
@@ -146,19 +166,31 @@ def tests(request):
     if refused:
         return refused
     user = request.user
+    # тест общий для школы: все живые тесты — каждому, кто ведёт (решение владельца, 06.11.2026)
     rows = list(
         services.live_tests()
         .select_related("created_by")
-        .annotate(n_items=Count("items", distinct=True), n_scales=Count("scales", distinct=True))
+        .annotate(
+            n_items=Count("items", distinct=True),
+            n_scales=Count("scales", distinct=True),
+            n_attempts=Count("attempts", distinct=True),
+        )
     )
-    if user.role != ROLE_ADMIN:
-        groups = set(rights.visible_group_ids(user))
-        rows = [t for t in rows if t.created_by_id == user.pk or any(a.group_id in groups for a in t.assignments.all())]
-    counts = _counts(rows)
+    counts = _counts(rows, _scope_group_ids(user))
     return Response(
         {
             "manage": rights.manages(user),
-            "tests": [payloads.test_row(t, items=t.n_items, scales=t.n_scales, **counts[t.pk]) for t in rows],
+            "tests": [
+                payloads.test_row(
+                    t,
+                    items=t.n_items,
+                    scales=t.n_scales,
+                    used=t.n_attempts > 0,
+                    can_remove=_can_remove(user, t),
+                    **counts[t.pk],
+                )
+                for t in rows
+            ],
         }
     )
 
@@ -217,12 +249,15 @@ def test_detail(request, pk: int):
     test = _test_or_none(request.user, pk)
     if test is None:
         return _not_found()
+    scope = _scope_group_ids(request.user)
     if request.method == "GET":
-        return Response(payloads.test_detail(test, services.assigned_groups(test)))
+        return Response(payloads.test_detail(test, _scoped_groups(test, scope)))
     refused = _manager(request)
     if refused:
         return refused
     if request.method == "DELETE":
+        if not _can_remove(request.user, test):
+            return _forbid(_("Удалить тест может тот, кто его загрузил, и администратор"))
         if test.attempts.exists():
             test.archived_at = timezone.now()
             test.is_active = False
@@ -252,7 +287,7 @@ def test_detail(request, pk: int):
         fields.append("title")
     if fields:
         test.save(update_fields=fields)
-    return Response(payloads.test_detail(test, services.assigned_groups(test)))
+    return Response(payloads.test_detail(test, _scoped_groups(test, scope)))
 
 
 @extend_schema(responses={200: bytes})
@@ -308,8 +343,9 @@ def test_assignments(request, pk: int):
         if not students:
             continue
         plan.append({"group": group, "students": students})
-    services.assign(test, plan, actor=request.user)
-    return Response(payloads.test_detail(test, services.assigned_groups(test)))
+    # назначения чужих групп (другого учителя, администратора) учитель не видит и не стирает
+    services.assign(test, plan, actor=request.user, within=allowed)
+    return Response(payloads.test_detail(test, _scoped_groups(test, _scope_group_ids(request.user))))
 
 
 @extend_schema(responses={200: dict})

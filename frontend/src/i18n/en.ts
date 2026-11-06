@@ -3206,6 +3206,7 @@ export const en: Record<string, string> = {
   'завтра до {time}': 'tomorrow by {time}',
   'загружается…': 'loading…',
   'загрузил {name}': 'uploaded by {name}',
+  'загрузил: {name}': 'uploaded by: {name}',
   'загрузок пока не было': 'no uploads yet',
   'задание — в прикреплённых файлах': 'the task is in the attached files',
   'задание|задания|заданий': 'question|questions',

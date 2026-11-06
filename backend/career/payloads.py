@@ -20,7 +20,19 @@ def test_brief(test: CareerTest) -> dict:
     return {"id": test.pk, "title": test.title, "is_active": test.is_active}
 
 
-def test_row(test: CareerTest, *, items: int, scales: int, assigned: int, done: int, in_progress: int) -> dict:
+def test_row(
+    test: CareerTest,
+    *,
+    items: int,
+    scales: int,
+    assigned: int,
+    done: int,
+    in_progress: int,
+    used: bool = False,
+    can_remove: bool = False,
+) -> dict:
+    """Строка списка. `used` — попытки у теста есть хоть где-то (тогда «В архив», а не
+    «Удалить»); счётчики — по группам смотрящего."""
     return {
         **test_brief(test),
         "instruction": test.instruction,
@@ -33,6 +45,8 @@ def test_row(test: CareerTest, *, items: int, scales: int, assigned: int, done: 
         "file_name": test.file_name,
         "created_at": test.created_at,
         "created_by": person(test.created_by),
+        "used": used,
+        "can_remove": can_remove,
     }
 
 

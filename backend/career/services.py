@@ -99,9 +99,16 @@ def assigned_student_ids(test: CareerTest, group: StudyGroup) -> list[int]:
 
 
 @transaction.atomic
-def assign(test: CareerTest, groups: list[dict], *, actor) -> None:
-    """Заменить назначения теста: список {group, students|null}; пусто — снять всё."""
-    test.assignments.all().delete()
+def assign(test: CareerTest, groups: list[dict], *, actor, within: set[int] | None = None) -> None:
+    """Заменить назначения теста: список {group, students|null}; пусто — снять всё.
+
+    `within` — группы, которые человек назначает: заменяются только их назначения,
+    остальные остаются (тест общий, у других групп свой учитель); None — все группы.
+    """
+    current = test.assignments.all()
+    if within is not None:
+        current = current.filter(group_id__in=within)
+    current.delete()
     for row in groups:
         group = row["group"]
         students = row.get("students")

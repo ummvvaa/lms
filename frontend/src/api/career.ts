@@ -27,6 +27,10 @@ export interface CareerTestRow extends CareerTestBrief {
   file_name: string
   created_at: string
   created_by: { id: number; full_name: string; short: string } | null
+  /** попытки у теста есть хоть где-то: «В архив», а не «Удалить» */
+  used: boolean
+  /** удалить или убрать в архив — автор и администратор */
+  can_remove: boolean
 }
 
 export interface CareerTestGroup {

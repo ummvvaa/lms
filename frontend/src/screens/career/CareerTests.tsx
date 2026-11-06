@@ -81,8 +81,9 @@ function TestsTab({ manage }: { manage: boolean }) {
   const toggle = (row: CareerTestRow, on: boolean) =>
     patch.mutate({ id: row.id, is_active: on }, { onError: (error) => toast.error(error.message) })
   const current = rows.find((row) => row.id === opened) ?? null
+  // тест общий для школы — в строке видно, кто его загрузил
   const whoNote = (row: CareerTestRow) =>
-    [formatDate(row.created_at), row.created_by?.short ?? ''].filter(Boolean).join(' · ')
+    [formatDate(row.created_at), row.created_by ? t('загрузил: {name}', { name: row.created_by.short }) : ''].filter(Boolean).join(' · ')
   // показатели — из тех же чисел, что в карточках тестов
   const active = rows.filter((row) => row.is_active).length
   const done = rows.reduce((sum, row) => sum + row.done, 0)
