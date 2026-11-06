@@ -416,6 +416,9 @@
   opacity: 0.75;
 }
 
+/* значок — ровно по центру круга: sonner ставит иконке `justify-content: flex-start`,
+   и дорожка сетки по ширине значка прижималась к левому краю (−4 px), а svg ещё
+   сдвигал отступ −1 px; поэтому центр задан и дорожке, и самому значку */
 [data-sonner-toast][data-styled='true'].cn-toast [data-icon] {
   width: 22px;
   height: 22px;
@@ -424,6 +427,11 @@
   color: var(--on-accent);
   display: grid;
   place-items: center;
+  place-content: center;
+}
+
+[data-sonner-toast][data-styled='true'].cn-toast [data-icon] svg {
+  margin: 0;
 }
 
 /* ---------------------------------------------------------------------------
