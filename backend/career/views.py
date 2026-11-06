@@ -34,6 +34,7 @@ from career.models import (
     CareerTest,
     CareerTestOption,
     ExportStatus,
+    ItemKind,
 )
 from career.tasks import JOB_KIND
 from core import jobs, usage
@@ -690,16 +691,21 @@ def analysis_detail(request, pk: int):
                 setattr(direction, field_name, value[:limit] if limit else value)
                 edited = True
         direction.save()
-    for item in body.get("profile") or []:
-        sid = _int((item or {}).get("id"))
-        scale = row.scales.filter(pk=sid).first() if sid else None
-        if scale is None:
-            continue
-        for field_name in ("meaning", "meaning_student"):
-            if field_name in item:
-                setattr(scale, field_name, str(item[field_name] or "").strip())
-                edited = True
-        scale.save()
+        # профессии и программы с объяснением: правится название профессии и текст
+        for entry in item.get("items") or []:
+            iid = _int((entry or {}).get("id"))
+            line = direction.items.filter(pk=iid).first() if iid else None
+            if line is None:
+                continue
+            if "title" in entry and line.kind == ItemKind.PROFESSION:
+                title = str(entry["title"] or "").strip()
+                if not title:
+                    return _bad(_("Название профессии не может быть пустым"))
+                line.title = title[:200]
+            if "text" in entry:
+                line.text = str(entry["text"] or "").strip()
+            line.save(update_fields=["title", "text"])
+            edited = True
     if edited:
         row.edited_at = timezone.now()
         row.edited_by = request.user

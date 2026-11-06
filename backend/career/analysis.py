@@ -9,14 +9,17 @@
 из карточки, вузы из списка ученика. Имени ученика в запросе нет — только
 номер (как у остальных операций помощника).
 
-Разбор подробный, «от А до Я» (решение владельца, 04.11.2026): общий вывод
-по всему профилю, профиль интересов — смысл каждой шкалы, два–четыре
-направления, каждое на сильной шкале; объём каждой части задан в `SYSTEM`.
+Разбор подробный (решение владельца, 04.11.2026): общий вывод про сильные
+и средние шкалы и их сочетание, два–пять направлений, каждое на сильной шкале;
+объём каждой части задан в `SYSTEM`. Профиля интересов по каждой шкале нет
+(решение владельца по просьбе профориентолога, 06.11.2026: баллы и так видны
+в результатах теста), отвергаемые шкалы — одной фразой в выводе. Профессии —
+с объяснением, программы — номер из каталога и «почему подходит».
 Направление, которое не опирается ни на одну сильную шкалу, отбрасывается.
 Программы и цифры порогов — только из каталога (`AdmissionRequirement`,
-инвариант 10): программы модель называет номерами, порогов нет — экзамены
-без цифр. Ответ хранится строками `CareerAnalysis`, `CareerAnalysisScale`
-и `CareerAnalysisDirection`; в доменные поля ученика ничего не пишется.
+инвариант 10): номер не из списка отбрасывается, порогов нет — экзамены
+без цифр. Ответ хранится строками `CareerAnalysis`, `CareerAnalysisDirection`
+и `CareerDirectionItem`; в доменные поля ученика ничего не пишется.
 
 Один набор сданных попыток разбирается один раз (`fingerprint`):
 повторный запуск по тем же попыткам возвращает готовый разбор, пока
@@ -36,9 +39,10 @@ from career.models import (
     AnalysisStatus,
     CareerAnalysis,
     CareerAnalysisDirection,
-    CareerAnalysisScale,
     CareerAttempt,
+    CareerDirectionItem,
     CareerRange,
+    ItemKind,
 )
 from career.scoring import bounds
 from core.parallels import ADMISSION_PARALLEL, parallel_of
@@ -47,16 +51,19 @@ from universities.models import AdmissionRequirement, Program, StudentUniversity
 
 #: сколько программ каталога отдаём модели — как у прежнего профтеста
 CANDIDATES = 60
-#: направлений от двух до четырёх, если есть хотя бы одна сильная шкала
+#: направлений от двух до пяти, если есть хотя бы одна сильная шкала
 MIN_DIRECTIONS = 2
-MAX_DIRECTIONS = 4
+MAX_DIRECTIONS = 5
 #: по скольким верхним диапазонам теста строятся направления — только по самому верхнему
 STRONG_RANGES = 1
 #: правила, по которым считается новый разбор (`CareerAnalysis.rules`)
-RULES = 3
+RULES = 4
+#: разборы по правилам ниже этих — «по старым правилам», с плашкой и «Пересчитать»;
+#: разбор с профилем интересов (3) показывается как новый, только без профиля
+LEGACY_BELOW = 3
 #: предел ответа без рассуждения: рассуждению провайдер добавляет запас `LLM_REASONING_RESERVE`.
-#: Подробный ответ на три теста (35 шкал профиля, четыре направления) — около 8 000 токенов;
-#: предел вдвое выше, чтобы ответ не оборвался на длинном профиле
+#: Подробный ответ на три теста (пять направлений с профессиями и программами) — около
+#: 8 000 токенов; предел вдвое выше, чтобы ответ не оборвался
 MAX_TOKENS = 16000
 
 #: место шкалы в профиле: верхний диапазон, выше порога разбора, ниже порога
@@ -76,18 +83,21 @@ LEVEL_TITLES = (  # i18n-skip: промпт ИИ
 SYSTEM = (  # i18n-skip: промпт ИИ — язык ответа модели настраивается отдельно
     """Ты — профориентолог частной школы в Казахстане. Школа ведёт 8–11 классы и готовит
 учеников к поступлению в зарубежные вузы. Разбор результатов тестов профориентации читает
-профориентолог школы и обсуждает его с учеником и родителями: разбор должен объяснить профиль
-интересов от А до Я, показать, куда двигаться для поступления за рубеж и что делать уже сейчас.
+профориентолог школы и обсуждает его с учеником и родителями: разбор должен объяснить, на чём
+держатся интересы ученика, показать направления, профессии и программы, куда двигаться для
+поступления за рубеж и что делать уже сейчас.
 
 Пиши подробно и по делу: разбор — основа разговора с учеником и родителями, короткие общие
 фразы им не помогают. Объём каждой части:
-- общий вывод — шесть–десять предложений: весь профиль интересов от самых сильных шкал
-  до отвергаемых, как интересы сочетаются между собой и что это значит для выбора
-  специальности за рубежом;
-- профиль интересов — по каждой шкале из списка, ни одной не пропуская, одна–две фразы о том,
-  что значит её балл: и у сильных, и у средних, и у слабых и отвергаемых шкал;
+- общий вывод — пять–восемь предложений: сильные и средние шкалы, как они сочетаются между
+  собой и что это значит для выбора специальности за рубежом; слабые и отвергаемые шкалы —
+  одной фразой списком («не интересуют: биология, химия, медицина»), без разбора каждой;
 - «почему подходит» — четыре–шесть предложений: через конкретные шкалы, их баллы
   и их сочетание;
+- профессии — три–пять, у каждой одна–две фразы: чем человек этой профессии занимается
+  и почему она подходит, через шкалы и баллы;
+- программы каталога — у каждой две–три фразы: как программа связана с интересами
+  и что она требует — пороги программы из списка против баллов ученика;
 - «что сдавать для поступления» — по каждому экзамену отдельно, каждый с новой строки:
   нужен ли он для этого направления, текущий балл ученика, пороги программ каталога,
   сколько не хватает или что порог уже пройден;
@@ -98,13 +108,13 @@ SYSTEM = (  # i18n-skip: промпт ИИ — язык ответа модел�
 Правила, нарушать нельзя:
 - опирайся только на результаты тестов, баллы ученика и программы, которые даны ниже;
   ничего не додумывай о личности ученика;
-- направлений — от двух до четырёх. Каждое направление обязано опираться хотя бы на одну
+- направлений — от двух до пяти. Каждое направление обязано опираться хотя бы на одну
   сильную шкалу — из самого верхнего диапазона теста; одна сильная шкала может дать несколько
   направлений. Средние шкалы могут дополнять направление по сильной шкале («математика,
   12 из 12, вместе с интересом к бизнесу, 6 из 12, — Economics»), но направления только
   из средних шкал не бывает. У каждого направления перечисли сильные шкалы, на которые
   оно опирается, — названиями точно как в списке. Сильных шкал нет — направлений не давай,
-  а профиль интересов и общий вывод напиши так же подробно и скажи, к чему можно присмотреться;
+  а общий вывод напиши так же подробно и скажи, к чему можно присмотреться;
 - местные выпускные и вступительные экзамены (ЕНТ, ОГЭ, ЕГЭ и подобные) не упоминай никогда.
   Для поступления за рубеж сдают IELTS или TOEFL, SAT и другие экзамены, которые требуют
   программы из списка;
@@ -113,15 +123,19 @@ SYSTEM = (  # i18n-skip: промпт ИИ — язык ответа модел�
   в каталоге». Есть балл ученика и порог программы — сравни их: сколько не хватает
   или что порог уже пройден;
 - программы указывай только номерами из списка ниже; программы, которой нет в списке,
-  не существует — не называй её никак; подходящих нет — оставь список программ пустым;
+  не существует — не называй её никак; подходящих нет — оставь список программ пустым.
+  О вузе пиши только то, что дано в списке: название, страна, уровень, пороги; ничего
+  не додумывай о вузе, стране, рейтинге, городе и жизни студентов;
 - что подтянуть в школе — из предметов подготовки, которые ведёт школа (они перечислены ниже),
   плюс один профильный школьный предмет направления;
 - шаги уже сейчас — для портфолио: олимпиады, проекты, волонтёрство, летние школы. Ученику
   8–10 класса — с привязкой ко времени («в 10 классе», «до осени 11 класса») и без давления:
   программы для него — ориентир на будущее, а не выбор;
-- экзамены, предметы и шаги читают и ученик, и профориентолог: пиши их без обращения
-  и без третьего лица — «IELTS: сейчас 6.0, порог программ 6.5 — не хватает 0.5»,
-  «Участвовать в олимпиаде по биологии в 10 классе»;
+- экзамены, предметы, шаги, профессии и объяснения программ читают и ученик,
+  и профориентолог: пиши их без обращения и без третьего лица — «IELTS: сейчас 6.0, порог
+  программ 6.5 — не хватает 0.5», «Участвовать в олимпиаде по биологии в 10 классе»,
+  «Переводчик — работает с текстами и устной речью; подходит при самом высоком в тесте
+  интересе к языкам, 11 из 12»;
 - не обещай поступление и не употребляй слова «шанс», «вероятность», «прогноз»;
 - не ставь диагнозов и не оценивай ученика как человека: пиши об интересах и сильных сторонах;
 - пиши понятно для ученика и родителя: простыми словами, но не коротко — понятность не в том,
@@ -137,24 +151,12 @@ RESULT_SCHEMA = {  # i18n-skip: схема ответа для модели ИИ
     "properties": {
         "summary": {
             "type": "string",
-            "description": "общий вывод, шесть–десять предложений: весь профиль от самых сильных шкал "
-            "до отвергаемых, как интересы сочетаются и что это значит для выбора специальности за рубежом",
-        },
-        "profile": {
-            "type": "array",
-            "description": "профиль интересов: по каждой шкале из списка, в том же порядке, ни одной не пропуская",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "scale": {"type": "string", "description": "название шкалы точно как в списке"},
-                    "meaning": {"type": "string", "description": "одна–две фразы: что значит балл этой шкалы"},
-                },
-                "required": ["scale", "meaning"],
-            },
+            "description": "общий вывод, пять–восемь предложений: сильные и средние шкалы и их сочетание, "
+            "что это значит для выбора специальности за рубежом; отвергаемые — одной фразой списком",
         },
         "directions": {
             "type": "array",
-            "description": "от двух до четырёх направлений, каждое на сильной шкале; сильных нет — пустой список",
+            "description": "от двух до пяти направлений, каждое на сильной шкале; сильных нет — пустой список",
             "items": {
                 "type": "object",
                 "properties": {
@@ -173,7 +175,21 @@ RESULT_SCHEMA = {  # i18n-skip: схема ответа для модели ИИ
                         "type": "string",
                         "description": "почему подходит — четыре–шесть предложений через шкалы, баллы и их сочетание",
                     },
-                    "professions": {"type": "string", "description": "три–пять профессий через запятую"},
+                    "professions": {
+                        "type": "array",
+                        "description": "три–пять профессий",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {"type": "string", "description": "профессия"},
+                                "description": {
+                                    "type": "string",
+                                    "description": "одна–две фразы: чем занимается и почему подходит, через шкалы",
+                                },
+                            },
+                            "required": ["title", "description"],
+                        },
+                    },
                     "exams": {
                         "type": "string",
                         "description": "что сдавать для поступления за рубеж — по экзамену на строку: нужен ли, "
@@ -189,15 +205,26 @@ RESULT_SCHEMA = {  # i18n-skip: схема ответа для модели ИИ
                     },
                     "programs": {
                         "type": "array",
-                        "items": {"type": "integer"},
-                        "description": "номера программ из списка",
+                        "description": "программы из списка: номер и почему подходит",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "integer", "description": "номер программы из списка (id)"},
+                                "why": {
+                                    "type": "string",
+                                    "description": "две–три фразы: связь с интересами и что требует — пороги "
+                                    "программы против баллов ученика; о вузе — только данные из списка",
+                                },
+                            },
+                            "required": ["id", "why"],
+                        },
                     },
                 },
-                "required": ["title", "scales", "reasoning", "exams", "subjects", "next_steps"],
+                "required": ["title", "scales", "reasoning", "professions", "exams", "subjects", "next_steps"],
             },
         },
     },
-    "required": ["summary", "profile", "directions"],
+    "required": ["summary", "directions"],
 }
 
 
@@ -393,14 +420,12 @@ def _prompt(student: Student, attempts: list[CareerAttempt], programs: list[Prog
     junior = parallel_of(student) < ADMISSION_PARALLEL
     lines += ["", "Результаты тестов профориентации — все шкалы каждого теста:"]  # i18n-skip: промпт ИИ
     strong = False
-    scales = 0
     for attempt in attempts:
         test = attempt.test
         when = timezone.localtime(attempt.finished_at).strftime("%d.%m.%Y") if attempt.finished_at else ""
         lines.append("")
         lines.append(f"Тест «{test.title}»" + (f", пройден {when}" if when else "") + ":")  # i18n-skip: промпт ИИ
         rows = profile(attempt)
-        scales += len(rows)
         strong = strong or any(row.strong for row in rows)
         for level, title in LEVEL_TITLES:
             group = [row for row in rows if row.level == level]
@@ -432,18 +457,16 @@ def _prompt(student: Student, attempts: list[CareerAttempt], programs: list[Prog
     else:
         lines.append("Программ в каталоге школы пока нет: список программ оставь пустым.")  # i18n-skip: промпт ИИ
     lines.append("")
-    lines.append(
-        f"Профиль интересов — по каждой шкале из списков выше, все {scales}, в том же порядке."
-    )  # i18n-skip: промпт ИИ
     if strong:
         lines.append(
-            "Назови от двух до четырёх направлений; каждое — на сильной шкале, "
-            "одна сильная шкала может дать несколько направлений."
+            "Назови от двух до пяти направлений; каждое — на сильной шкале, "
+            "одна сильная шкала может дать несколько направлений. У каждого — три–пять профессий "
+            "с объяснением и подходящие программы из списка с объяснением, почему подходят."
         )  # i18n-skip: промпт ИИ
     else:
         lines.append(
-            "Сильных шкал нет: направлений не давай; профиль интересов и общий вывод напиши "
-            "так же подробно и назови, к чему можно присмотреться."
+            "Сильных шкал нет: направлений не давай; общий вывод напиши так же подробно "
+            "и назови, к чему можно присмотреться."
         )  # i18n-skip: промпт ИИ
     if with_thresholds:
         lines.append(
@@ -545,7 +568,6 @@ def run(analysis: CareerAnalysis) -> CareerAnalysis:
         analysis.save(update_fields=["summary", "status", "error", "finished_at"])
         return analysis
 
-    save_profile(analysis, lines, parsed.get("profile"))
     order = 0
     for item in rows:
         if order >= MAX_DIRECTIONS:
@@ -563,14 +585,13 @@ def run(analysis: CareerAnalysis) -> CareerAnalysis:
             title=_text(item["title"])[:150],
             title_abroad=_text(item.get("title_abroad"))[:150],
             reasoning=_text(item.get("reasoning")),
-            professions=_text(item.get("professions")),
+            # профессии пришли строкой, а не списком — остаются строкой, как у старых разборов
+            professions="" if isinstance(item.get("professions"), list) else _text(item.get("professions")),
             exams=_text(item.get("exams")),
             subjects=_text(item.get("subjects")),
             next_steps=_text(item.get("next_steps")),
         )
-        picked = [known[pid] for pid in (item.get("programs") or []) if isinstance(pid, int) and pid in known]
-        if picked:
-            direction.programs.set(picked)
+        save_items(direction, item, known)
     if strong and order == 0:
         analysis.status = AnalysisStatus.FAILED
         analysis.error = render(analysis.language, "Разбор пришёл без направлений — попробуйте пересчитать")
@@ -582,35 +603,44 @@ def run(analysis: CareerAnalysis) -> CareerAnalysis:
     return analysis
 
 
-def save_profile(analysis: CareerAnalysis, lines: list[tuple[str, ScaleLine]], answer) -> None:
-    """Профиль интересов: строка на каждую шкалу теста, смысл — из ответа модели по названию.
+def _program_id(value) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    return None
 
-    Шкалы и баллы — из попыток, а не из ответа: модель пропустила шкалу —
-    строка всё равно есть, с баллом и подписью, без объяснения. Одинаковые
-    названия в разных тестах разбираются по порядку.
+
+def save_items(direction: CareerAnalysisDirection, item: dict, known: dict[int, Program]) -> None:
+    """Профессии и программы направления строками, каждая со своим объяснением.
+
+    Программа — только из списка, отданного модели (инвариант 10): номер не из
+    списка отбрасывается, повтор той же программы — тоже. Номер без объяснения
+    (прежний вид ответа) принимается с пустым текстом.
     """
-    meanings: dict[str, list[str]] = {}
-    for item in answer if isinstance(answer, list) else []:
-        if isinstance(item, dict) and _text(item.get("meaning")):
-            meanings.setdefault(_key(item.get("scale") or ""), []).append(_text(item.get("meaning")))
-
-    def meaning_of(title: str) -> str:
-        queue = meanings.get(_key(title))
-        return queue.pop(0) if queue else ""
-
-    CareerAnalysisScale.objects.bulk_create(
-        CareerAnalysisScale(
-            analysis=analysis,
-            order=order,
-            test_title=test_title[:200],
-            title=line.title[:120],
-            score=line.score,
-            top=line.top,
-            label=line.label[:120],
-            meaning=meaning_of(line.title),
-        )
-        for order, (test_title, line) in enumerate(lines, start=1)
-    )
+    rows: list[CareerDirectionItem] = []
+    professions = item.get("professions") if isinstance(item.get("professions"), list) else []
+    for entry in professions:
+        if isinstance(entry, dict):
+            title, text = _text(entry.get("title")), _text(entry.get("description"))
+        else:
+            title, text = _text(entry), ""
+        if title:
+            rows.append(CareerDirectionItem(kind=ItemKind.PROFESSION, title=title[:200], text=text))
+    seen: set[int] = set()
+    for entry in item.get("programs") if isinstance(item.get("programs"), list) else []:
+        pid = _program_id(entry.get("id") if isinstance(entry, dict) else entry)
+        if pid is None or pid not in known or pid in seen:
+            continue
+        seen.add(pid)
+        why = _text(entry.get("why")) if isinstance(entry, dict) else ""
+        rows.append(CareerDirectionItem(kind=ItemKind.PROGRAM, program=known[pid], text=why))
+    for order, row in enumerate(rows, start=1):
+        row.direction = direction
+        row.order = order
+    CareerDirectionItem.objects.bulk_create(rows)
 
 
 # --- версия для ученика -----------------------------------------------------------------
@@ -623,9 +653,9 @@ STUDENT_SYSTEM = (  # i18n-skip: промпт ИИ — язык ответа м�
 Правила, нарушать нельзя:
 - обращайся к ученику на «ты»; пиши о его интересах и сильных сторонах: «у тебя выраженный
   интерес к…», «тебе может подойти…»;
-- сохрани подробность: каждая часть не короче исходной — общий вывод те же шесть–десять
-  предложений, «почему подходит» те же четыре–шесть, в профиле интересов — каждая шкала
-  с тем же смыслом. Не сокращай и не обобщай, только перепиши для ученика;
+- сохрани подробность: каждая часть не короче исходной — общий вывод те же пять–восемь
+  предложений, «почему подходит» те же четыре–шесть. Не сокращай и не обобщай, только
+  перепиши для ученика;
 - не упоминай учителя, обсуждение, родителей, «стоит рассмотреть с учеником» и любые
   слова, обращённые к кому-то, кроме ученика;
 - сохрани смысл, направления, профессии, экзамены, предметы и шаги: ничего не добавляй
@@ -642,18 +672,6 @@ STUDENT_SCHEMA = {  # i18n-skip: схема ответа для модели И�
     "type": "object",
     "properties": {
         "summary": {"type": "string", "description": "общий вывод для ученика, на «ты», не короче исходного"},
-        "profile": {
-            "type": "array",
-            "description": "профиль интересов для ученика — по каждой шкале из переданного разбора",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "order": {"type": "integer", "description": "номер шкалы из переданного разбора"},
-                    "meaning": {"type": "string", "description": "что значит балл — для ученика, на «ты»"},
-                },
-                "required": ["order", "meaning"],
-            },
-        },
         "directions": {
             "type": "array",
             "items": {
@@ -669,24 +687,13 @@ STUDENT_SCHEMA = {  # i18n-skip: схема ответа для модели И�
             },
         },
     },
-    "required": ["summary", "profile", "directions"],
+    "required": ["summary", "directions"],
 }
 
 
 def _student_prompt(analysis: CareerAnalysis) -> str:
     # i18n-skip: промпт ИИ — текст запроса модели, не интерфейс
     lines = ["Разбор для учителя:", f"Общий вывод: {analysis.summary}"]  # i18n-skip: промпт ИИ
-    scales = list(analysis.scales.all())
-    if scales:
-        lines.append("")
-        lines.append("Профиль интересов:")  # i18n-skip: промпт ИИ
-        for scale in scales:
-            mark = f"{scale.score}" + (f" из {scale.top}" if scale.top else "")
-            lines.append(
-                f"Шкала {scale.order}: {scale.title}, {mark}"
-                + (f" — {scale.label}" if scale.label else "")
-                + (f": {scale.meaning}" if scale.meaning else "")
-            )  # i18n-skip: промпт ИИ
     for direction in analysis.directions.all():
         lines.append("")
         lines.append(
@@ -694,9 +701,10 @@ def _student_prompt(analysis: CareerAnalysis) -> str:
             + (f" ({direction.title_abroad})" if direction.title_abroad else "")
         )  # i18n-skip: промпт ИИ
         lines.append(f"Почему подходит: {direction.reasoning}")  # i18n-skip: промпт ИИ
+        named = [row.title for row in direction.items.all() if row.kind == ItemKind.PROFESSION]
         # i18n-skip: подписи строк запроса модели
         for label, value in (
-            ("Профессии", direction.professions),
+            ("Профессии", ", ".join(named) or direction.professions),
             ("Что сдавать для поступления", direction.exams),
             ("Что подтянуть в школе", direction.subjects),
             ("Что сделать уже сейчас", direction.next_steps),
@@ -704,9 +712,7 @@ def _student_prompt(analysis: CareerAnalysis) -> str:
             if value:
                 lines.append(f"{label}: {value}")
     lines.append("")
-    lines.append(
-        "Перепиши общий вывод, смысл каждой шкалы профиля и объяснение каждого направления для ученика."
-    )  # i18n-skip: промпт ИИ
+    lines.append("Перепиши общий вывод и объяснение каждого направления для ученика.")  # i18n-skip: промпт ИИ
     return "\n".join(lines)
 
 
@@ -754,13 +760,6 @@ def write_student_version(analysis: CareerAnalysis, *, actor) -> CareerAnalysis:
             continue
         direction.reasoning_student = str(item.get("why") or "").strip()
         direction.save(update_fields=["reasoning_student"])
-    by_scale = {scale.order: scale for scale in analysis.scales.all()}
-    for item in parsed.get("profile") if isinstance(parsed.get("profile"), list) else []:
-        scale = by_scale.get(item.get("order")) if isinstance(item, dict) else None
-        if scale is None:
-            continue
-        scale.meaning_student = str(item.get("meaning") or "").strip()
-        scale.save(update_fields=["meaning_student"])
     analysis.summary_student = summary
     analysis.save(update_fields=["summary_student"])
     return analysis

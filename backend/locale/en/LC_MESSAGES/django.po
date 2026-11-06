@@ -19553,3 +19553,35 @@ msgstr "Sections no longer have a changing code: the section code is permanent �
 #: career/views.py
 msgid "Удалить тест может тот, кто его загрузил, и администратор"
 msgstr "Only the person who uploaded the test and the administrator can delete it"
+
+#: career/views.py
+msgid "Название профессии не может быть пустым"
+msgstr "The profession name cannot be empty"
+
+#: career/models.py
+msgid "Программа каталога"
+msgstr "Catalogue programme"
+
+#: career/models.py
+msgid "Профессии и программы в переводе"
+msgstr "Professions and programmes in translation"
+
+#: career/models.py
+msgid "Профессии и программы направлений"
+msgstr "Professions and programmes of directions"
+
+#: career/models.py
+msgid "Профессия"
+msgstr "Profession"
+
+#: career/models.py
+msgid "Профессия или программа в переводе"
+msgstr "Profession or programme in translation"
+
+#: career/models.py
+msgid "Профессия или программа направления"
+msgstr "Profession or programme of a direction"
+
+#: career/models.py
+msgid "Что это"
+msgstr "Type"

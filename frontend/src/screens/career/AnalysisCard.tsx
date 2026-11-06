@@ -2,11 +2,13 @@
  * Разбор одного ученика — окно по центру. Две версии текста (Г1, решение
  * владельца, 09.10.2026): «Для учителя» — как написала модель, в третьем лице;
  * «Для ученика» — на «ты», пишется моделью при первом «Показать ученику»,
- * учитель правит обе. Ученик видит только свою версию.
+ * учитель правит обе. Ученик видит только свою версию. Профиля интересов
+ * по каждой шкале нет (решение владельца, 06.11.2026); профессии и объяснения
+ * программ одни на обе версии и правятся во вкладке «Для учителя».
  */
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useCareerAnalysisPatch, useCareerStartAnalyses, type CareerAnalysis, type CareerDirection, type CareerProfileScale } from '../../api/career'
+import { useCareerAnalysisPatch, useCareerStartAnalyses, type CareerAnalysis, type CareerDirection } from '../../api/career'
 import { isActiveRun } from '../../api/hooks'
 import Field from '../../components/Field'
 import Modal from '../../components/Modal'
@@ -16,40 +18,50 @@ import { Button } from '../../components/ui/button'
 import { Switch } from '../../components/ui/switch'
 import { t } from '../../i18n'
 import { formatDateTime } from '../../lib/format'
-import DirectionView, { DIRECTION_FIELDS, DirectionFacts, DirectionHead, DirectionPrograms } from './DirectionView'
+import DirectionView, { DIRECTION_FIELDS, DirectionFacts, DirectionHead, DirectionPrograms, programLine } from './DirectionView'
 import ExportDialog from './ExportDialog'
-import InterestProfile from './InterestProfile'
 import { analysisTone } from './tone'
 
 type Version = 'teacher' | 'student'
-type Meaning = 'meaning' | 'meaning_student'
-type Draft = { summary: string; summary_student: string; directions: Record<number, Partial<CareerDirection>>; profile: Record<number, Partial<Record<Meaning, string>>> }
+type ItemDraft = { direction: number; title?: string; text?: string }
+type Draft = { summary: string; summary_student: string; directions: Record<number, Partial<CareerDirection>>; items: Record<number, ItemDraft> }
 
 export default function AnalysisCard({ analysis, manage, studentSees = false, onClose }: { analysis: CareerAnalysis; manage: boolean; /** ученику разборы показываются (флаг сервера); нет — переключатель и вкладка «Для ученика» скрыты */ studentSees?: boolean; onClose: () => void }) {
   const patch = useCareerAnalysisPatch()
   const [version, setVersion] = useState<Version>('teacher')
   const [exporting, setExporting] = useState(false)
-  const [draft, setDraft] = useState<Draft>({ summary: analysis.summary, summary_student: analysis.summary_student ?? '', directions: {}, profile: {} })
+  const [draft, setDraft] = useState<Draft>({ summary: analysis.summary, summary_student: analysis.summary_student ?? '', directions: {}, items: {} })
   const dirty =
     draft.summary !== analysis.summary ||
     draft.summary_student !== (analysis.summary_student ?? '') ||
     Object.keys(draft.directions).length > 0 ||
-    Object.keys(draft.profile).length > 0
+    Object.keys(draft.items).length > 0
   const field = (direction: CareerDirection, name: keyof CareerDirection) =>
     (draft.directions[direction.id]?.[name] as string | undefined) ?? ((direction[name] as string | undefined) ?? '')
   const setField = (direction: CareerDirection, name: keyof CareerDirection, value: string) =>
     setDraft((prev) => ({ ...prev, directions: { ...prev.directions, [direction.id]: { ...prev.directions[direction.id], [name]: value } } }))
-  const save = () =>
+  // профессия или объяснение программы: черновик по номеру строки
+  const itemField = (id: number, name: 'title' | 'text', saved: string) => draft.items[id]?.[name] ?? saved
+  const setItem = (direction: CareerDirection, id: number, name: 'title' | 'text', value: string) =>
+    setDraft((prev) => ({ ...prev, items: { ...prev.items, [id]: { ...prev.items[id], direction: direction.id, [name]: value } } }))
+  const save = () => {
+    const changed = new Set([...Object.keys(draft.directions).map(Number), ...Object.values(draft.items).map((item) => item.direction)])
     patch.mutate(
       {
         id: analysis.id,
         summary: draft.summary,
         summary_student: draft.summary_student,
-        directions: Object.entries(draft.directions).map(([id, body]) => ({ id: Number(id), ...body })),
-        profile: Object.entries(draft.profile).map(([id, body]) => ({ id: Number(id), ...body })),
+        directions: [...changed].map((id) => ({
+          id,
+          ...draft.directions[id],
+          items: Object.entries(draft.items)
+            .filter(([, item]) => item.direction === id)
+            .map(([itemId, { title, text }]) => ({ id: Number(itemId), ...(title !== undefined ? { title } : {}), ...(text !== undefined ? { text } : {}) })),
+        })),
       },
-      { onSuccess: () => setDraft((prev) => ({ ...prev, directions: {}, profile: {} })), onError: (error) => toast.error(error.message) },
+      { onSuccess: () => setDraft((prev) => ({ ...prev, directions: {}, items: {} })), onError: (error) => toast.error(error.message) },
     )
+  }
   // версия для ученика пишется в фоне: пришла опросом — в черновик, если его не трогали
   const [seenVersion, setSeenVersion] = useState(analysis.summary_student ?? '')
   if ((analysis.summary_student ?? '') !== seenVersion) {
@@ -101,14 +113,6 @@ export default function AnalysisCard({ analysis, manage, studentSees = false, on
   const forStudent = version === 'student'
   const summaryText = forStudent ? analysis.summary_student ?? '' : analysis.summary
   const reasonOf = (d: CareerDirection) => (forStudent ? (d.reasoning_student ?? '') : d.reasoning)
-  const meaningName: Meaning = forStudent ? 'meaning_student' : 'meaning'
-  const profileEdit = {
-    version,
-    value: (scale: CareerProfileScale) => draft.profile[scale.id]?.[meaningName] ?? scale[meaningName] ?? '',
-    onChange: (scale: CareerProfileScale, value: string) =>
-      setDraft((prev) => ({ ...prev, profile: { ...prev.profile, [scale.id]: { ...prev.profile[scale.id], [meaningName]: value } } })),
-  }
-  const profileRead = forStudent ? analysis.profile.map((scale) => ({ ...scale, meaning: scale.meaning_student ?? '' })) : analysis.profile
   const header = [analysis.student?.full_name ?? '', analysis.tests.map((test) => test.title).join(', ')].filter(Boolean).join(' · ')
 
   return (
@@ -168,7 +172,6 @@ export default function AnalysisCard({ analysis, manage, studentSees = false, on
           summaryText && <p className="acad__note">{summaryText}</p>
         )
       )}
-      {analysis.status === 'done' && (forStudent ? studentReady : true) && <InterestProfile profile={manage ? analysis.profile : profileRead} edit={manage ? profileEdit : undefined} />}
       {(forStudent ? studentReady : true) &&
         analysis.directions.map((direction) =>
           manage ? (
@@ -195,10 +198,36 @@ export default function AnalysisCard({ analysis, manage, studentSees = false, on
                 <DirectionFacts direction={direction} legacy={analysis.legacy} />
               ) : (
                 <>
+                  {direction.profession_items.length > 0 ? (
+                    <div className="canal__fact">
+                      <span className="eyebrow">{t('Профессии')}</span>
+                      {direction.profession_items.map((job) => (
+                        <div key={job.id} className="canal__item canal__item--edit">
+                          <Field kind="textarea" rows={1} name={`job-${job.id}`} label={t('Профессия')} value={itemField(job.id, 'title', job.title)} onChange={(value) => setItem(direction, job.id, 'title', value)} />
+                          <Field kind="textarea" rows={2} name={`job-text-${job.id}`} label={t('Чем занимается и почему подходит')} value={itemField(job.id, 'text', job.text)} onChange={(value) => setItem(direction, job.id, 'text', value)} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <Field kind="textarea" rows={2} name={`professions-${direction.id}`} label={t('Профессии')} value={field(direction, 'professions')} onChange={(value) => setField(direction, 'professions', value)} />
+                  )}
                   {DIRECTION_FIELDS.filter(({ name }) => shows(direction, name)).map(({ name, label }) => (
                     <Field key={name} kind="textarea" rows={2} name={`${name}-${direction.id}`} label={t(label)} value={field(direction, name)} onChange={(value) => setField(direction, name, value)} />
                   ))}
-                  <DirectionPrograms direction={direction} legacy={analysis.legacy} />
+                  {direction.programs.some((program) => program.item !== null) ? (
+                    <div className="canal__fact">
+                      <span className="eyebrow">{t('Программы каталога')}</span>
+                      {direction.programs.map((program) =>
+                        program.item === null ? null : (
+                          <div key={program.item} className="canal__item canal__item--edit">
+                            <Field kind="textarea" rows={2} name={`program-${program.item}`} label={programLine(program)} value={itemField(program.item, 'text', program.why)} onChange={(value) => setItem(direction, program.item as number, 'text', value)} />
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  ) : (
+                    <DirectionPrograms direction={direction} legacy={analysis.legacy} />
+                  )}
                 </>
               )}
             </div>

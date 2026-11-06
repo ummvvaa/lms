@@ -329,8 +329,9 @@ class CareerAnalysis(models.Model):
     #: по каким правилам считался разбор: 1 — прежние (направления по всем шкалам
     #: выше порога, школьные предметы); 2 — поступление за рубеж, направления только
     #: по верхнему диапазону теста; 3 — подробный разбор с профилем интересов по всем
-    #: шкалам, два–четыре направления. Старые разборы не пересчитываются сами
-    rules = models.PositiveSmallIntegerField(gettext_lazy("Правила разбора"), default=3)
+    #: шкалам, два–четыре направления; 4 — без профиля, два–пять направлений, профессии
+    #: и программы с объяснением (06.11.2026). Старые разборы не пересчитываются сами
+    rules = models.PositiveSmallIntegerField(gettext_lazy("Правила разбора"), default=4)
     edited_at = models.DateTimeField(gettext_lazy("Правил учитель"), null=True, blank=True)
     edited_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -381,6 +382,46 @@ class CareerAnalysisDirection(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+
+class ItemKind(models.TextChoices):
+    PROFESSION = "profession", gettext_lazy("Профессия")
+    PROGRAM = "program", gettext_lazy("Программа каталога")
+
+
+class CareerDirectionItem(models.Model):
+    """Профессия или программа каталога в направлении — с объяснением, почему подходит.
+
+    С 06.11.2026 (решение владельца по просьбе профориентолога): профессия — название
+    и одна–две фразы, чем человек занимается и почему это подходит ученику; программа —
+    только из каталога (инвариант 10), с двумя–тремя фразами, как она связана с интересами
+    и что требует. Порядок общий на направление. У разборов до этого строк нет:
+    профессии — строкой `CareerAnalysisDirection.professions`, программы — связью
+    `CareerAnalysisDirection.programs` без объяснения.
+    """
+
+    direction = models.ForeignKey(CareerAnalysisDirection, related_name="items", on_delete=models.CASCADE)
+    kind = models.CharField(gettext_lazy("Что это"), max_length=10, choices=ItemKind.choices)
+    order = models.PositiveSmallIntegerField(gettext_lazy("Порядок"), default=1)
+    #: название профессии; у программы пусто — название из каталога
+    title = models.CharField(gettext_lazy("Профессия"), max_length=200, blank=True)
+    program = models.ForeignKey(
+        "universities.Program",
+        verbose_name=gettext_lazy("Программа каталога"),
+        related_name="career_direction_items",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    text = models.TextField(gettext_lazy("Почему подходит"), blank=True)
+
+    class Meta:
+        verbose_name = gettext_lazy("Профессия или программа направления")
+        verbose_name_plural = gettext_lazy("Профессии и программы направлений")
+        ordering = ("order", "id")
+
+    def __str__(self) -> str:
+        return self.title or str(self.program_id or "")
 
 
 class CareerAnalysisScale(models.Model):
@@ -469,6 +510,24 @@ class CareerDirectionTranslation(models.Model):
         verbose_name = gettext_lazy("Направление в переводе")
         verbose_name_plural = gettext_lazy("Направления в переводе")
         ordering = ("order", "id")
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class CareerDirectionItemTranslation(models.Model):
+    """Профессия или объяснение программы в переводе — по номерам направления и строки."""
+
+    translation = models.ForeignKey(CareerAnalysisTranslation, related_name="items", on_delete=models.CASCADE)
+    direction_order = models.PositiveSmallIntegerField(gettext_lazy("Направление"))
+    order = models.PositiveSmallIntegerField(gettext_lazy("Порядок"))
+    title = models.CharField(gettext_lazy("Профессия"), max_length=200, blank=True)
+    text = models.TextField(gettext_lazy("Почему подходит"), blank=True)
+
+    class Meta:
+        verbose_name = gettext_lazy("Профессия или программа в переводе")
+        verbose_name_plural = gettext_lazy("Профессии и программы в переводе")
+        ordering = ("direction_order", "order", "id")
 
     def __str__(self) -> str:
         return self.title

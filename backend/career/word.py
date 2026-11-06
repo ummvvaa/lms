@@ -4,8 +4,9 @@
 готовый (`ready_analyses`). Текст — версия профориентолога, как она сейчас на
 экране, с его правками; версия для ученика в Word не идёт. Порядок: шапка
 с гербом школы, «Общая картина по всем тестам» (если разборов больше одного),
-затем каждый разбор с новой страницы — тест и дата, общий вывод, профиль
-интересов таблицей с выделенными сильными шкалами, направления.
+затем каждый разбор с новой страницы — тест и дата, общий вывод, направления
+с профессиями и программами, у каждой — почему подходит. Профиля интересов
+по каждой шкале в файле нет (решение владельца, 06.11.2026).
 
 Стек — тот же, что у отчётов родителям (`academics.report_files`): python-docx
 под docxtpl, шрифт Times New Roman 12, лист A4. Документ собирается кодом, а не
@@ -53,16 +54,26 @@ class ScaleText:
 
 
 @dataclass
+class ItemText:
+    """Профессия (название и объяснение) или программа («Программа — вуз (страна) · уровень»
+    и почему подходит; название программы не переводится)."""
+
+    title: str
+    text: str
+
+
+@dataclass
 class DirectionText:
     title: str
     title_abroad: str
     reasoning: str
+    #: у прежних разборов — строка; у новых пусто, профессии — `profession_items`
     professions: str
     exams: str
     subjects: str
     next_steps: str
-    #: «Программа — вуз (страна) · уровень»: названия не переводятся
-    programs: list[str] = field(default_factory=list)
+    programs: list[ItemText] = field(default_factory=list)
+    profession_items: list[ItemText] = field(default_factory=list)
 
 
 @dataclass
@@ -95,7 +106,7 @@ def ready_analyses(student) -> list[CareerAnalysis]:
     """
     rows = (
         CareerAnalysis.objects.filter(student=student, status=AnalysisStatus.DONE)
-        .prefetch_related("attempts__test", "scales", "directions__programs__university")
+        .prefetch_related("attempts__test", "scales", "directions__programs__university", "directions__items")
         .order_by("-created_at", "-id")
     )
     seen: set[frozenset[int]] = set()
@@ -114,19 +125,18 @@ def _date(moment) -> str:
     return timezone.localtime(moment).strftime("%d.%m.%Y") if moment else ""
 
 
-def _program(program) -> str:
-    university = program.university
-    place = f"{university.name} ({university.country})" if university.country else university.name
-    level = program.get_level_display() if program.level else ""
-    return f"{program.name} — {place}" + (f" · {level}" if level else "")
+def program_line(row: dict) -> str:
+    """«Business — Arizona State University (США) · Бакалавриат»."""
+    place = f"{row['university']} ({row['country']})" if row["country"] else row["university"]
+    return f"{row['name']} — {place}" + (f" · {row['level_title']}" if row["level_title"] else "")
 
 
 def text_of(analysis: CareerAnalysis) -> AnalysisText:
     """Разбор как на экране профориентолога: его текст, его правки.
 
-    Сильная шкала — по диапазонам теста, как в самом разборе (`analysis.profile`).
-    У разборов до профиля интересов строк профиля нет — таблица собирается
-    из баллов попыток, без объяснений.
+    Шкалы в файл не идут (профиля интересов нет), но нужны общей картине
+    и переводу названий тестов: сильная — по диапазонам теста, как в самом
+    разборе (`analysis.profile`); у разборов без строк профиля — из баллов попыток.
     """
     attempts = sorted(analysis.attempts.all(), key=lambda a: (a.finished_at or a.started_at, a.pk))
     strong: set[tuple[str, str]] = set()
@@ -150,19 +160,24 @@ def text_of(analysis: CareerAnalysis) -> AnalysisText:
         )
         for row in analysis.scales.all()
     ]
-    directions = [
-        DirectionText(
-            title=row.title,
-            title_abroad=row.title_abroad,
-            reasoning=row.reasoning,
-            professions=row.professions,
-            exams=row.exams,
-            subjects=row.subjects,
-            next_steps=row.next_steps,
-            programs=[_program(program) for program in row.programs.all()],
+    from career.payloads import direction_items
+
+    directions = []
+    for row in analysis.directions.all():
+        professions, programs = direction_items(row)
+        directions.append(
+            DirectionText(
+                title=row.title,
+                title_abroad=row.title_abroad,
+                reasoning=row.reasoning,
+                professions=row.professions,
+                exams=row.exams,
+                subjects=row.subjects,
+                next_steps=row.next_steps,
+                programs=[ItemText(program_line(item), item["why"]) for item in programs],
+                profession_items=[ItemText(item["title"], item["text"]) for item in professions],
+            )
         )
-        for row in analysis.directions.all()
-    ]
     return AnalysisText(
         pk=analysis.pk,
         tests=[(attempt.test.title, _date(attempt.finished_at)) for attempt in attempts],
@@ -367,45 +382,34 @@ def _overview(document, overview: OverviewText) -> None:
             _paragraphs(document, text)
 
 
-def _score(scale: ScaleText) -> str:
-    return _("{score} из {top}").format(score=scale.score, top=scale.top) if scale.top else str(scale.score)
+def _label(document, label: str) -> None:
+    head = document.add_paragraph()
+    head.paragraph_format.space_before = document.styles["Normal"].paragraph_format.space_after
+    head.paragraph_format.space_after = 0
+    head.paragraph_format.keep_with_next = True
+    head.add_run(label).bold = True
 
 
-def _profile(document, scales: list[ScaleText]) -> None:
-    from docx.shared import Cm, Pt
+def _items(document, label: str, items: list[ItemText], *, title_bold: bool) -> None:
+    """Профессии: название жирным и объяснение в той же строке; программы — строкой
+    списка, объяснение — абзацем ниже."""
+    from docx.shared import Cm
 
-    document.add_heading(_("Профиль интересов"), level=2)
-    tests = list(dict.fromkeys(scale.test for scale in scales))
-    explained = any(scale.meaning for scale in scales)
-    widths = [Cm(4.2), Cm(1.9), Cm(3.4), Cm(7.5)] if explained else [Cm(7), Cm(3), Cm(7)]
-    heads = [_("Шкала"), _("Балл"), _("Диапазон"), _("Что значит")][: len(widths)]
-    for test in tests:
-        if len(tests) > 1:
-            caption = document.add_paragraph()
-            caption.paragraph_format.keep_with_next = True
-            caption.add_run(test).italic = True
-        table = document.add_table(rows=1, cols=len(widths))
-        table.style = document.styles["Table Grid"]
-        _repeat_header(table.rows[0])
-        for cell, text in zip(table.rows[0].cells, heads, strict=True):
-            _shade(cell, HEAD_FILL)
-            run = cell.paragraphs[0].add_run(text)
-            run.bold, run.font.size = True, Pt(10.5)
-        for scale in (row for row in scales if row.test == test):
-            row = table.add_row()
-            _keep_row(row)
-            values = [scale.title, _score(scale), scale.label, scale.meaning][: len(widths)]
-            for index, (cell, text) in enumerate(zip(row.cells, values, strict=True)):
-                run = cell.paragraphs[0].add_run(text)
-                run.font.size = Pt(10.5)
-                if scale.strong:
-                    _shade(cell, STRONG_FILL)
-                    run.bold = index < 2
-        _widths(table, widths)
-    note = document.add_paragraph()
-    note.paragraph_format.space_before = Pt(4)
-    run = note.add_run(_("Цветом выделены сильные шкалы — верхний диапазон теста: на них строятся направления."))
-    run.italic, run.font.size = True, Pt(10)
+    if not items:
+        return
+    _label(document, label)
+    for item in items:
+        if title_bold:
+            line = document.add_paragraph(style="List Bullet")
+            line.add_run(item.title).bold = True
+            if item.text.strip():
+                line.add_run(" — " + " ".join(_lines(item.text)))
+            continue
+        line = document.add_paragraph(style="List Bullet")
+        line.add_run(item.title).bold = True
+        for text in _lines(item.text):
+            why = document.add_paragraph(text)
+            why.paragraph_format.left_indent = Cm(0.63)
 
 
 def _direction(document, number: int, direction: DirectionText) -> None:
@@ -417,12 +421,14 @@ def _direction(document, number: int, direction: DirectionText) -> None:
         run = line.add_run(_("Как называется за рубежом: {title}").format(title=direction.title_abroad))
         run.italic, run.font.color.rgb = True, RGBColor.from_string("6B6458")
     _fact(document, _("Почему подходит"), direction.reasoning)
-    _fact(document, _("Профессии"), direction.professions)
+    if direction.profession_items:
+        _items(document, _("Профессии"), direction.profession_items, title_bold=True)
+    else:
+        _fact(document, _("Профессии"), direction.professions)
     _fact(document, _("Что сдавать для поступления"), direction.exams, bullets=True)
     _fact(document, _("Что подтянуть в школе"), direction.subjects, bullets=True)
     _fact(document, _("Что сделать уже сейчас"), direction.next_steps, bullets=True)
-    if direction.programs:
-        _fact(document, _("Программы каталога"), "\n".join(direction.programs), bullets=True)
+    _items(document, _("Программы каталога"), direction.programs, title_bold=False)
     tail = document.paragraphs[-1]
     tail.paragraph_format.space_after = Pt(8)
 
@@ -443,8 +449,6 @@ def _analysis(document, text: AnalysisText, *, new_page: bool) -> None:
     if _lines(text.summary):
         document.add_heading(_("Общий вывод"), level=2)
         _paragraphs(document, text.summary)
-    if text.scales:
-        _profile(document, text.scales)
     document.add_heading(_("Направления"), level=2)
     if not text.directions:
         document.add_paragraph(_("Направлений нет: сильных шкал в тестах нет, к чему присмотреться — в общем выводе."))

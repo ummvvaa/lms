@@ -97,28 +97,25 @@ export interface CareerDirection {
   /** как специальность называется в зарубежных вузах; у старых разборов пусто */
   title_abroad: string
   reasoning: string
+  /** профессии строкой — у разборов до 06.11.2026; у новых пусто, профессии — `profession_items` */
   professions: string
+  /** профессия и чем занимается, почему подходит — у разборов с 06.11.2026 */
+  profession_items: CareerDirectionItem[]
   exams: string
   subjects: string
   /** что сделать уже сейчас для портфолио — по шагу на строку; у старых разборов пусто */
   next_steps: string
-  programs: { id: number; name: string; university: string; level_title: string }[]
+  /** программы каталога; `why` и `item` — у разборов с 06.11.2026, у прежних пусто и null */
+  programs: { id: number; item: number | null; name: string; university: string; country: string; level_title: string; why: string }[]
   /** объяснение для ученика, на «ты» — только сотрудникам; ученику приходит в `reasoning` */
   reasoning_student?: string
 }
 
-/** шкала профиля интересов разбора: балл и подпись — снимок попытки, смысл — текст модели */
-export interface CareerProfileScale {
+/** профессия направления: название и объяснение */
+export interface CareerDirectionItem {
   id: number
-  order: number
-  test: string
   title: string
-  score: number
-  top: number
-  label: string
-  meaning: string
-  /** смысл для ученика, на «ты» — только сотрудникам; ученику приходит в `meaning` */
-  meaning_student?: string
+  text: string
 }
 
 export interface CareerAnalysis {
@@ -137,8 +134,6 @@ export interface CareerAnalysis {
   /** разбор считался по прежним правилам — показывается как есть, с плашкой */
   legacy: boolean
   tests: { id: number; title: string; attempt: number; finished_at: string | null }[]
-  /** профиль интересов по всем шкалам теста; у разборов до 04.11.2026 пуст */
-  profile: CareerProfileScale[]
   directions: CareerDirection[]
   /** версия для ученика (пишется моделью при первом показе) — только сотрудникам */
   summary_student?: string
@@ -284,7 +279,7 @@ export const useCareerStartAnalyses = () =>
   useCareerMutation((input: { group: number; tests: number[]; students?: number[] | null; force?: boolean }) => post<StartAnalysesResult>('/career/analyses/', input))
 
 export const useCareerAnalysisPatch = () =>
-  useCareerMutation((input: { id: number; summary?: string; summary_student?: string; visible_to_student?: boolean; directions?: Partial<CareerDirection>[]; profile?: Partial<CareerProfileScale>[] }) => {
+  useCareerMutation((input: { id: number; summary?: string; summary_student?: string; visible_to_student?: boolean; directions?: (Omit<Partial<CareerDirection>, 'profession_items'> & { items?: { id: number; title?: string; text?: string }[] })[] }) => {
     const { id, ...body } = input
     return patch<CareerAnalysis>(`/career/analyses/${id}/`, body)
   }, true)

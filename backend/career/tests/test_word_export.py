@@ -1,8 +1,9 @@
 """Разборы профтеста в Word (решение владельца, 04.11.2026).
 
 Выгружают только учитель профориентации и администратор; в файл идут все
-готовые разборы ученика, версия профориентолога с правками; один ученик на
-языке разбора — файл сразу. Журнал помнит, кто, кого и на каком языке
+готовые разборы ученика, версия профориентолога с правками; профиля интересов
+по каждой шкале в файле нет, профессии и программы — с объяснением (06.11.2026);
+один ученик на языке разбора — файл сразу. Журнал помнит, кто, кого и на каком языке
 выгрузил, — без текстов разбора.
 """
 
@@ -21,17 +22,22 @@ from core.models import AuditLog
 
 pytestmark = pytest.mark.django_db
 
+#: прежний вид ответа с профилем — профиль принимается молча и никуда не идёт
 PROFILE = [{"scale": "Биология", "meaning": "Самый сильный интерес теста."}]
 
 
-def _directions(n: int = 2) -> list[dict]:
+def _directions(n: int = 2, programs: list | None = None) -> list[dict]:
     return [
         {
             "title": f"Биотехнологии {i}",
             "title_abroad": f"Biotechnology {i}",
             "scales": ["Биология"],
             "reasoning": "Интерес к биологии — самый высокий в тесте, 12 из 12.",
-            "professions": "биотехнолог, генетик",
+            "professions": [
+                {"title": "Биотехнолог", "description": "Создаёт лекарства и материалы из живых клеток."},
+                {"title": "Генетик", "description": "Изучает наследственность."},
+            ],
+            "programs": programs or [],
             "exams": "IELTS: сейчас 6.0, порог 6.5 — не хватает 0.5\nSAT: пороги — по программам в каталоге",
             "subjects": "SAT Math — для первого курса\nбиология — профильный предмет",
             "next_steps": ["олимпиада по биологии в 10 классе", "летняя школа", "проект"],
@@ -50,9 +56,15 @@ def _pass(student, test):
 @pytest.fixture
 def analysed(karta, teacher, boston, riga, pupils, fake) -> CareerAnalysis:
     """Готовый разбор Алии на русском."""
+    from universities.models import Program, University
+
     activate(karta, [{"group": boston.pk}, {"group": riga.pk}], by=teacher)
     _pass(pupils["aliya"], karta)
-    fake(FakeProvider({"summary": "Сильнее всего — биология.", "profile": PROFILE, "directions": _directions()}))
+    leeds = Program.objects.create(
+        university=University.objects.create(name="University of Leeds", country="Великобритания"), name="Biology"
+    )
+    why = [{"id": leeds.pk, "why": "Биология 12 из 12 — ядро программы."}]
+    fake(FakeProvider({"summary": "Сильнее всего — биология.", "profile": PROFILE, "directions": _directions(2, why)}))
     response = login(teacher).post(
         "/api/career/analyses/",
         {"group": boston.pk, "tests": [karta.pk], "students": [pupils["aliya"].pk]},
@@ -79,7 +91,8 @@ def test_one_student_in_the_analysis_language_is_downloaded_at_once(analysed, te
     assert "filename*=UTF-8''%D0%90%D1%85%D0%BC%D0%B5%D1%82%D0%BE%D0%B2%D0%B0_" in response["Content-Disposition"]
     document = _document(response.content)
     headings = [p.text for p in document.paragraphs if p.style.name.startswith("Heading")]
-    assert "Общий вывод" in headings and "Профиль интересов" in headings and "Направления" in headings
+    assert "Общий вывод" in headings and "Направления" in headings
+    assert "Профиль интересов" not in headings, "профиля по каждой шкале в файле нет (06.11.2026)"
     assert "Общая картина по всем тестам" not in headings, "разбор один — общей картины нет"
     assert "1. Биотехнологии 1" in headings
     text = "\n".join(p.text for p in document.paragraphs)
@@ -89,15 +102,16 @@ def test_one_student_in_the_analysis_language_is_downloaded_at_once(analysed, te
     assert head[0]._tc.xpath(".//pic:pic"), "в шапке герб школы"
     assert "Ахметова Алия" in head[1].text and "BOSTON" in head[1].text and "11 класс" in head[1].text
     assert "Жанар Профориентатор" in head[1].text
-    # профиль: строка на каждую шкалу теста, сильная выделена
-    table = document.tables[1]
-    assert [cell.text for cell in table.rows[0].cells] == ["Шкала", "Балл", "Диапазон", "Что значит"]
-    rows = {row.cells[0].text: row for row in table.rows[1:]}
-    assert len(rows) == analysed.scales.count() == 24
-    assert rows["Биология"].cells[1].text == "12 из 12"
-    assert rows["Биология"].cells[3].text == "Самый сильный интерес теста."
-    assert rows["Биология"].cells[0]._tc.xpath(".//w:shd"), "сильная шкала выделена"
-    assert not rows["Физика"].cells[0]._tc.xpath(".//w:shd")
+    assert len(document.tables) == 1, "в файле одна таблица — шапка, таблицы профиля нет"
+    assert "Самый сильный интерес теста." not in text
+    # профессия: название жирным, объяснение в той же строке
+    job = next(p for p in document.paragraphs if p.text.startswith("Биотехнолог"))
+    assert job.text == "Биотехнолог — Создаёт лекарства и материалы из живых клеток."
+    assert job.runs[0].bold and job.runs[0].text == "Биотехнолог" and not job.runs[1].bold
+    # программа: «Программа — вуз (страна) · уровень», объяснение — абзацем ниже
+    lines = [p.text for p in document.paragraphs]
+    place = lines.index("Biology — University of Leeds (Великобритания) · Бакалавриат")
+    assert lines[place + 1] == "Биология 12 из 12 — ядро программы."
 
 
 def test_teacher_edits_go_into_the_file_as_on_screen(analysed, teacher, pupils):
@@ -168,9 +182,15 @@ def test_file_name_has_no_characters_that_break_windows():
 KK = {
     "summary": "Ең күшті қызығушылық — биология.",
     "tests": [{"order": 1, "title": "Қызығушылықтар картасы"}],
-    "scales": [{"order": 1, "title": "Биология", "label": "айқын қызығушылық", "meaning": "Тесттегі ең күшті."}],
+    "scales": [{"order": 1, "title": "Биология", "label": "айқын қызығушылық"}],
     "directions": [
-        {"order": 1, "title": "Биотехнология", "reasoning": "Биологияға қызығушылық — 12 ішінен 12."},
+        {
+            "order": 1,
+            "title": "Биотехнология",
+            "reasoning": "Биологияға қызығушылық — 12 ішінен 12.",
+            "profession_items": [{"order": 1, "title": "Биотехнолог", "text": "Тірі жасушалардан дәрі жасайды."}],
+            "program_notes": [{"order": 1, "text": "Биология 12 ішінен 12 — бағдарламаның өзегі."}],
+        },
         {"order": 2, "title": "Генетика"},
     ],
 }
@@ -191,10 +211,15 @@ def test_translation_is_made_once_and_reused(analysed, teacher, pupils, fake):
     text = "\n".join(p.text for p in document.paragraphs)
     assert "Ең күшті қызығушылық — биология." in text and "1. Биотехнология" in text
     assert "Biotechnology 1" in text, "английское название специальности не переводится"
-    assert "Қызығушылықтар бейіні" in text, "подписи разделов — на языке выгрузки"
-    rows = {row.cells[0].text: row for row in document.tables[1].rows[1:]}
-    assert rows["Биология"].cells[2].text == "айқын қызығушылық"
-    assert rows["Биология"].cells[1].text == "12 ішінен 12"
+    assert "Мамандықтар" in text and "Каталог бағдарламалары" in text, "подписи разделов — на языке выгрузки"
+    assert "Қызығушылықтар бейіні" not in text
+    assert "Биотехнолог — Тірі жасушалардан дәрі жасайды." in text, "профессия с объяснением — в переводе"
+    assert "Генетик — Изучает наследственность." in text, "чего модель не перевела — остаётся оригиналом"
+    assert "Biology — University of Leeds (Великобритания) · Бакалавриат" in text, "название программы не переводится"
+    assert "Биология 12 ішінен 12 — бағдарламаның өзегі." in text
+    prompt = provider.calls[0]["user"]
+    assert "Профессия 1: Биотехнолог | почему подходит: Создаёт" in prompt
+    assert "Программа 1: Biology — University of Leeds" in prompt and "смысл:" not in prompt
     # оригинал не тронут
     analysed.refresh_from_db()
     assert analysis_summary(analysed) == "Сильнее всего — биология."
@@ -274,7 +299,7 @@ def test_several_analyses_get_the_overall_picture_once(two_analyses, teacher, pu
     document = _document(prepared.payload)
     headings = [p.text for p in document.paragraphs if p.style.name.startswith("Heading")]
     assert headings.index("Общая картина по всем тестам") < headings.index("Общий вывод")
-    assert headings.count("Профиль интересов") == 2
+    assert "Профиль интересов" not in headings and headings.count("Направления") == 2
     # каждый разбор — с новой страницы
     breaks = [p for p in document.paragraphs if p.style.name == "Heading 1" and p.paragraph_format.page_break_before]
     assert len(breaks) == 2
@@ -302,7 +327,7 @@ def test_failed_translation_still_builds_the_file_in_the_analysis_language(analy
     prepared = exports.build(pupils["aliya"], language="en", actor=teacher, use_model=True)
     assert prepared.language == "ru" and prepared.notes and "перевод не получился" in prepared.notes[0]
     text = "\n".join(p.text for p in _document(prepared.payload).paragraphs)
-    assert "Сильнее всего — биология." in text and "Профиль интересов" in text
+    assert "Сильнее всего — биология." in text and "Профессии" in text
 
 
 # --- Подготовка в фоне: архив группы, отмена, сбой перевода, срок хранения ------------------
@@ -312,7 +337,7 @@ def test_failed_translation_still_builds_the_file_in_the_analysis_language(analy
 def both_analysed(analysed, karta, teacher, pupils, fake) -> list[CareerAnalysis]:
     """Готовые разборы Алии и Дамира на русском."""
     _pass(pupils["damir"], karta)
-    fake(FakeProvider({"summary": "Биология — главное.", "profile": PROFILE, "directions": _directions()}))
+    fake(FakeProvider({"summary": "Биология — главное.", "directions": _directions()}))
     login(teacher).post(
         "/api/career/analyses/",
         {"group": pupils["damir"].group_id, "tests": [karta.pk], "students": [pupils["damir"].pk]},
@@ -356,7 +381,7 @@ def test_group_zip_has_a_file_per_ready_student_and_skips_the_rest(analysed, tea
     assert file.status_code == 200
     files = _zip(b"".join(file.streaming_content))
     assert list(files) == ["Ахметова_Алия_профтест.docx"]
-    assert "Профиль интересов" in [p.text for p in _document(files["Ахметова_Алия_профтест.docx"]).paragraphs]
+    assert "Направления" in [p.text for p in _document(files["Ахметова_Алия_профтест.docx"]).paragraphs]
     # колокольчик: «Файлы готовы» со ссылкой на окно с файлом
     from core.models import Notification
 
@@ -407,8 +432,8 @@ def test_failed_translation_of_one_student_does_not_break_the_archive(both_analy
     assert lines[1].startswith("Ахметова А.: перевод не получился") and "файл на языке разбора" in lines[1]
     first = "\n".join(p.text for p in _document(files["Ахметова_Алия_профтест.docx"]).paragraphs)
     second = "\n".join(p.text for p in _document(files["Сериков_Дамир_профтест.docx"]).paragraphs)
-    assert "Профиль интересов" in first, "у Алии — на русском"
-    assert "Қызығушылықтар бейіні" in second, "у Дамира — перевод"
+    assert "Направления" in first, "у Алии — на русском"
+    assert "Бағыттар" in second, "у Дамира — перевод"
 
 
 class CancelsDuringCall(FakeProvider):

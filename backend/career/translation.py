@@ -2,7 +2,8 @@
 
 Разбор пишется на языке того, кто его запускал; Word можно скачать на любом
 из трёх языков. Перевод делается моделью один раз и хранится строками
-`CareerAnalysisTranslation` (и шкалы, и направления — по порядку в разборе),
+`CareerAnalysisTranslation` (шкалы, направления, профессии и объяснения программ —
+по порядку в разборе),
 оригинал не трогается. Повторная выгрузка на том же языке модель не зовёт.
 Профориентолог правил разбор после перевода (`edited_at` позже перевода) —
 перевод устарел и делается заново.
@@ -26,6 +27,7 @@ from django.utils.translation import gettext as _
 from career.models import (
     CareerAnalysis,
     CareerAnalysisTranslation,
+    CareerDirectionItemTranslation,
     CareerDirectionTranslation,
     CareerOverview,
     CareerScaleTranslation,
@@ -53,8 +55,9 @@ TRANSLATE_SYSTEM = (  # i18n-skip: промпт ИИ — язык ответа �
 и родители ученика.
 
 Правила, нарушать нельзя:
-- переводи всё: общий вывод, названия тестов и шкал, подписи диапазонов, смысл каждой
-  шкалы, названия направлений и все их части — ничего не пропускай и не добавляй;
+- переводи всё: общий вывод, названия тестов и шкал, подписи диапазонов, названия
+  направлений и все их части, каждую профессию с объяснением и объяснение каждой
+  программы — ничего не пропускай и не добавляй;
 - смысл и цифры не меняй: баллы, пороги, даты, классы и годы остаются как есть;
   не сокращай и не обобщай — перевод не короче оригинала;
 - не переводи названия вузов и программ, английские названия специальностей, IELTS,
@@ -137,6 +140,28 @@ TRANSLATE_SCHEMA = {  # i18n-skip: схема ответа для модели �
                     "exams": {"type": "string"},
                     "subjects": {"type": "string"},
                     "next_steps": {"type": "string"},
+                    "profession_items": {
+                        "type": "array",
+                        "description": "каждая профессия направления, по номеру из оригинала",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "order": {"type": "integer"},
+                                "title": {"type": "string"},
+                                "text": {"type": "string"},
+                            },
+                            "required": ["order", "title"],
+                        },
+                    },
+                    "program_notes": {
+                        "type": "array",
+                        "description": "объяснение каждой программы направления, по номеру из оригинала",
+                        "items": {
+                            "type": "object",
+                            "properties": {"order": {"type": "integer"}, "text": {"type": "string"}},
+                            "required": ["order", "text"],
+                        },
+                    },
                 },
                 "required": ["order", "title"],
             },
@@ -192,9 +217,7 @@ def _translate_prompt(text: AnalysisText) -> str:
         lines.append(f"Тест {order}: {title}")  # i18n-skip: промпт ИИ
     lines.append("")
     for order, scale in enumerate(text.scales, start=1):
-        lines.append(
-            f"Шкала {order}: {scale.title} | диапазон: {scale.label or '—'} | смысл: {scale.meaning or '—'}"
-        )  # i18n-skip: промпт ИИ
+        lines.append(f"Шкала {order}: {scale.title} | диапазон: {scale.label or '—'}")  # i18n-skip: промпт ИИ
     for order, direction in enumerate(text.directions, start=1):
         lines.append("")
         lines.append(f"Направление {order}:")  # i18n-skip: промпт ИИ
@@ -207,11 +230,19 @@ def _translate_prompt(text: AnalysisText) -> str:
             ("Что подтянуть в школе", direction.subjects),
             ("Что сделать уже сейчас", direction.next_steps),
         ):
-            lines.append(f"{label}: {value}")
+            if value:
+                lines.append(f"{label}: {value}")
+        for number, item in enumerate(direction.profession_items, start=1):
+            why = item.text or "—"
+            lines.append(f"Профессия {number}: {item.title} | почему подходит: {why}")  # i18n-skip: промпт ИИ
+        for number, item in enumerate(direction.programs, start=1):
+            if item.text:
+                lines.append(f"Программа {number}: {item.title} | почему подходит: {item.text}")  # i18n-skip: промпт ИИ
     lines.append("")
     lines.append(
         "Переведи общий вывод, каждый тест, каждую шкалу и каждое направление по номеру; "
-        "у шкалы, где диапазона или смысла нет («—»), оставь пустую строку."
+        "у шкалы, где диапазона нет («—»), оставь пустую строку. Профессии — название и объяснение "
+        "(profession_items), у программ — только объяснение (program_notes), название программы не переводи."
     )  # i18n-skip: промпт ИИ
     return "\n".join(lines)
 
@@ -268,7 +299,46 @@ def translate(analysis: CareerAnalysis, text: AnalysisText, language: str, *, ac
             )
             for order in range(1, len(text.directions) + 1)
         )
+        CareerDirectionItemTranslation.objects.bulk_create(_item_rows(row, text, directions))
     return row
+
+
+def _numbered(items) -> dict:
+    return {item.get("order"): item for item in items or [] if isinstance(item, dict)}
+
+
+def _item_rows(row: CareerAnalysisTranslation, text: AnalysisText, directions: dict) -> list:
+    """Строки перевода профессий и программ: сначала профессии, за ними программы —
+    тот же порядок, что в `DirectionText`, по нему `apply` и раскладывает обратно."""
+    out = []
+    for order, direction in enumerate(text.directions, start=1):
+        answer = directions.get(order, {})
+        professions = _numbered(answer.get("profession_items"))
+        notes = _numbered(answer.get("program_notes"))
+        position = 0
+        for number, _item in enumerate(direction.profession_items, start=1):
+            position += 1
+            got = professions.get(number, {})
+            out.append(
+                CareerDirectionItemTranslation(
+                    translation=row,
+                    direction_order=order,
+                    order=position,
+                    title=_text(got.get("title"))[:200],
+                    text=_text(got.get("text")),
+                )
+            )
+        for number, _item in enumerate(direction.programs, start=1):
+            position += 1
+            out.append(
+                CareerDirectionItemTranslation(
+                    translation=row,
+                    direction_order=order,
+                    order=position,
+                    text=_text(notes.get(number, {}).get("text")),
+                )
+            )
+    return out
 
 
 def apply(text: AnalysisText, row: CareerAnalysisTranslation) -> AnalysisText:
@@ -295,11 +365,23 @@ def apply(text: AnalysisText, row: CareerAnalysisTranslation) -> AnalysisText:
                 meaning=item.meaning or scale.meaning,
             )
         )
+    items: dict[tuple[int, int], CareerDirectionItemTranslation] = {
+        (line.direction_order, line.order): line for line in row.items.all()
+    }
     out_directions = []
     for order, direction in enumerate(text.directions, start=1):
         item = directions.get(order)
         changes = {name: getattr(item, name) for name in DIRECTION_FIELDS if item and getattr(item, name)}
-        out_directions.append(replace(direction, **changes))
+        professions = []
+        for position, profession in enumerate(direction.profession_items, start=1):
+            line = items.get((order, position))
+            title = (line.title if line else "") or profession.title
+            professions.append(replace(profession, title=title, text=(line.text if line else "") or profession.text))
+        programs = []
+        for number, program in enumerate(direction.programs, start=1):
+            line = items.get((order, len(direction.profession_items) + number))
+            programs.append(replace(program, text=(line.text if line else "") or program.text))
+        out_directions.append(replace(direction, **changes, profession_items=professions, programs=programs))
     return replace(
         text,
         summary=row.summary or text.summary,
@@ -332,14 +414,12 @@ def _overview_prompt(texts: list[AnalysisText]) -> str:
             f"Разбор {order}: тесты — " + ", ".join(f"«{title}»" for title, _when in text.tests)
         )  # i18n-skip: промпт ИИ
         lines.append(f"Общий вывод: {text.summary}")  # i18n-skip: промпт ИИ
-        lines.append("Профиль интересов:")  # i18n-skip: промпт ИИ
+        lines.append("Шкалы тестов:")  # i18n-skip: промпт ИИ
         for scale in text.scales:
             mark = f"{scale.score}" + (f" из {scale.top}" if scale.top else "")  # i18n-skip: промпт ИИ
             lines.append(
-                f"- {scale.title} ({scale.test}): {mark}"
-                + (" — сильная шкала" if scale.strong else "")  # i18n-skip: промпт ИИ
-                + (f"; {scale.meaning}" if scale.meaning else "")
-            )
+                f"- {scale.title} ({scale.test}): {mark}" + (" — сильная шкала" if scale.strong else "")
+            )  # i18n-skip: промпт ИИ
         lines.append("Направления:")  # i18n-skip: промпт ИИ
         for direction in text.directions:
             abroad = f" ({direction.title_abroad})" if direction.title_abroad else ""

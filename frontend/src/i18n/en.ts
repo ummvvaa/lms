@@ -418,6 +418,8 @@ export const en: Record<string, string> = {
   'Продолжить': 'Continue',
   'Пропустить строки с ошибкой': 'Skip rows with errors',
   'Профессии': 'Professions',
+  'Профессия': 'Profession',
+  'Чем занимается и почему подходит': 'What the job involves and why it fits',
   'Профориентационный тест': 'Career guidance test',
   'Проходят сейчас': 'In progress now',
   'Пусто — {n} м по правилу школы': 'Empty — {n} m by the school rule',

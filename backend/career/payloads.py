@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from academics.payloads import person, student_brief
-from career.analysis import RULES
-from career.models import CareerAnalysis, CareerAttempt, CareerTest
+from career.analysis import LEGACY_BELOW
+from career.models import CareerAnalysis, CareerAttempt, CareerTest, ItemKind
 from career.scoring import bounds
 
 
@@ -128,6 +128,55 @@ def attempt_dict(attempt: CareerAttempt, *, with_scores: bool = True, with_stude
     return out
 
 
+def _place(program) -> dict:
+    return {
+        "name": program.name,
+        "university": program.university.name,
+        "country": program.university.country,
+        "level_title": program.get_level_display() if program.level else "",
+    }
+
+
+def direction_items(direction) -> tuple[list[dict], list[dict]]:
+    """Профессии и программы направления с объяснениями.
+
+    У разборов с 06.11.2026 — строками `CareerDirectionItem`; у прежних профессий
+    списком нет (строка `professions`), программы — связью без объяснения.
+    """
+    rows = list(direction.items.select_related("program__university"))
+    professions = [
+        {"id": row.pk, "title": row.title, "text": row.text} for row in rows if row.kind == ItemKind.PROFESSION
+    ]
+    programs = [
+        {"id": row.program_id, "item": row.pk, **_place(row.program), "why": row.text}
+        for row in rows
+        if row.kind == ItemKind.PROGRAM and row.program_id
+    ]
+    if not any(row.kind == ItemKind.PROGRAM for row in rows):
+        programs = [
+            {"id": p.pk, "item": None, **_place(p), "why": ""} for p in direction.programs.select_related("university")
+        ]
+    return professions, programs
+
+
+def _direction_dict(d, *, for_student: bool) -> dict:
+    professions, programs = direction_items(d)
+    return {
+        "id": d.pk,
+        "order": d.order,
+        "title": d.title,
+        "title_abroad": d.title_abroad,
+        "reasoning": d.reasoning_student if for_student else d.reasoning,
+        #: прежние разборы — строкой; новые — списком `profession_items`
+        "professions": d.professions,
+        "profession_items": professions,
+        "exams": d.exams,
+        "subjects": d.subjects,
+        "next_steps": d.next_steps,
+        "programs": programs,
+    }
+
+
 def analysis_dict(analysis: CareerAnalysis, *, for_student: bool = False) -> dict:
     out = {
         "id": analysis.pk,
@@ -141,43 +190,14 @@ def analysis_dict(analysis: CareerAnalysis, *, for_student: bool = False) -> dic
         "visible_to_student": analysis.visible_to_student,
         "edited_at": analysis.edited_at,
         #: разбор считался по прежним правилам — показывается как есть, с плашкой
-        "legacy": analysis.rules < RULES,
+        "legacy": analysis.rules < LEGACY_BELOW,
         "tests": [
             {"id": a.test_id, "title": a.test.title, "attempt": a.pk, "finished_at": a.finished_at}
             for a in analysis.attempts.select_related("test").order_by("finished_at", "id")
         ],
-        #: профиль интересов — по каждой шкале теста; у разборов до 04.11.2026 пуст
-        "profile": [
-            {
-                "id": scale.pk,
-                "order": scale.order,
-                "test": scale.test_title,
-                "title": scale.title,
-                "score": scale.score,
-                "top": scale.top,
-                "label": scale.label,
-                "meaning": scale.meaning_student if for_student else scale.meaning,
-            }
-            for scale in analysis.scales.all()
-        ],
-        "directions": [
-            {
-                "id": d.pk,
-                "order": d.order,
-                "title": d.title,
-                "title_abroad": d.title_abroad,
-                "reasoning": d.reasoning_student if for_student else d.reasoning,
-                "professions": d.professions,
-                "exams": d.exams,
-                "subjects": d.subjects,
-                "next_steps": d.next_steps,
-                "programs": [
-                    {"id": p.pk, "name": p.name, "university": p.university.name, "level_title": p.get_level_display()}
-                    for p in d.programs.select_related("university")
-                ],
-            }
-            for d in analysis.directions.all()
-        ],
+        # профиль интересов по каждой шкале не выводится (решение владельца, 06.11.2026):
+        # строки старых разборов остаются в базе, в ответ не идут
+        "directions": [_direction_dict(d, for_student=for_student) for d in analysis.directions.all()],
     }
     if not for_student:
         # версия для ученика — рядом с версией учителя, он правит обе;
@@ -186,8 +206,6 @@ def analysis_dict(analysis: CareerAnalysis, *, for_student: bool = False) -> dic
         out["has_student_version"] = bool(analysis.summary_student)
         for row, d in zip(out["directions"], analysis.directions.all(), strict=False):
             row["reasoning_student"] = d.reasoning_student
-        for row, scale in zip(out["profile"], analysis.scales.all(), strict=False):
-            row["meaning_student"] = scale.meaning_student
         out["student"] = student_brief(analysis.student)
         # «Пересчитать» запускает разбор группы ученика по тем же тестам
         out["group_id"] = analysis.student.group_id
