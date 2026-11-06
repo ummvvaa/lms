@@ -66,8 +66,6 @@ const CELL: Record<CellStatus, { tone: Tone; label: string }> = {
 // --- Тесты ------------------------------------------------------------------------
 
 function TestsTab({ manage }: { manage: boolean }) {
-  const { me } = useAuth()
-  const phone = usePhone()
   const list = useCareerTests()
   const patch = useCareerTestPatch()
   const [assigning, setAssigning] = useState<number | null>(null)
@@ -119,42 +117,6 @@ function TestsTab({ manage }: { manage: boolean }) {
       </Button>
     </div>
   )
-  // учителю профориентации — тесты таблицей, как в его макете; администратору —
-  // карточками по четыре, как в макете администратора; на телефоне — карточки
-  const asTable = me?.role !== 'admin' && !phone
-  const columns: Column<CareerTestRow>[] = [
-    {
-      key: 'title',
-      title: t('Тест'),
-      width: '38%',
-      cell: (row) => (
-        <span className="ctl-row__text">
-          <b>{row.title}</b>
-          <span className="t-note num">{whoNote(row)}</span>
-        </span>
-      ),
-      sortBy: (row) => row.title,
-    },
-    { key: 'items', title: t('Утверждений'), width: '12%', align: 'right', cell: (row) => <b className="num">{row.items}</b>, sortBy: (row) => row.items },
-    {
-      key: 'done',
-      title: t('Сдали'),
-      width: '18%',
-      cell: (row) =>
-        row.assigned ? (
-          <span className="ctl-row__done">
-            <b className="num">{t('{done} из {total}', { done: row.done, total: row.assigned })}</b>
-            <Bar percent={(row.done / row.assigned) * 100} color="var(--good)" />
-          </span>
-        ) : (
-          <span className="t-note">{t('никому не открыт')}</span>
-        ),
-      sortBy: (row) => row.done,
-    },
-    { key: 'state', title: t('Состояние'), width: '14%', cell: stateControl },
-    { key: 'acts', title: '', width: '18%', align: 'right', cell: actions },
-  ]
-
   return (
     <>
       {rows.length === 0 ? (
@@ -192,15 +154,10 @@ function TestsTab({ manage }: { manage: boolean }) {
               note={authors.length ? namesLine(authors) : undefined}
             />
           </div>
-          {asTable ? (
-            <DataCard className="card--beam" title={t('Тесты')} count={rows.length}>
-              <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} rowClass={() => 'ctl-row'} />
-            </DataCard>
-          ) : (
-          <>
-          {/* тесты карточками по четыре в ряд: название, кто и когда загрузил,
-              сдали из скольких полосой; внизу «Кому» и «Открыть». Видны два ряда,
-              остальные — «Показать все» на месте */}
+          {/* тесты карточками по четыре в ряд — у учителя профориентации так же, как
+              у администратора (решение владельца, 06.11.2026; отдельная таблица учителя
+              снята): название, кто и когда загрузил, сдали из скольких полосой; внизу
+              «Кому» и «Открыть». Видны два ряда, остальные — «Показать все» на месте */}
           <div className="lay-4 ctl-grid">
             <ShowAll limit={8}>
               {rows.map((row) => (
@@ -237,8 +194,6 @@ function TestsTab({ manage }: { manage: boolean }) {
               ))}
             </ShowAll>
           </div>
-          </>
-          )}
         </>
       )}
       {assigning !== null && detail.data && (
