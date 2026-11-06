@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 
-from django.db.models import Count, Q
+from django.db.models import Count, Exists, OuterRef, Q
 from django.http import FileResponse, HttpResponse
 from django.utils import timezone
 from django.utils.translation import gettext as _
@@ -173,8 +173,10 @@ def tests(request):
         .annotate(
             n_items=Count("items", distinct=True),
             n_scales=Count("scales", distinct=True),
-            n_attempts=Count("attempts", distinct=True),
         )
+        # попытки — подзапросом: третий Count по join умножал строки items × scales × attempts,
+        # и на проде с сотнями попыток список тестов не успевал ответить
+        .annotate(has_attempts=Exists(CareerAttempt.objects.filter(test_id=OuterRef("pk"))))
     )
     counts = _counts(rows, _scope_group_ids(user))
     return Response(
@@ -185,7 +187,7 @@ def tests(request):
                     t,
                     items=t.n_items,
                     scales=t.n_scales,
-                    used=t.n_attempts > 0,
+                    used=t.has_attempts,
                     can_remove=_can_remove(user, t),
                     **counts[t.pk],
                 )
